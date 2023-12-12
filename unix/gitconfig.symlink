@@ -1,0 +1,6 @@
+[user]
+    name = Quan Do
+    email = minhquand3@gmail.com
+[core]
+    editor = /usr/bin/vim
+    ignorecase = false

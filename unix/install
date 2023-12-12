@@ -1,0 +1,225 @@
+#!/bin/bash
+
+info () {
+    printf "\r  [ \033[00;34m..\033[0m ] $1\n"
+}
+
+user () {
+    printf "\r  [ \033[0;33m??\033[0m ] $1\n"
+}
+
+success () {
+    printf "\r\033[2K  [ \033[00;32mOK\033[0m ] $1\n"
+}
+
+fail () {
+    printf "\r\033[2K  [\033[0;31mFAIL\033[0m] $1\n"
+    echo ''
+    exit
+}
+
+function install_font {
+    # Install Fira Code
+    # https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
+    mkdir -p ~/.local/share/fonts
+    cd ~/.local/share/fonts && curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf
+    fc-cache -f -v
+}
+
+function install_arch {
+    sudo pacman -S --no-confirm curl git zsh vim tmux fontconfig fzf ttf-firacode-nerf
+}
+
+function install_debian {
+    sudo apt update -y
+    sudo apt install -y curl git zsh vim tmux fontconfig fzf
+    install_font
+}
+
+function install_mac {
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    brew update
+    brew install tmux iterm2
+}
+
+function install_linux {
+    if [[ -f "/etc/os-release" ]]; then
+        source /etc/os-release
+        if [[ "$ID" == "arch" || "$ID" == "manjaro" || "$ID_LIKE" == *"arch"* ]]; then
+            system_kind="Linux_Arch"
+            install_arch
+        elif [[ "$ID" == "debian" || "$ID_LIKE" == *"debian"* ]]; then
+            system_kind="Linux_Debian"
+            install_debian
+            if [[ "$ID" == "ubuntu" ]]; then
+                system_kind="Linux_Debian_Ubuntu"
+            elif [[ "$ID" == "linuxmint" ]]; then
+                system_kind="Linux_Debian_LinuxMint"
+            fi
+        fi
+    else
+        fail "Could not detect Linux distribution."
+    fi
+}
+
+function install_packages {
+    info "Installing packages"
+    if [[ "$(uname)" == "Linux" ]]; then
+        system_kind="Linux"
+        install_linux
+    elif [[ "$(uname)" == "Darwin" ]]; then
+        system_kind="Mac"
+        install_mac
+    else
+        fail "Unsupported system: $(uname)"
+    fi
+    chsh -s $(which zsh)
+    success "Finished installing packages"
+}
+
+function clone_repo {
+    info "Cloning dotfiles repo"
+    cd ~
+    git clone https://github.com/QuanDo2000/monorepo.git
+    success "Finished cloning dotfiles repo"
+}
+
+function install_oh_my_zsh {
+    info "Installing oh-my-zsh"
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+}
+
+function install_vim_plugins {
+    info "Installing vim plugins"
+    # Install vim-plug
+    curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    # Install vim plugins
+    vim +PlugInstall +qall
+    success "Finished installing vim plugins"
+}
+
+function install_zsh_plugins {
+    info "Installing zsh plugins"
+    # Install zsh-autosuggestions
+    git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+    # Install zsh-syntax-highlighting
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+    success "Finished installing zsh plugins"
+}
+
+function install_tmux_plugins {
+    info "Installing tmux plugins"
+    git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+    sleep 1
+    tmux start-server
+    tmux new-session -d
+    ~/.tmux/plugins/tpm/scripts/install_plugins.sh
+    tmux kill-server
+    success "Finished installing tmux plugins"
+}
+
+function install_extras {
+    info "Installing extras"
+    install_oh_my_zsh
+    install_vim_plugins
+    install_zsh_plugins
+    install_tmux_plugins
+    success "Finished installing extras"
+}
+
+function link_files {
+    local src=$1 dst=$2
+
+    local overwrite= backup= skip= action=
+
+    if [ -f "$dst" -o -d "$dst" -o -L "$dst" ]; then
+        if [[ "$overwrite_all" == "false" && "$backup_all" == "false" && "$skip_all" == "false" ]]; then
+            local current_src="$(readlink $dst)"
+
+            if [[ "$current_src" == "$src" ]]; then
+                skip=true
+            else
+                user "File already exists: $dst ($(basename "$src")), what do you want to do?\n\
+                    [s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?"
+                read -n 1 action
+
+                case "$action" in
+                    o )
+                        overwrite=true;;
+                    O )
+                        overwrite_all=true;;
+                    b )
+                        backup=true;;
+                    B )
+                        backup_all=true;;
+                    s )
+                        skip=true;;
+                    S )
+                        skip_all=true;;
+                    * )
+                        ;;
+                esac
+            fi
+        fi
+
+        overwrite=${overwrite:-$overwrite_all}
+        backup=${backup:-$backup_all}
+        skip=${skip:-$skip_all}
+
+        if [[ "$overwrite" == "true" ]]; then
+            rm -rf "$dst"
+            success "Removed $dst"
+        fi
+
+        if [[ "$backup" == "true" ]]; then
+            mv "$dst" "${dst}.backup"
+            success "Moved $dst to ${dst}.backup"
+        fi
+
+        if [[ "$skip" == "true" ]]; then
+            success "Skipped $src"
+        fi
+    fi
+
+    if [[ "$skip" != "true" ]]; then
+        ln -s "$1" "$2"
+        success "Linked $1 to $2"
+    fi
+}
+
+function setup_symlinks {
+    info "Setting up symlinks"
+    DOTFILES_ROOT="$HOME/monorepo/dotfiles/unix"
+    local overwrite_all=false backup_all=false skip_all=false
+
+    for src in $(find -H "$DOTFILES_ROOT" -maxdepth 2 -name '*.symlink'); do
+        info $src
+        dst="$HOME/.$(basename "${src%.*}")"
+        link_files "$src" "$dst"
+    done
+}
+
+function setup_dotfiles {
+    info "Setting up dotfiles"
+    install_packages
+    clone_repo
+    install_extras
+    setup_symlinks
+    success "Done!"
+}
+
+
+if [ "$1" = "--install" ] || [ "$1" = "-i" ]; then
+    install_packages
+    install_extras
+    exit 0
+fi
+
+if [ "$1" = "--symlinks" ] || [ "$1" = "-s" ]; then
+    setup_symlinks
+    exit 0
+fi
+
+setup_dotfiles
+exit 0
