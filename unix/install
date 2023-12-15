@@ -190,7 +190,7 @@ function link_files {
 
 function setup_symlinks {
     info "Setting up symlinks"
-    DOTFILES_ROOT="$HOME/monorepo/dotfiles/unix"
+    DOTFILES_ROOT="$HOME/dotfiles/unix"
     local overwrite_all=false backup_all=false skip_all=false
 
     for src in $(find -H "$DOTFILES_ROOT" -maxdepth 2 -name '*.symlink'); do
