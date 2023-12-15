@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-source <(curl -s https://raw.githubusercontent.com/QuanDo2000/monorepo/main/dotfiles/install)
+source <(curl -s https://raw.githubusercontent.com/QuanDo2000/dotfiles/main/unix/install)
 ```
 
 ## References
