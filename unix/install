@@ -80,7 +80,7 @@ function install_packages {
 function clone_repo {
     info "Cloning dotfiles repo"
     cd ~
-    git clone https://github.com/QuanDo2000/monorepo.git
+    git clone https://github.com/QuanDo2000/dotfiles.git
     success "Finished cloning dotfiles repo"
 }
 
