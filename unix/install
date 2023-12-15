@@ -39,7 +39,7 @@ function install_debian {
 function install_mac {
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     brew update
-    brew install tmux iterm2
+    brew install tmux
 }
 
 function install_linux {
