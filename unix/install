@@ -39,7 +39,7 @@ function install_debian {
 function install_mac {
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 	brew update
-	brew install tmux vim neovim fzf fd ripgrep gh
+	brew install tmux vim fzf fd ripgrep gh
 }
 
 function install_linux {
