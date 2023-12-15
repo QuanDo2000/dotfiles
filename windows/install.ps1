@@ -56,8 +56,8 @@ function InstallFont {
 }
 
 function CloneRepo() {
-    $repo = "https://github.com/QuanDo2000/monorepo.git"
-    $destination = "$HOME\Documents\Projects\monorepo"
+    $repo = "https://github.com/QuanDo2000/dotfiles.git"
+    $destination = "$HOME\Documents\Projects\dotfiles"
     Write-Host "Cloning $repo to $destination..."
 
     if (!(Test-Path $destination)) {
@@ -71,7 +71,7 @@ function CloneRepo() {
 
 function SyncSettings() {
     Write-Host "Syncing settings..."
-    $configPath = "$HOME\Documents\Projects\monorepo\dotfiles\windows"
+    $configPath = "$HOME\Documents\Projects\dotfiles\windows"
 
     $targets = @(
         "$HOME\Documents\WindowsPowerShell"

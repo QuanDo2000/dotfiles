@@ -56,6 +56,8 @@ Plug 'tpope/vim-sensible'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-repeat'
+Plug '/opt/homebrew/opt/fzf'
+
 
 call plug#end()
 

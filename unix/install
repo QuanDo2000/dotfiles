@@ -27,19 +27,19 @@ function install_font {
 }
 
 function install_arch {
-	sudo pacman -S --no-confirm curl git zsh vim tmux fontconfig fzf ttf-firacode-nerf
+	sudo pacman -S --no-confirm curl git zsh vim tmux fontconfig fzf ttf-firacode-nerf fd ripgrep
 }
 
 function install_debian {
 	sudo apt update -y
-	sudo apt install -y curl git zsh vim tmux fontconfig fzf
+	sudo apt install -y curl git zsh vim tmux fontconfig fzf fd-find ripgrep
 	install_font
 }
 
 function install_mac {
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 	brew update
-	brew install tmux vim fzf fd ripgrep gh
+	brew install tmux vim fzf fd ripgrep gh autojump pyenv
 }
 
 function install_linux {
@@ -62,11 +62,18 @@ function install_linux {
 	fi
 }
 
+function install_pyenv {
+    info "Installing pyenv"
+    curl https://pyenv.run | bash
+    success "Installed pyenv"
+}
+
 function install_packages {
 	info "Installing packages"
 	if [[ "$(uname)" == "Linux" ]]; then
 		system_kind="Linux"
 		install_linux
+        install_pyenv
 	elif [[ "$(uname)" == "Darwin" ]]; then
 		system_kind="Mac"
 		install_mac
@@ -83,6 +90,13 @@ function clone_repo {
 	git clone https://github.com/QuanDo2000/dotfiles.git
 	success "Finished cloning dotfiles repo"
 }
+
+function install_nvm {
+    info "Installing nvm"
+    PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash'
+    success "Installed nvm"
+}
+
 
 function install_oh_my_zsh {
 	info "Installing oh-my-zsh"
@@ -121,6 +135,7 @@ function install_tmux_plugins {
 
 function install_extras {
 	info "Installing extras"
+    install_nvm
 	install_oh_my_zsh
 	install_vim_plugins
 	install_zsh_plugins
