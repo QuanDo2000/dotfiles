@@ -10,10 +10,11 @@ function CopyWithBackup($source, $destination) {
 }
 
 function InstallPackages() {
-    winget install Microsoft.Powershell Git.Git JanDeDobbeleer.OhMyPosh vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal --disable-interactivity
+    winget install Microsoft.Powershell Git.Git fzf JanDeDobbeleer.OhMyPosh vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal --disable-interactivity
 
     Install-Module -Name Terminal-Icons -Repository PSGallery -Scope CurrentUser -Force
     Install-Module -Name PSReadLine -Scope CurrentUser -Force
+    Install-Module -Name PSFzf
 
     Update-Module
 }
