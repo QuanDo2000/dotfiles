@@ -12,6 +12,7 @@ plugins=(git docker dotenv vi-mode vscode tmux fzf fzf-tab zsh-autosuggestions f
 ZSH_TMUX_AUTOSTART=true
 ZSH_TMUX_AUTOSTART_ONCE=true
 ZSH_TMUX_AUTOCONNECT=true
+ZSH_TMUX_AUTOQUIT=false
 ZSH_TMUX_DEFAULT_SESSION_NAME="main"
 VI_MODE_SET_CURSOR=true
 
@@ -29,6 +30,9 @@ export EDITOR=vim
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# Path
+export PATH="~/.local/bin:$PATH"
 
 # Source various files.
 source $ZSH/oh-my-zsh.sh
