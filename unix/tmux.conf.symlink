@@ -5,17 +5,10 @@ set-window-option -g mode-keys vi
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'erikw/tmux-powerline'
-set -g @plugin 'tmux-plugins/tmux-yank'
 set -g @plugin 'sainnhe/tmux-fzf'
 set -g @plugin 'schasse/tmux-jump'
 set -g @plugin 'tmux-plugins/tmux-logging'
 set -g @plugin 'laktak/extrakto'
-
-# Other examples:
-# set -g @plugin 'github_username/plugin_name'
-# set -g @plugin 'github_username/plugin_name#branch'
-# set -g @plugin 'git@github.com:user/plugin'
-# set -g @plugin 'git@bitbucket.com:user/plugin'
 
 if-shell "uname | grep -q Darwin" {
   bind-key -T copy-mode-vi 'y' send -X copy-pipe-and-cancel 'reattach-to-user-namespace pbcopy'
