@@ -27,12 +27,12 @@ function install_font {
 }
 
 function install_arch {
-	sudo pacman -S --no-confirm curl git zsh vim tmux fontconfig fzf ttf-firacode-nerf fd ripgrep
+	sudo pacman -S --no-confirm base-devel curl git zsh vim tmux fontconfig fzf ttf-firacode-nerf fd ripgrep
 }
 
 function install_debian {
 	sudo apt update -y
-	sudo apt install -y curl git zsh vim tmux fontconfig fzf fd-find ripgrep
+	sudo apt install -y build-essential curl git zsh vim tmux fontconfig fzf fd-find ripgrep
     # Extra after installing fd-find
     mkdir -p $HOME/.local/bin
     ln -s $(which fdfind) $HOME/.local/bin/fd
