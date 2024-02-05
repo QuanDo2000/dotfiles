@@ -10,7 +10,7 @@ function CopyWithBackup($source, $destination) {
 }
 
 function InstallPackages() {
-    winget install Microsoft.Powershell Git.Git sharkdp.fd BurntSushi.ripgrep.MSVC fzf JanDeDobbeleer.OhMyPosh vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal --disable-interactivity
+    winget install Microsoft.Powershell Git.Git sharkdp.fd BurntSushi.ripgrep.MSVC fzf JanDeDobbeleer.OhMyPosh vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal --disable-interactivity --accept-package-agreements
 
     Install-Module -Name Terminal-Icons -Repository PSGallery -Scope CurrentUser -Force
     Install-Module -Name PSReadLine -Scope CurrentUser -Force
@@ -21,39 +21,7 @@ function InstallPackages() {
 
 function InstallFont {
     $url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/FiraCode.zip"
-    $tempFile = "$PSScriptRoot\FiraCode.zip"
-    $fontFolder = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
-    $fontName = "FiraCodeNerdFont-Regular.ttf"
-    $fontFile = "$fontFolder\$fontName"
-
-    if (Test-Path $fontFile) {
-        Write-Host "FiraCode Nerd Font is already installed."
-        return
-    }
-
-    Write-Host "Downloading FiraCode Nerd Font..."
-    Invoke-WebRequest -Uri $url -OutFile $tempFile
-
-    Write-Host "Extracting FiraCode Nerd Font..."
-    Expand-Archive -Path $tempFile -DestinationPath $fontFolder
-
-    Write-Host "Installing FiraCode Nerd Font..."
-    $shellApplication = New-Object -ComObject Shell.Application
-    $fontFiles = Get-ChildItem -Path $fontFolder -Filter "*.ttf"
-
-    foreach ($fontFile in $fontFiles) {
-        $fontName = $fontFile.Name
-        $fontPath = $fontFile.FullName
-
-        if (!(Test-Path $fontPath)) {
-            $shellApplication.Namespace($fontFolder).ParseName($fontName).InvokeVerb("Install")
-        }
-    }
-
-    Write-Host "Cleaning up..."
-    if (Test-Path $tempFile) {
-        Remove-Item -Path $tempFile
-    }
+    Write-Host "Please install FiraCode from $url. Please install both Regular and MonoRegular version."
 }
 
 function CloneRepo() {
