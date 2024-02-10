@@ -17,11 +17,17 @@ function InstallPackages() {
     Install-Module -Name PSFzf
 
     Update-Module
+
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+    Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 }
 
 function InstallFont {
-    $url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/FiraCode.zip"
-    Write-Host "Please install FiraCode from $url. Please install both Regular and MonoRegular version."
+    # $url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/FiraCode.zip"
+    Write-Host "Installing FiraCode using scoop..."
+    scoop bucket add nerd-fonts
+    scoop install FiraCode
+    Write-Host "Done."
 }
 
 function CloneRepo() {
