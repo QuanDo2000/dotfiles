@@ -33,6 +33,7 @@ export NVM_DIR="$HOME/.nvm"
 
 # Path
 export PATH="$HOME/.local/bin:$PATH"
+export PATH="/snap/bin:$PATH"
 
 # Source various files.
 source $ZSH/oh-my-zsh.sh
