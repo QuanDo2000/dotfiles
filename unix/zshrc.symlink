@@ -36,4 +36,5 @@ export PATH="$HOME/.local/bin:$PATH"
 export PATH="/snap/bin:$PATH"
 
 # Source various files.
+source $HOME/.zshrc.local
 source $ZSH/oh-my-zsh.sh
