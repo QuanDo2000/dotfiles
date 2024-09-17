@@ -8,7 +8,7 @@ export ZSH="$HOME/.oh-my-zsh"
 
 ZSH_THEME="ys"
 
-plugins=(git gitignore docker dotenv vi-mode vscode tmux fzf fzf-tab zsh-autosuggestions fast-syntax-highlighting aliases alias-finder brew colored-man-pages fd gh macos npm nvm pip pyenv python ripgrep)
+plugins=(git gitignore docker dotenv vi-mode vscode tmux fzf fzf-tab zsh-autosuggestions fast-syntax-highlighting aliases alias-finder brew colored-man-pages gh macos npm nvm pip pyenv python)
 ZSH_TMUX_AUTOSTART=true
 ZSH_TMUX_AUTOSTART_ONCE=true
 ZSH_TMUX_AUTOCONNECT=true
