@@ -1,6 +1,9 @@
 [user]
     name = Quan Do
     email = minhquand3@gmail.com
+	signingkey = C60D27A268B9E4BF
 [core]
     editor = /usr/bin/vim
     ignorecase = false
+[commit]
+	gpgsign = true
