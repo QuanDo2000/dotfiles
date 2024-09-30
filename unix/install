@@ -40,9 +40,12 @@ function install_debian {
 }
 
 function install_mac {
-	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    which -s brew
+    if [[ $? != 0 ]] ; then
+	    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
 	brew update
-	brew install bash tmux vim fzf fd ripgrep gh pyenv gcc
+	brew install bash tmux vim fzf fd ripgrep gh pyenv gcc font-fira-code-nerd-font gnupg pinentry-mac
 }
 
 function install_linux {
@@ -66,8 +69,14 @@ function install_linux {
 }
 
 function install_pyenv {
-    info "Installing pyenv"
-    curl https://pyenv.run | bash
+    which -s pyenv
+    if [[ $? != 0 ]] ; then
+        info "Installing pyenv"
+        curl https://pyenv.run | bash
+        success "Installed pyenv"
+    else
+        info "pyenv already installed"
+    fi
     success "Installed pyenv"
 }
 
@@ -88,22 +97,38 @@ function install_packages {
 }
 
 function clone_repo {
-	info "Cloning dotfiles repo"
-	cd ~
-	git clone https://github.com/QuanDo2000/dotfiles.git
-	success "Finished cloning dotfiles repo"
+    if [[ -d "~/dotfiles" ]] ; then
+        info "Cloning dotfiles repo"
+        cd ~
+        git clone https://github.com/QuanDo2000/dotfiles.git
+        success "Finished cloning dotfiles repo"
+    else
+        info "Updating dotfiles repo"
+        cd ~/dotfiles
+        git pull
+        success "Finished git pull dotfiles repo"
+    fi
 }
 
 function install_nvm {
-    info "Installing nvm"
-    PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash'
-    success "Installed nvm"
+    which -s nvm
+    if [[ $? != 0 ]]; then
+        info "Installing nvm"
+        PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash'
+        success "Installed nvm"
+    else
+        info "nvm already installed"
+    fi
 }
 
 
 function install_oh_my_zsh {
-	info "Installing oh-my-zsh"
-	sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    if [[ -d "~/.oh-my-zsh" ]]; then
+        info "Installing oh-my-zsh"
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    else
+        info "oh-my-zsh already installed"
+    fi
 }
 
 function install_vim_plugins {
