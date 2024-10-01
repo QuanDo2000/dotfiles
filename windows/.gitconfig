@@ -1,0 +1,10 @@
+[user]
+    name = Quan Do
+    email = minhquand3@gmail.com
+[core]
+    ignorecase = false
+[commit]
+	gpgsign = true
+
+[include]
+    path = ~/.gitconfig.local

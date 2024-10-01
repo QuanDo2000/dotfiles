@@ -1,4 +1,3 @@
-
 function CopyWithBackup($source, $destination) {
     if (!(Test-Path $destination)) {
         Copy-Item -Path $source -Destination $destination
@@ -9,17 +8,26 @@ function CopyWithBackup($source, $destination) {
     }
 }
 
-function InstallPackages() {
-    winget install Microsoft.Powershell Git.Git sharkdp.fd BurntSushi.ripgrep.MSVC fzf JanDeDobbeleer.OhMyPosh vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal --disable-interactivity --accept-package-agreements
+function CopyDirWithBackup($source, $destination) {
+    if (!(Test-Path $destination)) {
+        Copy-Item -Path $source -Destination $destination -Recurse
+    }
+    else {
+        Copy-Item -Path $destination -Destination "$destination.bak" -Recurse -Force
+        Copy-Item -Path $source -Destination $destination -Force -Recurse
+    }
+}
 
-    Install-Module -Name Terminal-Icons -Repository PSGallery -Scope CurrentUser -Force
-    Install-Module -Name PSReadLine -Scope CurrentUser -Force
-    Install-Module -Name PSFzf
+function InstallPackages() {
+    winget install Microsoft.Powershell Git.Git fzf vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal Starship.Starship --disable-interactivity --accept-package-agreements
 
     Update-Module
 
-    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-    Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+    $scoopExists = [Boolean](Get-Command scoop -ErrorAction SilentlyContinue)
+    if (-Not $scoopExists) {
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+        Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+    }
 }
 
 function InstallFont {
@@ -27,6 +35,7 @@ function InstallFont {
     Write-Host "Installing FiraCode using scoop..."
     scoop bucket add nerd-fonts
     scoop install FiraCode
+    scoop update FiraCode
     Write-Host "Done."
 }
 
@@ -61,12 +70,13 @@ function SyncSettings() {
 
     foreach ($target in $targets) {
         Write-Host "Syncing to $target..."
-        Get-ChildItem -Path $configPath\Powershell -File | ForEach-Object {
-            $file = $_
-            $filename = $_.Name
-            $destination = "$target\$filename"
-            CopyWithBackup -source $file -destination $destination
-        }
+        # Get-ChildItem -Path $configPath\Powershell -File | ForEach-Object {
+        #     $file = $_
+        #     $filename = $_.Name
+        #     $destination = "$target\$filename"
+        #     CopyWithBackup -source $file -destination $destination
+        # }
+        CopyDirWithBackup -source "$configPath\Powershell\*" -destination $target
     }
 
     Write-Host "Syncing Terminal settings..."
@@ -77,6 +87,11 @@ function SyncSettings() {
     Write-Host "Syncing Vim settings..."
     CopyWithBackup -source "$configPath\_vimrc" -destination "$HOME\_vimrc"
     CopyWithBackup -source "$configPath\_gvimrc" -destination "$HOME\_gvimrc"
+    CopyWithBackup -source "$configPath\.gitconfig" -destination "$HOME\.gitconfig"
+
+    Write-Host "Syncing .config..."
+    CopyDirWithBackup -source "$configPath\.config\*" -destination "$HOME\.config"
+
     Write-Host "Done."
 }
 

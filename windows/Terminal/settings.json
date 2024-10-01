@@ -39,7 +39,7 @@
         "defaults": {
             "colorScheme": "One Half Dark",
             "font": {
-                "face": "FiraCode NF",
+                "face": "FiraCode Nerd Font",
                 "size": 14.0
             }
         },
@@ -57,22 +57,10 @@
                 "name": "Command Prompt"
             },
             {
-                "guid": "{b453ae62-4e3d-5e58-b989-0a998ec441b8}",
-                "hidden": false,
-                "name": "Azure Cloud Shell",
-                "source": "Windows.Terminal.Azure"
-            },
-            {
                 "guid": "{2ece5bfe-50ed-5f3a-ab87-5cd4baafed2b}",
                 "hidden": false,
                 "name": "Git Bash",
                 "source": "Git"
-            },
-            {
-                "guid": "{51855cb2-8cce-5362-8f54-464b92b32386}",
-                "hidden": false,
-                "name": "Ubuntu",
-                "source": "CanonicalGroupLimited.Ubuntu_79rhkp1fndgsc"
             },
             {
                 "guid": "{2c4de342-38b7-51cf-b940-2309a097f518}",
@@ -86,18 +74,6 @@
                 "name": "PowerShell",
                 "source": "Windows.Terminal.PowershellCore"
             },
-            {
-                "guid": "{17bf3de4-5353-5709-bcf9-835bd952a95e}",
-                "hidden": true,
-                "name": "Ubuntu-22.04",
-                "source": "Windows.Terminal.Wsl"
-            },
-            {
-                "guid": "{d7b20cea-47a9-518c-95a4-c8bd91e2e1c6}",
-                "hidden": false,
-                "name": "Ubuntu 22.04.2 LTS",
-                "source": "CanonicalGroupLimited.Ubuntu22.04LTS_79rhkp1fndgsc"
-            }
         ]
     },
     "schemes": [

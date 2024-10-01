@@ -1,2 +1,2 @@
 " Set font size for gvim
-set guifont=Fira_Code_Regular:h14:cANSI:qDRAFT
+set guifont=FiraCode_Nerd_Font_Mono:h14:cANSI:qDRAFT

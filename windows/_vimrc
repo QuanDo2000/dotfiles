@@ -24,15 +24,15 @@ set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx  " 
 
 " Plugins
 "" Install vim-plug if not found
-if empty(glob('~/.vim/autoload/plug.vim'))
-  silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs
+if empty(glob('C:/Users/Quan/.vim/autoload/plug.vim'))
+  silent !curl -fLo 'C:/Users/Quan/.vim/autoload/plug.vim' --create-dirs
     \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 endif
 "" Run PlugInstall if there are missing plugins
 autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
   \| PlugInstall --sync | source $MYVIMRC
 \| endif
-call plug#begin(has('nvim') ? stdpath('data') . '/plugged' : '~/.vim/plugged')  " Download plugins to directory
+call plug#begin(has('nvim') ? stdpath('data') . 'C:/Users/Quan/.vim/autoload/plugged' : 'C:/Users/Quan/.vim/plugged')  " Download plugins to directory
 
 "" List of plugins
 Plug 'joshdick/onedark.vim'
