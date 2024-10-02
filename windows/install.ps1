@@ -19,7 +19,7 @@ function CopyDirWithBackup($source, $destination) {
 }
 
 function InstallPackages() {
-    winget install Microsoft.Powershell Git.Git vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal Starship.Starship --disable-interactivity --accept-package-agreements
+    winget install Microsoft.Powershell Git.Git vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh --disable-interactivity --accept-package-agreements
 
     Update-Module
 
