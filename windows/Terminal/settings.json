@@ -37,6 +37,7 @@
   ],
   "profiles": {
     "defaults": {
+      "bellStyle": ["window", "taskbar"],
       "colorScheme": "One Half Dark",
       "font": {
         "face": "FiraCode Nerd Font",
