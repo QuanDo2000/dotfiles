@@ -26,10 +26,6 @@ function install_font {
 	fc-cache -f -v
 }
 
-function install_arch {
-	sudo pacman -S --no-confirm base-devel curl git zsh vim tmux fontconfig fzf ttf-firacode-nerf fd ripgrep
-}
-
 function install_debian {
 	sudo apt update -y
 	sudo apt install -y build-essential curl git zsh vim tmux fontconfig fzf fd-find ripgrep
@@ -51,10 +47,7 @@ function install_mac {
 function install_linux {
 	if [[ -f "/etc/os-release" ]]; then
 		source /etc/os-release
-		if [[ "$ID" == "arch" || "$ID" == "manjaro" || "$ID_LIKE" == *"arch"* ]]; then
-			system_kind="Linux_Arch"
-			install_arch
-		elif [[ "$ID" == "debian" || "$ID_LIKE" == *"debian"* ]]; then
+		if [[ "$ID" == "debian" || "$ID_LIKE" == *"debian"* ]]; then
 			system_kind="Linux_Debian"
 			install_debian
 			if [[ "$ID" == "ubuntu" ]]; then
@@ -68,24 +61,11 @@ function install_linux {
 	fi
 }
 
-function install_pyenv {
-    which -s pyenv
-    if [[ $? != 0 ]] ; then
-        info "Installing pyenv"
-        curl https://pyenv.run | bash
-        success "Installed pyenv"
-    else
-        info "pyenv already installed"
-    fi
-    success "Installed pyenv"
-}
-
 function install_packages {
 	info "Installing packages"
 	if [[ "$(uname)" == "Linux" ]]; then
 		system_kind="Linux"
 		install_linux
-        install_pyenv
 	elif [[ "$(uname)" == "Darwin" ]]; then
 		system_kind="Mac"
 		install_mac
@@ -109,18 +89,6 @@ function clone_repo {
         success "Finished git pull dotfiles repo"
     fi
 }
-
-function install_nvm {
-    which -s nvm
-    if [[ $? != 0 ]]; then
-        info "Installing nvm"
-        PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash'
-        success "Installed nvm"
-    else
-        info "nvm already installed"
-    fi
-}
-
 
 function install_oh_my_zsh {
     if [[ -d "~/.oh-my-zsh" ]]; then
@@ -166,7 +134,6 @@ function install_tmux_plugins {
 
 function install_extras {
 	info "Installing extras"
-    install_nvm
 	install_oh_my_zsh
 	install_vim_plugins
 	install_zsh_plugins

@@ -3,7 +3,26 @@ export ZSH="$HOME/.oh-my-zsh"
 
 ZSH_THEME="ys"
 
-plugins=(git gitignore docker dotenv vi-mode vscode tmux fzf fzf-tab zsh-autosuggestions fast-syntax-highlighting aliases alias-finder brew colored-man-pages gh macos npm nvm pip pyenv python)
+plugins=(
+    git gitignore 
+    docker 
+    dotenv 
+    vi-mode 
+    vscode 
+    tmux 
+    fzf fzf-tab 
+    zsh-autosuggestions 
+    fast-syntax-highlighting 
+    aliases 
+    alias-finder 
+    brew 
+    colored-man-pages 
+    gh 
+    macos 
+    pip 
+    python
+)
+
 ZSH_TMUX_AUTOSTART=true
 ZSH_TMUX_AUTOSTART_ONCE=true
 ZSH_TMUX_AUTOCONNECT=true
@@ -15,7 +34,6 @@ zstyle ':omz:plugins:alias-finder' autoload yes # disabled by default
 zstyle ':omz:plugins:alias-finder' longer yes # disabled by default
 zstyle ':omz:plugins:alias-finder' exact yes # disabled by default
 zstyle ':omz:plugins:alias-finder' cheaper yes # disabled by default
-zstyle ':omz:plugins:nvm' lazy yes
 
 # Environment variables
 export SHELL=$(which zsh)
