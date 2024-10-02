@@ -19,7 +19,7 @@ function CopyDirWithBackup($source, $destination) {
 }
 
 function InstallPackages() {
-    winget install Microsoft.Powershell Git.Git fzf vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal Starship.Starship --disable-interactivity --accept-package-agreements
+    winget install Microsoft.Powershell Git.Git vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal Starship.Starship --disable-interactivity --accept-package-agreements
 
     Update-Module
 
@@ -70,12 +70,6 @@ function SyncSettings() {
 
     foreach ($target in $targets) {
         Write-Host "Syncing to $target..."
-        # Get-ChildItem -Path $configPath\Powershell -File | ForEach-Object {
-        #     $file = $_
-        #     $filename = $_.Name
-        #     $destination = "$target\$filename"
-        #     CopyWithBackup -source $file -destination $destination
-        # }
         CopyDirWithBackup -source "$configPath\Powershell\*" -destination $target
     }
 
