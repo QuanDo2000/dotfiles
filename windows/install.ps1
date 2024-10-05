@@ -83,9 +83,6 @@ function SyncSettings() {
     CopyWithBackup -source "$configPath\_gvimrc" -destination "$HOME\_gvimrc"
     CopyWithBackup -source "$configPath\.gitconfig" -destination "$HOME\.gitconfig"
 
-    Write-Host "Syncing .config..."
-    CopyDirWithBackup -source "$configPath\.config\*" -destination "$HOME\.config"
-
     Write-Host "Done."
 }
 

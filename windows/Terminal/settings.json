@@ -74,6 +74,13 @@
         "hidden": false,
         "name": "PowerShell",
         "source": "Windows.Terminal.PowershellCore"
+      },
+      {
+        "guid": "{17da3cac-b318-431e-8a3e-7fcdefe6d114}",
+        "name": "UCRT64 / MSYS2",
+        "commandline": "C:/msys64/msys2_shell.cmd -defterm -here -no-start -ucrt64",
+        "startingDirectory": "C:/msys64/home/%USERNAME%",
+        "icon": "C:/msys64/ucrt64.ico"
       }
     ]
   },
