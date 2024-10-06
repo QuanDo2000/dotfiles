@@ -74,7 +74,7 @@ function install_packages {
 	elif [[ "$(uname)" == "Darwin" ]]; then
 		system_kind="Mac"
 		install_mac
-	elif [[ "$(uname)" == *"MSYS"* ]]; then
+	elif [[ "$(uname)" == *"MSYS"* || "$(uname)" == *"MINGW"* ]]; then
 		system_kind="Windows MSYS"
 		install_linux
 	else
