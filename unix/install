@@ -55,6 +55,11 @@ function install_linux {
 			elif [[ "$ID" == "linuxmint" ]]; then
 				system_kind="Linux_Debian_LinuxMint"
 			fi
+		elif [[ "$ID" == "msys2" || "$ID_LIKE" == *"cygwin"* ]]; then
+			system_kind="Windows MSYS2"
+			info $system_kind
+		else
+			fail "Unknown Linux distribution."
 		fi
 	else
 		fail "Could not detect Linux distribution."
@@ -69,6 +74,9 @@ function install_packages {
 	elif [[ "$(uname)" == "Darwin" ]]; then
 		system_kind="Mac"
 		install_mac
+	elif [[ "$(uname)" == *"MSYS"* ]]; then
+		system_kind="Windows MSYS"
+		install_linux
 	else
 		fail "Unsupported system: $(uname)"
 	fi
@@ -78,24 +86,24 @@ function install_packages {
 
 function clone_repo {
     if [[ -d "~/dotfiles" ]] ; then
-        info "Cloning dotfiles repo"
-        cd ~
-        git clone https://github.com/QuanDo2000/dotfiles.git
-        success "Finished cloning dotfiles repo"
-    else
         info "Updating dotfiles repo"
         cd ~/dotfiles
         git pull
         success "Finished git pull dotfiles repo"
+    else
+        info "Cloning dotfiles repo"
+        cd ~
+        git clone https://github.com/QuanDo2000/dotfiles.git
+        success "Finished cloning dotfiles repo"
     fi
 }
 
 function install_oh_my_zsh {
     if [[ -d "~/.oh-my-zsh" ]]; then
+        info "oh-my-zsh already installed"
+    else
         info "Installing oh-my-zsh"
         sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-    else
-        info "oh-my-zsh already installed"
     fi
 }
 
@@ -110,33 +118,33 @@ function install_vim_plugins {
 }
 
 function install_zsh_plugins {
-	info "Installing zsh plugins"
-	# Install zsh-autosuggestions
-	git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-	# Install fast-syntax-highlighting
-    git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git \
-        ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting
-    # Install fzf-tab
-    git clone https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab
-	success "Finished installing zsh plugins"
+    if [[ -d "~/.oh-my-zsh" ]]; then
+		info "Installing zsh plugins"
+		# Install zsh-autosuggestions
+		git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+		# Install fast-syntax-highlighting
+		git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git \
+			${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting
+		# Install fzf-tab
+		git clone https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab
+		success "Finished installing zsh plugins"
+	else
+		fail "oh-my-zsh not installed."
+	fi
 }
 
 function install_tmux_plugins {
 	info "Installing tmux plugins"
 	git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-	sleep 1
-	tmux start-server
-	tmux new-session -d
-	~/.tmux/plugins/tpm/scripts/install_plugins.sh
-	tmux kill-server
+	~/.tmux/plugins/tpm/bin/install_plugins
 	success "Finished installing tmux plugins"
 }
 
 function install_extras {
 	info "Installing extras"
 	install_oh_my_zsh
-	install_vim_plugins
 	install_zsh_plugins
+	install_vim_plugins
 	install_tmux_plugins
 	success "Finished installing extras"
 }
