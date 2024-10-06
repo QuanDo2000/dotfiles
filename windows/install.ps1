@@ -18,10 +18,22 @@ function CopyDirWithBackup($source, $destination) {
     }
 }
 
+function RunMSYS2($command) {
+    C:\msys64\usr\bin\bash -l -c $command
+}
+
+function SetupMSYS2() {
+    $env:PATH += ";C:\msys64\usr\bin"
+    pacman -S mingw-w64-ucrt-x86_64-gcc zsh git vim tmux mingw-w64-ucrt-x86_64-ttf-firacode-nerd mingw-w64-ucrt-x86_64-fzf mingw-w64-ucrt-x86_64-ripgrep --noconfirm
+    pacman -Suy --noconfirm
+    RunMSYS2 -command "/c/Users/Quan/Documents/Projects/dotfiles/unix/install"
+}
+
 function InstallPackages() {
-    winget install Microsoft.Powershell Git.Git vim.vim Microsoft.VisualStudioCode Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh MSYS2.MSYS2 --disable-interactivity --accept-package-agreements
+    winget install Microsoft.Powershell Git.Git Microsoft.VisualStudioCode Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh MSYS2.MSYS2 --disable-interactivity --accept-package-agreements
 
     Update-Module
+    SetupMSYS2
 
     $scoopExists = [Boolean](Get-Command scoop -ErrorAction SilentlyContinue)
     if (-Not $scoopExists) {

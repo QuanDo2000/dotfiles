@@ -21,8 +21,8 @@ fail() {
 function install_font {
 	# Install Fira Code
 	# https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
-	mkdir -p ~/.local/share/fonts
-	cd ~/.local/share/fonts && curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf
+	mkdir -p $HOME/.local/share/fonts
+	cd $HOME/.local/share/fonts && curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf
 	fc-cache -f -v
 }
 
@@ -37,7 +37,7 @@ function install_debian {
 
 function install_mac {
     which -s brew
-    if [[ $? != 0 ]] ; then
+    if [[ $? != 0 ]]; then
 	    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
 	brew update
@@ -85,21 +85,21 @@ function install_packages {
 }
 
 function clone_repo {
-    if [[ -d "~/dotfiles" ]] ; then
+    if [ -d "$HOME/dotfiles" ]; then
         info "Updating dotfiles repo"
-        cd ~/dotfiles
+        cd $HOME/dotfiles
         git pull
         success "Finished git pull dotfiles repo"
     else
         info "Cloning dotfiles repo"
-        cd ~
+        cd $HOME
         git clone https://github.com/QuanDo2000/dotfiles.git
         success "Finished cloning dotfiles repo"
     fi
 }
 
 function install_oh_my_zsh {
-    if [[ -d "~/.oh-my-zsh" ]]; then
+    if [ -d "$HOME/.oh-my-zsh" ]; then
         info "oh-my-zsh already installed"
     else
         info "Installing oh-my-zsh"
@@ -110,7 +110,7 @@ function install_oh_my_zsh {
 function install_vim_plugins {
 	info "Installing vim plugins"
 	# Install vim-plug
-	curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+	curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
 		https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 	# Install vim plugins
 	vim +PlugInstall +qall
@@ -118,15 +118,15 @@ function install_vim_plugins {
 }
 
 function install_zsh_plugins {
-    if [[ -d "~/.oh-my-zsh" ]]; then
+    if [ -d "$HOME/.oh-my-zsh" ]; then
 		info "Installing zsh plugins"
 		# Install zsh-autosuggestions
-		git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+		git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 		# Install fast-syntax-highlighting
 		git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git \
 			${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting
 		# Install fzf-tab
-		git clone https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab
+		git clone https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab
 		success "Finished installing zsh plugins"
 	else
 		fail "oh-my-zsh not installed."
@@ -135,8 +135,8 @@ function install_zsh_plugins {
 
 function install_tmux_plugins {
 	info "Installing tmux plugins"
-	git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-	~/.tmux/plugins/tpm/bin/install_plugins
+	git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
+	"$HOME/.tmux/plugins/tpm/bin/install_plugins"
 	success "Finished installing tmux plugins"
 }
 
