@@ -41,7 +41,7 @@ function install_mac {
 	    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
 	brew update
-	brew install bash tmux vim fzf fd ripgrep gh pyenv gcc font-fira-code-nerd-font gnupg pinentry-mac
+	brew install bash tmux vim fzf fd ripgrep gh gcc font-fira-code-nerd-font gnupg pinentry-mac
 }
 
 function install_linux {
