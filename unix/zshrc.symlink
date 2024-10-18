@@ -17,7 +17,6 @@ plugins=(
     alias-finder 
     brew 
     colored-man-pages 
-    gh 
     macos 
     pip 
     python
@@ -41,9 +40,6 @@ export EDITOR=vim
 
 # Path
 export PATH="$HOME/.local/bin:$PATH"
-export PATH="/snap/bin:$PATH"
-
-test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
 
 # Source various files.
 [ -e "$HOME/.zshrc.local" ] && source $HOME/.zshrc.local
