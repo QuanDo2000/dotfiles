@@ -18,28 +18,30 @@ function CopyDirWithBackup($source, $destination) {
     }
 }
 
-function RunMSYS2($command) {
-    C:\msys64\usr\bin\bash -l -c $command
+function InstallLazyVim {
+    Move-Item $env:LOCALAPPDATA\nvim $env:LOCALAPPDATA\nvim.bak
+    Move-Item $env:LOCALAPPDATA\nvim-data $env:LOCALAPPDATA\nvim-data.bak
+
+    git clone https://github.com/LazyVim/starter $env:LOCALAPPDATA\nvim
+
+    Remove-Item $env:LOCALAPPDATA\nvim\.git -Recurse -Force
 }
 
-function SetupMSYS2() {
-    $env:PATH += ";C:\msys64\usr\bin"
-    pacman -S mingw-w64-ucrt-x86_64-gcc zsh git vim tmux mingw-w64-ucrt-x86_64-ttf-firacode-nerd mingw-w64-ucrt-x86_64-fzf mingw-w64-ucrt-x86_64-ripgrep --noconfirm
-    pacman -Suy --noconfirm
-    RunMSYS2 -command "/c/Users/Quan/Documents/Projects/dotfiles/unix/install"
-}
+function InstallPackages {
+    winget install Microsoft.Powershell vim.vim Git.Git Microsoft.VisualStudioCode Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh Neovim.Neovim --disable-interactivity --accept-package-agreements
 
-function InstallPackages() {
-    winget install Microsoft.Powershell Git.Git Microsoft.VisualStudioCode Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh MSYS2.MSYS2 --disable-interactivity --accept-package-agreements
-
+    Install-Module -Name PowerShellGet -Force
+    Install-Module PSReadLine -AllowPrerelease -Force
+    Install-Module -Name Terminal-Icons -Repository PSGallery
     Update-Module
-    SetupMSYS2
 
     $scoopExists = [Boolean](Get-Command scoop -ErrorAction SilentlyContinue)
     if (-Not $scoopExists) {
         Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
         Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
     }
+
+    InstallLazyVim
 }
 
 function InstallFont {
@@ -51,7 +53,7 @@ function InstallFont {
     Write-Host "Done."
 }
 
-function CloneRepo() {
+function CloneRepo {
     $repo = "https://github.com/QuanDo2000/dotfiles.git"
     $destination = "$HOME\Documents\Projects\dotfiles"
     Write-Host "Cloning $repo to $destination..."
@@ -65,7 +67,7 @@ function CloneRepo() {
     Write-Host "Done."
 }
 
-function SyncSettings() {
+function SyncSettings {
     Write-Host "Syncing settings..."
     $configPath = "$HOME\Documents\Projects\dotfiles\windows"
 

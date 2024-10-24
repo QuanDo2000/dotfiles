@@ -1,9 +1,9 @@
-oh-my-posh init pwsh --config "$env:POSH_THEMES_PATH/ys.omp.json" | Invoke-Expression 
+oh-my-posh init pwsh --config "$env:POSH_THEMES_PATH/ys.omp.json" | Invoke-Expression
 
 # PSGet
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-# PsReadLine Options
+# PSReadLine Options
 Import-Module Terminal-Icons
 Import-Module PSReadLine
 Set-PSReadLineOption -EditMode Vi
