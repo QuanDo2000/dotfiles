@@ -28,7 +28,7 @@ function InstallLazyVim {
 }
 
 function InstallPackages {
-    winget install Microsoft.Powershell vim.vim Git.Git Microsoft.VisualStudioCode Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh Neovim.Neovim --disable-interactivity --accept-package-agreements
+    winget install Microsoft.Powershell Cygwin.Cygwin vim.vim Git.Git Microsoft.VisualStudioCode Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh Neovim.Neovim --disable-interactivity --accept-package-agreements
 
     Install-Module -Name PowerShellGet -Force
     Install-Module PSReadLine -AllowPrerelease -Force
