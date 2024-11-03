@@ -18,15 +18,6 @@ function CopyDirWithBackup($source, $destination) {
     }
 }
 
-function InstallLazyVim {
-    Move-Item $env:LOCALAPPDATA\nvim $env:LOCALAPPDATA\nvim.bak
-    Move-Item $env:LOCALAPPDATA\nvim-data $env:LOCALAPPDATA\nvim-data.bak
-
-    git clone https://github.com/LazyVim/starter $env:LOCALAPPDATA\nvim
-
-    Remove-Item $env:LOCALAPPDATA\nvim\.git -Recurse -Force
-}
-
 function InstallPackages {
     winget install Microsoft.Powershell vim.vim Git.Git Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh Neovim.Neovim JesseDuffield.lazygit BurntSushi.ripgrep.MSVC sharkdp.fd --disable-interactivity --accept-package-agreements
 
@@ -42,7 +33,6 @@ function InstallPackages {
     }
 
     scoop install mingw zig gcc
-    InstallLazyVim
 }
 
 function InstallFont {
@@ -97,6 +87,10 @@ function SyncSettings {
     CopyWithBackup -source "$configPath\_vimrc" -destination "$HOME\_vimrc"
     CopyWithBackup -source "$configPath\_gvimrc" -destination "$HOME\_gvimrc"
     CopyWithBackup -source "$configPath\.gitconfig" -destination "$HOME\.gitconfig"
+
+    Write-Host "Syncing LazyVim settings..."
+    $nvimSettingsPath = "$env:LOCALAPPDATA\nvim"
+    CopyWithBackup -source "$configPath" -destination $nvimSettingsPath
 
     Write-Host "Done."
 }
