@@ -28,11 +28,17 @@ function install_font {
 
 function install_debian {
 	sudo apt update -y
-	sudo apt install -y build-essential curl git zsh vim tmux fontconfig fzf fd-find ripgrep
+	sudo apt install -y build-essential curl git zsh vim neovim tmux fontconfig fzf fd-find ripgrep
     # Extra after installing fd-find
     mkdir -p $HOME/.local/bin
     ln -s $(which fdfind) $HOME/.local/bin/fd
 	install_font
+
+    # Install Lazygit
+    LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+    curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+    tar xf lazygit.tar.gz lazygit
+    sudo install lazygit /usr/local/bin
 }
 
 function install_mac {
@@ -41,7 +47,7 @@ function install_mac {
 	    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
 	brew update
-	brew install bash tmux vim fzf fd ripgrep gh gcc font-fira-code-nerd-font gnupg pinentry-mac
+	brew install bash tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font gnupg pinentry-mac jesseduffield/lazygit/lazygit
 }
 
 function install_linux {
@@ -55,9 +61,6 @@ function install_linux {
 			elif [[ "$ID" == "linuxmint" ]]; then
 				system_kind="Linux_Debian_LinuxMint"
 			fi
-		elif [[ "$ID" == "msys2" || "$ID_LIKE" == *"cygwin"* ]]; then
-			system_kind="Windows MSYS2"
-			info $system_kind
 		else
 			fail "Unknown Linux distribution."
 		fi
@@ -74,9 +77,6 @@ function install_packages {
 	elif [[ "$(uname)" == "Darwin" ]]; then
 		system_kind="Mac"
 		install_mac
-	elif [[ "$(uname)" == *"MSYS"* || "$(uname)" == *"MINGW"* ]]; then
-		system_kind="Windows MSYS"
-		install_linux
 	else
 		fail "Unsupported system: $(uname)"
 	fi
