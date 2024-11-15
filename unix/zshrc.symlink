@@ -5,10 +5,8 @@ ZSH_THEME="ys"
 
 plugins=(
     git gitignore 
-    docker 
     dotenv 
     vi-mode 
-    vscode 
     tmux 
     fzf fzf-tab 
     zsh-autosuggestions 
