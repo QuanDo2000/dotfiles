@@ -18,6 +18,11 @@ plugins=(
     macos 
     pip 
     python
+    rust
+    golang
+    nvm
+    npm
+    node
 )
 
 ZSH_TMUX_AUTOSTART=true
@@ -35,11 +40,16 @@ zstyle ':omz:plugins:alias-finder' cheaper yes # disabled by default
 # Environment variables
 export SHELL=$(which zsh)
 export EDITOR=vim
+export GOPATH="$HOME/go"
+export GOBIN="$GOPATH/bin"
 
 # Path
 export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$GOBIN:$PATH"
+export PATH="$HOMEBREW_PREFIX/opt/openjdk/bin:$PATH"
+export PATH="$HOME/Library/Python/3.13/bin:$PATH"
 
 # Source various files.
 [ -e "$HOME/.zshrc.local" ] && source $HOME/.zshrc.local
 source $ZSH/oh-my-zsh.sh
-
