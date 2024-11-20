@@ -19,7 +19,7 @@ function CopyDirWithBackup($source, $destination) {
 }
 
 function InstallPackages {
-    winget install Microsoft.Powershell vim.vim Git.Git Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh Neovim.Neovim JesseDuffield.lazygit BurntSushi.ripgrep.MSVC sharkdp.fd --disable-interactivity --accept-package-agreements
+    winget install Microsoft.Powershell vim.vim Git.Git Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh Neovim.Neovim JesseDuffield.lazygit BurntSushi.ripgrep.MSVC sharkdp.fd JernejSimoncic.Wget --disable-interactivity --accept-package-agreements
 
     Install-Module -Name PowerShellGet -Force
     Install-Module PSReadLine -AllowPrerelease -Force
@@ -32,7 +32,13 @@ function InstallPackages {
         Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
     }
 
-    scoop install mingw zig gcc
+    scoop install mingw zig gcc main/ast-grep
+
+    # Install Rust
+    if (!(Get-Command "rustc" -errorAction SilentlyContinue)) {
+      wget https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe
+      .\rustup-init.exe -vy
+    }
 }
 
 function InstallFont {
@@ -90,7 +96,7 @@ function SyncSettings {
 
     Write-Host "Syncing LazyVim settings..."
     $nvimSettingsPath = "$env:LOCALAPPDATA\nvim"
-    CopyWithBackup -source "$configPath" -destination $nvimSettingsPath
+    CopyDirWithBackup -source "$configPath\nvim\*" -destination "$nvimSettingsPath"
 
     Write-Host "Done."
 }
