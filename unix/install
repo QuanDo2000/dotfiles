@@ -33,6 +33,12 @@ function install_font {
 
 function install_pynvim {
   info "Installing pynvim"
+  # Python
+  if [[ "$(pyenv global)" == "system" ]]; then
+    pyenv install 3
+    pyenv global 3
+  fi
+
   if command -v python3 >/dev/null 2>&1; then
     python3 -m pip install --user --upgrade pip
     python3 -m pip install --user --upgrade pynvim
@@ -93,6 +99,7 @@ function install_neovim {
 
 function install_perl_nvim {
   if command -v cpan >/dev/null 2>&1; then
+    cpan local::lib
     cpan App::cpanminus
     cpanm -n Neovim::Ext
   else
@@ -145,13 +152,7 @@ function install_debian {
     info "Already installed pyenv"
   fi
 
-  # Python
-  if [[ "$(pyenv global)" == "system" ]]; then
-    pyenv install 3
-    pyenv global 3
-  fi
   install_pynvim
-
   install_nvm
   install_rust
   install_golang
@@ -164,20 +165,23 @@ function install_mac {
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
   brew update
-  brew install bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep
+  brew install bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font \
+    gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep \
+    pyenv java perl
 
   # Install LazyVim dependencies
-  # Languages
-  brew install go python
   # Rust
   install_rust
   # NVM - npm and node
   install_nvm
   # Java
-  brew install java
   sudo ln -sfn "$HOMEBREW_PREFIX/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk"
   # Python
   install_pynvim
+  install_ruby_nvim
+
+  brew link perl
+  install_perl_nvim
 }
 
 function install_linux {
