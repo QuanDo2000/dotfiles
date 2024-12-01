@@ -42,6 +42,7 @@ export SHELL=$(which zsh)
 export EDITOR=vim
 export GOPATH="$HOME/go"
 export GOBIN="$GOPATH/bin"
+export GPG_SIGN=$(tty)
 
 # Path
 export PATH="$HOME/.local/bin:$PATH"
