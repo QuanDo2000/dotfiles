@@ -31,6 +31,7 @@ return {
             cmp.complete()
             if #cmp.get_entries() == 1 then
               cmp.confirm({ select = true })
+            end
             else
               fallback()
             end
