@@ -22,23 +22,141 @@ function install_font {
   # Install Fira Code
   # https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
   mkdir -p "$HOME/.local/share/fonts"
-  cd "$HOME/.local/share/fonts" && curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf
-  fc-cache -f -v
+  if [ ! -f "$HOME/.local/share/fonts/FiraCodeNerdFont-Regular.ttf" ]; then
+    cd "$HOME/.local/share/fonts" && curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf
+    fc-cache -f -v
+    cd "$HOME"
+  else
+    info "Already installed font Fira Code"
+  fi
+}
+
+function install_pynvim {
+  info "Installing pynvim"
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -m pip install --user --upgrade pip
+    python3 -m pip install --user --upgrade pynvim
+  fi
+  success "Installed pynvim"
+}
+
+function install_nvm {
+  if ! command -v npm >/dev/null 2>&1; then
+    PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
+    [[ -s "$HOME/.nvm/nvm.sh" ]] && source "$HOME/.nvm/nvm.sh"
+    nvm install node
+  else
+    info "Already installed NVM and Node"
+  fi
+  npm install -g neovim
+  npm install -g prettier
+}
+
+function install_rust {
+  if ! command -v rustc >/dev/null 2>&1; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  else
+    info "Already installed Rust"
+  fi
+  rustup update
+  rustup component add rust-analyzer
+
+  cargo install --locked tree-sitter-cli
+}
+
+function install_golang {
+  if ! command -v go >/dev/null 2>&1; then
+    curl -OL https://golang.org/dl/go1.23.3.linux-amd64.tar.gz
+    sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.23.3.linux-amd64.tar.gz
+    rm -rf go1.23.3.linux-amd64.tar.gz
+
+    export PATH="$PATH:/usr/local/go/bin"
+  else
+    info "Already installed Golang"
+  fi
+
+  go install golang.org/x/tools/cmd/goimports@latest
+  go install mvdan.cc/gofumpt@latest
+}
+
+function install_neovim {
+  if ! command -v nvim >/dev/null 2>&1; then
+    # Install latest Neovim
+    curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz
+    sudo rm -rf /opt/nvim
+    sudo tar -C /opt -xzf nvim-linux64.tar.gz
+    rm -rf nvim-linux64.tar.gz
+  else
+    info "Already installed Neovim"
+  fi
+}
+
+function install_perl_nvim {
+  if command -v cpan >/dev/null 2>&1; then
+    cpan App::cpanminus
+    cpanm -n Neovim::Ext
+  else
+    info "cpan command not found"
+  fi
+}
+
+function install_ruby_nvim {
+  if command -v gem >/dev/null 2>&1; then
+    sudo gem install neovim
+  else
+    info "gem command not found"
+  fi
 }
 
 function install_debian {
   sudo apt update -y
-  sudo apt install -y build-essential curl git zsh vim neovim tmux fontconfig fzf fd-find ripgrep
+  sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils \
+    tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
+    unzip zsh vim tmux fontconfig fzf fd-find ripgrep \
+    default-jre default-jdk ruby-full
+
+  install_neovim
+
   # Extra after installing fd-find
-  mkdir -p "$HOME/.local/bin"
-  ln -s "$(which fdfind)" "$HOME/.local/bin/fd"
+  if [ ! -f "$HOME/.local/bin/fd" ]; then
+    mkdir -p "$HOME/.local/bin"
+    ln -s "$(which fdfind)" "$HOME/.local/bin/fd"
+  else
+    info "Already symlinked fd-find in '.local/bin'"
+  fi
   install_font
 
   # Install Lazygit
-  LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
-  curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
-  tar xf lazygit.tar.gz lazygit
-  sudo install lazygit /usr/local/bin
+  if ! command -v lazygit >/dev/null 2>&1; then
+    LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+    curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+    tar xf lazygit.tar.gz lazygit
+    sudo install lazygit /usr/local/bin
+    rm -rf lazygit.tar.gz lazygit
+  else
+    info "Already installed lazygit"
+  fi
+
+  # Install pyenv
+  if ! command -v pyenv >/dev/null 2>&1; then
+    curl https://pyenv.run | bash
+  else
+    info "Already installed pyenv"
+  fi
+
+  # Python
+  if [[ "$(pyenv global)" == "system" ]]; then
+    pyenv install 3
+    pyenv global 3
+  fi
+  install_pynvim
+
+  install_nvm
+  install_rust
+  install_golang
+  install_ruby_nvim
+  install_perl_nvim
 }
 
 function install_mac {
@@ -52,23 +170,14 @@ function install_mac {
   # Languages
   brew install go python
   # Rust
-  if ! command -v rustc >/dev/null 2>&1; then
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-  fi
-  rustup update
-  rustup component add rust-analyzer
+  install_rust
   # NVM - npm and node
-  if ! command -v npm >/dev/null 2>&1; then
-    PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
-    nvm install node
-  fi
-  npm install -g neovim
+  install_nvm
   # Java
   brew install java
   sudo ln -sfn "$HOMEBREW_PREFIX/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk"
   # Python
-  python3 -m pip install --user --upgrade --break-system-packages pynvim
-  python3 -m pip install --user --upgrade --break-system-packages pip
+  install_pynvim
 }
 
 function install_linux {
@@ -93,38 +202,46 @@ function install_packages {
   else
     fail "Unsupported system: $(uname)"
   fi
-  chsh -s "$(which zsh)"
+
+  if [[ "$SHELL" != "$(which zsh)" ]]; then
+    info "Changing default shell to zsh"
+    chsh -s "$(which zsh)"
+  else
+    info "Already has zsh as default shell"
+  fi
   success "Finished installing packages"
 }
 
 function clone_repo {
-  if [ -d "$HOME/dotfiles" ]; then
+  if [ ! -d "$HOME/dotfiles" ]; then
+    info "Cloning dotfiles repo"
+    cd "$HOME" || return
+    git clone git@github.com:QuanDo2000/dotfiles.git
+    success "Finished cloning dotfiles repo"
+  else
     info "Updating dotfiles repo"
     cd "$HOME/dotfiles" || return
     git pull
     success "Finished git pull dotfiles repo"
-  else
-    info "Cloning dotfiles repo"
-    cd "$HOME" || return
-    git clone https://github.com/QuanDo2000/dotfiles.git
-    success "Finished cloning dotfiles repo"
   fi
 }
 
 function install_oh_my_zsh {
-  if [ -d "$HOME/.oh-my-zsh" ]; then
-    info "oh-my-zsh already installed"
-  else
+  if [ ! -d "$HOME/.oh-my-zsh" ]; then
     info "Installing oh-my-zsh"
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  else
+    info "oh-my-zsh already installed"
   fi
 }
 
 function install_vim_plugins {
   info "Installing vim plugins"
-  # Install vim-plug
-  curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
-    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+  if [ ! -f "$HOME/.vim/autoload/plug.vim" ]; then
+    # Install vim-plug
+    curl -fLo "$HOME/.vim/autoload/plug.vim" --create-dirs \
+      https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+  fi
   # Install vim plugins
   vim +PlugInstall +qall
   success "Finished installing vim plugins"
@@ -133,13 +250,19 @@ function install_vim_plugins {
 function install_zsh_plugins {
   if [ -d "$HOME/.oh-my-zsh" ]; then
     info "Installing zsh plugins"
-    # Install zsh-autosuggestions
-    git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"
-    # Install fast-syntax-highlighting
-    git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git \
-      "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting"
+    if [ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions" ]; then
+      # Install zsh-autosuggestions
+      git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"
+    fi
+    if [ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting" ]; then
+      # Install fast-syntax-highlighting
+      git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git \
+        "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting"
+    fi
     # Install fzf-tab
-    git clone https://github.com/Aloxaf/fzf-tab "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"
+    if [ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" ]; then
+      git clone https://github.com/Aloxaf/fzf-tab "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"
+    fi
     success "Finished installing zsh plugins"
   else
     fail "oh-my-zsh not installed."
@@ -147,10 +270,14 @@ function install_zsh_plugins {
 }
 
 function install_tmux_plugins {
-  info "Installing tmux plugins"
-  git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
-  "$HOME/.tmux/plugins/tpm/bin/install_plugins"
-  success "Finished installing tmux plugins"
+  if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
+    info "Installing tmux plugins"
+    git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
+    "$HOME/.tmux/plugins/tpm/bin/install_plugins"
+    success "Finished installing tmux plugins"
+  else
+    info "Already installed TPM"
+  fi
 }
 
 function install_extras {

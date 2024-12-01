@@ -5,7 +5,7 @@
     editor = /usr/bin/vim
     ignorecase = false
 [commit]
-	gpgsign = true
+    gpgsign = true
 
 [include]
     path = ~/.gitconfig.local
