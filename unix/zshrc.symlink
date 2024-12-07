@@ -24,6 +24,9 @@ export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
+# Local
+[ -e "$HOME/.zshrc.local" ] && source $HOME/.zshrc.local
+
 # Perl
 PATH="$HOME/perl5/bin${PATH:+:${PATH}}"; export PATH;
 PERL5LIB="$HOME/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB;
@@ -66,5 +69,4 @@ zstyle ':omz:plugins:alias-finder' exact yes # disabled by default
 zstyle ':omz:plugins:alias-finder' cheaper yes # disabled by default
 
 # Source various files.
-[ -e "$HOME/.zshrc.local" ] && source $HOME/.zshrc.local
 source $ZSH/oh-my-zsh.sh
