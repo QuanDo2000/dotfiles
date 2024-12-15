@@ -19,7 +19,7 @@ function CopyDirWithBackup($source, $destination) {
 }
 
 function InstallPackages {
-    winget install Microsoft.Powershell vim.vim Git.Git Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh Neovim.Neovim JesseDuffield.lazygit BurntSushi.ripgrep.MSVC sharkdp.fd JernejSimoncic.Wget --disable-interactivity --accept-package-agreements
+    winget install Microsoft.Powershell Git.Git Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh Neovim.Neovim JesseDuffield.lazygit BurntSushi.ripgrep.MSVC sharkdp.fd JernejSimoncic.Wget fzf --disable-interactivity --accept-package-agreements
 
     Install-Module -Name PowerShellGet -Force
     Install-Module PSReadLine -AllowPrerelease -Force
