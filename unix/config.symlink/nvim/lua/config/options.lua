@@ -3,3 +3,4 @@
 -- Add any additional options here
 
 vim.g.python3_host_prog = "$HOME/.pyenv/shims/python3"
+vim.g.snacks_animate = false
