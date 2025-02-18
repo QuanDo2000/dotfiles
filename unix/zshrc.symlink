@@ -40,7 +40,6 @@ ZSH_THEME="ys"
 
 plugins=(
     git gitignore
-    dotenv
     vi-mode
     tmux
     fzf fzf-tab
@@ -53,8 +52,6 @@ plugins=(
     rust
     nvm npm node
     golang
-    ruby
-    perl
 )
 
 ZSH_TMUX_AUTOSTART=true

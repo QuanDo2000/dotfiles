@@ -187,9 +187,11 @@ function install_mac {
   # Python
   install_pynvim
   install_ruby_nvim
-
+  # Perl
   brew link perl
   install_perl_nvim
+  # Ghostty
+  brew install --cask ghostty
 }
 
 function install_linux {
