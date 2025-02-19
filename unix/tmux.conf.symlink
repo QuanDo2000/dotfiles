@@ -1,19 +1,39 @@
 # Enable vim keys
 set-window-option -g mode-keys vi
 
+# Installing tpm and plugins as needed.
+# https://github.com/tmux-plugins/tpm
+if "test ! -d ~/.tmux/plugins/tpm" \
+   "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"
+if "test ! -d ~/.tmux/plugins/catppuccin" \
+   "run 'git clone -b v2.1.2 https://github.com/catppuccin/tmux.git ~/.tmux/plugins/catppuccin/tmux'"
+
 # List of plugins
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'tmux-plugins/tmux-yank'
 set -g @plugin 'tmux-plugins/tmux-pain-control'
 set -g @plugin 'tmux-plugins/tmux-logging'
-set -g @plugin 'erikw/tmux-powerline'
 set -g @plugin 'laktak/extrakto'
 
-# Installing tpm and plugins as needed.
-# https://github.com/tmux-plugins/tpm
-if "test ! -d ~/.tmux/plugins/tpm" \
-   "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"
+# Catppuccin Settings
+set -g @catppuccin_flavor 'frappe'
+
+set -g status-right-length 100
+set -g status-left ''
+
+set -g @catppuccin_window_status_style 'basic'
+set -g @catppuccin_window_text ' #{b:pane_current_command}'
+set -g @catppuccin_window_current_text ' #{b:pane_current_command}'
+set -g @catppuccin_status_background 'none'
+set -g @catppuccin_date_time_text ' %Y-%m-%d %H:%M:%S'
+
+# Run catppuccin
+run ~/.tmux/plugins/catppuccin/tmux/catppuccin.tmux
+set -gF status-right '#{@catppuccin_status_directory}'
+set -agF status-right '#{@catppuccin_status_user}'
+set -agF status-right '#{@catppuccin_status_host}'
+set -agF status-right '#{E:@catppuccin_status_date_time}'
 
 # Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
 run '~/.tmux/plugins/tpm/tpm'

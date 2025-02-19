@@ -4,9 +4,9 @@ export ZSH="$HOME/.oh-my-zsh"
 # Environment variables
 export SHELL=$(which zsh)
 export EDITOR=vim
+export GPG_TTY=$(tty)
 export GOPATH="$HOME/go"
 export GOBIN="$GOPATH/bin"
-export GPG_TTY=$(tty)
 
 # Path
 export PATH="$PATH:/opt/nvim-linux64/bin"

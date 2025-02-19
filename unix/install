@@ -280,6 +280,13 @@ function install_tmux_plugins {
   else
     info "Already installed TPM"
   fi
+
+  if [ ! -d "$HOME/.tmux/plugins/catppuccin" ]; then
+    info "Installing catppuccin for tmux"
+    git clone -b v2.1.2 https://github.com/catppuccin/tmux.git ~/.tmux/plugins/catppuccin/tmux
+  else
+    info "Already installed catppuccin for tmux"
+  fi
 }
 
 function install_extras {
