@@ -31,33 +31,6 @@ function install_font {
   fi
 }
 
-function install_pynvim {
-  info "Installing pynvim"
-  # Python
-  if [[ "$(pyenv global)" == "system" ]]; then
-    pyenv install 3
-    pyenv global 3
-  fi
-
-  if command -v python3 >/dev/null 2>&1; then
-    python3 -m pip install --user --upgrade pip
-    python3 -m pip install --user --upgrade pynvim
-  fi
-  success "Installed pynvim"
-}
-
-function install_nvm {
-  if ! command -v npm >/dev/null 2>&1; then
-    PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
-    [[ -s "$HOME/.nvm/nvm.sh" ]] && source "$HOME/.nvm/nvm.sh"
-    nvm install node
-  else
-    info "Already installed NVM and Node"
-  fi
-  npm install -g neovim
-  npm install -g prettier
-}
-
 function install_rust {
   if ! command -v rustc >/dev/null 2>&1; then
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -104,31 +77,12 @@ function install_neovim {
   fi
 }
 
-function install_perl_nvim {
-  if command -v cpan >/dev/null 2>&1; then
-    cpan local::lib
-    cpan App::cpanminus
-    cpanm -n Neovim::Ext
-  else
-    info "cpan command not found"
-  fi
-}
-
-function install_ruby_nvim {
-  if command -v gem >/dev/null 2>&1; then
-    sudo gem install neovim
-  else
-    info "gem command not found"
-  fi
-}
-
 function install_debian {
   sudo apt update -y
   sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils \
     tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
-    unzip zsh vim tmux fontconfig fzf fd-find ripgrep \
-    default-jre default-jdk ruby-full
+    unzip zsh vim tmux fontconfig fzf fd-find ripgrep
 
   install_neovim
 
@@ -152,20 +106,9 @@ function install_debian {
     info "Already installed lazygit"
   fi
 
-  # Install pyenv
-  if ! command -v pyenv >/dev/null 2>&1; then
-    curl https://pyenv.run | bash
-  else
-    info "Already installed pyenv"
-  fi
-
-  install_pynvim
-  install_nvm
   install_rust
   install_golang
   install_zig
-  install_ruby_nvim
-  install_perl_nvim
 }
 
 function install_mac {
@@ -174,22 +117,11 @@ function install_mac {
   fi
   brew update
   brew install bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font \
-    gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep \
-    pyenv java perl zig
+    gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zig
 
   # Install LazyVim dependencies
   # Rust
   install_rust
-  # NVM - npm and node
-  install_nvm
-  # Java
-  sudo ln -sfn "$HOMEBREW_PREFIX/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk"
-  # Python
-  install_pynvim
-  install_ruby_nvim
-  # Perl
-  brew link perl
-  install_perl_nvim
   # Ghostty
   brew install --cask ghostty
 }
