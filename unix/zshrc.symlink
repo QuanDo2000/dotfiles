@@ -53,3 +53,4 @@ zstyle ':omz:plugins:alias-finder' cheaper yes # disabled by default
 
 # Source various files.
 source $ZSH/oh-my-zsh.sh
+
