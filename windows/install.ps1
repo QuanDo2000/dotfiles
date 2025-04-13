@@ -32,13 +32,7 @@ function InstallPackages {
         Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
     }
 
-    scoop install mingw zig gcc main/ast-grep
-
-    # Install Rust
-    if (!(Get-Command "rustc" -errorAction SilentlyContinue)) {
-      wget https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe
-      .\rustup-init.exe -vy
-    }
+    scoop install mingw gcc main/ast-grep
 }
 
 function InstallFont {
