@@ -31,40 +31,6 @@ function install_font {
   fi
 }
 
-function install_rust {
-  if ! command -v rustc >/dev/null 2>&1; then
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-  else
-    info "Already installed Rust"
-  fi
-  rustup update
-  rustup component add rust-analyzer
-
-  cargo install --locked tree-sitter-cli
-}
-
-function install_golang {
-  if ! command -v go >/dev/null 2>&1; then
-    curl -OL https://golang.org/dl/go1.23.3.linux-amd64.tar.gz
-    sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.23.3.linux-amd64.tar.gz
-    rm -rf go1.23.3.linux-amd64.tar.gz
-  else
-    info "Already installed Golang"
-  fi
-
-  go install golang.org/x/tools/cmd/goimports@latest
-  go install mvdan.cc/gofumpt@latest
-}
-
-function install_zig {
-  if ! command -v zig >/dev/null 2>&1; then
-    # Install latest stable Zig
-    sudo snap install zig --classic --beta
-  else
-    info "Already installed Zig."
-  fi
-}
-
 function install_neovim {
   if ! command -v nvim >/dev/null 2>&1; then
     # Install latest Neovim
@@ -105,10 +71,6 @@ function install_debian {
   else
     info "Already installed lazygit"
   fi
-
-  install_rust
-  install_golang
-  install_zig
 }
 
 function install_mac {
@@ -117,11 +79,8 @@ function install_mac {
   fi
   brew update
   brew install bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font \
-    gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zig
+    gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep
 
-  # Install LazyVim dependencies
-  # Rust
-  install_rust
   # Ghostty
   brew install --cask ghostty
 }

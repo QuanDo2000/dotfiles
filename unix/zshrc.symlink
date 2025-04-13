@@ -5,19 +5,11 @@ export ZSH="$HOME/.oh-my-zsh"
 export SHELL=$(which zsh)
 export EDITOR=vim
 export GPG_TTY=$(tty)
-export GOPATH="$HOME/go"
-export GOBIN="$GOPATH/bin"
 
 # Path
 export PATH="$PATH:/opt/nvim-linux64/bin"
 export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="/usr/local/go/bin:$PATH"
 export PATH="/snap/bin:$PATH"
-export PATH="$GOBIN:$PATH"
-
-# Mac
-export PATH="$HOMEBREW_PREFIX/opt/openjdk/bin:$PATH"
 
 # Local
 [ -e "$HOME/.zshrc.local" ] && source $HOME/.zshrc.local
@@ -33,10 +25,7 @@ plugins=(
     zsh-autosuggestions
     fast-syntax-highlighting
     aliases alias-finder
-    brew macos
     colored-man-pages
-    rust
-    golang
 )
 
 ZSH_TMUX_AUTOSTART=true
