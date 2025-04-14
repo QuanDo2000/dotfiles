@@ -100,71 +100,43 @@
   },
   "schemes": [
     {
-      "background": "#303446",
-      "black": "#51576D",
-      "blue": "#8CAAEE",
-      "brightBlack": "#626880",
-      "brightBlue": "#8CAAEE",
-      "brightCyan": "#81C8BE",
-      "brightGreen": "#A6D189",
-      "brightPurple": "#F4B8E4",
-      "brightRed": "#E78284",
-      "brightWhite": "#A5ADCE",
-      "brightYellow": "#E5C890",
-      "cursorColor": "#F2D5CF",
-      "cyan": "#81C8BE",
-      "foreground": "#C6D0F5",
-      "green": "#A6D189",
-      "name": "Catppuccin Frappe",
-      "purple": "#F4B8E4",
-      "red": "#E78284",
-      "selectionBackground": "#626880",
-      "white": "#B5BFE2",
-      "yellow": "#E5C890"
-    },
-    {
-      "background": "#300A24",
-      "black": "#171421",
-      "blue": "#0037DA",
-      "brightBlack": "#767676",
-      "brightBlue": "#08458F",
-      "brightCyan": "#2C9FB3",
-      "brightGreen": "#26A269",
-      "brightPurple": "#A347BA",
-      "brightRed": "#C01C28",
-      "brightWhite": "#F2F2F2",
-      "brightYellow": "#A2734C",
-      "cursorColor": "#FFFFFF",
-      "cyan": "#3A96DD",
-      "foreground": "#FFFFFF",
-      "green": "#26A269",
-      "name": "Ubuntu-22.04-ColorScheme",
-      "purple": "#881798",
-      "red": "#C21A23",
-      "selectionBackground": "#FFFFFF",
-      "white": "#CCCCCC",
-      "yellow": "#A2734C"
+      "name": "Catppuccin Macchiato",
+      "cursorColor": "#F4DBD6",
+      "selectionBackground": "#5B6078",
+      "background": "#24273A",
+      "foreground": "#CAD3F5",
+      "black": "#494D64",
+      "red": "#ED8796",
+      "green": "#A6DA95",
+      "yellow": "#EED49F",
+      "blue": "#8AADF4",
+      "purple": "#F5BDE6",
+      "cyan": "#8BD5CA",
+      "white": "#B8C0E0",
+      "brightBlack": "#5B6078",
+      "brightRed": "#ED8796",
+      "brightGreen": "#A6DA95",
+      "brightYellow": "#EED49F",
+      "brightBlue": "#8AADF4",
+      "brightPurple": "#F5BDE6",
+      "brightCyan": "#8BD5CA",
+      "brightWhite": "#A5ADCB"
     }
   ],
   "themes": [
     {
-      "name": "Catppuccin Frappe",
+      "name": "Catppuccin Macchiato",
       "tab": {
-        "background": "#303446FF",
-        "iconStyle": "default",
+        "background": "#24273AFF",
         "showCloseButton": "always",
         "unfocusedBackground": null
       },
       "tabRow": {
-        "background": "#292C3CFF",
-        "unfocusedBackground": "#232634FF"
+        "background": "#1E2030FF",
+        "unfocusedBackground": "#181926FF"
       },
       "window": {
-        "applicationTheme": "dark",
-        "experimental.rainbowFrame": false,
-        "frame": null,
-        "unfocusedFrame": null,
-        "useMica": false
+        "applicationTheme": "dark"
       }
     }
   ]
