@@ -17,7 +17,7 @@ set -g @plugin 'tmux-plugins/tmux-logging'
 set -g @plugin 'laktak/extrakto'
 
 # Catppuccin Settings
-set -g @catppuccin_flavor 'frappe'
+set -g @catppuccin_flavor 'macchiato'
 
 set -g status-right-length 100
 set -g status-left ''
