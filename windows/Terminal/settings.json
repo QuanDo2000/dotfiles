@@ -59,7 +59,7 @@
         "window",
         "taskbar"
       ],
-      "colorScheme": "Catppuccin Frappe",
+      "colorScheme": "Catppuccin Macchiato",
       "font": {
         "face": "FiraCode Nerd Font",
         "size": 14
@@ -136,7 +136,11 @@
         "unfocusedBackground": "#181926FF"
       },
       "window": {
-        "applicationTheme": "dark"
+        "applicationTheme": "dark",
+        "experimental.rainbowFrame": false,
+        "frame": null,
+        "unfocusedFrame": null,
+        "useMica": false
       }
     }
   ]
