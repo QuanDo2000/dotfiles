@@ -7,7 +7,7 @@ export EDITOR=vim
 export GPG_TTY=$(tty)
 
 # Path
-export PATH="$PATH:/opt/nvim-linux64/bin"
+export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="/snap/bin:$PATH"
 
