@@ -61,6 +61,7 @@ function CloneRepo {
 function SyncSettings {
     Write-Host "Syncing settings..."
     $configPath = "$HOME\Documents\Projects\dotfiles\windows"
+    $sharedPath = "$HOME\Documents\Projects\dotfiles\shared"
 
     $targets = @(
         "$HOME\Documents\WindowsPowerShell"
@@ -84,13 +85,13 @@ function SyncSettings {
     CopyWithBackup -source $terminalSettingsSource -destination $terminalSettingsPath
 
     Write-Host "Syncing Vim settings..."
-    CopyWithBackup -source "$configPath\_vimrc" -destination "$HOME\_vimrc"
     CopyWithBackup -source "$configPath\_gvimrc" -destination "$HOME\_gvimrc"
-    CopyWithBackup -source "$configPath\.gitconfig" -destination "$HOME\.gitconfig"
+    CopyWithBackup -source "$sharedPath\.vimrc" -destination "$HOME\_vimrc"
+    CopyWithBackup -source "$sharedPath\.gitconfig" -destination "$HOME\.gitconfig"
 
     Write-Host "Syncing LazyVim settings..."
     $nvimSettingsPath = "$env:LOCALAPPDATA\nvim"
-    CopyDirWithBackup -source "$configPath\nvim\*" -destination "$nvimSettingsPath"
+    CopyDirWithBackup -source "$sharedPath\config\nvim\*" -destination "$nvimSettingsPath"
 
     Write-Host "Done."
 }
