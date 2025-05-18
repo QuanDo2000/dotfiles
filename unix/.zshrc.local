@@ -11,9 +11,6 @@ export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="/snap/bin:$PATH"
 
-# Local
-[ -e "$HOME/.zshrc.local" ] && source $HOME/.zshrc.local
-
 # oh-my-zsh
 ZSH_THEME="ys"
 
