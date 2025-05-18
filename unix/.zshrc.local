@@ -25,6 +25,8 @@ plugins=(
     colored-man-pages
 )
 
+[ -e "$HOME/.zshrc.mac" ] && source $HOME/.zshrc.mac
+
 ZSH_TMUX_AUTOSTART=true
 ZSH_TMUX_AUTOSTART_ONCE=true
 ZSH_TMUX_AUTOCONNECT=true

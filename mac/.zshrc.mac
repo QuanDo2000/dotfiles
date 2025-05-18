@@ -1,0 +1,11 @@
+plugins=(
+    git gitignore
+    vi-mode
+    tmux
+    fzf fzf-tab
+    zsh-autosuggestions
+    fast-syntax-highlighting
+    aliases alias-finder
+    colored-man-pages
+    brew macos
+)
