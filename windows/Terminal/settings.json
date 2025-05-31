@@ -95,16 +95,6 @@
         "hidden": false,
         "name": "PowerShell",
         "source": "Windows.Terminal.PowershellCore"
-      },
-      {
-        "commandline": "C:\\Windows\\system32\\wsl.exe --distribution-id {c4cfef63-b49a-457b-8ee6-99c33c2d2042} --cd ~",
-        "elevate": false,
-        "guid": "{2484db4b-d131-4620-97ec-ad3e5f152d85}",
-        "hidden": false,
-        "icon": "C:\\Users\\Quan\\AppData\\Local\\wsl\\{c4cfef63-b49a-457b-8ee6-99c33c2d2042}\\shortcut.ico",
-        "name": "NixOS",
-        "pathTranslationStyle": "wsl",
-        "startingDirectory": "~"
       }
     ]
   },
