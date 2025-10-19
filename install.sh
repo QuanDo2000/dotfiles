@@ -70,16 +70,27 @@ function install_lazygit {
 }
 
 function setup_fdfind {
-  info "Making symlink for fd-find in '.local/bin'..."
+  info "Ensuring 'fd' is available in '.local/bin'..."
   if [[ "$DRY" == "false" ]]; then
-    if [ ! -f "$HOME/.local/bin/fd" ]; then
-      mkdir -p "$HOME/.local/bin"
-      ln -s "$(which fdfind)" "$HOME/.local/bin/fd"
+    mkdir -p "$HOME/.local/bin"
+    # Preferred executable is 'fd'; on Debian-based systems it's 'fdfind'
+    if command -v fd >/dev/null 2>&1; then
+      info "'fd' already available on PATH"
+      # create a user-local symlink to ensure consistent path
+      if [ ! -L "$HOME/.local/bin/fd" ]; then
+        ln -s "$(command -v fd)" "$HOME/.local/bin/fd" || true
+      fi
+    elif command -v fdfind >/dev/null 2>&1; then
+      if [ ! -L "$HOME/.local/bin/fd" ]; then
+        ln -s "$(command -v fdfind)" "$HOME/.local/bin/fd"
+      else
+        info "Already symlinked fdfind to '.local/bin/fd'"
+      fi
     else
-      info "Already symlinked fd-find in '.local/bin'"
+      info "fd not found on system; skipping symlink. Install 'fd' (ripgrep/ fd) manually or via your package manager"
     fi
   fi
-  success "Finished symlinking fd-find in '.local/bin'"
+  success "Finished ensuring fd in '.local/bin'"
 }
 
 function install_debian {
@@ -98,6 +109,22 @@ function install_debian {
     setup_fdfind
   fi
   success "Finished install for Debian"
+}
+
+function install_arch {
+  info "Installing packages and programs for Arch Linux..."
+  if [[ "$DRY" == "false" ]]; then
+    # Update system and install packages
+    sudo pacman -Syu --noconfirm
+
+    sudo pacman -S --needed --noconfirm \
+      base-devel curl git unzip zsh vim tmux fontconfig \
+      fzf fd ripgrep neovim lazygit ttf-firacode-nerd
+
+    # Reuse existing helpers
+    setup_fdfind
+  fi
+  success "Finished install for Arch Linux"
 }
 
 function install_mac {
@@ -135,8 +162,10 @@ function install_packages {
       source /etc/os-release
       if [[ "$ID" == "debian" || "$ID_LIKE" == *"debian"* ]]; then
         install_debian
+      elif [[ "$ID" == "arch" || "$ID_LIKE" == *"arch"* ]]; then
+        install_arch
       else
-        fail "Unknown Linux distribution."
+        fail "Unknown Linux distribution: $ID"
       fi
     else
       fail "Could not detect Linux distribution."
