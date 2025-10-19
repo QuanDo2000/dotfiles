@@ -21,7 +21,7 @@ fail() {
   exit 1
 }
 
-function install_font {
+function install_font_debian {
   # https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
   info "Installing Fira Code..."
   if [[ "$DRY" == "false" ]]; then
@@ -91,7 +91,7 @@ function install_debian {
       tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
       unzip zsh vim tmux fontconfig fzf fd-find ripgrep
 
-    install_font
+    install_font_debian
     install_lazygit
     install_neovim
 
