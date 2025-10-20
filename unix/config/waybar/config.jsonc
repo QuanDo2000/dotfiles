@@ -5,7 +5,6 @@
   "spacing": 0,
   "modules-left": [
     "hyprland/workspaces",
-    "custom/uptime",
     "cpu",
     "memory"
   ],
@@ -24,15 +23,6 @@
       "active": "",
       "default": ""
     }
-  },
-  "custom/uptime": {
-    "format": "{icon} {}",
-    "format-icon": [
-      ""
-    ],
-    "tooltip": false,
-    "interval": 1600,
-    "exec": "$HOME/.config/waybar/scripts/uptime.sh"
   },
   "cpu": {
     "interval": 1,
