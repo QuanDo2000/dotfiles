@@ -27,11 +27,7 @@ plugins=(
 
 [ -e "$HOME/.zshrc.mac" ] && source $HOME/.zshrc.mac
 
-ZSH_TMUX_AUTOSTART=true
-ZSH_TMUX_AUTOSTART_ONCE=true
-ZSH_TMUX_AUTOCONNECT=false
-ZSH_TMUX_AUTOQUIT=false
-ZSH_TMUX_DEFAULT_SESSION_NAME="main"
+ZSH_TMUX_AUTONAME_SESSION=true
 VI_MODE_SET_CURSOR=true
 
 zstyle ':omz:plugins:alias-finder' autoload yes # disabled by default
