@@ -1,7 +1,7 @@
 /* --- Global Styles --- */
 * {
   font-family: 'NotoSans Nerd Font', 'Inter', 'Segoe UI', sans-serif;
-  font-size: 20px;
+  font-size: 16px;
   min-height: 0;
   padding-right: 0px;
   padding-left: 0px;
@@ -22,7 +22,7 @@
 #memory {
   background-color: #1a1b26;
   padding: 0.3rem 0.7rem;
-  margin: 5px 0px;
+  margin: 5px 2px;
   /* 5px top/bottom margin, 0px left/right (base for individual control) */
   border-radius: 6px;
   /* These modules are always rounded */
@@ -96,12 +96,16 @@
 #network {
   background-color: #1a1b26;
   padding: 0.3rem 0.7rem;
-  margin: 5px 0px;
+  margin: 5px 2px;
   border-radius: 0;
   box-shadow: none;
   min-width: 0;
   border: none;
   transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+#pulseaudio {
+  margin-right: 5px;
 }
 
 #bluetooth:hover,

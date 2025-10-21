@@ -1,7 +1,7 @@
 {
   "layer": "top",
   "position": "top",
-  "margin-bottom": -10,
+  "margin-bottom": -5,
   "spacing": 0,
   "modules-left": [
     "hyprland/workspaces",
@@ -46,7 +46,7 @@
   },
   "clock": {
     "tooltip": false,
-    "format": "{:%H:%M:%S  -  %A, %Y/%M/%d}",
+    "format": "{:%H:%M:%S  -  %A, %Y-%m-%d}",
     "interval": 1
   },
   "bluetooth": {
