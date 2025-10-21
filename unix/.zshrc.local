@@ -6,6 +6,10 @@ export SHELL=$(which zsh)
 export EDITOR=vim
 export GPG_TTY=$(tty)
 
+# Hyprshot
+[ ! -d $HOME/hyprshot ] && mkdir -p $HOME/hyprshot
+export HYPRSHOT_DIR=$HOME/hyprshot
+
 # Path
 export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
 export PATH="$HOME/.local/bin:$PATH"
