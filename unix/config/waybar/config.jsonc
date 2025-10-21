@@ -12,10 +12,11 @@
     "clock"
   ],
   "modules-right": [
+    "custom/input",
     "bluetooth",
     "network",
     "pulseaudio",
-    "battery"
+    "pulseaudio/slider"
   ],
   "hyprland/workspaces": {
     "format": "{name}: {icon}",
@@ -49,6 +50,11 @@
     "format": "{:%H:%M:%S  -  %A, %Y-%m-%d}",
     "interval": 1
   },
+  "custom/input": {
+    "tooltip": false,
+    "exec": "~/.config/waybar/scripts/fcitx5-control.sh",
+    "on-click": "~/.config/waybar/scripts/fcitx5-control.sh toggle"
+  },
   "bluetooth": {
     "format": "󰂲",
     "format-on": "{icon}",
@@ -81,5 +87,8 @@
       ]
     },
     "on-click": "pwvucontrol"
+  },
+  "pulseaudio/slider": {
+    "orientation": "horizontal"
   }
 }

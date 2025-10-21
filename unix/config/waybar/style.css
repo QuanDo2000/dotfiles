@@ -1,7 +1,7 @@
 /* --- Global Styles --- */
 * {
   font-family: 'NotoSans Nerd Font', 'Inter', 'Segoe UI', sans-serif;
-  font-size: 16px;
+  font-size: 20px;
   min-height: 0;
   padding-right: 0px;
   padding-left: 0px;
@@ -91,12 +91,13 @@
 }
 
 /* --- Right Modules (Single, Seamless Bar ) --- */
+#custom-input,
 #bluetooth,
 #pulseaudio,
 #network {
   background-color: #1a1b26;
   padding: 0.3rem 0.7rem;
-  margin: 5px 2px;
+  margin: 5px 0px;
   border-radius: 0;
   box-shadow: none;
   min-width: 0;
@@ -104,17 +105,15 @@
   transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
-#pulseaudio {
-  margin-right: 5px;
-}
-
+#custom-input:hover,
 #bluetooth:hover,
 #pulseaudio:hover,
+#pulseaudio-slider:hover,
 #network:hover {
   background-color: rgb(41, 42, 53);
 }
 
-#bluetooth {
+#custom-input {
   margin-left: 0px;
   border-top-left-radius: 6px;
   border-bottom-left-radius: 6px;
