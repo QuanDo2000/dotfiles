@@ -1,94 +1,127 @@
+// -*- mode: jsonc -*-
 {
-  "layer": "top",
-  "position": "top",
-  "margin-bottom": -5,
-  "spacing": 0,
+  "layer": "top", // Waybar at top layer
+  "position": "top", // Waybar position (top|bottom|left|right)
+  "height": 42, // Waybar height (to be removed for auto height)
+  // "width": 1280, // Waybar width
+  "spacing": 4, // Gaps between modules (4px)
+  // Choose the order of the modules
   "modules-left": [
-    "hyprland/workspaces",
-    "cpu",
-    "memory"
+    "custom/arch",
+    "hyprland/workspaces"
   ],
   "modules-center": [
-    "clock"
+    "hyprland/window"
   ],
   "modules-right": [
-    "custom/input",
-    "bluetooth",
-    "network",
+    "idle_inhibitor",
     "pulseaudio",
-    "pulseaudio/slider"
+    "network",
+    "cpu",
+    "memory",
+    "temperature",
+    "hyprland/language",
+    "battery",
+    "battery#bat2",
+    "clock"
   ],
+  "custom/arch": {
+    "format": "󰣇",
+    "tooltip": true,
+    "tooltip-format": "btw"
+  },
   "hyprland/workspaces": {
-    "format": "{name}: {icon}",
+    "disable-scroll": true,
+    "all-outputs": true,
+    "warp-on-scroll": false,
+    "format": "{name}",
     "format-icons": {
+      "urgent": "",
       "active": "",
       "default": ""
     }
   },
-  "cpu": {
-    "interval": 1,
-    "format": "  {icon0}{icon1}{icon2}{icon3} {usage:>2}%",
-    "format-icons": [
-      "▁",
-      "▂",
-      "▃",
-      "▄",
-      "▅",
-      "▆",
-      "▇",
-      "█"
-    ],
-    "on-click": "ghostty -e htop"
-  },
-  "memory": {
-    "interval": 30,
-    "format": "  {used:0.1f}G/{total:0.1f}G",
-    "tooltip-format": "Memory"
-  },
-  "clock": {
-    "tooltip": false,
-    "format": "{:%H:%M:%S  -  %A, %Y-%m-%d}",
-    "interval": 1
-  },
-  "custom/input": {
-    "tooltip": false,
-    "exec": "~/.config/waybar/scripts/fcitx5-control.sh",
-    "on-click": "~/.config/waybar/scripts/fcitx5-control.sh toggle"
-  },
-  "bluetooth": {
-    "format": "󰂲",
-    "format-on": "{icon}",
-    "format-off": "{icon}",
-    "format-connected": "{icon}",
+  "idle_inhibitor": {
+    "format": "{icon}",
     "format-icons": {
-      "on": "󰂯",
-      "off": "󰂲",
-      "connected": "󰂱"
-    },
-    "on-click": "blueman-manager",
-    "tooltip-format-connected": "{device_enumerate}"
-  },
-  "network": {
-    "format-wifi": "󰤢",
-    "format-ethernet": "󰈀 ",
-    "format-disconnected": "󰤠 ",
-    "interval": 5,
-    "tooltip-format": "{essid} ({signalStrength}%)",
-    "on-click": "nm-connection-editor"
+      "activated": "",
+      "deactivated": ""
+    }
   },
   "pulseaudio": {
     "format": "{icon}  {volume}%",
-    "format-muted": "",
+    "format-bluetooth": "{icon} {volume}%  {format_source}",
+    "format-bluetooth-muted": " {icon} {format_source}",
+    "format-muted": " {format_source}",
+    "format-source": " {volume}%",
+    "format-source-muted": "",
     "format-icons": {
+      "headphone": "",
+      "hands-free": "",
+      "headset": "",
+      "phone": "",
+      "portable": "",
+      "car": "",
       "default": [
         "",
         "",
-        " "
+        ""
       ]
     },
-    "on-click": "pwvucontrol"
+    "on-click": "pavucontrol"
   },
-  "pulseaudio/slider": {
-    "orientation": "horizontal"
+  "network": {
+    "format-wifi": "   {essid} ({signalStrength}%)",
+    "format-ethernet": "{ipaddr}/{cidr} ",
+    "tooltip-format": "{ifname} via {gwaddr} ",
+    "format-linked": "{ifname} (No IP) ",
+    "format-disconnected": "Disconnected ⚠",
+    "on-click": "sh ~/scripts/rofi-wifi-menu/rofi-wifi-menu.sh"
+  },
+  "cpu": {
+    "format": "  {usage}%",
+    "tooltip": true
+  },
+  "memory": {
+    "format": "  {}%",
+    "tooltip": true
+  },
+  "temperature": {
+    "interval": 10,
+    "hwmon-path": "/sys/devices/platform/coretemp.0/hwmon/hwmon4/temp1_input",
+    "critical-threshold": 100,
+    "format-critical": " {temperatureC}",
+    "format": " {temperatureC}°C"
+  },
+  "hyprland/language": {
+    "format": "  {}",
+    "format-en": "EN",
+    "format-ru": "RU"
+  },
+  "battery": {
+    "states": {
+      "warning": 30,
+      "critical": 15
+    },
+    "format": "{icon}  {capacity}%",
+    "format-full": "{icon}  {capacity}%",
+    "format-charging": "  {capacity}%",
+    "format-plugged": "  {capacity}%",
+    "format-alt": "{time}  {icon}",
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  "battery#bat2": {
+    "bat": "BAT2"
+  },
+  "clock": {
+    "format": "{:%H:%M | %e %B} ",
+    "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
+    "format-alt": "{:%Y-%m-%d}"
   }
 }
