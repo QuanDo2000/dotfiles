@@ -69,6 +69,18 @@ function install_lazygit {
   success "Finished installing lazygit"
 }
 
+function install_zoxide {
+  info "Installing zoxide..."
+  if [[ "$DRY" == "false" ]]; then
+    if ! command -v zoxide >/dev/null 2>&1; then
+      curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+    else
+      info "Already installed zoxide"
+    fi
+  fi
+  success "Finished installing zoxide"
+}
+
 function setup_fdfind {
   info "Ensuring 'fd' is available in '.local/bin'..."
   if [[ "$DRY" == "false" ]]; then
@@ -105,6 +117,7 @@ function install_debian {
     install_font_debian
     install_lazygit
     install_neovim
+    install_zoxide
 
     setup_fdfind
   fi
@@ -119,7 +132,7 @@ function install_arch {
 
     sudo pacman -S --needed --noconfirm \
       base-devel curl git unzip zsh vim tmux fontconfig \
-      fzf fd ripgrep neovim lazygit ttf-firacode-nerd
+      fzf fd ripgrep neovim lazygit ttf-firacode-nerd zoxide
 
     # Reuse existing helpers
     setup_fdfind
@@ -135,7 +148,7 @@ function install_mac {
     fi
     brew update
     brew install bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font \
-      gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep
+      gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide
 
     # Ghostty
     brew install --cask ghostty

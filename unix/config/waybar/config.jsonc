@@ -6,6 +6,7 @@
   // Left
   "modules-left": [
     "hyprland/workspaces",
+    "cpu",
     "memory",
     "temperature"
   ],
@@ -24,9 +25,25 @@
       "3": []
     }
   },
+  "cpu": {
+    "interval": 1,
+    "format": "\uf2db {icon0}{icon1}{icon2}{icon3} {usage:>2}%",
+    "format-icons": [
+      "▁",
+      "▂",
+      "▃",
+      "▄",
+      "▅",
+      "▆",
+      "▇",
+      "█"
+    ],
+    "on-click": "ghostty -e btop"
+  },
   "memory": {
     "interval": 30,
-    "format": "\uf4bc   {used:0.1f}G"
+    "format": "\uefc5    {used:0.1f}G/{total:0.1f}G",
+    "on-click": "ghostty -e btop"
   },
   "temperature": {
     "format": "{temperatureC}°C"
@@ -40,17 +57,19 @@
   },
   // Right
   "modules-right": [
-    "wireplumber",
+    "pulseaudio",
     "hyprland/language",
     "idle_inhibitor",
     "network",
     "bluetooth",
-    "tray"
+    "tray",
+    "custom/lock"
   ],
-  "wireplumber": {
+  "pulseaudio": {
     "format": "\udb81\udd7e   {volume}%",
     "max-volume": 100,
-    "scroll-step": 5
+    "scroll-step": 5,
+    "on-click": "pwvucontrol"
   },
   "hyprland/language": {
     "format": "{short}"
@@ -76,7 +95,8 @@
     ],
     "tooltip-format-wifi": "{essid} ({signalStrength}%)",
     "tooltip-format-ethernet": "{ifname}",
-    "tooltip-format-disconnected": "Disconnected"
+    "tooltip-format-disconnected": "Disconnected",
+    "on-click": "nm-connection-editor"
   },
   "bluetooth": {
     "format": "\udb80\udcaf",
@@ -84,10 +104,16 @@
     "format-connected": "\udb80\udcb1",
     "tooltip-format": "{controller_alias}\t{controller_address}",
     "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
-    "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}"
+    "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+    "on-click": "blueman-manager"
   },
   "tray": {
     "icon-size": 18,
     "spacing": 20
+  },
+  "custom/lock": {
+    "tooltip": false,
+    "on-click": "sh -c '(sleep 0s; hyprlock)' & disown",
+    "format": "\u1F512"
   }
 }

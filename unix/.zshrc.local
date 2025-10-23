@@ -27,12 +27,15 @@ plugins=(
     fast-syntax-highlighting
     aliases alias-finder
     colored-man-pages
+    zoxide
 )
 
 [ -e "$HOME/.zshrc.mac" ] && source $HOME/.zshrc.mac
 
 ZSH_TMUX_AUTONAME_SESSION=true
 VI_MODE_SET_CURSOR=true
+
+ZOXIDE_CMD_OVERRIDE="cd"
 
 zstyle ':omz:plugins:alias-finder' autoload yes # disabled by default
 zstyle ':omz:plugins:alias-finder' longer yes # disabled by default
