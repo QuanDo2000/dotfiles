@@ -48,7 +48,7 @@
 #network,
 #bluetooth,
 #tray,
-#custom-lock {
+#custom-power {
   padding: 0 0.5em
 }
 
@@ -58,7 +58,7 @@
 #language:hover,
 #network:hover,
 #bluetooth:hover,
-#custom-lock:hover {
+#custom-power:hover {
   background-color: rgba(100, 100, 100, 0.6);
 }
 
