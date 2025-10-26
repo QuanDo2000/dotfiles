@@ -1,5 +1,10 @@
 theme = Catppuccin Macchiato
 font-family = "FiraCode Nerd Font"
+font-family = "Noto Sans"
+font-family = "Noto Sans CJK SC"
+font-family = "Noto Sans Symbols"
+font-family = "Symbols Nerd Fontj"
+font-family = "Noto Color Emoji"
 
 keybind = performable:ctrl+c=copy_to_clipboard
 keybind = ctrl+v=paste_from_clipboard
