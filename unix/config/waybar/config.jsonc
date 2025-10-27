@@ -53,7 +53,8 @@
     "clock"
   ],
   "clock": {
-    "format": "{:%Y.%m.%d | %H:%M}"
+    "interval": 1,
+    "format": "{:%Y.%m.%d | %H:%M:%S}"
   },
   // Right
   "modules-right": [
