@@ -133,7 +133,8 @@ function install_arch {
     sudo pacman -S --needed --noconfirm \
       base-devel curl wget git unzip zsh vim tmux fontconfig \
       fzf fd ripgrep neovim lazygit ttf-firacode-nerd zoxide \
-      gnupg wl-clipboard openssh lua51 luarocks nvm
+      gnupg wl-clipboard openssh lua51 luarocks nvm \
+      tree-sitter-cli
 
     # Reuse existing helpers
     setup_fdfind
