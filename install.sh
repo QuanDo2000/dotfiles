@@ -131,8 +131,9 @@ function install_arch {
     sudo pacman -Syu --noconfirm
 
     sudo pacman -S --needed --noconfirm \
-      base-devel curl git unzip zsh vim tmux fontconfig \
-      fzf fd ripgrep neovim lazygit ttf-firacode-nerd zoxide
+      base-devel curl wget git unzip zsh vim tmux fontconfig \
+      fzf fd ripgrep neovim lazygit ttf-firacode-nerd zoxide \
+      gnupg wl-clipboard
 
     # Reuse existing helpers
     setup_fdfind
