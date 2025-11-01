@@ -2,6 +2,12 @@
 
 Contained within `dotfiles` are my personal setup scripts for a new machine.
 
+## Requirements
+
+- `sudo` and `curl`
+
+## Usage
+
 - To install on Linux/MacOS, run the following:
 
 ```bash
