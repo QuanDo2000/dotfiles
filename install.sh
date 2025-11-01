@@ -133,8 +133,7 @@ function install_arch {
     sudo pacman -S --needed --noconfirm \
       base-devel curl wget git unzip zsh vim tmux fontconfig \
       fzf fd ripgrep neovim lazygit ttf-firacode-nerd zoxide \
-      gnupg wl-clipboard openssh luarocks python nvm ghostty \
-      go
+      gnupg wl-clipboard openssh luarocks nvm ghostty
 
     # Reuse existing helpers
     setup_fdfind
