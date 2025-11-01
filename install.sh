@@ -134,7 +134,7 @@ function install_arch {
       base-devel curl wget git unzip zsh vim tmux fontconfig \
       fzf fd ripgrep neovim lazygit ttf-firacode-nerd zoxide \
       gnupg wl-clipboard openssh luarocks python nvm ghostty \
-      imagemagick ghostscript tectonic mmdc
+      go
 
     # Reuse existing helpers
     setup_fdfind
