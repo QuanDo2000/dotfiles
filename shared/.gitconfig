@@ -3,6 +3,7 @@
     email = minhquand3@gmail.com
 [core]
     ignorecase = false
+    editor = nvim
 [commit]
     gpgsign = true
 
