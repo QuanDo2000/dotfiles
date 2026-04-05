@@ -11,9 +11,10 @@ export GPG_TTY=$(tty)
 export HYPRSHOT_DIR=$HOME/hyprshot
 
 # Path
-export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="/snap/bin:$PATH"
+[ -d "/opt/nvim-linux-x86_64/bin" ] && export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
+[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
+[ -d "/snap/bin" ] && export PATH="/snap/bin:$PATH"
+[ -d "$HOME/.devcontainers/bin" ] && export PATH="$HOME/.devcontainers/bin:$PATH"
 
 # oh-my-zsh
 ZSH_THEME="ys"
@@ -48,4 +49,3 @@ zstyle ':omz:plugins:alias-finder' cheaper yes # disabled by default
 
 # Source various files.
 source $ZSH/oh-my-zsh.sh
-

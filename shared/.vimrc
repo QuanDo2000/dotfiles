@@ -29,5 +29,3 @@ set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx  " 
 nnoremap <space> <nop>
 let mapleader = " "
 
-inoremap jk <esc>  " jk for ESC
-nnoremap <leader>w :w!<CR>  " <leader>w to save file

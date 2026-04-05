@@ -3,7 +3,7 @@ font-family = "FiraCode Nerd Font"
 font-family = "Noto Sans"
 font-family = "Noto Sans CJK SC"
 font-family = "Noto Sans Symbols"
-font-family = "Symbols Nerd Fontj"
+font-family = "Symbols Nerd Font"
 font-family = "Noto Color Emoji"
 
 keybind = performable:ctrl+c=copy_to_clipboard
