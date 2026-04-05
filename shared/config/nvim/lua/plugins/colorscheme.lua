@@ -2,9 +2,15 @@ return {
   {
     "catppuccin/nvim",
     name = "catppuccin",
-    opts = {
-      flavour = "macchiato",
-    },
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require("catppuccin").setup({
+        flavour = "macchiato",
+        compile = true,
+      })
+      vim.cmd.colorscheme("catppuccin")
+    end,
   },
   {
     "LazyVim/LazyVim",
