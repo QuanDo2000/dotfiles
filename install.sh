@@ -1,27 +1,31 @@
 #!/bin/bash
 set -eo pipefail
 
-# Global variables
-DRY=false
+# Global variables (used in sourced scripts)
+export DRY=false
+export QUIET=false
+export FORCE=false
 DOTFILES_DIR="$HOME/dotfiles"
 REPO_URL="https://github.com/QuanDo2000/dotfiles.git"
 
-# Ensure the repo is cloned so we can source modules
+# Source utils first (no dependencies)
+SCRIPTS_DIR="$DOTFILES_DIR/scripts"
+if [ -d "$SCRIPTS_DIR" ]; then
+  source "$SCRIPTS_DIR/utils.sh"
+fi
+
+# Ensure the repo is cloned so we can source remaining modules
 function ensure_repo {
   if [ ! -d "$DOTFILES_DIR" ]; then
-    echo "Cloning dotfiles repo..."
-    git clone "$REPO_URL" "$DOTFILES_DIR" || {
-      echo "Failed to clone dotfiles repo"
-      exit 1
-    }
+    info "Cloning dotfiles repo..."
+    git clone "$REPO_URL" "$DOTFILES_DIR" || fail "Failed to clone dotfiles repo"
+    source "$SCRIPTS_DIR/utils.sh"
   fi
 }
 
 ensure_repo
 
-# Source modules
-SCRIPTS_DIR="$DOTFILES_DIR/scripts"
-source "$SCRIPTS_DIR/utils.sh"
+# Source remaining modules
 source "$SCRIPTS_DIR/packages.sh"
 source "$SCRIPTS_DIR/extras.sh"
 source "$SCRIPTS_DIR/symlinks.sh"
@@ -31,7 +35,7 @@ function update_repo {
   info "Updating dotfiles repo..."
   if [[ "$DRY" == "false" ]]; then
     cd "$DOTFILES_DIR" || return
-    git pull || fail "Failed to pull dotfiles repo"
+    git pull --rebase || fail "Failed to pull dotfiles repo"
   fi
   success "Finished updating repo"
 }
@@ -59,8 +63,10 @@ Commands:
   verify      Verify installation
 
 Options:
-  -d, --dry   Dry run (no changes made)
-  -h, --help  Show this help message
+  -d, --dry     Dry run (no changes made)
+  -f, --force   Overwrite existing files without prompting
+  -q, --quiet   Only show errors
+  -h, --help    Show this help message
 EOF
 }
 
@@ -69,6 +75,14 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
   -d | --dry)
     DRY=true
+    shift
+    ;;
+  -f | --force)
+    FORCE=true
+    shift
+    ;;
+  -q | --quiet)
+    QUIET=true
     shift
     ;;
   -h | --help)

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 info() {
+  [[ "$QUIET" == "true" && "$2" != "--force" ]] && return
   printf '\r  [ \033[00;34m..\033[0m ] %s\n' "$1"
 }
 
@@ -9,6 +10,7 @@ user() {
 }
 
 success() {
+  [[ "$QUIET" == "true" && "$2" != "--force" ]] && return
   printf '\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n' "$1"
 }
 

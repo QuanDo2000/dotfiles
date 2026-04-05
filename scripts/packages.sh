@@ -17,6 +17,10 @@ function install_font_debian {
 }
 
 function install_neovim {
+  # On Mac, neovim is installed via brew in install_mac
+  if [[ "$(uname)" == "Darwin" ]]; then
+    return
+  fi
   info "Installing neovim..."
   if [[ "$DRY" == "false" ]]; then
     if ! command -v nvim >/dev/null 2>&1; then
@@ -142,8 +146,8 @@ function install_mac {
 function set_zsh_default {
   info "Changing default shell to zsh..."
   if [[ "$DRY" == "false" ]]; then
-    if [[ "$SHELL" != "$(which zsh)" ]]; then
-      chsh -s "$(which zsh)"
+    if [[ "$SHELL" != "$(command -v zsh)" ]]; then
+      chsh -s "$(command -v zsh)"
     else
       info "Already has zsh as default shell"
     fi

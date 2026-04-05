@@ -64,8 +64,8 @@ function verify {
 
   echo ""
   if [ "$errors" -eq 0 ]; then
-    success "All checks passed!"
+    success "All checks passed!" --force
   else
-    info "$errors issue(s) found"
+    info "$errors issue(s) found" --force
   fi
 }

@@ -100,11 +100,13 @@ function setup_symlinks_folder {
 function setup_symlinks {
   local overwrite_all=false backup_all=false skip_all=false
 
+  if [[ "$FORCE" == "true" ]]; then
+    overwrite_all=true
+  fi
+
   setup_symlinks_folder "$HOME/dotfiles/shared"
   setup_symlinks_folder "$HOME/dotfiles/unix"
-  if [[ "$(uname)" == "Linux" ]] && [[ -d "$HOME/dotfiles/linux" ]]; then
-    setup_symlinks_folder "$HOME/dotfiles/linux"
-  elif [[ "$(uname)" == "Darwin" ]]; then
+  if [[ "$(uname)" == "Darwin" ]]; then
     setup_symlinks_folder "$HOME/dotfiles/mac"
   fi
 }
