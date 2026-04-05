@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 
 # Global variables
 DRY=false
@@ -19,6 +20,10 @@ fail() {
   printf '\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n' "$1"
   echo ''
   exit 1
+}
+
+fail_soft() {
+  printf '\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n' "$1"
 }
 
 function install_font_debian {
@@ -108,11 +113,12 @@ function setup_fdfind {
 function install_debian {
   info "Installing packages and programs for Debian..."
   if [[ "$DRY" == "false" ]]; then
-    sudo apt update -y
+    sudo apt update -y || fail "Failed to update apt"
     sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
       libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils \
       tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
-      unzip zsh vim tmux fontconfig fzf fd-find ripgrep
+      unzip zsh vim tmux fontconfig fzf fd-find ripgrep \
+      || fail "Failed to install Debian packages"
 
     install_font_debian
     install_lazygit
@@ -128,13 +134,14 @@ function install_arch {
   info "Installing packages and programs for Arch Linux..."
   if [[ "$DRY" == "false" ]]; then
     # Update system and install packages
-    sudo pacman -Syu --noconfirm
+    sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
 
     sudo pacman -S --needed --noconfirm \
       base-devel curl wget git unzip zsh vim tmux fontconfig \
       fzf fd ripgrep neovim lazygit ttf-firacode-nerd zoxide \
       gnupg wl-clipboard openssh lua51 luarocks nvm \
-      tree-sitter-cli
+      tree-sitter-cli \
+      || fail "Failed to install Arch packages"
 
     # Reuse existing helpers
     setup_fdfind
@@ -200,11 +207,11 @@ function clone_repo {
   if [[ "$DRY" == "false" ]]; then
     if [ ! -d "$HOME/dotfiles" ]; then
       cd "$HOME" || return
-      git clone https://github.com/QuanDo2000/dotfiles.git
+      git clone https://github.com/QuanDo2000/dotfiles.git || fail "Failed to clone dotfiles repo"
       info "Finished cloning dotfiles repo"
     else
       cd "$HOME/dotfiles" || return
-      git pull
+      git pull || fail "Failed to pull dotfiles repo"
       info "Finished pulling dotfiles repo"
     fi
   fi
@@ -401,6 +408,76 @@ function setup_dotfiles {
   success "Done!"
 }
 
+function verify {
+  local errors=0
+
+  info "Verifying installed tools..."
+  for cmd in git zsh vim nvim tmux fzf fd rg lazygit zoxide; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      success "$cmd found: $(command -v "$cmd")"
+    else
+      fail_soft "$cmd not found"
+      errors=$((errors + 1))
+    fi
+  done
+
+  info "Verifying oh-my-zsh..."
+  if [ -d "$HOME/.oh-my-zsh" ]; then
+    success "oh-my-zsh installed"
+  else
+    fail_soft "oh-my-zsh not installed"
+    errors=$((errors + 1))
+  fi
+
+  info "Verifying zsh plugins..."
+  local zsh_custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+  for plugin in zsh-autosuggestions fast-syntax-highlighting fzf-tab; do
+    if [ -d "$zsh_custom/plugins/$plugin" ]; then
+      success "zsh plugin: $plugin"
+    else
+      fail_soft "zsh plugin missing: $plugin"
+      errors=$((errors + 1))
+    fi
+  done
+
+  info "Verifying tmux plugins..."
+  if [ -d "$HOME/.tmux/plugins/tpm" ]; then
+    success "TPM installed"
+  else
+    fail_soft "TPM not installed"
+    errors=$((errors + 1))
+  fi
+
+  info "Verifying symlinks..."
+  local dotfiles_dir="$HOME/dotfiles"
+  for f in .zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
+    local target="$HOME/$f"
+    if [ -L "$target" ]; then
+      local link_target
+      link_target="$(readlink "$target")"
+      if [[ "$link_target" == "$dotfiles_dir"* ]]; then
+        success "$f -> $link_target"
+      else
+        fail_soft "$f points to $link_target (expected $dotfiles_dir/...)"
+        errors=$((errors + 1))
+      fi
+    elif [ -f "$target" ]; then
+      fail_soft "$f exists but is not a symlink"
+      errors=$((errors + 1))
+    else
+      fail_soft "$f not found"
+      errors=$((errors + 1))
+    fi
+  done
+
+  echo ""
+  if [ "$errors" -eq 0 ]; then
+    success "All checks passed!"
+  else
+    info "$errors issue(s) found"
+  fi
+}
+
 if [ "$1" = "--dry" ] || [ "$1" = "-d" ]; then
   DRY=true
   setup_dotfiles
@@ -409,6 +486,8 @@ elif [ "$1" = "--install" ] || [ "$1" = "-i" ]; then
   install_extras
 elif [ "$1" = "--symlinks" ] || [ "$1" = "-s" ]; then
   setup_symlinks
+elif [ "$1" = "--verify" ] || [ "$1" = "-v" ]; then
+  verify
 else
   setup_dotfiles
 fi
