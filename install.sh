@@ -47,10 +47,10 @@ function install_neovim {
   if [[ "$DRY" == "false" ]]; then
     if ! command -v nvim >/dev/null 2>&1; then
       # Install latest Neovim
-      curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz
-      sudo rm -rf /opt/nvim
-      sudo tar -C /opt -xzf nvim-linux64.tar.gz
-      rm -rf nvim-linux64.tar.gz
+      curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+      sudo rm -rf /opt/nvim-linux-x86_64
+      sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
+      rm -rf nvim-linux-x86_64.tar.gz
     else
       info "Already installed neovim"
     fi
@@ -138,12 +138,12 @@ function install_arch {
 
     sudo pacman -S --needed --noconfirm \
       base-devel curl wget git unzip zsh vim tmux fontconfig \
-      fzf fd ripgrep neovim lazygit ttf-firacode-nerd zoxide \
+      fzf fd ripgrep lazygit ttf-firacode-nerd zoxide \
       gnupg wl-clipboard openssh lua51 luarocks nvm \
       tree-sitter-cli \
       || fail "Failed to install Arch packages"
 
-    # Reuse existing helpers
+    install_neovim
     setup_fdfind
   fi
   success "Finished install for Arch Linux"
