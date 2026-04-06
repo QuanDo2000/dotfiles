@@ -35,9 +35,7 @@ function update_repo {
   info "Updating dotfiles repo..."
   if [[ "$DRY" == "false" ]]; then
     cd "$DOTFILES_DIR" || return
-    git stash --quiet
-    git pull --rebase || fail "Failed to pull dotfiles repo"
-    git stash pop --quiet 2>/dev/null || true
+    git pull --rebase --autostash || fail "Failed to pull dotfiles repo"
   fi
   success "Finished updating repo"
 }
