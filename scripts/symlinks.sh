@@ -98,12 +98,12 @@ function setup_symlinks_folder {
     return
   fi
 
-  # Setup symlinks for direct files (copy zshrc files instead of linking)
+  # Setup symlinks for direct files (copy .zshrc instead of linking)
   while IFS= read -r -d '' src <&3; do
     local name
     name="$(basename "$src")"
     dst="$HOME/$name"
-    if [[ "$name" == .zshrc* ]]; then
+    if [[ "$name" == ".zshrc" ]]; then
       copy_file "$src" "$dst"
     else
       link_files "$src" "$dst"
