@@ -65,6 +65,30 @@ function link_files {
   fi
 }
 
+function copy_file {
+  local src=$1 dst=$2
+  info "Copying $src to $dst"
+  if [[ "$DRY" == "true" ]]; then
+    return
+  fi
+
+  if [ -f "$dst" ] && [[ "$FORCE" != "true" ]]; then
+    if diff -q "$src" "$dst" >/dev/null 2>&1; then
+      success "Skipped $src (already up to date)"
+      return
+    fi
+    user "File already exists: $dst, overwrite? [y/N]"
+    read -n 1 -r action
+    if [[ "$action" != "y" && "$action" != "Y" ]]; then
+      success "Skipped $src"
+      return
+    fi
+  fi
+
+  cp "$src" "$dst"
+  success "Copied $src to $dst"
+}
+
 function setup_symlinks_folder {
   local root=$1
   info "Setting up symlinks for $root..."
@@ -74,10 +98,16 @@ function setup_symlinks_folder {
     return
   fi
 
-  # Setup symlinks for direct files
+  # Setup symlinks for direct files (copy zshrc files instead of linking)
   while IFS= read -r -d '' src <&3; do
-    dst="$HOME/$(basename "$src")"
-    link_files "$src" "$dst"
+    local name
+    name="$(basename "$src")"
+    dst="$HOME/$name"
+    if [[ "$name" == .zshrc* ]]; then
+      copy_file "$src" "$dst"
+    else
+      link_files "$src" "$dst"
+    fi
   done 3< <(find "$root" -maxdepth 1 -type f -print0)
 
   # Setup symlinks for config folders
