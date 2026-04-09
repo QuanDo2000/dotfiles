@@ -3,7 +3,7 @@ export ZSH="$HOME/.oh-my-zsh"
 
 # Environment variables
 export SHELL=$(which zsh)
-export EDITOR=vim
+export EDITOR=nvim
 export GPG_TTY=$(tty)
 
 # Hyprshot
