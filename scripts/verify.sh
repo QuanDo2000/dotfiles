@@ -42,7 +42,7 @@ function verify {
 
   info "Verifying symlinks..."
   local dotfiles_dir="$HOME/dotfiles"
-  for f in .zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
+  for f in .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
     local target="$HOME/$f"
     if [ -L "$target" ]; then
       local link_target
@@ -61,6 +61,20 @@ function verify {
       errors=$((errors + 1))
     fi
   done
+
+  info "Verifying copied files..."
+  local source="$dotfiles_dir/unix/.zshrc"
+  local target="$HOME/.zshrc"
+  if [ -f "$target" ]; then
+    if [ -f "$source" ] && diff -q "$source" "$target" >/dev/null 2>&1; then
+      success ".zshrc matches source"
+    else
+      info ".zshrc exists but differs from source (local edits are expected)"
+    fi
+  else
+    fail_soft ".zshrc not found"
+    errors=$((errors + 1))
+  fi
 
   echo ""
   if [ "$errors" -eq 0 ]; then
