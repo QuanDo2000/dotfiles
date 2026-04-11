@@ -57,3 +57,31 @@ test_quiet_force_flag() {
   output=$(info "forced message" --force)
   assert_contains "$output" "forced message"
 }
+
+test_quiet_does_not_suppress_user() {
+  QUIET=true
+  local output
+  output=$(user "msg")
+  assert_contains "$output" "msg"
+}
+
+test_success_force_flag() {
+  QUIET=true
+  local output
+  output=$(success "forced" --force)
+  assert_contains "$output" "forced"
+}
+
+test_fail_output_contains_message() {
+  local output
+  output=$(fail "specific error" 2>&1 || true)
+  assert_contains "$output" "specific error"
+}
+
+test_default_globals() {
+  unset DRY QUIET FORCE
+  source "$REPO_DIR/scripts/utils.sh"
+  assert_equals "false" "$DRY"
+  assert_equals "false" "$QUIET"
+  assert_equals "false" "$FORCE"
+}

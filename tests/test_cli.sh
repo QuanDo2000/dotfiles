@@ -47,3 +47,29 @@ test_combined_flags() {
 test_unknown_command_fails() {
   assert_exit_code 1 bash "$DOTFILE" nonsense_command
 }
+
+test_long_flag_dry() {
+  assert_exit_code 0 bash "$DOTFILE" --dry --help
+}
+
+test_long_flag_force() {
+  assert_exit_code 0 bash "$DOTFILE" --force --help
+}
+
+test_long_flag_quiet() {
+  assert_exit_code 0 bash "$DOTFILE" --quiet --help
+}
+
+test_long_flag_help() {
+  local output
+  output=$(bash "$DOTFILE" --help 2>&1)
+  assert_contains "$output" "Usage"
+}
+
+test_verify_command_runs() {
+  assert_exit_code 0 bash "$DOTFILE" verify
+}
+
+test_dry_run_default_command() {
+  assert_exit_code 0 bash "$DOTFILE" --dry all
+}

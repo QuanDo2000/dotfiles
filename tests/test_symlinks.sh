@@ -162,3 +162,87 @@ test_setup_symlinks_folder_zshrc_copied() {
   actual="$(cat "$HOME/.zshrc")"
   assert_equals "zsh config" "$actual"
 }
+
+test_link_files_overwrite_all() {
+  local overwrite_all=true backup_all=false skip_all=false
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  local old_target="$TEST_TMPDIR/oldtarget"
+  echo "old" > "$old_target"
+  echo "new" > "$src"
+  ln -s "$old_target" "$dst"
+
+  link_files "$src" "$dst"
+
+  assert_symlink "$dst" "$src"
+}
+
+test_link_files_backup_all() {
+  local overwrite_all=false backup_all=true skip_all=false
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "new" > "$src"
+  echo "existing" > "$dst"
+
+  link_files "$src" "$dst"
+
+  assert_file_exists "${dst}.backup"
+  assert_symlink "$dst" "$src"
+}
+
+test_link_files_skip_all() {
+  local overwrite_all=false backup_all=false skip_all=true
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "new" > "$src"
+  echo "existing" > "$dst"
+
+  link_files "$src" "$dst"
+
+  if [ -L "$dst" ]; then
+    echo "  FAILED: dst should still be a regular file, not a symlink" >> "$ERROR_FILE"
+  fi
+  assert_file_exists "$dst"
+}
+
+test_setup_symlinks_folder_nonexistent_root() {
+  local overwrite_all=false backup_all=false skip_all=false
+  local before_count
+  before_count="$(find "$HOME" -mindepth 1 | wc -l)"
+
+  setup_symlinks_folder "$TEST_TMPDIR/does_not_exist"
+
+  local after_count
+  after_count="$(find "$HOME" -mindepth 1 | wc -l)"
+  assert_equals "$before_count" "$after_count"
+}
+
+test_setup_symlinks_folder_creates_local_bin() {
+  local overwrite_all=false backup_all=false skip_all=false
+  rm -rf "$HOME/.local/bin"
+  local root="$TEST_TMPDIR/fakedir"
+  mkdir -p "$root/bin"
+  echo "#!/bin/bash" > "$root/bin/mytool"
+
+  setup_symlinks_folder "$root"
+
+  if [ ! -d "$HOME/.local/bin" ]; then
+    echo "  FAILED: \$HOME/.local/bin was not created" >> "$ERROR_FILE"
+  fi
+  assert_symlink "$HOME/.local/bin/mytool" "$root/bin/mytool"
+}
+
+test_setup_symlinks_folder_creates_config() {
+  local overwrite_all=false backup_all=false skip_all=false
+  rm -rf "$HOME/.config"
+  local root="$TEST_TMPDIR/fakedir"
+  mkdir -p "$root/config/myapp"
+  echo "setting=1" > "$root/config/myapp/config.toml"
+
+  setup_symlinks_folder "$root"
+
+  if [ ! -d "$HOME/.config" ]; then
+    echo "  FAILED: \$HOME/.config was not created" >> "$ERROR_FILE"
+  fi
+  assert_symlink "$HOME/.config/myapp" "$root/config/myapp"
+}

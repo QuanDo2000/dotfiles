@@ -74,3 +74,54 @@ test_verify_error_count() {
   output=$(verify 2>&1) || true
   assert_contains "$output" "issue(s) found"
 }
+
+test_verify_oh_my_zsh_detected() {
+  mkdir -p "$TEST_HOME/dotfiles"
+  mkdir -p "$TEST_HOME/.oh-my-zsh"
+  local output
+  output=$(verify 2>&1) || true
+  assert_contains "$output" "oh-my-zsh installed"
+}
+
+test_verify_oh_my_zsh_missing() {
+  mkdir -p "$TEST_HOME/dotfiles"
+  rm -rf "$TEST_HOME/.oh-my-zsh"
+  local output
+  output=$(verify 2>&1) || true
+  assert_contains "$output" "oh-my-zsh not installed"
+}
+
+test_verify_zsh_plugin_detected() {
+  mkdir -p "$TEST_HOME/dotfiles"
+  mkdir -p "$TEST_HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+  local output
+  output=$(verify 2>&1) || true
+  assert_contains "$output" "zsh plugin: zsh-autosuggestions"
+}
+
+test_verify_tpm_detected() {
+  mkdir -p "$TEST_HOME/dotfiles"
+  mkdir -p "$TEST_HOME/.tmux/plugins/tpm"
+  local output
+  output=$(verify 2>&1) || true
+  assert_contains "$output" "TPM installed"
+}
+
+test_verify_symlink_wrong_target() {
+  mkdir -p "$TEST_HOME/dotfiles"
+  mkdir -p "$TEST_HOME/other"
+  echo "content" > "$TEST_HOME/other/.vimrc"
+  ln -s "$TEST_HOME/other/.vimrc" "$TEST_HOME/.vimrc"
+  local output
+  output=$(verify 2>&1) || true
+  assert_contains "$output" "expected"
+}
+
+test_verify_zshrc_exists() {
+  mkdir -p "$TEST_HOME/dotfiles/unix"
+  echo "zshrc content" > "$TEST_HOME/dotfiles/unix/.zshrc"
+  echo "zshrc content" > "$TEST_HOME/.zshrc"
+  local output
+  output=$(verify 2>&1) || true
+  assert_contains "$output" ".zshrc matches source"
+}
