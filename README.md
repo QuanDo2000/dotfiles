@@ -52,3 +52,13 @@ Options:
   -q, --quiet Only show errors
   -h, --help  Show this help message
 ```
+
+## Testing
+
+Tests run in a Docker container to avoid touching your host filesystem. Requires Docker.
+
+```bash
+./tests/runner.sh                    # Run all tests in Docker
+./tests/runner.sh test_utils.sh      # Run a single test file
+./tests/runner.sh --no-docker        # Run directly on host (no Docker)
+```
