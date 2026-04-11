@@ -10,15 +10,17 @@ Personal setup scripts and configuration files for new machines.
 
 ### Linux / macOS
 
+First-time setup:
+
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/QuanDo2000/dotfiles/main/install.sh)
+git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
+~/dotfiles/shared/bin/dotfile
 ```
 
-Or if already cloned:
+After symlinks are created, the `dotfile` command is available in your PATH:
 
 ```bash
-cd ~/dotfiles
-./install.sh
+dotfile
 ```
 
 ### Windows
@@ -26,14 +28,14 @@ cd ~/dotfiles
 Run the following in PowerShell as Administrator:
 
 ```powershell
-Set-ExecutionPolicy Unrestricted -Scope Process
-iwr -useb https://raw.githubusercontent.com/QuanDo2000/dotfiles/main/install.ps1 | iex
+git clone https://github.com/QuanDo2000/dotfiles.git $HOME\Documents\Projects\dotfiles
+& $HOME\Documents\Projects\dotfiles\windows\bin\dotfile.ps1
 ```
 
 ### Commands
 
 ```
-./install.sh [OPTIONS] [COMMAND]
+dotfile [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
@@ -46,5 +48,7 @@ Commands:
 
 Options:
   -d, --dry   Dry run (no changes made)
+  -f, --force Overwrite existing files without prompting
+  -q, --quiet Only show errors
   -h, --help  Show this help message
 ```

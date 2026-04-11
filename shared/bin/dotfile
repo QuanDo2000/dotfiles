@@ -5,7 +5,7 @@ set -eo pipefail
 export DRY=false
 export QUIET=false
 export FORCE=false
-DOTFILES_DIR="$HOME/dotfiles"
+DOTFILES_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
 REPO_URL="https://github.com/QuanDo2000/dotfiles.git"
 
 # Source utils first (no dependencies)

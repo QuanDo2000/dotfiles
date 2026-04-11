@@ -110,6 +110,18 @@ function setup_symlinks_folder {
     fi
   done 3< <(find "$root" -maxdepth 1 -type f -print0)
 
+  # Setup symlinks for bin files
+  if [[ -d "$root/bin" ]]; then
+    if [[ ! -d "$HOME/.local/bin" ]]; then
+      info "$HOME/.local/bin doesn't exist. Creating folder..."
+      mkdir -p "$HOME/.local/bin"
+    fi
+    while IFS= read -r -d '' src <&3; do
+      dst="$HOME/.local/bin/$(basename "$src")"
+      link_files "$src" "$dst"
+    done 3< <(find "$root/bin" -maxdepth 1 -type f -print0)
+  fi
+
   # Setup symlinks for config folders
   if [[ ! -d "$root/config" ]]; then
     info "$root/config doesn't exist"
