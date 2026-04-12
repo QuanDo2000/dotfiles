@@ -383,6 +383,14 @@ function SetupSymlinks {
     LinkFile -source (Join-Path $configPath "_gvimrc") -destination "$HOME\_gvimrc"
     LinkFile -source (Join-Path $sharedPath ".vimrc") -destination "$HOME\_vimrc"
     LinkFile -source (Join-Path $sharedPath ".gitconfig") -destination "$HOME\.gitconfig"
+    LinkFile -source (Join-Path $configPath ".gitconfig") -destination "$HOME\.gitconfig.windows"
+
+    # SSH config
+    $sshDest = "$HOME\.ssh"
+    if (-not (Test-Path $sshDest)) {
+        New-Item -ItemType Directory -Path $sshDest | Out-Null
+    }
+    LinkFile -source (Join-Path $configPath ".ssh\config") -destination (Join-Path $sshDest "config")
 
     # Neovim settings (symlink the whole dir)
     $nvimSettingsPath = "$env:LOCALAPPDATA\nvim"
