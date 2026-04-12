@@ -250,21 +250,58 @@ function InstallFnm {
 }
 
 function InstallTreeSitter {
-    Info "Installing tree-sitter CLI via npm..."
+    Info "Checking tree-sitter CLI..."
     if ($script:Dry) { return }
 
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        if (Get-Command fnm -ErrorAction SilentlyContinue) {
-            fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
-        }
-    }
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        FailSoft "npm not found on PATH. Skipping tree-sitter install — open a new shell and re-run 'dotfile.ps1 extras'."
+    $installDir = Join-Path $env:LOCALAPPDATA "Programs\tree-sitter"
+    $binDir = Join-Path $installDir "bin"
+    $exePath = Join-Path $binDir "tree-sitter.exe"
+    $markerFile = Join-Path $installDir ".release-tag"
+
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/tree-sitter/tree-sitter/releases/latest" -Headers @{ "User-Agent" = "dotfile.ps1" }
+    } catch {
+        FailSoft "Could not query tree-sitter latest release: $($_.Exception.Message)"
         return
     }
 
-    npm install -g tree-sitter-cli
-    Success "Finished installing tree-sitter CLI"
+    $latestTag = $release.tag_name
+    $asset = $release.assets | Where-Object { $_.name -eq "tree-sitter-windows-x64.gz" } | Select-Object -First 1
+    if (-not $asset) {
+        FailSoft "tree-sitter-windows-x64.gz not found in latest release assets"
+        return
+    }
+
+    $currentTag = if (Test-Path $markerFile) { (Get-Content -Raw $markerFile).Trim() } else { "" }
+    if ($currentTag -eq $latestTag -and (Test-Path $exePath)) {
+        Success "tree-sitter CLI up to date ($latestTag)"
+        AddToUserPath $binDir
+        return
+    }
+
+    Info "Downloading tree-sitter CLI $latestTag..."
+    $tmpGz = Join-Path ([System.IO.Path]::GetTempPath()) "tree-sitter-$([Guid]::NewGuid().ToString('N')).gz"
+    try {
+        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $tmpGz -UseBasicParsing
+
+        if (-not (Test-Path $binDir)) { New-Item -ItemType Directory -Path $binDir -Force | Out-Null }
+
+        $inStream = [System.IO.File]::OpenRead($tmpGz)
+        try {
+            $gzStream = New-Object System.IO.Compression.GZipStream($inStream, [System.IO.Compression.CompressionMode]::Decompress)
+            try {
+                $outStream = [System.IO.File]::Create($exePath)
+                try { $gzStream.CopyTo($outStream) } finally { $outStream.Dispose() }
+            } finally { $gzStream.Dispose() }
+        } finally { $inStream.Dispose() }
+
+        Set-Content -Path $markerFile -Value $latestTag -NoNewline
+        Success "Installed tree-sitter CLI $latestTag to $exePath"
+    } finally {
+        if (Test-Path $tmpGz) { Remove-Item -Force $tmpGz }
+    }
+
+    AddToUserPath $binDir
 }
 
 function InstallExtras {
