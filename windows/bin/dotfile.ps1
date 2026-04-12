@@ -1,10 +1,23 @@
 $ErrorActionPreference = "Stop"
 
+# Self-elevate to admin (required for symlink creation)
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host "  [ .. ] Elevating to Administrator..."
+    $pwsh = (Get-Process -Id $PID).Path
+    $argList = @("-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) + $args
+    Start-Process -FilePath $pwsh -ArgumentList $argList -Verb RunAs -Wait
+    exit $LASTEXITCODE
+}
+
 # Global variables
 $script:Dry = $false
 $script:Quiet = $false
 $script:Force = $false
-$script:DotfilesDir = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+# Resolve symlink so invoking via ~\.local\bin points back to the real repo
+$scriptItem = Get-Item -LiteralPath $PSCommandPath
+$scriptReal = if ($scriptItem.Target) { $scriptItem.Target } else { $PSCommandPath }
+$script:DotfilesDir = (Resolve-Path (Join-Path (Split-Path $scriptReal -Parent) "..\..")).Path
 $script:RepoUrl = "https://github.com/QuanDo2000/dotfiles.git"
 
 # Logging helpers
@@ -14,39 +27,6 @@ function Fail($msg) { Write-Host "  [FAIL] $msg" -ForegroundColor Red; exit 1 }
 function FailSoft($msg) { Write-Host "  [FAIL] $msg" -ForegroundColor Red }
 
 # File helpers
-function CopyWithBackup($source, $destination) {
-    Info "Copying $source to $destination"
-    if ($script:Dry) { return }
-
-    if (Test-Path $destination) {
-        if (-not $script:Force) {
-            $diff = Compare-Object (Get-Content $source) (Get-Content $destination) -ErrorAction SilentlyContinue
-            if (-not $diff) {
-                Success "Skipped $source (already up to date)"
-                return
-            }
-        }
-        Copy-Item -Path $destination -Destination "$destination.bak" -Force
-    }
-    Copy-Item -Path $source -Destination $destination -Force
-    Success "Copied $source to $destination"
-}
-
-function CopyDirWithBackup($source, $destination) {
-    Info "Copying $source to $destination"
-    if ($script:Dry) { return }
-
-    if (Test-Path $destination) {
-        if (-not $script:Force) {
-            Copy-Item -Path $destination -Destination "$destination.bak" -Recurse -Force
-        }
-    } else {
-        New-Item -ItemType Directory -Path $destination | Out-Null
-    }
-    Copy-Item -Path $source -Destination $destination -Force -Recurse
-    Success "Copied $source to $destination"
-}
-
 function PromptAction($destination, $sourceName) {
     Write-Host "  [ ?? ] File already exists: $destination ($sourceName)"
     Write-Host "         [s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all"
@@ -54,9 +34,20 @@ function PromptAction($destination, $sourceName) {
     return $key
 }
 
+function CanCreateSymlink {
+    $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if ($admin) { return $true }
+    $devMode = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" -Name "AllowDevelopmentWithoutDevLicense" -ErrorAction SilentlyContinue
+    return ($devMode -and $devMode.AllowDevelopmentWithoutDevLicense -eq 1)
+}
+
 function LinkFile($source, $destination) {
     Info "Linking $source to $destination"
     if ($script:Dry) { return }
+
+    if (-not (CanCreateSymlink)) {
+        Fail "Creating symlinks requires Administrator privileges or Windows Developer Mode. Enable Developer Mode (Settings > For developers) or re-run PowerShell as Administrator."
+    }
 
     $skip = $false
     if (Test-Path $destination) {
@@ -93,6 +84,40 @@ function LinkFile($source, $destination) {
     Success "Linked $source to $destination"
 }
 
+function LinkDir($source, $destination) {
+    Info "Linking directory $source to $destination"
+    if ($script:Dry) { return }
+
+    if (-not (CanCreateSymlink)) {
+        Fail "Creating symlinks requires Administrator privileges or Windows Developer Mode."
+    }
+
+    if (Test-Path $destination) {
+        $current = Get-Item $destination -ErrorAction SilentlyContinue
+        if ($current.Target -eq $source) {
+            Success "Skipped $destination (already linked)"
+            return
+        }
+        if ($script:Force) {
+            if ($current.PSIsContainer -and -not $current.LinkType) {
+                Remove-Item $destination -Recurse -Force
+            } else {
+                Remove-Item $destination -Force
+            }
+        } else {
+            Move-Item $destination "$destination.bak" -Force
+            Success "Moved $destination to $destination.bak"
+        }
+    }
+
+    $parent = Split-Path $destination -Parent
+    if ($parent -and -not (Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+    New-Item -ItemType SymbolicLink -Path $destination -Target $source | Out-Null
+    Success "Linked $source to $destination"
+}
+
 # Ensure repo exists
 function EnsureRepo {
     if (-not (Test-Path $script:DotfilesDir)) {
@@ -113,16 +138,63 @@ function UpdateRepo {
     Success "Finished updating repo"
 }
 
+function WingetHas($id) {
+    $null = winget list --id $id --exact --accept-source-agreements 2>$null | Out-String
+    return ($LASTEXITCODE -eq 0)
+}
+
+function ScoopHas($name) {
+    $bare = ($name -split '/')[-1]
+    return [Boolean](scoop list $bare 6>$null | Where-Object { $_.Name -eq $bare })
+}
+
 function InstallPackages {
     Info "Installing packages..."
     if ($script:Dry) { return }
 
-    winget install Microsoft.Powershell Git.Git Microsoft.WindowsTerminal JanDeDobbeleer.OhMyPosh Neovim.Neovim JesseDuffield.lazygit BurntSushi.ripgrep.MSVC sharkdp.fd JernejSimoncic.Wget fzf --disable-interactivity --accept-package-agreements
+    $wingetPkgs = @(
+        "Microsoft.Powershell", "Git.Git", "Microsoft.WindowsTerminal",
+        "JanDeDobbeleer.OhMyPosh", "JesseDuffield.lazygit",
+        "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "JernejSimoncic.Wget",
+        "junegunn.fzf", "Schniz.fnm"
+    )
+    Info "Checking winget packages ($($wingetPkgs.Count) total)..."
+    $missing = @()
+    for ($i = 0; $i -lt $wingetPkgs.Count; $i++) {
+        $pkg = $wingetPkgs[$i]
+        Info "  [$($i + 1)/$($wingetPkgs.Count)] Checking $pkg..."
+        if (-not (WingetHas $pkg)) { $missing += $pkg }
+    }
+    if ($missing.Count -gt 0) {
+        Info "Installing $($missing.Count) missing winget package(s): $($missing -join ', ')"
+        winget install @missing --disable-interactivity --accept-package-agreements
+    } else {
+        Success "All winget packages already installed"
+    }
 
-    Install-Module -Name PowerShellGet -Force
-    Install-Module PSReadLine -AllowPrerelease -Force
-    Install-Module -Name Terminal-Icons -Repository PSGallery
-    Update-Module
+    InstallNeovimNightly
+
+    # Run module installs in a fresh pwsh process to avoid
+    # "module is currently in use" warnings from PackageManagement/PowerShellGet.
+    $modules = @("PowerShellGet", "PSReadLine", "Terminal-Icons")
+    Info "Checking PowerShell modules..."
+    $missingMods = @($modules | Where-Object { -not (Get-Module -ListAvailable -Name $_) })
+    if ($missingMods.Count -gt 0) {
+        Info "Installing missing PowerShell modules: $($missingMods -join ', ') (this may take a few minutes)"
+        $pwsh = (Get-Command pwsh -ErrorAction SilentlyContinue)?.Source
+        if (-not $pwsh) { $pwsh = (Get-Command powershell).Source }
+        $moduleScript = @'
+$ErrorActionPreference = "Stop"
+Install-Module -Name PowerShellGet -Force -AllowClobber -Scope CurrentUser
+Install-Module PSReadLine -AllowPrerelease -Force -Scope CurrentUser
+Install-Module -Name Terminal-Icons -Repository PSGallery -Force -Scope CurrentUser
+Update-Module
+'@
+        & $pwsh -NoProfile -ExecutionPolicy Bypass -Command $moduleScript
+        if ($LASTEXITCODE -ne 0) { FailSoft "Module install subprocess exited with code $LASTEXITCODE" }
+    } else {
+        Success "All PowerShell modules already installed"
+    }
 
     $scoopExists = [Boolean](Get-Command scoop -ErrorAction SilentlyContinue)
     if (-not $scoopExists) {
@@ -130,7 +202,16 @@ function InstallPackages {
         Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
     }
 
-    scoop install mingw gcc main/ast-grep
+    $scoopPkgs = @("mingw", "gcc", "extras/vcredist2022", "zig", "main/ast-grep")
+    scoop bucket add extras *> $null
+    Info "Checking scoop packages..."
+    $missingScoop = @($scoopPkgs | Where-Object { -not (ScoopHas $_) })
+    if ($missingScoop.Count -gt 0) {
+        Info "Installing missing scoop package(s): $($missingScoop -join ', ')"
+        scoop install @missingScoop
+    } else {
+        Success "All scoop packages already installed"
+    }
 
     Success "Finished installing packages"
 }
@@ -146,8 +227,122 @@ function InstallFont {
     Success "Finished installing font"
 }
 
+function InstallFnm {
+    Info "Installing Node.js LTS via fnm..."
+    if ($script:Dry) { return }
+
+    if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
+        $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        $env:Path = "$machinePath;$userPath"
+    }
+    if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
+        FailSoft "fnm not found on PATH. Skipping Node.js LTS install — open a new shell and re-run 'dotfile.ps1 extras'."
+        return
+    }
+
+    fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
+    fnm install --lts
+    fnm use lts-latest
+    fnm default lts-latest
+
+    Success "Finished installing Node.js LTS"
+}
+
+function InstallTreeSitter {
+    Info "Installing tree-sitter CLI via npm..."
+    if ($script:Dry) { return }
+
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        if (Get-Command fnm -ErrorAction SilentlyContinue) {
+            fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
+        }
+    }
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        FailSoft "npm not found on PATH. Skipping tree-sitter install — open a new shell and re-run 'dotfile.ps1 extras'."
+        return
+    }
+
+    npm install -g tree-sitter-cli
+    Success "Finished installing tree-sitter CLI"
+}
+
 function InstallExtras {
     InstallFont
+    InstallFnm
+    InstallTreeSitter
+}
+
+function InstallNeovimNightly {
+    Info "Checking Neovim nightly..."
+    if ($script:Dry) { return }
+
+    $installDir = Join-Path $env:LOCALAPPDATA "Programs\Neovim"
+    $binDir = Join-Path $installDir "bin"
+    $markerFile = Join-Path $installDir ".nightly-sha"
+
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/neovim/neovim/releases/tags/nightly" -Headers @{ "User-Agent" = "dotfile.ps1" }
+    } catch {
+        FailSoft "Could not query Neovim nightly release: $($_.Exception.Message)"
+        return
+    }
+
+    $latestSha = $release.target_commitish
+    $asset = $release.assets | Where-Object { $_.name -eq "nvim-win64.zip" } | Select-Object -First 1
+    if (-not $asset) {
+        FailSoft "nvim-win64.zip not found in nightly release assets"
+        return
+    }
+
+    $currentSha = if (Test-Path $markerFile) { (Get-Content -Raw $markerFile).Trim() } else { "" }
+    if ($currentSha -eq $latestSha -and (Test-Path (Join-Path $binDir "nvim.exe"))) {
+        Success "Neovim nightly up to date ($($latestSha.Substring(0, 7)))"
+        AddToUserPath $binDir
+        return
+    }
+
+    Info "Downloading Neovim nightly ($($latestSha.Substring(0, 7)))..."
+    $tmpZip = Join-Path ([System.IO.Path]::GetTempPath()) "nvim-nightly-$([Guid]::NewGuid().ToString('N')).zip"
+    $tmpExtract = Join-Path ([System.IO.Path]::GetTempPath()) "nvim-nightly-$([Guid]::NewGuid().ToString('N'))"
+    try {
+        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $tmpZip -UseBasicParsing
+        Expand-Archive -Path $tmpZip -DestinationPath $tmpExtract -Force
+
+        $extracted = Get-ChildItem -Path $tmpExtract -Directory | Select-Object -First 1
+        if (-not $extracted) { Fail "Extracted nightly archive has no top-level directory" }
+
+        if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
+        New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+        Get-ChildItem -Path $extracted.FullName -Force | Move-Item -Destination $installDir
+        Set-Content -Path $markerFile -Value $latestSha -NoNewline
+        Success "Installed Neovim nightly to $installDir"
+    } finally {
+        if (Test-Path $tmpZip) { Remove-Item -Force $tmpZip }
+        if (Test-Path $tmpExtract) { Remove-Item -Recurse -Force $tmpExtract }
+    }
+
+    AddToUserPath $binDir
+}
+
+function AddToUserPath($dir) {
+    Info "Ensuring $dir is on user PATH"
+    if ($script:Dry) { return }
+
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $entries = @()
+    if ($userPath) { $entries = $userPath.Split(';') | Where-Object { $_ -ne "" } }
+    if ($entries -contains $dir) {
+        Success "$dir already on user PATH"
+    } else {
+        $newPath = (($entries + $dir) -join ';')
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        Success "Added $dir to user PATH"
+    }
+
+    if (-not ($env:Path.Split(';') -contains $dir)) {
+        $env:Path = "$env:Path;$dir"
+    }
 }
 
 function SetupSymlinks {
@@ -158,7 +353,8 @@ function SetupSymlinks {
     $configPath = Join-Path $script:DotfilesDir "windows"
     $sharedPath = Join-Path $script:DotfilesDir "shared"
 
-    # PowerShell profiles
+    # PowerShell profiles (link each file into the target dir)
+    $psSource = Join-Path $configPath "Powershell"
     $targets = @(
         "$HOME\Documents\WindowsPowerShell"
         "$HOME\Documents\PowerShell"
@@ -167,22 +363,24 @@ function SetupSymlinks {
         if (-not (Test-Path $target)) {
             New-Item -ItemType Directory -Path $target | Out-Null
         }
-        CopyDirWithBackup -source "$configPath\Powershell\*" -destination $target
+        Get-ChildItem $psSource -File | ForEach-Object {
+            LinkFile -source $_.FullName -destination (Join-Path $target $_.Name)
+        }
     }
 
     # Windows Terminal settings
     $terminalSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
     $terminalSettingsSource = Join-Path $configPath "Terminal\settings.json"
-    CopyWithBackup -source $terminalSettingsSource -destination $terminalSettingsPath
+    LinkFile -source $terminalSettingsSource -destination $terminalSettingsPath
 
     # Vim settings
-    CopyWithBackup -source (Join-Path $configPath "_gvimrc") -destination "$HOME\_gvimrc"
-    CopyWithBackup -source (Join-Path $sharedPath ".vimrc") -destination "$HOME\_vimrc"
-    CopyWithBackup -source (Join-Path $sharedPath ".gitconfig") -destination "$HOME\.gitconfig"
+    LinkFile -source (Join-Path $configPath "_gvimrc") -destination "$HOME\_gvimrc"
+    LinkFile -source (Join-Path $sharedPath ".vimrc") -destination "$HOME\_vimrc"
+    LinkFile -source (Join-Path $sharedPath ".gitconfig") -destination "$HOME\.gitconfig"
 
-    # Neovim settings
+    # Neovim settings (symlink the whole dir)
     $nvimSettingsPath = "$env:LOCALAPPDATA\nvim"
-    CopyDirWithBackup -source (Join-Path $sharedPath "config\nvim\*") -destination $nvimSettingsPath
+    LinkDir -source (Join-Path $sharedPath "config\nvim") -destination $nvimSettingsPath
 
     # Bin files (link to user PATH directory)
     $binSource = Join-Path $configPath "bin"
@@ -191,6 +389,7 @@ function SetupSymlinks {
         if (-not (Test-Path $binDest)) {
             New-Item -ItemType Directory -Path $binDest | Out-Null
         }
+        AddToUserPath $binDest
         Get-ChildItem $binSource -File | ForEach-Object {
             LinkFile -source $_.FullName -destination (Join-Path $binDest $_.Name)
         }
