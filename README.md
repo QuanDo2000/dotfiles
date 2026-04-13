@@ -53,6 +53,8 @@ Options:
   -h, --help  Show this help message
 ```
 
+Note: `.zshrc` is **copied** into `$HOME` (not symlinked) so local edits don't propagate back into the repo. All other dotfiles are symlinked.
+
 ## Testing
 
 Tests run in a Docker container to avoid touching your host filesystem. Requires Docker.

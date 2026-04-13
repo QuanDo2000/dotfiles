@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 
 function install_oh_my_zsh {
   info "Installing oh-my-zsh..."

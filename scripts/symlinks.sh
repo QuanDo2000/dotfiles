@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
 
@@ -19,6 +20,8 @@ function link_files {
   if [[ -f "$dst" || -d "$dst" || -L "$dst" ]]; then
     if [[ "$overwrite_all" == "false" && "$backup_all" == "false" && "$skip_all" == "false" ]]; then
       if [[ -L "$dst" ]] && [[ "$(readlink "$dst")" == "$src" ]]; then
+        skip=true
+      elif [[ "$QUIET" == "true" ]]; then
         skip=true
       else
         user "File already exists: $dst ($(basename "$src")), what do you want to do?\n[s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?"
@@ -83,6 +86,10 @@ function copy_file {
       success "Skipped $src (already up to date)"
       return
     fi
+    if [[ "$QUIET" == "true" ]]; then
+      success "Skipped $src"
+      return
+    fi
     user "File already exists: $dst, overwrite? [y/N]"
     local action
     read -n 1 -r action
@@ -119,10 +126,7 @@ function setup_symlinks_folder {
 
   # Setup symlinks for bin files
   if [[ -d "$root/bin" ]]; then
-    if [[ ! -d "$HOME/.local/bin" ]]; then
-      info "$HOME/.local/bin doesn't exist. Creating folder..."
-      mkdir -p "$HOME/.local/bin" || fail "Failed to create $HOME/.local/bin"
-    fi
+    mkdir -p "$HOME/.local/bin" || fail "Failed to create $HOME/.local/bin"
     while IFS= read -r -d '' src <&3; do
       local dst="$HOME/.local/bin/$(basename "$src")"
       link_files "$src" "$dst"
@@ -134,10 +138,7 @@ function setup_symlinks_folder {
     info "$root/config doesn't exist"
     return
   fi
-  if [[ ! -d "$HOME/.config" ]]; then
-    info "$HOME/.config doesn't exist. Creating folder..."
-    mkdir -p "$HOME/.config" || fail "Failed to create $HOME/.config"
-  fi
+  mkdir -p "$HOME/.config" || fail "Failed to create $HOME/.config"
   while IFS= read -r -d '' src <&3; do
     local dst="$HOME/.config/$(basename "$src")"
     link_files "$src" "$dst"

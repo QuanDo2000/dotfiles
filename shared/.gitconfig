@@ -10,5 +10,3 @@
 [include]
     path = ~/.gitconfig.local
     path = ~/.gitconfig.windows
-[gpg]
-	program = C:/Program Files/GnuPG/bin/gpg.exe

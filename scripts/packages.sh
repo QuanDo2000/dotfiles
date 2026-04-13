@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 
 function install_font_debian {
   # https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
@@ -175,13 +176,14 @@ function install_packages {
   info "Installing packages..."
   if [[ "$(uname)" == "Linux" ]]; then
     if [[ -f "/etc/os-release" ]]; then
+      # shellcheck disable=SC1091
       source /etc/os-release
-      if [[ "$ID" == "debian" || "$ID_LIKE" == *"debian"* ]]; then
+      if [[ "${ID:-}" == "debian" || "${ID_LIKE:-}" == *"debian"* ]]; then
         install_debian
-      elif [[ "$ID" == "arch" || "$ID_LIKE" == *"arch"* ]]; then
+      elif [[ "${ID:-}" == "arch" || "${ID_LIKE:-}" == *"arch"* ]]; then
         install_arch
       else
-        fail "Unknown Linux distribution: $ID"
+        fail "Unknown Linux distribution: ${ID:-unknown}"
       fi
     else
       fail "Could not detect Linux distribution."

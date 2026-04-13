@@ -1,6 +1,15 @@
 #!/bin/bash
+set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
+
+# Binaries expected on PATH after install_packages has run.
+# Keep in sync with scripts/packages.sh (DEBIAN_PACKAGES / ARCH_PACKAGES / MAC_BREW_PACKAGES).
+REQUIRED_TOOLS=(git zsh vim nvim tmux fzf fd rg lazygit zoxide)
+
+# Symlinked dotfiles under $HOME (resolved to $DOTFILES_DIR/...).
+# Keep in sync with scripts/symlinks.sh and the shared/unix layout.
+REQUIRED_SYMLINKS=(.zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
 
 # Helper: check that a command exists on PATH.
 # Increments $errors on failure.
@@ -52,7 +61,7 @@ function verify {
   local errors=0
 
   info "Verifying installed tools..."
-  for cmd in git zsh vim nvim tmux fzf fd rg lazygit zoxide; do
+  for cmd in "${REQUIRED_TOOLS[@]}"; do
     _check_tool "$cmd"
   done
 
@@ -69,7 +78,7 @@ function verify {
   _check_dir "$HOME/.tmux/plugins/tpm" "TPM installed" "TPM not installed"
 
   info "Verifying symlinks..."
-  for f in .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
     _check_symlink "$f"
   done
 

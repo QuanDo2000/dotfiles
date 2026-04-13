@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 
 # Default globals if not set by caller
 : "${DRY:=false}"
@@ -7,7 +8,9 @@
 
 info() {
   [[ "$QUIET" == "true" && "${2:-}" != "--force" ]] && return
-  printf '\r  [ \033[00;34m..\033[0m ] %s\n' "$1"
+  local prefix=""
+  [[ "$DRY" == "true" ]] && prefix="[DRY] "
+  printf '\r  [ \033[00;34m..\033[0m ] %s%s\n' "$prefix" "$1"
 }
 
 user() {

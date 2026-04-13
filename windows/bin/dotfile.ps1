@@ -34,20 +34,9 @@ function PromptAction($destination, $sourceName) {
     return $key
 }
 
-function CanCreateSymlink {
-    $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if ($admin) { return $true }
-    $devMode = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" -Name "AllowDevelopmentWithoutDevLicense" -ErrorAction SilentlyContinue
-    return ($devMode -and $devMode.AllowDevelopmentWithoutDevLicense -eq 1)
-}
-
 function LinkFile($source, $destination) {
     Info "Linking $source to $destination"
     if ($script:Dry) { return }
-
-    if (-not (CanCreateSymlink)) {
-        Fail "Creating symlinks requires Administrator privileges or Windows Developer Mode. Enable Developer Mode (Settings > For developers) or re-run PowerShell as Administrator."
-    }
 
     $skip = $false
     if (Test-Path $destination) {
@@ -87,10 +76,6 @@ function LinkFile($source, $destination) {
 function LinkDir($source, $destination) {
     Info "Linking directory $source to $destination"
     if ($script:Dry) { return }
-
-    if (-not (CanCreateSymlink)) {
-        Fail "Creating symlinks requires Administrator privileges or Windows Developer Mode."
-    }
 
     if (Test-Path $destination) {
         $current = Get-Item $destination -ErrorAction SilentlyContinue
