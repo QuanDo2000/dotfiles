@@ -1,72 +1,85 @@
 #!/bin/bash
 
+: "${DOTFILES_DIR:=$HOME/dotfiles}"
+
+# Helper: check that a command exists on PATH.
+# Increments $errors on failure.
+_check_tool() {
+  local cmd="$1"
+  if command -v "$cmd" >/dev/null 2>&1; then
+    success "$cmd found: $(command -v "$cmd")"
+  else
+    fail_soft "$cmd not found"
+    errors=$((errors + 1))
+  fi
+}
+
+# Helper: check that a directory exists.
+# $1 = path, $2 = label shown on success, $3 = label shown on failure.
+_check_dir() {
+  local path="$1" ok_msg="$2" fail_msg="$3"
+  if [ -d "$path" ]; then
+    success "$ok_msg"
+  else
+    fail_soft "$fail_msg"
+    errors=$((errors + 1))
+  fi
+}
+
+# Helper: check that a file is a symlink pointing into DOTFILES_DIR.
+_check_symlink() {
+  local name="$1"
+  local target="$HOME/$name"
+  if [ -L "$target" ]; then
+    local link_target
+    link_target="$(readlink "$target")"
+    if [[ "$link_target" == "$DOTFILES_DIR"* ]]; then
+      success "$name -> $link_target"
+    else
+      fail_soft "$name points to $link_target (expected $DOTFILES_DIR/...)"
+      errors=$((errors + 1))
+    fi
+  elif [ -f "$target" ]; then
+    fail_soft "$name exists but is not a symlink"
+    errors=$((errors + 1))
+  else
+    fail_soft "$name not found"
+    errors=$((errors + 1))
+  fi
+}
+
 function verify {
   local errors=0
 
   info "Verifying installed tools..."
   for cmd in git zsh vim nvim tmux fzf fd rg lazygit zoxide; do
-    if command -v "$cmd" >/dev/null 2>&1; then
-      success "$cmd found: $(command -v "$cmd")"
-    else
-      fail_soft "$cmd not found"
-      errors=$((errors + 1))
-    fi
+    _check_tool "$cmd"
   done
 
   info "Verifying oh-my-zsh..."
-  if [ -d "$HOME/.oh-my-zsh" ]; then
-    success "oh-my-zsh installed"
-  else
-    fail_soft "oh-my-zsh not installed"
-    errors=$((errors + 1))
-  fi
+  _check_dir "$HOME/.oh-my-zsh" "oh-my-zsh installed" "oh-my-zsh not installed"
 
   info "Verifying zsh plugins..."
   local zsh_custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
   for plugin in zsh-autosuggestions fast-syntax-highlighting fzf-tab; do
-    if [ -d "$zsh_custom/plugins/$plugin" ]; then
-      success "zsh plugin: $plugin"
-    else
-      fail_soft "zsh plugin missing: $plugin"
-      errors=$((errors + 1))
-    fi
+    _check_dir "$zsh_custom/plugins/$plugin" "zsh plugin: $plugin" "zsh plugin missing: $plugin"
   done
 
   info "Verifying tmux plugins..."
-  if [ -d "$HOME/.tmux/plugins/tpm" ]; then
-    success "TPM installed"
-  else
-    fail_soft "TPM not installed"
-    errors=$((errors + 1))
-  fi
+  _check_dir "$HOME/.tmux/plugins/tpm" "TPM installed" "TPM not installed"
 
   info "Verifying symlinks..."
-  local dotfiles_dir="$HOME/dotfiles"
   for f in .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
-    local target="$HOME/$f"
-    if [ -L "$target" ]; then
-      local link_target
-      link_target="$(readlink "$target")"
-      if [[ "$link_target" == "$dotfiles_dir"* ]]; then
-        success "$f -> $link_target"
-      else
-        fail_soft "$f points to $link_target (expected $dotfiles_dir/...)"
-        errors=$((errors + 1))
-      fi
-    elif [ -f "$target" ]; then
-      fail_soft "$f exists but is not a symlink"
-      errors=$((errors + 1))
-    else
-      fail_soft "$f not found"
-      errors=$((errors + 1))
-    fi
+    _check_symlink "$f"
   done
 
   info "Verifying copied files..."
-  local source="$dotfiles_dir/unix/.zshrc"
+  local source="$DOTFILES_DIR/unix/.zshrc"
   local target="$HOME/.zshrc"
   if [ -f "$target" ]; then
-    if [ -f "$source" ] && diff -q "$source" "$target" >/dev/null 2>&1; then
+    if [ ! -f "$source" ]; then
+      info ".zshrc exists but source not found at $source"
+    elif diff -q "$source" "$target" >/dev/null 2>&1; then
       success ".zshrc matches source"
     else
       info ".zshrc exists but differs from source (local edits are expected)"

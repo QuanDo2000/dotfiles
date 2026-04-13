@@ -1,27 +1,18 @@
 #!/bin/bash
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 setup() {
-  export DRY=false
-  export QUIET=false
-  export FORCE=false
-  source "$REPO_DIR/scripts/utils.sh"
-  source "$REPO_DIR/scripts/symlinks.sh"
-
-  TEST_TMPDIR="$(mktemp -d)"
-  ORIG_HOME="$HOME"
-  export HOME="$TEST_TMPDIR/home"
-  mkdir -p "$HOME" "$HOME/.config" "$HOME/.local/bin"
+  init_test_env
+  source_scripts utils.sh symlinks.sh
 }
 
 teardown() {
-  export HOME="$ORIG_HOME"
-  rm -rf "$TEST_TMPDIR"
+  cleanup_test_env
 }
 
 test_link_files_creates_symlink() {
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "content" > "$src"
@@ -32,7 +23,7 @@ test_link_files_creates_symlink() {
 }
 
 test_link_files_skips_existing() {
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "content" > "$src"
@@ -85,7 +76,7 @@ test_copy_file_force_overwrites() {
 
 test_dry_run_link() {
   DRY=true
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "content" > "$src"
@@ -111,7 +102,7 @@ test_dry_run_copy() {
 }
 
 test_setup_symlinks_folder_files() {
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root"
   echo "dotfile" > "$root/.gitconfig"
@@ -124,7 +115,7 @@ test_setup_symlinks_folder_files() {
 }
 
 test_setup_symlinks_folder_bin() {
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/bin"
   echo "#!/bin/bash" > "$root/bin/myscript"
@@ -135,7 +126,7 @@ test_setup_symlinks_folder_bin() {
 }
 
 test_setup_symlinks_folder_config() {
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/config/nvim"
   echo "init" > "$root/config/nvim/init.lua"
@@ -146,7 +137,7 @@ test_setup_symlinks_folder_config() {
 }
 
 test_setup_symlinks_folder_zshrc_copied() {
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root"
   echo "zsh config" > "$root/.zshrc"
@@ -154,7 +145,6 @@ test_setup_symlinks_folder_zshrc_copied() {
   setup_symlinks_folder "$root"
 
   assert_file_exists "$HOME/.zshrc"
-  # Must be a regular file, not a symlink
   if [ -L "$HOME/.zshrc" ]; then
     echo "  FAILED: .zshrc should be a regular file, not a symlink" >> "$ERROR_FILE"
   fi
@@ -205,8 +195,152 @@ test_link_files_skip_all() {
   assert_file_exists "$dst"
 }
 
+# ---------------------------------------------------------------------------
+# Interactive single-file prompt choices (pipe input to stdin)
+# ---------------------------------------------------------------------------
+
+test_link_files_interactive_overwrite() {
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  local old_target="$TEST_TMPDIR/oldtarget"
+  echo "old" > "$old_target"
+  echo "new" > "$src"
+  ln -s "$old_target" "$dst"
+
+  echo -n "o" | link_files "$src" "$dst"
+
+  assert_symlink "$dst" "$src"
+}
+
+test_link_files_interactive_backup() {
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "new" > "$src"
+  echo "existing" > "$dst"
+
+  echo -n "b" | link_files "$src" "$dst"
+
+  assert_file_exists "${dst}.backup"
+  assert_symlink "$dst" "$src"
+}
+
+test_link_files_interactive_skip() {
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "new" > "$src"
+  echo "existing" > "$dst"
+
+  echo -n "s" | link_files "$src" "$dst"
+
+  if [ -L "$dst" ]; then
+    echo "  FAILED: dst should still be a regular file after skip" >> "$ERROR_FILE"
+  fi
+  assert_file_exists "$dst"
+}
+
+test_link_files_interactive_overwrite_all() {
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  local old_target="$TEST_TMPDIR/oldtarget"
+  echo "old" > "$old_target"
+  echo "new" > "$src"
+  ln -s "$old_target" "$dst"
+
+  echo -n "O" | link_files "$src" "$dst"
+
+  assert_symlink "$dst" "$src"
+}
+
+test_link_files_interactive_backup_all() {
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "new" > "$src"
+  echo "existing" > "$dst"
+
+  echo -n "B" | link_files "$src" "$dst"
+
+  assert_file_exists "${dst}.backup"
+  assert_symlink "$dst" "$src"
+}
+
+test_link_files_interactive_skip_all() {
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "new" > "$src"
+  echo "existing" > "$dst"
+
+  echo -n "S" | link_files "$src" "$dst"
+
+  if [ -L "$dst" ]; then
+    echo "  FAILED: dst should still be a regular file after Skip all" >> "$ERROR_FILE"
+  fi
+  assert_file_exists "$dst"
+}
+
+test_copy_file_interactive_overwrite() {
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "new content" > "$src"
+  echo "old content" > "$dst"
+
+  echo -n "y" | copy_file "$src" "$dst"
+
+  local actual
+  actual="$(cat "$dst")"
+  assert_equals "new content" "$actual"
+}
+
+test_copy_file_interactive_skip() {
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "new content" > "$src"
+  echo "old content" > "$dst"
+
+  echo -n "n" | copy_file "$src" "$dst"
+
+  local actual
+  actual="$(cat "$dst")"
+  assert_equals "old content" "$actual"
+}
+
+test_link_files_interactive_invalid_input_skips() {
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  local old_target="$TEST_TMPDIR/oldtarget"
+  echo "old" > "$old_target"
+  echo "new" > "$src"
+  ln -s "$old_target" "$dst"
+
+  echo -n "x" | link_files "$src" "$dst"
+
+  # Invalid input should default to skip — dst keeps pointing at old target
+  assert_symlink "$dst" "$old_target"
+}
+
+test_copy_file_interactive_invalid_input_skips() {
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "new content" > "$src"
+  echo "old content" > "$dst"
+
+  echo -n "x" | copy_file "$src" "$dst"
+
+  local actual
+  actual="$(cat "$dst")"
+  assert_equals "old content" "$actual"
+}
+
+# ---------------------------------------------------------------------------
+
 test_setup_symlinks_folder_nonexistent_root() {
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   local before_count
   before_count="$(find "$HOME" -mindepth 1 | wc -l)"
 
@@ -218,7 +352,7 @@ test_setup_symlinks_folder_nonexistent_root() {
 }
 
 test_setup_symlinks_folder_creates_local_bin() {
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   rm -rf "$HOME/.local/bin"
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/bin"
@@ -233,7 +367,7 @@ test_setup_symlinks_folder_creates_local_bin() {
 }
 
 test_setup_symlinks_folder_creates_config() {
-  local overwrite_all=false backup_all=false skip_all=false
+  eval "$(init_symlink_vars)"
   rm -rf "$HOME/.config"
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/config/myapp"
@@ -245,4 +379,59 @@ test_setup_symlinks_folder_creates_config() {
     echo "  FAILED: \$HOME/.config was not created" >> "$ERROR_FILE"
   fi
   assert_symlink "$HOME/.config/myapp" "$root/config/myapp"
+}
+
+# ---------------------------------------------------------------------------
+# Error paths: filesystem operation failures
+# ---------------------------------------------------------------------------
+
+test_link_files_fails_unwritable_dst_dir() {
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/srcfile"
+  local dst_dir="$TEST_TMPDIR/readonly"
+  mkdir -p "$dst_dir"
+  echo "content" > "$src"
+  chmod 555 "$dst_dir"
+
+  local exit_code=0
+  (link_files "$src" "$dst_dir/dstfile" 2>&1) || exit_code=$?
+
+  chmod 755 "$dst_dir"  # restore so teardown can clean up
+  if [[ "$exit_code" -eq 0 ]]; then
+    echo "  FAILED: link_files should fail with unwritable destination dir" >> "$ERROR_FILE"
+  fi
+}
+
+test_copy_file_fails_unwritable_dst_dir() {
+  local src="$TEST_TMPDIR/srcfile"
+  local dst_dir="$TEST_TMPDIR/readonly"
+  mkdir -p "$dst_dir"
+  echo "content" > "$src"
+  chmod 555 "$dst_dir"
+
+  local exit_code=0
+  (copy_file "$src" "$dst_dir/dstfile" 2>&1) || exit_code=$?
+
+  chmod 755 "$dst_dir"
+  if [[ "$exit_code" -eq 0 ]]; then
+    echo "  FAILED: copy_file should fail with unwritable destination dir" >> "$ERROR_FILE"
+  fi
+}
+
+test_link_files_overwrite_fails_unwritable() {
+  local overwrite_all=true backup_all=false skip_all=false
+  local src="$TEST_TMPDIR/srcfile"
+  local dst_dir="$TEST_TMPDIR/readonly"
+  mkdir -p "$dst_dir"
+  echo "new" > "$src"
+  echo "existing" > "$dst_dir/dstfile"
+  chmod 555 "$dst_dir"
+
+  local exit_code=0
+  (link_files "$src" "$dst_dir/dstfile" 2>&1) || exit_code=$?
+
+  chmod 755 "$dst_dir"
+  if [[ "$exit_code" -eq 0 ]]; then
+    echo "  FAILED: link_files overwrite should fail with unwritable dir" >> "$ERROR_FILE"
+  fi
 }

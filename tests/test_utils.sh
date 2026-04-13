@@ -1,12 +1,12 @@
 #!/bin/bash
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 setup() {
   export DRY=false
   export QUIET=false
   export FORCE=false
-  source "$REPO_DIR/scripts/utils.sh"
+  source_scripts utils.sh
 }
 
 test_info_output() {

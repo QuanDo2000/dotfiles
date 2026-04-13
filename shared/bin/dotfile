@@ -5,27 +5,28 @@ set -eo pipefail
 export DRY=false
 export QUIET=false
 export FORCE=false
-DOTFILES_DIR="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+# Portable readlink -f (macOS lacks GNU readlink -f)
+_resolve() {
+  local f="$0"
+  while [ -L "$f" ]; do
+    local d; d="$(cd -P "$(dirname "$f")" && pwd)"
+    f="$(readlink "$f")"; [[ "$f" != /* ]] && f="$d/$f"
+  done
+  echo "$(cd -P "$(dirname "$f")" && pwd)/$(basename "$f")"
+}
+export DOTFILES_DIR="$(cd "$(dirname "$(_resolve)")/../.." && pwd)"
 REPO_URL="https://github.com/QuanDo2000/dotfiles.git"
 
-# Source utils first (no dependencies)
 SCRIPTS_DIR="$DOTFILES_DIR/scripts"
-if [ -d "$SCRIPTS_DIR" ]; then
-  source "$SCRIPTS_DIR/utils.sh"
+
+# Ensure the repo is cloned so we can source modules
+if [[ ! -d "$DOTFILES_DIR" ]]; then
+  echo "Cloning dotfiles repo..."
+  git clone "$REPO_URL" "$DOTFILES_DIR" || { echo "Failed to clone dotfiles repo"; exit 1; }
 fi
 
-# Ensure the repo is cloned so we can source remaining modules
-function ensure_repo {
-  if [ ! -d "$DOTFILES_DIR" ]; then
-    info "Cloning dotfiles repo..."
-    git clone "$REPO_URL" "$DOTFILES_DIR" || fail "Failed to clone dotfiles repo"
-    source "$SCRIPTS_DIR/utils.sh"
-  fi
-}
-
-ensure_repo
-
-# Source remaining modules
+# Source all modules
+source "$SCRIPTS_DIR/utils.sh"
 source "$SCRIPTS_DIR/packages.sh"
 source "$SCRIPTS_DIR/extras.sh"
 source "$SCRIPTS_DIR/symlinks.sh"
@@ -109,7 +110,5 @@ symlinks) setup_symlinks ;;
 verify) verify ;;
 *)
   fail "Unknown command: $1"
-  usage
-  exit 1
   ;;
 esac

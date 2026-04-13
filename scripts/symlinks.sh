@@ -1,23 +1,27 @@
 #!/bin/bash
 
+: "${DOTFILES_DIR:=$HOME/dotfiles}"
+
 function link_files {
   local src=$1 dst=$2
-  local overwrite=false backup=false skip=false action=false
+  # overwrite_all/backup_all/skip_all may be set by the caller (e.g.
+  # setup_symlinks).  Default to "false" when called standalone.
+  : "${overwrite_all:=false}"
+  : "${backup_all:=false}"
+  : "${skip_all:=false}"
+  local overwrite=false backup=false skip=false
+  local action
   info "Linking $src to $dst"
   if [[ "$DRY" == "true" ]]; then
     return
   fi
 
-  if [ -f "$dst" ] || [ -d "$dst" ] || [ -L "$dst" ]; then
+  if [[ -f "$dst" || -d "$dst" || -L "$dst" ]]; then
     if [[ "$overwrite_all" == "false" && "$backup_all" == "false" && "$skip_all" == "false" ]]; then
-      local current_src
-      current_src="$(readlink "$dst")"
-
-      if [[ "$current_src" == "$src" ]]; then
+      if [[ -L "$dst" ]] && [[ "$(readlink "$dst")" == "$src" ]]; then
         skip=true
       else
-        user "File already exists: $dst ($(basename "$src")), what do you want to do?\n\
-                    [s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?"
+        user "File already exists: $dst ($(basename "$src")), what do you want to do?\n[s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?"
         read -n 1 -r action
 
         case "$action" in
@@ -39,18 +43,20 @@ function link_files {
         S)
           skip_all=true
           ;;
-        *) ;;
+        *)
+          skip=true
+          ;;
         esac
       fi
     fi
 
     if [[ "$overwrite" == "true" || "$overwrite_all" == "true" ]]; then
-      rm -rf "$dst"
+      rm -rf "$dst" || fail "Failed to remove $dst"
       success "Removed $dst"
     fi
 
     if [[ "$backup" == "true" || "$backup_all" == "true" ]]; then
-      mv "$dst" "${dst}.backup"
+      mv "$dst" "${dst}.backup" || fail "Failed to backup $dst"
       success "Moved $dst to ${dst}.backup"
     fi
 
@@ -60,8 +66,8 @@ function link_files {
   fi
 
   if [[ "$skip" != "true" && "$skip_all" != "true" ]]; then
-    ln -s "$1" "$2"
-    success "Linked $1 to $2"
+    ln -s "$src" "$dst" || fail "Failed to link $src to $dst"
+    success "Linked $src to $dst"
   fi
 }
 
@@ -72,12 +78,13 @@ function copy_file {
     return
   fi
 
-  if [ -f "$dst" ] && [[ "$FORCE" != "true" ]]; then
+  if [[ -f "$dst" ]] && [[ "$FORCE" != "true" ]]; then
     if diff -q "$src" "$dst" >/dev/null 2>&1; then
       success "Skipped $src (already up to date)"
       return
     fi
     user "File already exists: $dst, overwrite? [y/N]"
+    local action
     read -n 1 -r action
     if [[ "$action" != "y" && "$action" != "Y" ]]; then
       success "Skipped $src"
@@ -85,7 +92,7 @@ function copy_file {
     fi
   fi
 
-  cp "$src" "$dst"
+  cp "$src" "$dst" || fail "Failed to copy $src to $dst"
   success "Copied $src to $dst"
 }
 
@@ -100,7 +107,7 @@ function setup_symlinks_folder {
 
   # Setup symlinks for direct files (copy .zshrc instead of linking)
   while IFS= read -r -d '' src <&3; do
-    local name
+    local name dst
     name="$(basename "$src")"
     dst="$HOME/$name"
     if [[ "$name" == ".zshrc" ]]; then
@@ -114,10 +121,10 @@ function setup_symlinks_folder {
   if [[ -d "$root/bin" ]]; then
     if [[ ! -d "$HOME/.local/bin" ]]; then
       info "$HOME/.local/bin doesn't exist. Creating folder..."
-      mkdir -p "$HOME/.local/bin"
+      mkdir -p "$HOME/.local/bin" || fail "Failed to create $HOME/.local/bin"
     fi
     while IFS= read -r -d '' src <&3; do
-      dst="$HOME/.local/bin/$(basename "$src")"
+      local dst="$HOME/.local/bin/$(basename "$src")"
       link_files "$src" "$dst"
     done 3< <(find "$root/bin" -maxdepth 1 -type f -print0)
   fi
@@ -129,10 +136,10 @@ function setup_symlinks_folder {
   fi
   if [[ ! -d "$HOME/.config" ]]; then
     info "$HOME/.config doesn't exist. Creating folder..."
-    mkdir -p "$HOME/.config"
+    mkdir -p "$HOME/.config" || fail "Failed to create $HOME/.config"
   fi
   while IFS= read -r -d '' src <&3; do
-    dst="$HOME/.config/$(basename "$src")"
+    local dst="$HOME/.config/$(basename "$src")"
     link_files "$src" "$dst"
   done 3< <(find "$root/config" -mindepth 1 -maxdepth 1 -type d -print0)
 
@@ -146,9 +153,9 @@ function setup_symlinks {
     overwrite_all=true
   fi
 
-  setup_symlinks_folder "$HOME/dotfiles/shared"
-  setup_symlinks_folder "$HOME/dotfiles/unix"
+  setup_symlinks_folder "$DOTFILES_DIR/shared"
+  setup_symlinks_folder "$DOTFILES_DIR/unix"
   if [[ "$(uname)" == "Darwin" ]]; then
-    setup_symlinks_folder "$HOME/dotfiles/mac"
+    setup_symlinks_folder "$DOTFILES_DIR/mac"
   fi
 }

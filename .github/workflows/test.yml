@@ -8,8 +8,19 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+
+      # Windows: enable native symlinks for Git Bash
+      - name: Enable symlinks (Windows)
+        if: runner.os == 'Windows'
+        run: git config --global core.symlinks true
+
       - name: Run tests
+        shell: bash
         run: ./tests/runner.sh --no-docker
