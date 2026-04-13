@@ -1,6 +1,28 @@
 #!/bin/bash
 set -eo pipefail
 
+# Fetch a URL with retry + exponential backoff. Useful for GitHub API calls
+# which are rate-limited to 60 req/hr unauthenticated.
+# Usage: http_get_retry <url> [output-file]
+function http_get_retry {
+  local url="$1" out="${2:-}"
+  local attempt=1 max=4 delay=2
+  while (( attempt <= max )); do
+    if [[ -n "$out" ]]; then
+      if curl -sfL --retry 2 -o "$out" "$url"; then return 0; fi
+    else
+      if curl -sfL --retry 2 "$url"; then return 0; fi
+    fi
+    if (( attempt < max )); then
+      info "curl $url failed (attempt $attempt/$max); retrying in ${delay}s..."
+      sleep "$delay"
+      delay=$((delay * 2))
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
 function install_font_debian {
   # https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
   info "Installing Fira Code..."
@@ -21,7 +43,7 @@ function install_font_debian {
 
 function install_neovim {
   # On Mac, neovim is installed via brew in install_mac
-  if [[ "$(uname)" == "Darwin" ]]; then
+  if is_mac; then
     return
   fi
   info "Installing neovim..."
@@ -44,8 +66,11 @@ function install_lazygit {
   info "Installing lazygit..."
   if [[ "$DRY" == "false" ]]; then
     if ! command -v lazygit >/dev/null 2>&1; then
-      LAZYGIT_VERSION=$(curl -sf "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*') \
-        || fail "Failed to fetch lazygit version"
+      local lazygit_json
+      lazygit_json="$(http_get_retry "https://api.github.com/repos/jesseduffield/lazygit/releases/latest")" \
+        || fail "Failed to fetch lazygit version (GitHub API unreachable or rate-limited)"
+      LAZYGIT_VERSION="$(echo "$lazygit_json" | grep -Po '"tag_name": "v\K[^"]*')" \
+        || fail "Failed to parse lazygit version"
       curl -fLo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" \
         || fail "Failed to download lazygit"
       tar xf lazygit.tar.gz lazygit || fail "Failed to extract lazygit"
@@ -62,8 +87,19 @@ function install_zoxide {
   info "Installing zoxide..."
   if [[ "$DRY" == "false" ]]; then
     if ! command -v zoxide >/dev/null 2>&1; then
-      curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh \
-        || fail "Failed to install zoxide"
+      # Download to a temp file first so the fetch and execution are distinct
+      # steps — avoids the classic `curl | sh` anti-pattern where a truncated
+      # download still executes whatever partial script arrived.
+      local tmp
+      tmp="$(mktemp -t zoxide-install.XXXXXX.sh)" || fail "Failed to create temp file"
+      # shellcheck disable=SC2064
+      trap "rm -f '$tmp'" RETURN
+      http_get_retry "https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh" "$tmp" \
+        || fail "Failed to download zoxide installer"
+      # Sanity-check: the installer should be a shell script.
+      head -n1 "$tmp" | grep -q '^#!' \
+        || fail "Downloaded zoxide installer does not look like a shell script"
+      sh "$tmp" || fail "Failed to install zoxide"
     else
       info "Already installed zoxide"
     fi
@@ -174,25 +210,12 @@ function set_zsh_default {
 
 function install_packages {
   info "Installing packages..."
-  if [[ "$(uname)" == "Linux" ]]; then
-    if [[ -f "/etc/os-release" ]]; then
-      # shellcheck disable=SC1091
-      source /etc/os-release
-      if [[ "${ID:-}" == "debian" || "${ID_LIKE:-}" == *"debian"* ]]; then
-        install_debian
-      elif [[ "${ID:-}" == "arch" || "${ID_LIKE:-}" == *"arch"* ]]; then
-        install_arch
-      else
-        fail "Unknown Linux distribution: ${ID:-unknown}"
-      fi
-    else
-      fail "Could not detect Linux distribution."
-    fi
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    install_mac
-  else
-    fail "Unsupported system: $(uname)"
-  fi
+  case "$(detect_platform)" in
+    debian)  install_debian ;;
+    arch)    install_arch ;;
+    mac)     install_mac ;;
+    unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
+  esac
 
   set_zsh_default
   success "Finished install"

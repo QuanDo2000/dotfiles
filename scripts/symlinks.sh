@@ -19,7 +19,7 @@ function link_files {
 
   if [[ -f "$dst" || -d "$dst" || -L "$dst" ]]; then
     if [[ "$overwrite_all" == "false" && "$backup_all" == "false" && "$skip_all" == "false" ]]; then
-      if [[ -L "$dst" ]] && [[ "$(readlink "$dst")" == "$src" ]]; then
+      if [[ -L "$dst" ]] && [[ "$(resolve_symlink "$dst")" == "$src" ]]; then
         skip=true
       elif [[ "$QUIET" == "true" ]]; then
         skip=true
@@ -156,7 +156,7 @@ function setup_symlinks {
 
   setup_symlinks_folder "$DOTFILES_DIR/shared"
   setup_symlinks_folder "$DOTFILES_DIR/unix"
-  if [[ "$(uname)" == "Darwin" ]]; then
+  if is_mac; then
     setup_symlinks_folder "$DOTFILES_DIR/mac"
   fi
 }

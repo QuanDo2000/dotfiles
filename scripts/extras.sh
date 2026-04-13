@@ -19,20 +19,23 @@ function install_zsh_plugins {
     if [ -d "$HOME/.oh-my-zsh" ]; then
       info "Installing zsh-autosuggestions..."
       if [ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions" ]; then
-        git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions"
+        git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions" \
+          || fail "Failed to clone zsh-autosuggestions"
       fi
       success "Finished installing zsh-autosuggestions"
 
       info "Installing fast-syntax-highlighting..."
       if [ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting" ]; then
         git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git \
-          "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting"
+          "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting" \
+          || fail "Failed to clone fast-syntax-highlighting"
       fi
       success "Finished installing fast-syntax-highlighting"
 
       info "Installing fzf-tab..."
       if [ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" ]; then
-        git clone https://github.com/Aloxaf/fzf-tab "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"
+        git clone https://github.com/Aloxaf/fzf-tab "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" \
+          || fail "Failed to clone fzf-tab"
       fi
       success "Finished installing fzf-tab"
     else
@@ -47,7 +50,8 @@ function install_tmux_plugins {
   if [[ "$DRY" == "false" ]]; then
     info "Installing TPM..."
     if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
-      git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
+      git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm" \
+        || fail "Failed to clone TPM"
       "$HOME/.tmux/plugins/tpm/bin/install_plugins"
     else
       info "Already installed TPM"
@@ -56,7 +60,8 @@ function install_tmux_plugins {
 
     info "Installing catppuccin for tmux..."
     if [ ! -d "$HOME/.tmux/plugins/catppuccin" ]; then
-      git clone -b v2.1.2 https://github.com/catppuccin/tmux.git ~/.tmux/plugins/catppuccin/tmux
+      git clone -b v2.1.2 https://github.com/catppuccin/tmux.git ~/.tmux/plugins/catppuccin/tmux \
+        || fail "Failed to clone catppuccin for tmux"
     else
       info "Already installed catppuccin for tmux"
     fi

@@ -418,6 +418,37 @@ test_copy_file_fails_unwritable_dst_dir() {
   fi
 }
 
+test_link_files_broken_source() {
+  # Symlinking to a non-existent source should still succeed (ln -s is happy
+  # to create dangling symlinks); we only require the link itself to exist.
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/does_not_exist"
+  local dst="$TEST_TMPDIR/home/dstfile"
+
+  link_files "$src" "$dst"
+
+  if [ ! -L "$dst" ]; then
+    echo "  FAILED: dangling symlink $dst was not created" >> "$ERROR_FILE"
+  fi
+  assert_symlink "$dst" "$src"
+}
+
+test_link_files_idempotent_relative_symlink() {
+  # If an existing symlink points to the same absolute target via a relative
+  # path, link_files should treat it as already-linked and skip.
+  eval "$(init_symlink_vars)"
+  local src="$TEST_TMPDIR/srcfile"
+  local dst="$TEST_TMPDIR/home/dstfile"
+  echo "content" > "$src"
+  # Create a relative symlink that resolves to $src.
+  ( cd "$TEST_TMPDIR/home" && ln -s "../srcfile" "dstfile" )
+
+  local output
+  output=$(link_files "$src" "$dst" 2>&1)
+
+  assert_contains "$output" "Skipped"
+}
+
 test_link_files_overwrite_fails_unwritable() {
   local overwrite_all=true backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"

@@ -14,11 +14,37 @@ if (-not $isAdmin) {
 $script:Dry = $false
 $script:Quiet = $false
 $script:Force = $false
-# Resolve symlink so invoking via ~\.local\bin points back to the real repo
-$scriptItem = Get-Item -LiteralPath $PSCommandPath
-$scriptReal = if ($scriptItem.Target) { $scriptItem.Target } else { $PSCommandPath }
-$script:DotfilesDir = (Resolve-Path (Join-Path (Split-Path $scriptReal -Parent) "..\..")).Path
+# Resolve symlink so invoking via ~\.local\bin points back to the real repo.
+# Allow override via $env:DOTFILES_DIR so the install path is not hardcoded.
+if ($env:DOTFILES_DIR -and (Test-Path $env:DOTFILES_DIR)) {
+    $script:DotfilesDir = (Resolve-Path $env:DOTFILES_DIR).Path
+} else {
+    $scriptItem = Get-Item -LiteralPath $PSCommandPath
+    $scriptReal = if ($scriptItem.Target) { $scriptItem.Target } else { $PSCommandPath }
+    $script:DotfilesDir = (Resolve-Path (Join-Path (Split-Path $scriptReal -Parent) "..\..")).Path
+}
 $script:RepoUrl = "https://github.com/QuanDo2000/dotfiles.git"
+
+# Invoke-RestMethod with retry + exponential backoff. GitHub API is rate-limited
+# to 60 req/hr unauthenticated; a single blip shouldn't kill the install.
+function InvokeRestMethodRetry {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [hashtable]$Headers = @{ "User-Agent" = "dotfile.ps1" },
+        [int]$MaxAttempts = 4
+    )
+    $delay = 2
+    for ($i = 1; $i -le $MaxAttempts; $i++) {
+        try {
+            return Invoke-RestMethod -Uri $Uri -Headers $Headers
+        } catch {
+            if ($i -eq $MaxAttempts) { throw }
+            Info "Request to $Uri failed (attempt $i/$MaxAttempts): $($_.Exception.Message). Retrying in ${delay}s..."
+            Start-Sleep -Seconds $delay
+            $delay *= 2
+        }
+    }
+}
 
 # Logging helpers
 function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }
@@ -273,9 +299,9 @@ function InstallNeovimNightly {
     $markerFile = Join-Path $installDir ".nightly-sha"
 
     try {
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/neovim/neovim/releases/tags/nightly" -Headers @{ "User-Agent" = "dotfile.ps1" }
+        $release = InvokeRestMethodRetry -Uri "https://api.github.com/repos/neovim/neovim/releases/tags/nightly"
     } catch {
-        FailSoft "Could not query Neovim nightly release: $($_.Exception.Message)"
+        FailSoft "Could not query Neovim nightly release after retries: $($_.Exception.Message)"
         return
     }
 

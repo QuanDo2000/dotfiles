@@ -4,7 +4,24 @@ Personal setup scripts and configuration files for new machines.
 
 ## Requirements
 
+### Linux / macOS
+
 - `sudo`, `curl`, and `git`
+
+### Windows
+
+- PowerShell 5.1+ (Windows PowerShell) or PowerShell 7 (`pwsh`)
+- Must be run from an **Administrator** PowerShell (required to create symlinks).
+  The script self-elevates via `Start-Process -Verb RunAs` if needed.
+- `git` (install via `winget install Git.Git` first, or use the bundled Git that ships with Windows Terminal / Scoop)
+- The script installs `winget` packages and bootstraps `scoop`; no pre-install required.
+
+### Configuration
+
+- `DOTFILES_DIR` environment variable may be set to override where the repo is
+  expected to live. Defaults:
+  - Linux/macOS: `$HOME/dotfiles`
+  - Windows: the parent of the `dotfile.ps1` script location.
 
 ## Usage
 

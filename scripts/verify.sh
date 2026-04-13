@@ -41,7 +41,7 @@ _check_symlink() {
   local target="$HOME/$name"
   if [ -L "$target" ]; then
     local link_target
-    link_target="$(readlink "$target")"
+    link_target="$(resolve_symlink "$target")"
     if [[ "$link_target" == "$DOTFILES_DIR"* ]]; then
       success "$name -> $link_target"
     else

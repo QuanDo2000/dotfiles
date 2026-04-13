@@ -26,10 +26,13 @@ cleanup_test_env() {
 
 # Source one or more scripts from scripts/.
 # Usage: source_scripts utils.sh symlinks.sh
+# Always also sources platform.sh (required by packages.sh and symlinks.sh).
 source_scripts() {
   for script in "$@"; do
     source "$REPO_DIR/scripts/$script"
   done
+  # shellcheck disable=SC1091
+  source "$REPO_DIR/scripts/platform.sh"
 }
 
 # Override uname to return the given platform string.
