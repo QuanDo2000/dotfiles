@@ -4,6 +4,17 @@
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DOTFILE_CMD="$REPO_DIR/shared/bin/dotfile"
 
+# True on Git Bash / MSYS / Cygwin where Unix permission semantics and tools
+# like chsh don't behave as on Linux/macOS. Uses OSTYPE (shell built-in) so
+# it is not affected by tests that mock `uname`.
+is_windows_bash() {
+  case "${OSTYPE:-}" in
+    msys*|cygwin*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+
 # Initialise a temp HOME with standard directories.
 # Usage: init_test_env [DRY]   (DRY defaults to "false")
 init_test_env() {

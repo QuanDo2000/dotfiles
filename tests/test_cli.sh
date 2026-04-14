@@ -65,5 +65,7 @@ test_verify_command_runs() {
 }
 
 test_dry_run_default_command() {
+  # Unix installer does not target Windows (Windows has its own PowerShell setup).
+  is_windows_bash && return 0
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry all
 }

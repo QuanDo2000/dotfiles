@@ -128,7 +128,8 @@ function setup_symlinks_folder {
   if [[ -d "$root/bin" ]]; then
     mkdir -p "$HOME/.local/bin" || fail "Failed to create $HOME/.local/bin"
     while IFS= read -r -d '' src <&3; do
-      local dst="$HOME/.local/bin/$(basename "$src")"
+      local dst
+      dst="$HOME/.local/bin/$(basename "$src")"
       link_files "$src" "$dst"
     done 3< <(find "$root/bin" -maxdepth 1 -type f -print0)
   fi
@@ -140,7 +141,8 @@ function setup_symlinks_folder {
   fi
   mkdir -p "$HOME/.config" || fail "Failed to create $HOME/.config"
   while IFS= read -r -d '' src <&3; do
-    local dst="$HOME/.config/$(basename "$src")"
+    local dst
+    dst="$HOME/.config/$(basename "$src")"
     link_files "$src" "$dst"
   done 3< <(find "$root/config" -mindepth 1 -maxdepth 1 -type d -print0)
 

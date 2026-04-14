@@ -386,6 +386,8 @@ test_setup_symlinks_folder_creates_config() {
 # ---------------------------------------------------------------------------
 
 test_link_files_fails_unwritable_dst_dir() {
+  # chmod 555 does not prevent the owner from writing on Windows NTFS.
+  is_windows_bash && return 0
   eval "$(init_symlink_vars)"
   local src="$TEST_TMPDIR/srcfile"
   local dst_dir="$TEST_TMPDIR/readonly"
@@ -403,6 +405,8 @@ test_link_files_fails_unwritable_dst_dir() {
 }
 
 test_copy_file_fails_unwritable_dst_dir() {
+  # chmod 555 does not prevent the owner from writing on Windows NTFS.
+  is_windows_bash && return 0
   local src="$TEST_TMPDIR/srcfile"
   local dst_dir="$TEST_TMPDIR/readonly"
   mkdir -p "$dst_dir"
@@ -450,6 +454,8 @@ test_link_files_idempotent_relative_symlink() {
 }
 
 test_link_files_overwrite_fails_unwritable() {
+  # chmod 555 does not prevent the owner from writing on Windows NTFS.
+  is_windows_bash && return 0
   local overwrite_all=true backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst_dir="$TEST_TMPDIR/readonly"

@@ -1,13 +1,23 @@
+param(
+    # When set, skip self-elevation and main dispatch so the script can be
+    # dot-sourced by tests to load functions without side effects.
+    [switch]$NoMain,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArgs
+)
+
 $ErrorActionPreference = "Stop"
 
 # Self-elevate to admin (required for symlink creation)
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $isAdmin) {
-    Write-Host "  [ .. ] Elevating to Administrator..."
-    $pwsh = (Get-Process -Id $PID).Path
-    $argList = @("-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) + $args
-    Start-Process -FilePath $pwsh -ArgumentList $argList -Verb RunAs -Wait
-    exit $LASTEXITCODE
+if (-not $NoMain) {
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $isAdmin) {
+        Write-Host "  [ .. ] Elevating to Administrator..."
+        $pwsh = (Get-Process -Id $PID).Path
+        $argList = @("-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) + $RemainingArgs
+        Start-Process -FilePath $pwsh -ArgumentList $argList -Verb RunAs -Wait
+        exit $LASTEXITCODE
+    }
 }
 
 # Global variables
@@ -524,28 +534,36 @@ Options:
 "@
 }
 
-# Parse options
-$command = "all"
-$remaining = @()
-foreach ($arg in $args) {
-    switch ($arg) {
-        { $_ -in "-d", "--dry" }   { $script:Dry = $true }
-        { $_ -in "-f", "--force" } { $script:Force = $true }
-        { $_ -in "-q", "--quiet" } { $script:Quiet = $true }
-        { $_ -in "-h", "--help" }  { ShowUsage; exit 0 }
-        default { $remaining += $arg }
+# Parse options. Extracted into a function so tests can drive it with
+# synthetic argument arrays without executing the main dispatch below.
+function ParseArgs([string[]]$Arguments) {
+    $command = "all"
+    $positional = @()
+    foreach ($arg in $Arguments) {
+        switch ($arg) {
+            { $_ -in "-d", "--dry" }   { $script:Dry = $true }
+            { $_ -in "-f", "--force" } { $script:Force = $true }
+            { $_ -in "-q", "--quiet" } { $script:Quiet = $true }
+            { $_ -in "-h", "--help" }  { ShowUsage; return '__help__' }
+            default { $positional += $arg }
+        }
     }
+    if ($positional.Count -gt 0) { $command = $positional[0] }
+    return $command
 }
-if ($remaining.Count -gt 0) { $command = $remaining[0] }
 
-EnsureRepo
+if (-not $NoMain) {
+    $command = ParseArgs $RemainingArgs
+    if ($command -eq '__help__') { exit 0 }
 
-# Run command
-switch ($command) {
-    "all"      { SetupDotfiles }
-    "packages" { InstallPackages }
-    "extras"   { InstallExtras }
-    "symlinks" { SetupSymlinks }
-    "verify"   { Verify }
-    default    { Fail "Unknown command: $command"; ShowUsage }
+    EnsureRepo
+
+    switch ($command) {
+        "all"      { SetupDotfiles }
+        "packages" { InstallPackages }
+        "extras"   { InstallExtras }
+        "symlinks" { SetupSymlinks }
+        "verify"   { Verify }
+        default    { Fail "Unknown command: $command"; ShowUsage }
+    }
 }

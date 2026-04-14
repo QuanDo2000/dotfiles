@@ -60,6 +60,8 @@ test_set_zsh_default_dry_run() {
 }
 
 test_set_zsh_default_already_zsh() {
+  # chsh is not available on Git Bash; set_zsh_default relies on it.
+  is_windows_bash && return 0
   DRY=false
   SHELL="$(command -v zsh 2>/dev/null || echo "/bin/zsh")"
   export SHELL

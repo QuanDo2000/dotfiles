@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# On Git Bash for Windows, enable native symlinks so `ln -s` produces real
+# symlinks instead of file copies. No-op on Linux/macOS where MSYS is unused.
+export MSYS=winsymlinks:nativestrict
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 

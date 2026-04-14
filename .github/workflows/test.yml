@@ -21,6 +21,11 @@ jobs:
         if: runner.os == 'Windows'
         run: git config --global core.symlinks true
 
-      - name: Run tests
+      - name: Run bash tests
         shell: bash
         run: ./tests/runner.sh --no-docker
+
+      - name: Run PowerShell tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./tests-windows/runner.ps1
