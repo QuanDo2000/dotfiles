@@ -23,9 +23,9 @@ jobs:
 
       - name: Run bash tests
         shell: bash
-        run: ./tests/runner.sh --no-docker
+        run: ./tests/bash/runner.sh --no-docker
 
       - name: Run PowerShell tests (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./tests-windows/runner.ps1
+        run: ./tests/powershell/runner.ps1

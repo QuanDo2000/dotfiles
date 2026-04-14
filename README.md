@@ -77,7 +77,13 @@ Note: `.zshrc` is **copied** into `$HOME` (not symlinked) so local edits don't p
 Tests run in a Docker container to avoid touching your host filesystem. Requires Docker.
 
 ```bash
-./tests/runner.sh                    # Run all tests in Docker
-./tests/runner.sh test_utils.sh      # Run a single test file
-./tests/runner.sh --no-docker        # Run directly on host (no Docker)
+./tests/bash/runner.sh                    # Run all tests in Docker
+./tests/bash/runner.sh test_utils.sh      # Run a single test file
+./tests/bash/runner.sh --no-docker        # Run directly on host (no Docker)
+```
+
+PowerShell tests (Windows):
+
+```powershell
+./tests/powershell/runner.ps1
 ```

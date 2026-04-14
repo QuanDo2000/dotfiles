@@ -1,7 +1,7 @@
-# Shared helpers for tests-windows. Dot-sourced by runner.ps1 before each test
-# file. Mirrors the responsibilities of tests/helpers.sh on the Unix side.
+# Shared helpers for the PowerShell test suite. Dot-sourced by runner.ps1
+# before each test file. Mirrors the responsibilities of tests/bash/helpers.sh.
 
-$script:RepoDir = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$script:RepoDir = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $script:DotfileScript = Join-Path $script:RepoDir 'windows\bin\dotfile.ps1'
 
 # Load dotfile.ps1 functions without running elevation or main dispatch.

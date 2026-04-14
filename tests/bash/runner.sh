@@ -6,7 +6,7 @@ set -euo pipefail
 export MSYS=winsymlinks:nativestrict
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -47,7 +47,7 @@ DOCKERFILE
         docker run --rm
         -v "${REPO_DIR}:/home/testuser/dotfiles:ro"
         "$image_name"
-        bash /home/testuser/dotfiles/tests/runner.sh --no-docker
+        bash /home/testuser/dotfiles/tests/bash/runner.sh --no-docker
     )
     if [ -n "$TEST_FILE" ]; then
         docker_args+=("$TEST_FILE")

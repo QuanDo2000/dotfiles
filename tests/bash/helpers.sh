@@ -1,7 +1,7 @@
 #!/bin/bash
 # Shared helpers for all test files. Source this at the top of each test file.
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DOTFILE_CMD="$REPO_DIR/shared/bin/dotfile"
 
 # True on Git Bash / MSYS / Cygwin where Unix permission semantics and tools
