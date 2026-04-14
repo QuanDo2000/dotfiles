@@ -14,7 +14,7 @@ _resolve() {
   done
   echo "$(cd -P "$(dirname "$f")" && pwd)/$(basename "$f")"
 }
-DOTFILES_DIR="$(cd "$(dirname "$(_resolve)")/../.." && pwd)"
+DOTFILES_DIR="$(cd "$(dirname "$(_resolve)")" && pwd)"
 export DOTFILES_DIR
 REPO_URL="https://github.com/QuanDo2000/dotfiles.git"
 

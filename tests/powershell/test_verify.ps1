@@ -7,13 +7,13 @@
 function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'windows') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'shared') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared') -Force | Out-Null
     # Create stub source files so Verify's Compare-Object call never throws on
     # missing sources when the real $HOME happens to contain matching dests.
-    'g' | Set-Content (Join-Path $script:DotfilesDir 'shared\.gitconfig')
-    'v' | Set-Content (Join-Path $script:DotfilesDir 'shared\.vimrc')
-    'gv' | Set-Content (Join-Path $script:DotfilesDir 'windows\_gvimrc')
+    'g' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
+    'v' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.vimrc')
+    'gv' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\_gvimrc')
     # Verify's informational output flows through Info/Success, which are
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.

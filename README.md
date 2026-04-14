@@ -31,7 +31,7 @@ First-time setup:
 
 ```bash
 git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
-~/dotfiles/shared/bin/dotfile
+~/dotfiles/dotfile
 ```
 
 After symlinks are created, the `dotfile` command is available in your PATH:
@@ -46,7 +46,7 @@ Run the following in PowerShell as Administrator:
 
 ```powershell
 git clone https://github.com/QuanDo2000/dotfiles.git $HOME\Documents\Projects\dotfiles
-& $HOME\Documents\Projects\dotfiles\windows\bin\dotfile.ps1
+& $HOME\Documents\Projects\dotfiles\dotfile.ps1
 ```
 
 ### Commands

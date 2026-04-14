@@ -2,7 +2,7 @@
 # Shared helpers for all test files. Source this at the top of each test file.
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DOTFILE_CMD="$REPO_DIR/shared/bin/dotfile"
+DOTFILE_CMD="$REPO_DIR/dotfile"
 
 # True on Git Bash / MSYS / Cygwin where Unix permission semantics and tools
 # like chsh don't behave as on Linux/macOS. Uses OSTYPE (shell built-in) so
@@ -55,7 +55,7 @@ mock_uname() {
   export -f uname
 }
 
-# Create the standard dotfiles/{shared,unix,mac} directories under DOTFILES_DIR.
+# Create the standard dotfiles/config/{shared,unix,mac} directories under DOTFILES_DIR.
 create_dotfiles_dirs() {
-  mkdir -p "$DOTFILES_DIR/shared" "$DOTFILES_DIR/unix" "$DOTFILES_DIR/mac"
+  mkdir -p "$DOTFILES_DIR/config/shared" "$DOTFILES_DIR/config/unix" "$DOTFILES_DIR/config/mac"
 }

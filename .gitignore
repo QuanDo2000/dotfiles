@@ -5,6 +5,3 @@ node_modules
 lazy-lock.json
 package.json
 package-lock.json
-
-CLAUDE.md
-.claude/

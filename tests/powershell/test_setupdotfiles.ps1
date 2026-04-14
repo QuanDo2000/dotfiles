@@ -5,18 +5,18 @@ function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     # Create the directory layout SetupSymlinks expects so path resolution works.
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'windows\Powershell') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'windows\Terminal') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'windows\.ssh') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'windows\bin') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'shared\config\nvim') -Force | Out-Null
-    'profile' | Set-Content (Join-Path $script:DotfilesDir 'windows\Powershell\Microsoft.PowerShell_profile.ps1')
-    '{}' | Set-Content (Join-Path $script:DotfilesDir 'windows\Terminal\settings.json')
-    'gvim' | Set-Content (Join-Path $script:DotfilesDir 'windows\_gvimrc')
-    'vim' | Set-Content (Join-Path $script:DotfilesDir 'shared\.vimrc')
-    'gitconfig' | Set-Content (Join-Path $script:DotfilesDir 'shared\.gitconfig')
-    'winconfig' | Set-Content (Join-Path $script:DotfilesDir 'windows\.gitconfig')
-    'ssh' | Set-Content (Join-Path $script:DotfilesDir 'windows\.ssh\config')
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\Powershell') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\Terminal') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\.ssh') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\config\nvim') -Force | Out-Null
+    'profile' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\Powershell\Microsoft.PowerShell_profile.ps1')
+    '{}' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\Terminal\settings.json')
+    'gvim' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\_gvimrc')
+    'vim' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.vimrc')
+    'gitconfig' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
+    'winconfig' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\.gitconfig')
+    'ssh' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\.ssh\config')
+    'dotfile' | Set-Content (Join-Path $script:DotfilesDir 'dotfile.ps1')
 
     Set-CommandMock 'git' { $global:LASTEXITCODE = 0 }
     Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }

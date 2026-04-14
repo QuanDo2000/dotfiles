@@ -20,13 +20,13 @@ test_setup_symlinks_includes_mac_on_darwin() {
   local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
-  echo "shared" > "$DOTFILES_DIR/shared/.gitconfig"
-  echo "mac zsh" > "$DOTFILES_DIR/mac/.zshrc.mac"
+  echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
+  echo "mac zsh" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
 
   setup_symlinks
 
-  assert_symlink "$HOME/.zshrc.mac" "$DOTFILES_DIR/mac/.zshrc.mac"
-  assert_symlink "$HOME/.gitconfig" "$DOTFILES_DIR/shared/.gitconfig"
+  assert_symlink "$HOME/.zshrc.mac" "$DOTFILES_DIR/config/mac/.zshrc.mac"
+  assert_symlink "$HOME/.gitconfig" "$DOTFILES_DIR/config/shared/.gitconfig"
 }
 
 # ---------------------------------------------------------------------------
@@ -38,15 +38,15 @@ test_setup_symlinks_excludes_mac_on_linux() {
   local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
-  echo "shared" > "$DOTFILES_DIR/shared/.gitconfig"
-  echo "mac zsh" > "$DOTFILES_DIR/mac/.zshrc.mac"
+  echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
+  echo "mac zsh" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
 
   setup_symlinks
 
   if [ -L "$HOME/.zshrc.mac" ] || [ -f "$HOME/.zshrc.mac" ]; then
     echo "  FAILED: .zshrc.mac should not exist on Linux" >> "$ERROR_FILE"
   fi
-  assert_symlink "$HOME/.gitconfig" "$DOTFILES_DIR/shared/.gitconfig"
+  assert_symlink "$HOME/.gitconfig" "$DOTFILES_DIR/config/shared/.gitconfig"
 }
 
 # ---------------------------------------------------------------------------
@@ -101,16 +101,16 @@ test_force_overwrite_all_platforms_darwin() {
   local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
-  echo "shared" > "$DOTFILES_DIR/shared/.gitconfig"
-  echo "mac" > "$DOTFILES_DIR/mac/.zshrc.mac"
+  echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
+  echo "mac" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
 
   echo "old" > "$HOME/.gitconfig"
   echo "old mac" > "$HOME/.zshrc.mac"
 
   setup_symlinks
 
-  assert_symlink "$HOME/.gitconfig" "$DOTFILES_DIR/shared/.gitconfig"
-  assert_symlink "$HOME/.zshrc.mac" "$DOTFILES_DIR/mac/.zshrc.mac"
+  assert_symlink "$HOME/.gitconfig" "$DOTFILES_DIR/config/shared/.gitconfig"
+  assert_symlink "$HOME/.zshrc.mac" "$DOTFILES_DIR/config/mac/.zshrc.mac"
 }
 
 # ---------------------------------------------------------------------------
@@ -195,7 +195,7 @@ test_dry_run_darwin_creates_nothing() {
   local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
-  echo "content" > "$DOTFILES_DIR/mac/.zshrc.mac"
+  echo "content" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
 
   setup_symlinks
 
@@ -210,7 +210,7 @@ test_dry_run_linux_creates_nothing() {
   local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
-  echo "content" > "$DOTFILES_DIR/shared/.gitconfig"
+  echo "content" > "$DOTFILES_DIR/config/shared/.gitconfig"
 
   setup_symlinks
 

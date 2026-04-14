@@ -380,8 +380,8 @@ function SetupSymlinks {
     $script:OverwriteAll = $script:Force
     $script:BackupAll = $false
     $script:SkipAll = $false
-    $configPath = Join-Path $script:DotfilesDir "windows"
-    $sharedPath = Join-Path $script:DotfilesDir "shared"
+    $configPath = Join-Path $script:DotfilesDir "config\windows"
+    $sharedPath = Join-Path $script:DotfilesDir "config\shared"
 
     # PowerShell profiles (link each file into the target dir)
     $psSource = Join-Path $configPath "Powershell"
@@ -420,17 +420,15 @@ function SetupSymlinks {
     $nvimSettingsPath = "$env:LOCALAPPDATA\nvim"
     LinkDir -source (Join-Path $sharedPath "config\nvim") -destination $nvimSettingsPath
 
-    # Bin files (link to user PATH directory)
-    $binSource = Join-Path $configPath "bin"
-    if (Test-Path $binSource) {
+    # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
+    $dotfileSource = Join-Path $script:DotfilesDir "dotfile.ps1"
+    if (Test-Path $dotfileSource) {
         $binDest = "$HOME\.local\bin"
         if (-not (Test-Path $binDest)) {
             New-Item -ItemType Directory -Path $binDest | Out-Null
         }
         AddToUserPath $binDest
-        Get-ChildItem $binSource -File | ForEach-Object {
-            LinkFile -source $_.FullName -destination (Join-Path $binDest $_.Name)
-        }
+        LinkFile -source $dotfileSource -destination (Join-Path $binDest "dotfile.ps1")
     }
 
     Success "Finished setting up symlinks"
@@ -470,8 +468,8 @@ function Verify {
     }
 
     Info "Verifying copied files..."
-    $configPath = Join-Path $script:DotfilesDir "windows"
-    $sharedPath = Join-Path $script:DotfilesDir "shared"
+    $configPath = Join-Path $script:DotfilesDir "config\windows"
+    $sharedPath = Join-Path $script:DotfilesDir "config\shared"
 
     $filesToCheck = @(
         @{ Source = (Join-Path $sharedPath ".gitconfig"); Dest = "$HOME\.gitconfig" }

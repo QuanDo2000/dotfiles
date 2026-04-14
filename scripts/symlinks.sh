@@ -158,9 +158,16 @@ function setup_symlinks {
     overwrite_all=true
   fi
 
-  setup_symlinks_folder "$DOTFILES_DIR/shared"
-  setup_symlinks_folder "$DOTFILES_DIR/unix"
+  setup_symlinks_folder "$DOTFILES_DIR/config/shared"
+  setup_symlinks_folder "$DOTFILES_DIR/config/unix"
   if is_mac; then
-    setup_symlinks_folder "$DOTFILES_DIR/mac"
+    setup_symlinks_folder "$DOTFILES_DIR/config/mac"
+  fi
+
+  # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
+  # can run `dotfile` from any shell.
+  if [[ -f "$DOTFILES_DIR/dotfile" ]]; then
+    mkdir -p "$HOME/.local/bin" || fail "Failed to create $HOME/.local/bin"
+    link_files "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
   fi
 }

@@ -107,8 +107,8 @@ test_verify_symlink_wrong_target() {
 }
 
 test_verify_zshrc_exists() {
-  mkdir -p "$DOTFILES_DIR/unix"
-  echo "zshrc content" > "$DOTFILES_DIR/unix/.zshrc"
+  mkdir -p "$DOTFILES_DIR/config/unix"
+  echo "zshrc content" > "$DOTFILES_DIR/config/unix/.zshrc"
   echo "zshrc content" > "$HOME/.zshrc"
   local output
   output=$(verify 2>&1) || true

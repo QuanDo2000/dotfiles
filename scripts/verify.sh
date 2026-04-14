@@ -8,7 +8,7 @@ set -eo pipefail
 REQUIRED_TOOLS=(git zsh vim nvim tmux fzf fd rg lazygit zoxide)
 
 # Symlinked dotfiles under $HOME (resolved to $DOTFILES_DIR/...).
-# Keep in sync with scripts/symlinks.sh and the shared/unix layout.
+# Keep in sync with scripts/symlinks.sh and the config/{shared,unix} layout.
 REQUIRED_SYMLINKS=(.zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
 
 # Helper: check that a command exists on PATH.
@@ -83,7 +83,7 @@ function verify {
   done
 
   info "Verifying copied files..."
-  local source="$DOTFILES_DIR/unix/.zshrc"
+  local source="$DOTFILES_DIR/config/unix/.zshrc"
   local target="$HOME/.zshrc"
   if [ -f "$target" ]; then
     if [ ! -f "$source" ]; then

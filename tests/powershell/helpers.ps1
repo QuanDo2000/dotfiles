@@ -2,7 +2,7 @@
 # before each test file. Mirrors the responsibilities of tests/bash/helpers.sh.
 
 $script:RepoDir = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-$script:DotfileScript = Join-Path $script:RepoDir 'windows\bin\dotfile.ps1'
+$script:DotfileScript = Join-Path $script:RepoDir 'dotfile.ps1'
 
 # Load dotfile.ps1 functions without running elevation or main dispatch.
 # Dot-sourced so $script:* variables and functions land in the caller's scope.

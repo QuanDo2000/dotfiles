@@ -174,7 +174,7 @@ test_setup_dotfiles_dry_run_mac() {
   source_scripts verify.sh
 
   create_dotfiles_dirs
-  echo "mac" > "$DOTFILES_DIR/mac/.zshrc.mac"
+  echo "mac" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
 
   function update_repo {
     info "Updating dotfiles repo..."
@@ -227,5 +227,5 @@ test_dotfile_symlinks_command_mac() {
   output=$(bash "$DOTFILE_CMD" --dry symlinks 2>&1)
 
   assert_contains "$output" "Setting up symlinks"
-  assert_contains "$output" "dotfiles/mac"
+  assert_contains "$output" "dotfiles/config/mac"
 }
