@@ -116,7 +116,7 @@ test_install_tmux_plugins_dry_run() {
 
 test_install_tmux_plugins_tpm_already_installed() {
   # TPM + catppuccin already installed → no git calls expected.
-  mkdir -p "$HOME/.tmux/plugins/tpm" "$HOME/.tmux/plugins/catppuccin"
+  mkdir -p "$HOME/.tmux/plugins/tpm" "$HOME/.tmux/plugins/catppuccin/tmux"
   mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
 
   local output exit_code=0

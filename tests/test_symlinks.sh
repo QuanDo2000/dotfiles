@@ -12,7 +12,7 @@ teardown() {
 }
 
 test_link_files_creates_symlink() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "content" > "$src"
@@ -23,7 +23,7 @@ test_link_files_creates_symlink() {
 }
 
 test_link_files_skips_existing() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "content" > "$src"
@@ -76,7 +76,7 @@ test_copy_file_force_overwrites() {
 
 test_dry_run_link() {
   DRY=true
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "content" > "$src"
@@ -102,7 +102,7 @@ test_dry_run_copy() {
 }
 
 test_setup_symlinks_folder_files() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root"
   echo "dotfile" > "$root/.gitconfig"
@@ -115,7 +115,7 @@ test_setup_symlinks_folder_files() {
 }
 
 test_setup_symlinks_folder_bin() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/bin"
   echo "#!/bin/bash" > "$root/bin/myscript"
@@ -126,7 +126,7 @@ test_setup_symlinks_folder_bin() {
 }
 
 test_setup_symlinks_folder_config() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/config/nvim"
   echo "init" > "$root/config/nvim/init.lua"
@@ -137,7 +137,7 @@ test_setup_symlinks_folder_config() {
 }
 
 test_setup_symlinks_folder_zshrc_copied() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root"
   echo "zsh config" > "$root/.zshrc"
@@ -200,7 +200,7 @@ test_link_files_skip_all() {
 # ---------------------------------------------------------------------------
 
 test_link_files_interactive_overwrite() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   local old_target="$TEST_TMPDIR/oldtarget"
@@ -214,7 +214,7 @@ test_link_files_interactive_overwrite() {
 }
 
 test_link_files_interactive_backup() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "new" > "$src"
@@ -227,7 +227,7 @@ test_link_files_interactive_backup() {
 }
 
 test_link_files_interactive_skip() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "new" > "$src"
@@ -242,7 +242,7 @@ test_link_files_interactive_skip() {
 }
 
 test_link_files_interactive_overwrite_all() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   local old_target="$TEST_TMPDIR/oldtarget"
@@ -256,7 +256,7 @@ test_link_files_interactive_overwrite_all() {
 }
 
 test_link_files_interactive_backup_all() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "new" > "$src"
@@ -269,7 +269,7 @@ test_link_files_interactive_backup_all() {
 }
 
 test_link_files_interactive_skip_all() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "new" > "$src"
@@ -310,7 +310,7 @@ test_copy_file_interactive_skip() {
 }
 
 test_link_files_interactive_invalid_input_skips() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   local old_target="$TEST_TMPDIR/oldtarget"
@@ -340,7 +340,7 @@ test_copy_file_interactive_invalid_input_skips() {
 # ---------------------------------------------------------------------------
 
 test_setup_symlinks_folder_nonexistent_root() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local before_count
   before_count="$(find "$HOME" -mindepth 1 | wc -l)"
 
@@ -352,7 +352,7 @@ test_setup_symlinks_folder_nonexistent_root() {
 }
 
 test_setup_symlinks_folder_creates_local_bin() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   rm -rf "$HOME/.local/bin"
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/bin"
@@ -367,7 +367,7 @@ test_setup_symlinks_folder_creates_local_bin() {
 }
 
 test_setup_symlinks_folder_creates_config() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   rm -rf "$HOME/.config"
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/config/myapp"
@@ -388,7 +388,7 @@ test_setup_symlinks_folder_creates_config() {
 test_link_files_fails_unwritable_dst_dir() {
   # chmod 555 does not prevent the owner from writing on Windows NTFS.
   is_windows_bash && return 0
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst_dir="$TEST_TMPDIR/readonly"
   mkdir -p "$dst_dir"
@@ -425,7 +425,7 @@ test_copy_file_fails_unwritable_dst_dir() {
 test_link_files_broken_source() {
   # Symlinking to a non-existent source should still succeed (ln -s is happy
   # to create dangling symlinks); we only require the link itself to exist.
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/does_not_exist"
   local dst="$TEST_TMPDIR/home/dstfile"
 
@@ -440,7 +440,7 @@ test_link_files_broken_source() {
 test_link_files_idempotent_relative_symlink() {
   # If an existing symlink points to the same absolute target via a relative
   # path, link_files should treat it as already-linked and skip.
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
   local dst="$TEST_TMPDIR/home/dstfile"
   echo "content" > "$src"
@@ -471,4 +471,30 @@ test_link_files_overwrite_fails_unwritable() {
   if [[ "$exit_code" -eq 0 ]]; then
     echo "  FAILED: link_files overwrite should fail with unwritable dir" >> "$ERROR_FILE"
   fi
+}
+
+# ---------------------------------------------------------------------------
+# Edge cases: paths with spaces and dotted/hidden directories
+# ---------------------------------------------------------------------------
+
+test_setup_symlinks_folder_path_with_spaces() {
+  local root="$TEST_TMPDIR/dir with spaces"
+  mkdir -p "$root/config/my app"
+  echo "hello" > "$root/config/my app/conf"
+  echo "x" > "$root/.gitconfig"
+
+  setup_symlinks_folder "$root"
+
+  assert_symlink "$HOME/.gitconfig" "$root/.gitconfig"
+  assert_symlink "$HOME/.config/my app" "$root/config/my app"
+}
+
+test_setup_symlinks_folder_dotted_config_subdir() {
+  local root="$TEST_TMPDIR/fakedir"
+  mkdir -p "$root/config/.hidden"
+  echo "secret" > "$root/config/.hidden/conf"
+
+  setup_symlinks_folder "$root"
+
+  assert_symlink "$HOME/.config/.hidden" "$root/config/.hidden"
 }

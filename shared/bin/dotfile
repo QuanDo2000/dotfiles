@@ -26,14 +26,13 @@ if [[ ! -d "$DOTFILES_DIR" ]]; then
   git clone "$REPO_URL" "$DOTFILES_DIR" || { echo "Failed to clone dotfiles repo"; exit 1; }
 fi
 
-# Validate that DOTFILES_DIR actually contains the repo we need.
-if ! git -C "$DOTFILES_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "Error: $DOTFILES_DIR exists but is not a git repository." >&2
-  echo "Remove it or set DOTFILES_DIR to a valid clone of $REPO_URL." >&2
-  exit 1
-fi
+# Validate that DOTFILES_DIR actually contains the repo we need. We only
+# check for the scripts/ directory — a git check would break valid installs
+# where the repo is owned by a different UID (e.g. read-only bind mount in
+# a container) because git refuses to operate on such directories.
 if [[ ! -d "$SCRIPTS_DIR" ]]; then
-  echo "Error: $SCRIPTS_DIR not found — repo at $DOTFILES_DIR appears incomplete." >&2
+  echo "Error: $SCRIPTS_DIR not found — $DOTFILES_DIR does not look like a dotfiles checkout." >&2
+  echo "Remove it or set DOTFILES_DIR to a valid clone of $REPO_URL." >&2
   exit 1
 fi
 

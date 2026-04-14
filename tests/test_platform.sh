@@ -17,7 +17,7 @@ teardown() {
 
 test_setup_symlinks_includes_mac_on_darwin() {
   mock_uname Darwin
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
   echo "shared" > "$DOTFILES_DIR/shared/.gitconfig"
@@ -35,7 +35,7 @@ test_setup_symlinks_includes_mac_on_darwin() {
 
 test_setup_symlinks_excludes_mac_on_linux() {
   mock_uname Linux
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
   echo "shared" > "$DOTFILES_DIR/shared/.gitconfig"
@@ -54,7 +54,7 @@ test_setup_symlinks_excludes_mac_on_linux() {
 # ---------------------------------------------------------------------------
 
 test_mac_folder_dotfiles() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
 
   local mac_dir="$TEST_TMPDIR/mac"
   mkdir -p "$mac_dir"
@@ -68,7 +68,7 @@ test_mac_folder_dotfiles() {
 }
 
 test_mac_folder_config() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
 
   local mac_dir="$TEST_TMPDIR/mac"
   mkdir -p "$mac_dir/config/ghostty"
@@ -80,7 +80,7 @@ test_mac_folder_config() {
 }
 
 test_mac_folder_bin() {
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
 
   local mac_dir="$TEST_TMPDIR/mac"
   mkdir -p "$mac_dir/bin"
@@ -98,7 +98,7 @@ test_mac_folder_bin() {
 test_force_overwrite_all_platforms_darwin() {
   FORCE=true
   mock_uname Darwin
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
   echo "shared" > "$DOTFILES_DIR/shared/.gitconfig"
@@ -192,7 +192,7 @@ test_install_packages_fails_unsupported_os() {
 test_dry_run_darwin_creates_nothing() {
   DRY=true
   mock_uname Darwin
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
   echo "content" > "$DOTFILES_DIR/mac/.zshrc.mac"
@@ -207,7 +207,7 @@ test_dry_run_darwin_creates_nothing() {
 test_dry_run_linux_creates_nothing() {
   DRY=true
   mock_uname Linux
-  eval "$(init_symlink_vars)"
+  local overwrite_all=false backup_all=false skip_all=false
 
   create_dotfiles_dirs
   echo "content" > "$DOTFILES_DIR/shared/.gitconfig"

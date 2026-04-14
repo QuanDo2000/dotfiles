@@ -75,6 +75,8 @@ function LinkFile($source, $destination) {
     if ($script:Dry) { return }
 
     $skip = $false
+    $overwrite = $false
+    $backup = $false
     if (Test-Path $destination) {
         $current = (Get-Item $destination -ErrorAction SilentlyContinue)
         if ($current.Target -eq $source) {
@@ -82,20 +84,21 @@ function LinkFile($source, $destination) {
         } elseif (-not $script:OverwriteAll -and -not $script:BackupAll -and -not $script:SkipAll) {
             $action = PromptAction $destination (Split-Path $source -Leaf)
             switch ($action) {
-                'o' { $script:Force = $false }
+                'o' { $overwrite = $true }
                 'O' { $script:OverwriteAll = $true }
-                'b' { }
+                'b' { $backup = $true }
                 'B' { $script:BackupAll = $true }
                 's' { $skip = $true }
                 'S' { $script:SkipAll = $true }
+                default { $skip = $true }
             }
         }
 
-        if ($script:OverwriteAll -or $action -eq 'o') {
+        if ($script:OverwriteAll -or $overwrite) {
             Remove-Item $destination -Force
             Success "Removed $destination"
         }
-        if ($script:BackupAll -or $action -eq 'b') {
+        if ($script:BackupAll -or $backup) {
             Move-Item $destination "$destination.bak" -Force
             Success "Moved $destination to $destination.bak"
         }

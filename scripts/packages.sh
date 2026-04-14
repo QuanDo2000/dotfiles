@@ -199,10 +199,14 @@ function install_mac {
 function set_zsh_default {
   info "Changing default shell to zsh..."
   if [[ "$DRY" == "false" ]]; then
-    if [[ "$SHELL" != "$(command -v zsh)" ]]; then
-      chsh -s "$(command -v zsh)"
-    else
+    local zsh_path
+    zsh_path="$(command -v zsh || true)"
+    if [[ -z "$zsh_path" ]]; then
+      info "zsh not installed; skipping default shell change"
+    elif [[ "$SHELL" == "$zsh_path" || "$(basename "$SHELL")" == "zsh" ]]; then
       info "Already has zsh as default shell"
+    else
+      chsh -s "$zsh_path"
     fi
   fi
   success "Finished changing zsh as default"

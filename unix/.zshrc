@@ -1,11 +1,11 @@
 # Base config (tracked in dotfiles repo)
-[ -e "$HOME/.zshrc.base" ] && source $HOME/.zshrc.base
+[ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
 
 # Custom plugins and oh-my-zsh settings can be added here
 # e.g. plugins+=(docker kubectl)
 
 # Source oh-my-zsh (after all plugins and settings are configured)
-source $ZSH/oh-my-zsh.sh
+source "$ZSH/oh-my-zsh.sh"
 
 # Go
 export GOPATH="$HOME/.local/go"

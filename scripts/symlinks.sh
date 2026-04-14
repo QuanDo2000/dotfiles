@@ -5,8 +5,8 @@ set -eo pipefail
 
 function link_files {
   local src=$1 dst=$2
-  # overwrite_all/backup_all/skip_all may be set by the caller (e.g.
-  # setup_symlinks).  Default to "false" when called standalone.
+  # Inherit overwrite_all/backup_all/skip_all from the caller so "*-all"
+  # choices persist across invocations within a single run; default to false.
   : "${overwrite_all:=false}"
   : "${backup_all:=false}"
   : "${skip_all:=false}"
@@ -54,12 +54,14 @@ function link_files {
     fi
 
     if [[ "$overwrite" == "true" || "$overwrite_all" == "true" ]]; then
-      rm -rf "$dst" || fail "Failed to remove $dst"
+      rm -rf "$dst" 2>/dev/null \
+        || fail "Failed to remove $dst (check permissions or whether it's in use)"
       success "Removed $dst"
     fi
 
     if [[ "$backup" == "true" || "$backup_all" == "true" ]]; then
-      mv "$dst" "${dst}.backup" || fail "Failed to backup $dst"
+      mv "$dst" "${dst}.backup" \
+        || fail "Failed to backup $dst to ${dst}.backup (does ${dst}.backup already exist?)"
       success "Moved $dst to ${dst}.backup"
     fi
 

@@ -63,11 +63,20 @@ test_set_zsh_default_already_zsh() {
   # chsh is not available on Git Bash; set_zsh_default relies on it.
   is_windows_bash && return 0
   DRY=false
-  SHELL="$(command -v zsh 2>/dev/null || echo "/bin/zsh")"
+  # Provide a fake zsh on PATH so `command -v zsh` resolves in environments
+  # (e.g. minimal CI containers) where zsh isn't installed.
+  local fake_bin="$TEST_TMPDIR/fakebin"
+  mkdir -p "$fake_bin"
+  printf '#!/bin/sh\n' > "$fake_bin/zsh"
+  chmod +x "$fake_bin/zsh"
+  local ORIG_PATH="$PATH"
+  export PATH="$fake_bin:$PATH"
+  SHELL="$fake_bin/zsh"
   export SHELL
 
   local output
   output=$(set_zsh_default 2>&1)
+  export PATH="$ORIG_PATH"
 
   assert_contains "$output" "Already has zsh as default shell"
 }
