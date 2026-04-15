@@ -31,7 +31,7 @@ if ($env:DOTFILES_DIR -and (Test-Path $env:DOTFILES_DIR)) {
 } else {
     $scriptItem = Get-Item -LiteralPath $PSCommandPath
     $scriptReal = if ($scriptItem.Target) { $scriptItem.Target } else { $PSCommandPath }
-    $script:DotfilesDir = (Resolve-Path (Join-Path (Split-Path $scriptReal -Parent) "..\..")).Path
+    $script:DotfilesDir = (Resolve-Path (Split-Path $scriptReal -Parent)).Path
 }
 $script:RepoUrl = "https://github.com/QuanDo2000/dotfiles.git"
 
