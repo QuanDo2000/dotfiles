@@ -43,6 +43,7 @@ source "$SCRIPTS_DIR/packages.sh"
 source "$SCRIPTS_DIR/extras.sh"
 source "$SCRIPTS_DIR/symlinks.sh"
 source "$SCRIPTS_DIR/verify.sh"
+source "$SCRIPTS_DIR/obsidian.sh"
 
 function update_repo {
   info "Updating dotfiles repo..."
@@ -73,6 +74,7 @@ Commands:
   zsh         Install oh-my-zsh and zsh plugins
   tmux        Install tmux plugins
   symlinks    Create symlinks only
+  obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
   verify      Verify installation
 
 Options:
@@ -119,6 +121,7 @@ zsh)
   ;;
 tmux) install_tmux_plugins ;;
 symlinks) setup_symlinks ;;
+obsidian) setup_obsidian ;;
 verify) verify ;;
 *)
   fail "Unknown command: $1"
