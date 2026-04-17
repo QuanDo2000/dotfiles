@@ -54,7 +54,8 @@
       "Bash(awk '{print $2}')",
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
-      "Bash(./tests/bash/runner.sh *)"
+      "Bash(./tests/bash/runner.sh *)",
+      "Bash(bash tests/bash/runner.sh --no-docker)"
     ]
   }
 }

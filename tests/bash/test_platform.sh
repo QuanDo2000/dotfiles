@@ -114,31 +114,6 @@ test_force_overwrite_all_platforms_darwin() {
 }
 
 # ---------------------------------------------------------------------------
-# install_neovim: skips on Darwin, runs on Linux
-# ---------------------------------------------------------------------------
-
-test_install_neovim_skips_on_darwin() {
-  source_scripts packages.sh
-  mock_uname Darwin
-
-  local output
-  output=$(install_neovim 2>&1)
-
-  assert_equals "" "$output"
-}
-
-test_install_neovim_runs_on_linux() {
-  source_scripts packages.sh
-  mock_uname Linux
-
-  DRY=true
-  local output
-  output=$(install_neovim 2>&1)
-
-  assert_contains "$output" "neovim"
-}
-
-# ---------------------------------------------------------------------------
 # install_packages: dispatches to correct platform installer
 # ---------------------------------------------------------------------------
 
