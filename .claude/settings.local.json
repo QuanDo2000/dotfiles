@@ -55,7 +55,10 @@
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
       "Bash(./tests/bash/runner.sh *)",
-      "Bash(bash tests/bash/runner.sh --no-docker)"
+      "Bash(bash tests/bash/runner.sh --no-docker)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File C:/Users/Quan/Documents/Projects/dotfiles/tests/powershell/runner.ps1)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File C:/Users/Quan/Documents/Projects/dotfiles/dotfile.ps1 -d)",
+      "Bash(pwsh *)"
     ]
   }
 }

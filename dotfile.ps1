@@ -2,6 +2,14 @@ param(
     # When set, skip self-elevation and main dispatch so the script can be
     # dot-sourced by tests to load functions without side effects.
     [switch]$NoMain,
+    # Flags declared explicitly so PowerShell's parameter binder doesn't
+    # silently swallow `-d` as a prefix of the `-Debug` common parameter
+    # (common parameters are auto-added because $RemainingArgs carries
+    # [Parameter(...)]). Aliases preserve the short-form CLI.
+    [Alias('d')][switch]$Dry,
+    [Alias('f')][switch]$Force,
+    [Alias('q')][switch]$Quiet,
+    [Alias('h')][switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
@@ -14,16 +22,24 @@ if (-not $NoMain) {
     if (-not $isAdmin) {
         Write-Host "  [ .. ] Elevating to Administrator..."
         $pwsh = (Get-Process -Id $PID).Path
-        $argList = @("-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) + $RemainingArgs
+        # Flags were bound to named params, so re-emit them explicitly —
+        # $RemainingArgs only contains the positional command now.
+        $forwardedFlags = @()
+        if ($Dry)   { $forwardedFlags += '-d' }
+        if ($Force) { $forwardedFlags += '-f' }
+        if ($Quiet) { $forwardedFlags += '-q' }
+        if ($Help)  { $forwardedFlags += '-h' }
+        $argList = @("-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) + $forwardedFlags + $RemainingArgs
         Start-Process -FilePath $pwsh -ArgumentList $argList -Verb RunAs -Wait
         exit $LASTEXITCODE
     }
 }
 
-# Global variables
-$script:Dry = $false
-$script:Quiet = $false
-$script:Force = $false
+# Global variables.
+# Don't re-initialise $script:Dry/Quiet/Force here — at a script's top level,
+# `$script:X` is the same variable as the param `$X`, so re-assigning would
+# clobber values the binder just set from `-d`/`-f`/`-q` flags. Switch params
+# already default to $false, which is all the reset was ever providing.
 # Resolve symlink so invoking via ~\.local\bin points back to the real repo.
 # Allow override via $env:DOTFILES_DIR so the install path is not hardcoded.
 if ($env:DOTFILES_DIR -and (Test-Path $env:DOTFILES_DIR)) {
@@ -554,6 +570,12 @@ function ParseArgs([string[]]$Arguments) {
 }
 
 if (-not $NoMain) {
+    # Flag params are already bound to $script:Dry/Force/Quiet at top level
+    # (script and local scopes coincide here). Just handle -Help before
+    # ParseArgs and let ParseArgs handle any flags still in $RemainingArgs
+    # (e.g. from tests that drive it with synthetic arrays).
+    if ($Help) { ShowUsage; exit 0 }
+
     $command = ParseArgs $RemainingArgs
     if ($command -eq '__help__') { exit 0 }
 

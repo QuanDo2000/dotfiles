@@ -50,3 +50,25 @@ function test_parseargs_combined_flags_and_command {
     Assert-True $script:Quiet 'Quiet set'
     Assert-Equals 'packages' $cmd
 }
+
+# Regression: PowerShell's parameter binder auto-adds common parameters
+# (-Debug, -Verbose, ...) whenever any param has [Parameter(...)]. Without
+# an explicit -Dry param, `-d` prefix-matches -Debug and is silently
+# swallowed on the `pwsh -File dotfile.ps1 -d` path. Lock the explicit
+# declaration + short-form aliases in place.
+function test_script_declares_flag_params_with_short_aliases {
+    $cmd = Get-Command $script:DotfileScript
+    foreach ($pair in @(
+            @{ Name = 'Dry';   Alias = 'd' },
+            @{ Name = 'Force'; Alias = 'f' },
+            @{ Name = 'Quiet'; Alias = 'q' },
+            @{ Name = 'Help';  Alias = 'h' }
+        )) {
+        $p = $cmd.Parameters[$pair.Name]
+        Assert-True ($null -ne $p) "$($pair.Name) param declared"
+        if ($p) {
+            Assert-True ($p.Aliases -contains $pair.Alias) `
+                "$($pair.Name) has short alias -$($pair.Alias)"
+        }
+    }
+}
