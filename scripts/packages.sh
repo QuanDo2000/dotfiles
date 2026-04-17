@@ -41,70 +41,80 @@ function install_font_debian {
   success "Finished installing Fira Code"
 }
 
-function install_neovim {
-  # On Mac, neovim is installed via brew in install_mac
+# Install or update neovim from GitHub releases (Linux only; Mac uses brew).
+# Usage: setup_neovim [--update]
+function setup_neovim {
   if is_mac; then
     return
   fi
-  info "Installing neovim..."
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "${update:+Updating}${update:- Installing} neovim..."
   if [[ "$DRY" == "false" ]]; then
-    if ! command -v nvim >/dev/null 2>&1; then
-      # Install latest Neovim
-      curl -fLO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz \
-        || fail "Failed to download Neovim"
-      sudo rm -rf /opt/nvim-linux-x86_64
-      sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz || fail "Failed to extract Neovim"
-      rm -f nvim-linux-x86_64.tar.gz
-    else
+    if [[ "$update" == "false" ]] && command -v nvim >/dev/null 2>&1; then
       info "Already installed neovim"
+      return
     fi
+    curl -fLO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz \
+      || fail "Failed to download Neovim"
+    sudo rm -rf /opt/nvim-linux-x86_64
+    sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz || fail "Failed to extract Neovim"
+    rm -f nvim-linux-x86_64.tar.gz
   fi
-  success "Finished installing neovim"
+  success "Finished neovim"
 }
 
-function install_lazygit {
-  info "Installing lazygit..."
+# Install or update lazygit from GitHub releases.
+# Usage: setup_lazygit [--update]
+function setup_lazygit {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "${update:+Updating}${update:- Installing} lazygit..."
   if [[ "$DRY" == "false" ]]; then
-    if ! command -v lazygit >/dev/null 2>&1; then
-      local lazygit_json
-      lazygit_json="$(http_get_retry "https://api.github.com/repos/jesseduffield/lazygit/releases/latest")" \
-        || fail "Failed to fetch lazygit version (GitHub API unreachable or rate-limited)"
-      LAZYGIT_VERSION="$(echo "$lazygit_json" | grep -Po '"tag_name": "v\K[^"]*')" \
-        || fail "Failed to parse lazygit version"
-      curl -fLo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" \
-        || fail "Failed to download lazygit"
-      tar xf lazygit.tar.gz lazygit || fail "Failed to extract lazygit"
-      sudo install lazygit /usr/local/bin || fail "Failed to install lazygit"
-      rm -f lazygit.tar.gz lazygit
-    else
+    if [[ "$update" == "false" ]] && command -v lazygit >/dev/null 2>&1; then
       info "Already installed lazygit"
+      return
     fi
+    local lazygit_json
+    lazygit_json="$(http_get_retry "https://api.github.com/repos/jesseduffield/lazygit/releases/latest")" \
+      || fail "Failed to fetch lazygit version (GitHub API unreachable or rate-limited)"
+    LAZYGIT_VERSION="$(echo "$lazygit_json" | grep -Po '"tag_name": "v\K[^"]*')" \
+      || fail "Failed to parse lazygit version"
+    curl -fLo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" \
+      || fail "Failed to download lazygit"
+    tar xf lazygit.tar.gz lazygit || fail "Failed to extract lazygit"
+    sudo install lazygit /usr/local/bin || fail "Failed to install lazygit"
+    rm -f lazygit.tar.gz lazygit
   fi
-  success "Finished installing lazygit"
+  success "Finished lazygit"
 }
 
-function install_zoxide {
-  info "Installing zoxide..."
+# Install or update zoxide via its install script.
+# Usage: setup_zoxide [--update]
+function setup_zoxide {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "${update:+Updating}${update:- Installing} zoxide..."
   if [[ "$DRY" == "false" ]]; then
-    if ! command -v zoxide >/dev/null 2>&1; then
-      # Download to a temp file first so the fetch and execution are distinct
-      # steps — avoids the classic `curl | sh` anti-pattern where a truncated
-      # download still executes whatever partial script arrived.
-      local tmp
-      tmp="$(mktemp -t zoxide-install.XXXXXX.sh)" || fail "Failed to create temp file"
-      # shellcheck disable=SC2064
-      trap "rm -f '$tmp'" RETURN
-      http_get_retry "https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh" "$tmp" \
-        || fail "Failed to download zoxide installer"
-      # Sanity-check: the installer should be a shell script.
-      head -n1 "$tmp" | grep -q '^#!' \
-        || fail "Downloaded zoxide installer does not look like a shell script"
-      sh "$tmp" || fail "Failed to install zoxide"
-    else
+    if [[ "$update" == "false" ]] && command -v zoxide >/dev/null 2>&1; then
       info "Already installed zoxide"
+      return
     fi
+    # Download to a temp file first so the fetch and execution are distinct
+    # steps — avoids the classic `curl | sh` anti-pattern where a truncated
+    # download still executes whatever partial script arrived.
+    local tmp
+    tmp="$(mktemp -t zoxide-install.XXXXXX.sh)" || fail "Failed to create temp file"
+    # shellcheck disable=SC2064
+    trap "rm -f '$tmp'" RETURN
+    http_get_retry "https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh" "$tmp" \
+      || fail "Failed to download zoxide installer"
+    # Sanity-check: the installer should be a shell script.
+    head -n1 "$tmp" | grep -q '^#!' \
+      || fail "Downloaded zoxide installer does not look like a shell script"
+    sh "$tmp" || fail "Failed to install zoxide"
   fi
-  success "Finished installing zoxide"
+  success "Finished zoxide"
 }
 
 function setup_fdfind {
@@ -138,17 +148,29 @@ DEBIAN_PACKAGES=(
   unzip zsh vim tmux fontconfig fzf fd-find ripgrep
 )
 
+function update_debian {
+  info "Updating packages for Debian..."
+  if [[ "$DRY" == "false" ]]; then
+    sudo apt update -y || fail "Failed to update apt"
+    sudo apt upgrade -y || fail "Failed to upgrade apt packages"
+
+    setup_neovim --update
+    setup_lazygit --update
+    setup_zoxide --update
+  fi
+  success "Finished update for Debian"
+}
+
 function install_debian {
   info "Installing packages and programs for Debian..."
   if [[ "$DRY" == "false" ]]; then
-    sudo apt update -y || fail "Failed to update apt"
     sudo apt install -y "${DEBIAN_PACKAGES[@]}" \
       || fail "Failed to install Debian packages"
 
     install_font_debian
-    install_lazygit
-    install_neovim
-    install_zoxide
+    setup_lazygit
+    setup_neovim
+    setup_zoxide
 
     setup_fdfind
   fi
@@ -162,16 +184,23 @@ ARCH_PACKAGES=(
   tree-sitter-cli
 )
 
+function update_arch {
+  info "Updating packages for Arch Linux..."
+  if [[ "$DRY" == "false" ]]; then
+    sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
+
+    setup_neovim --update
+  fi
+  success "Finished update for Arch Linux"
+}
+
 function install_arch {
   info "Installing packages and programs for Arch Linux..."
   if [[ "$DRY" == "false" ]]; then
-    # Update system and install packages
-    sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
-
     sudo pacman -S --needed --noconfirm "${ARCH_PACKAGES[@]}" \
       || fail "Failed to install Arch packages"
 
-    install_neovim
+    setup_neovim
     setup_fdfind
   fi
   success "Finished install for Arch Linux"
@@ -183,13 +212,21 @@ MAC_BREW_PACKAGES=(
 )
 MAC_BREW_CASKS=(ghostty)
 
+function update_mac {
+  info "Updating packages for Mac..."
+  if [[ "$DRY" == "false" ]]; then
+    brew update || fail "Failed to update brew"
+    brew upgrade || fail "Failed to upgrade brew packages"
+  fi
+  success "Finished update for Mac"
+}
+
 function install_mac {
   info "Installing packages and programs for Mac..."
   if [[ "$DRY" == "false" ]]; then
     if ! command -v brew >/dev/null 2>&1; then
       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
-    brew update
     brew install "${MAC_BREW_PACKAGES[@]}"
     brew install --cask "${MAC_BREW_CASKS[@]}"
   fi
@@ -210,6 +247,17 @@ function set_zsh_default {
     fi
   fi
   success "Finished changing zsh as default"
+}
+
+function update_packages {
+  info "Updating packages..."
+  case "$(detect_platform)" in
+    debian)  update_debian ;;
+    arch)    update_arch ;;
+    mac)     update_mac ;;
+    unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
+  esac
+  success "Finished update"
 }
 
 function install_packages {

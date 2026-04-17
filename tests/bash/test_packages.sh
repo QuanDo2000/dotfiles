@@ -37,19 +37,19 @@ test_install_font_debian_already_installed() {
 }
 
 # ---------------------------------------------------------------------------
-# install_lazygit
+# setup_lazygit (install mode)
 # ---------------------------------------------------------------------------
 
-test_install_lazygit_dry_run() {
+test_setup_lazygit_dry_run() {
   DRY=true
   local output
-  output=$(install_lazygit 2>&1)
+  output=$(setup_lazygit 2>&1)
 
-  assert_contains "$output" "Installing lazygit"
-  assert_contains "$output" "Finished installing lazygit"
+  assert_contains "$output" "lazygit"
+  assert_contains "$output" "Finished lazygit"
 }
 
-test_install_lazygit_already_installed() {
+test_setup_lazygit_already_installed() {
   DRY=false
   # Create a fake lazygit on PATH
   echo '#!/bin/bash' > "$HOME/.local/bin/lazygit"
@@ -57,51 +57,106 @@ test_install_lazygit_already_installed() {
   export PATH="$HOME/.local/bin:$PATH"
 
   local output
-  output=$(install_lazygit 2>&1)
+  output=$(setup_lazygit 2>&1)
 
   assert_contains "$output" "Already installed lazygit"
 }
 
 # ---------------------------------------------------------------------------
-# install_zoxide
+# setup_lazygit (update mode)
 # ---------------------------------------------------------------------------
 
-test_install_zoxide_dry_run() {
+test_setup_lazygit_update_dry_run() {
   DRY=true
   local output
-  output=$(install_zoxide 2>&1)
+  output=$(setup_lazygit --update 2>&1)
 
-  assert_contains "$output" "Installing zoxide"
-  assert_contains "$output" "Finished installing zoxide"
+  assert_contains "$output" "lazygit"
+  assert_contains "$output" "Finished lazygit"
 }
 
-test_install_zoxide_already_installed() {
+test_setup_lazygit_update_does_not_skip() {
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/lazygit"
+  chmod +x "$HOME/.local/bin/lazygit"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_lazygit --update 2>&1)
+
+  # With --update, should NOT say "Already installed"
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# setup_zoxide (install mode)
+# ---------------------------------------------------------------------------
+
+test_setup_zoxide_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_zoxide 2>&1)
+
+  assert_contains "$output" "zoxide"
+  assert_contains "$output" "Finished zoxide"
+}
+
+test_setup_zoxide_already_installed() {
   DRY=false
   echo '#!/bin/bash' > "$HOME/.local/bin/zoxide"
   chmod +x "$HOME/.local/bin/zoxide"
   export PATH="$HOME/.local/bin:$PATH"
 
   local output
-  output=$(install_zoxide 2>&1)
+  output=$(setup_zoxide 2>&1)
 
   assert_contains "$output" "Already installed zoxide"
 }
 
 # ---------------------------------------------------------------------------
-# install_neovim
+# setup_zoxide (update mode)
 # ---------------------------------------------------------------------------
 
-test_install_neovim_dry_run_linux() {
+test_setup_zoxide_update_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_zoxide --update 2>&1)
+
+  assert_contains "$output" "zoxide"
+  assert_contains "$output" "Finished zoxide"
+}
+
+test_setup_zoxide_update_does_not_skip() {
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/zoxide"
+  chmod +x "$HOME/.local/bin/zoxide"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_zoxide --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# setup_neovim (install mode)
+# ---------------------------------------------------------------------------
+
+test_setup_neovim_dry_run_linux() {
   mock_uname Linux
   DRY=true
   local output
-  output=$(install_neovim 2>&1)
+  output=$(setup_neovim 2>&1)
 
-  assert_contains "$output" "Installing neovim"
-  assert_contains "$output" "Finished installing neovim"
+  assert_contains "$output" "neovim"
+  assert_contains "$output" "Finished neovim"
 }
 
-test_install_neovim_already_installed() {
+test_setup_neovim_already_installed() {
   mock_uname Linux
   DRY=false
   # nvim already on PATH (use the real one if available, otherwise fake it)
@@ -112,9 +167,59 @@ test_install_neovim_already_installed() {
   fi
 
   local output
-  output=$(install_neovim 2>&1)
+  output=$(setup_neovim 2>&1)
 
   assert_contains "$output" "Already installed neovim"
+}
+
+test_setup_neovim_skips_on_mac() {
+  mock_uname Darwin
+  DRY=false
+  local output
+  output=$(setup_neovim 2>&1)
+
+  # Should return immediately with no output on Mac
+  assert_equals "" "$output"
+}
+
+# ---------------------------------------------------------------------------
+# setup_neovim (update mode)
+# ---------------------------------------------------------------------------
+
+test_setup_neovim_update_dry_run_linux() {
+  mock_uname Linux
+  DRY=true
+  local output
+  output=$(setup_neovim --update 2>&1)
+
+  assert_contains "$output" "neovim"
+  assert_contains "$output" "Finished neovim"
+}
+
+test_setup_neovim_update_does_not_skip() {
+  mock_uname Linux
+  DRY=true
+  if ! command -v nvim >/dev/null 2>&1; then
+    echo '#!/bin/bash' > "$HOME/.local/bin/nvim"
+    chmod +x "$HOME/.local/bin/nvim"
+    export PATH="$HOME/.local/bin:$PATH"
+  fi
+
+  local output
+  output=$(setup_neovim --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}
+
+test_setup_neovim_update_skips_on_mac() {
+  mock_uname Darwin
+  DRY=false
+  local output
+  output=$(setup_neovim --update 2>&1)
+
+  assert_equals "" "$output"
 }
 
 # ---------------------------------------------------------------------------

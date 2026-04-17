@@ -69,3 +69,15 @@ test_dry_run_default_command() {
   is_windows_bash && return 0
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry all
 }
+
+test_update_command_in_help() {
+  local output
+  output=$(bash "$DOTFILE_CMD" --help 2>&1)
+  assert_contains "$output" "update"
+  assert_contains "$output" "Update system packages"
+}
+
+test_dry_run_update_command() {
+  is_windows_bash && return 0
+  assert_exit_code 0 bash "$DOTFILE_CMD" --dry update
+}

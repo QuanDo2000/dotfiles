@@ -53,7 +53,8 @@
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File windows/bin/dotfile.ps1 --help)",
       "Bash(awk '{print $2}')",
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(./tests/bash/runner.sh *)"
     ]
   }
 }
