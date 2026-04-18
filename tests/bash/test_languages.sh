@@ -442,3 +442,29 @@ test_odin_target_triple_unsupported_arch_fails() {
     echo "  FAILED: odin_target_triple should fail on unsupported arch" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# odin_latest_release
+# ---------------------------------------------------------------------------
+
+test_odin_latest_release_uses_passed_json() {
+  # If a JSON arg is given, return it verbatim — http_get_retry must NOT be called.
+  http_get_retry() {
+    echo "  FAILED: http_get_retry should not be called when JSON arg supplied" >> "$ERROR_FILE"
+    return 1
+  }
+  export -f http_get_retry
+
+  local result
+  result="$(odin_latest_release '{"tag_name": "dev-2026-04"}')"
+  assert_equals '{"tag_name": "dev-2026-04"}' "$result"
+}
+
+test_odin_latest_release_fetches_when_no_arg() {
+  http_get_retry() { echo '{"tag_name": "dev-2026-04"}'; }
+  export -f http_get_retry
+
+  local result
+  result="$(odin_latest_release)"
+  assert_equals '{"tag_name": "dev-2026-04"}' "$result"
+}
