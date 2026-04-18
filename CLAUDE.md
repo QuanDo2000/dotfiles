@@ -43,3 +43,32 @@ Files in `config/` subdirectories of each platform layer are symlinked into `~/.
 ## Global Variables
 
 Scripts share state via exported globals: `DRY`, `QUIET`, `FORCE`. These are set by `dotfile` CLI flags and checked throughout all sourced scripts.
+
+## Tests
+
+Tests live under `tests/` with one suite per platform.
+
+```bash
+bash tests/bash/runner.sh                  # all bash tests (runs in Docker by default)
+bash tests/bash/runner.sh --no-docker      # all bash tests on host (faster while iterating)
+bash tests/bash/runner.sh test_packages.sh # single file
+pwsh tests/powershell/runner.ps1           # PowerShell tests (Windows / pwsh)
+```
+
+### Bash test pattern
+
+- One `test_<module>.sh` per `scripts/<module>.sh`. Each `test_*` function is auto-discovered by the runner.
+- Source `tests/bash/helpers.sh` at the top, then use `setup`/`teardown` to call `init_test_env` / `cleanup_test_env`. The helper creates a throwaway `$HOME` under a temp dir and exports `DRY`/`QUIET`/`FORCE`.
+- Source the script under test via `source_scripts utils.sh <module>.sh` (always pulls in `platform.sh` automatically).
+- Mock OS detection with `mock_uname Linux` / `mock_uname Darwin` (auto-cleared by `cleanup_test_env`).
+- Assertions: `assert_equals`, `assert_contains`, `assert_file_exists`, `assert_symlink`, `assert_exit_code`. Failures append to `$ERROR_FILE`; tests do not abort on first failure.
+- Default exercise paths: `DRY=true` smoke run, "already installed" short-circuit, `--update` mode does not skip when present, and any platform-specific branches.
+
+### PowerShell test pattern
+
+- One `test_<feature>.ps1` per logical area. Source `tests/powershell/helpers.ps1` and dot-source `dotfile.ps1 -NoMain` to load functions without triggering self-elevation or main dispatch.
+- Same dry-run / branch-coverage philosophy as bash tests.
+
+### When adding a new subcommand or script
+
+Add a `tests/bash/test_<name>.sh` (and `tests/powershell/test_<name>.ps1` if Windows-relevant) covering the dry-run path, the skip-if-already-installed path, and any platform branching. Also add a CLI dispatch test in `test_cli.sh` (e.g., `--dry <newcommand>` exits 0 and the help text mentions it).
