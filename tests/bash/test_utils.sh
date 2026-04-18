@@ -100,11 +100,9 @@ test_cleanup_resets_uname_m() {
   mock_uname_m aarch64
   cleanup_test_env
   init_test_env
-  local result
+  local result real_arch
   result="$(uname -m)"
-  # After cleanup + fresh init, uname -m should be the real value (NOT "aarch64")
-  if [[ "$result" == "aarch64" ]] && [[ "$(command uname -m)" != "aarch64" ]]; then
-    echo "  FAILED: uname -m mock leaked across tests" >> "$ERROR_FILE"
-  fi
+  real_arch="$(command uname -m)"
+  assert_equals "$real_arch" "$result"
   cleanup_test_env
 }

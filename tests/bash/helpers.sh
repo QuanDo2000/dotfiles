@@ -55,7 +55,7 @@ _install_uname_mock() {
     if [[ "${1:-}" == "-m" ]]; then
       echo "${__MOCK_UNAME_M:-$(command uname -m)}"
     else
-      echo "${__MOCK_UNAME:-$(command uname)}"
+      echo "${__MOCK_UNAME:-$(command uname "$@")}"
     fi
   }
   export -f uname
