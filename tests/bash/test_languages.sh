@@ -310,3 +310,39 @@ test_update_zig_dry_run_when_ours() {
   output=$(update_zig 2>&1)
   assert_contains "$output" "Installing Zig"
 }
+
+# ---------------------------------------------------------------------------
+# install_languages
+# ---------------------------------------------------------------------------
+
+test_install_languages_dry_run() {
+  DRY=true
+  ensure_minisign() { return 0; }
+  export -f ensure_minisign
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(install_languages 2>&1)
+  assert_contains "$output" "Installing Zig"
+}
+
+test_install_languages_zig_only_arg() {
+  DRY=true
+  ensure_minisign() { return 0; }
+  export -f ensure_minisign
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(install_languages zig 2>&1)
+  assert_contains "$output" "Installing Zig"
+}
+
+test_install_languages_unknown_fails() {
+  local exit_code=0
+  ( install_languages java ) >/dev/null 2>&1 || exit_code=$?
+  if [[ "$exit_code" -eq 0 ]]; then
+    echo "  FAILED: install_languages should fail on unknown language" >> "$ERROR_FILE"
+  fi
+}

@@ -265,3 +265,14 @@ update_zig() {
   [[ -z "$current" ]] && return 0
   install_zig
 }
+
+# Umbrella: install all languages, or just one if specified.
+# Usage: install_languages [LANG]
+install_languages() {
+  local target="${1:-all}"
+  case "$target" in
+    all|"") install_zig ;;
+    zig)    install_zig ;;
+    *)      fail "Unknown language: $target" ;;
+  esac
+}
