@@ -108,3 +108,34 @@ test_zig_latest_stable_fails_on_empty() {
     echo "  FAILED: zig_latest_stable should fail on empty index" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# zig_current_installed_version
+# ---------------------------------------------------------------------------
+
+test_zig_current_installed_version_none() {
+  local result
+  result="$(zig_current_installed_version)"
+  assert_equals "" "$result"
+}
+
+test_zig_current_installed_version_ours_returns_version() {
+  mkdir -p "$HOME/.local/zig-0.14.1"
+  touch "$HOME/.local/zig-0.14.1/zig"
+  ln -s "$HOME/.local/zig-0.14.1/zig" "$HOME/.local/bin/zig"
+
+  local result
+  result="$(zig_current_installed_version)"
+  assert_equals "0.14.1" "$result"
+}
+
+test_zig_current_installed_version_foreign_returns_empty() {
+  # Symlink points outside ~/.local/zig-*/
+  mkdir -p "$HOME/elsewhere"
+  touch "$HOME/elsewhere/zig"
+  ln -s "$HOME/elsewhere/zig" "$HOME/.local/bin/zig"
+
+  local result
+  result="$(zig_current_installed_version)"
+  assert_equals "" "$result"
+}

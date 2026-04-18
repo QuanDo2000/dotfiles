@@ -64,3 +64,29 @@ zig_latest_stable() {
   fi
   echo "$version"
 }
+
+# Print the currently-installed Zig version IF it was installed by this script.
+# Returns empty string for: no install, foreign install (e.g., system zig).
+# Detection rule: ~/.local/bin/zig must be a symlink whose target is
+# ~/.local/zig-<version>/zig.
+zig_current_installed_version() {
+  local link="$HOME/.local/bin/zig"
+  [[ -L "$link" ]] || return 0
+  local target
+  target="$(resolve_symlink "$link")" || return 0
+  # Match $HOME/.local/zig-<version>/zig (use a parameter expansion check
+  # rather than regex to stay portable across bash versions).
+  local prefix="$HOME/.local/zig-"
+  local suffix="/zig"
+  case "$target" in
+    "$prefix"*"$suffix")
+      local middle="${target#$prefix}"
+      middle="${middle%$suffix}"
+      # Reject if middle still contains a slash (would mean nested dir)
+      case "$middle" in
+        */*) return 0 ;;
+      esac
+      echo "$middle"
+      ;;
+  esac
+}
