@@ -33,6 +33,7 @@ cleanup_test_env() {
   export HOME="$ORIG_HOME"
   unset -f uname 2>/dev/null || true
   unset __MOCK_UNAME 2>/dev/null || true
+  unset __MOCK_UNAME_M 2>/dev/null || true
   rm -rf "$TEST_TMPDIR"
 }
 
@@ -47,12 +48,31 @@ source_scripts() {
   source "$REPO_DIR/scripts/platform.sh"
 }
 
-# Override uname to return the given platform string.
+# Internal: install a uname() that respects __MOCK_UNAME and __MOCK_UNAME_M.
+# Falls through to the real uname for whichever env var is unset.
+_install_uname_mock() {
+  uname() {
+    if [[ "${1:-}" == "-m" ]]; then
+      echo "${__MOCK_UNAME_M:-$(command uname -m)}"
+    else
+      echo "${__MOCK_UNAME:-$(command uname)}"
+    fi
+  }
+  export -f uname
+}
+
+# Override uname (no args) to return the given OS string.
 # Usage: mock_uname Darwin
 mock_uname() {
   export __MOCK_UNAME="$1"
-  uname() { echo "$__MOCK_UNAME"; }
-  export -f uname
+  _install_uname_mock
+}
+
+# Override uname -m to return the given architecture string.
+# Usage: mock_uname_m aarch64
+mock_uname_m() {
+  export __MOCK_UNAME_M="$1"
+  _install_uname_mock
 }
 
 # Create the standard dotfiles/config/{shared,unix,mac} directories under DOTFILES_DIR.

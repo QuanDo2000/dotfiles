@@ -85,3 +85,26 @@ test_default_globals() {
   assert_equals "false" "$QUIET"
   assert_equals "false" "$FORCE"
 }
+
+test_mock_uname_m_overrides_uname_m() {
+  init_test_env
+  mock_uname_m aarch64
+  local result
+  result="$(uname -m)"
+  assert_equals "aarch64" "$result"
+  cleanup_test_env
+}
+
+test_cleanup_resets_uname_m() {
+  init_test_env
+  mock_uname_m aarch64
+  cleanup_test_env
+  init_test_env
+  local result
+  result="$(uname -m)"
+  # After cleanup + fresh init, uname -m should be the real value (NOT "aarch64")
+  if [[ "$result" == "aarch64" ]] && [[ "$(command uname -m)" != "aarch64" ]]; then
+    echo "  FAILED: uname -m mock leaked across tests" >> "$ERROR_FILE"
+  fi
+  cleanup_test_env
+}
