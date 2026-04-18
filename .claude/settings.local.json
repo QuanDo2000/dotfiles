@@ -64,7 +64,27 @@
       "Bash(git -C /Users/quando/dotfiles mv config/windows/.ssh/config config/shared/.ssh/config)",
       "Bash(rmdir /Users/quando/dotfiles/config/windows/.ssh)",
       "Bash(bash tests/bash/runner.sh)",
-      "Bash(bash tests/bash/runner.sh --no-docker test_symlinks.sh)"
+      "Bash(bash tests/bash/runner.sh --no-docker test_symlinks.sh)",
+      "Bash(git commit -m ' *)",
+      "Read(//home/quando/.gnupg/**)",
+      "Bash(pacman -Qs pinentry)",
+      "Read(//usr/bin/**)",
+      "Bash(gpgconf --list-options gpg-agent)",
+      "Bash(git check-ignore *)",
+      "Bash(jobs)",
+      "Bash(pstree -p 385431)",
+      "Bash(kill 385431 386506 386510)",
+      "WebFetch(domain:ziglang.org)",
+      "Bash(bash tests/bash/runner.sh --no-docker test_utils.sh)",
+      "Bash(git *)",
+      "Bash(bash -c ' *)",
+      "Bash(bash *)",
+      "Bash(command -v jq)",
+      "Bash(jq --version)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(minisign -v)",
+      "Bash(ln -s __TRACKED_VAR__/.local/zig-foreign-test __TRACKED_VAR__/.local/bin/zig)"
     ]
   }
 }
