@@ -284,6 +284,23 @@ install_languages() {
   esac
 }
 
+# Map (uname -s, uname -m) to Odin's release-asset slug.
+# Prints the slug on stdout. Fails if the platform is unsupported.
+odin_target_triple() {
+  local os arch
+  os="$(uname -s)"
+  arch="$(uname -m)"
+  case "$os/$arch" in
+    Linux/x86_64)        echo "linux-amd64" ;;
+    Linux/aarch64)       echo "linux-arm64" ;;
+    Linux/arm64)         echo "linux-arm64" ;;
+    Darwin/x86_64)       echo "macos-amd64" ;;
+    Darwin/arm64)        echo "macos-arm64" ;;
+    Darwin/aarch64)      echo "macos-arm64" ;;
+    *) fail "Unsupported platform for odin install: $os/$arch" ;;
+  esac
+}
+
 # Update every language that this script previously installed.
 update_languages() {
   update_zig
