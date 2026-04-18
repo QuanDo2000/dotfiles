@@ -81,3 +81,19 @@ test_dry_run_update_command() {
   is_windows_bash && return 0
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry update
 }
+
+test_languages_command_in_help() {
+  local output
+  output=$(bash "$DOTFILE_CMD" --help 2>&1)
+  assert_contains "$output" "languages"
+}
+
+test_dry_run_languages_command() {
+  is_windows_bash && return 0
+  assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages
+}
+
+test_dry_run_languages_zig() {
+  is_windows_bash && return 0
+  assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages zig
+}
