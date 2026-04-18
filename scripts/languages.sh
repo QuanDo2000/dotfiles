@@ -284,6 +284,29 @@ install_languages() {
   esac
 }
 
+# Print the currently-installed Odin tag IF it was installed by this script.
+# Returns empty string for: no install, foreign install (e.g., system odin).
+# Detection rule: ~/.local/bin/odin must be a symlink whose target is
+# ~/.local/odin-<tag>/odin.
+odin_current_installed_version() {
+  local link="$HOME/.local/bin/odin"
+  [[ -L "$link" ]] || return 0
+  local target
+  target="$(resolve_symlink "$link")" || return 0
+  local prefix="$HOME/.local/odin-"
+  local suffix="/odin"
+  case "$target" in
+    "$prefix"*"$suffix")
+      local middle="${target#$prefix}"
+      middle="${middle%$suffix}"
+      case "$middle" in
+        */*) return 0 ;;
+      esac
+      echo "$middle"
+      ;;
+  esac
+}
+
 # Map (uname -s, uname -m) to Odin's release-asset slug.
 # Prints the slug on stdout. Fails if the platform is unsupported.
 odin_target_triple() {

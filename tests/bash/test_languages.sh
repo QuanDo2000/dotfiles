@@ -468,3 +468,33 @@ test_odin_latest_release_fetches_when_no_arg() {
   result="$(odin_latest_release)"
   assert_equals '{"tag_name": "dev-2026-04"}' "$result"
 }
+
+# ---------------------------------------------------------------------------
+# odin_current_installed_version
+# ---------------------------------------------------------------------------
+
+test_odin_current_installed_version_none() {
+  local result
+  result="$(odin_current_installed_version)"
+  assert_equals "" "$result"
+}
+
+test_odin_current_installed_version_ours_returns_tag() {
+  mkdir -p "$HOME/.local/odin-dev-2026-04"
+  touch "$HOME/.local/odin-dev-2026-04/odin"
+  ln -s "$HOME/.local/odin-dev-2026-04/odin" "$HOME/.local/bin/odin"
+
+  local result
+  result="$(odin_current_installed_version)"
+  assert_equals "dev-2026-04" "$result"
+}
+
+test_odin_current_installed_version_foreign_returns_empty() {
+  mkdir -p "$HOME/elsewhere"
+  touch "$HOME/elsewhere/odin"
+  ln -s "$HOME/elsewhere/odin" "$HOME/.local/bin/odin"
+
+  local result
+  result="$(odin_current_installed_version)"
+  assert_equals "" "$result"
+}
