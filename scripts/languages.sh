@@ -65,6 +65,25 @@ zig_latest_stable() {
   echo "$version"
 }
 
+# Install minisign via the platform package manager if missing. Required for
+# tarball signature verification.
+ensure_minisign() {
+  if command -v minisign >/dev/null 2>&1; then
+    return 0
+  fi
+  info "minisign not found; installing..."
+  if [[ "$DRY" == "true" ]]; then
+    return 0
+  fi
+  case "$(detect_platform)" in
+    debian) sudo apt install -y minisign || fail "Failed to install minisign" ;;
+    arch)   sudo pacman -S --needed --noconfirm minisign || fail "Failed to install minisign" ;;
+    mac)    brew install minisign || fail "Failed to install minisign" ;;
+    *)      fail "Cannot install minisign on this platform" ;;
+  esac
+  success "Installed minisign"
+}
+
 # Print the currently-installed Zig version IF it was installed by this script.
 # Returns empty string for: no install, foreign install (e.g., system zig).
 # Detection rule: ~/.local/bin/zig must be a symlink whose target is

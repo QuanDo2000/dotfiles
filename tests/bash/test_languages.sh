@@ -139,3 +139,59 @@ test_zig_current_installed_version_foreign_returns_empty() {
   result="$(zig_current_installed_version)"
   assert_equals "" "$result"
 }
+
+# ---------------------------------------------------------------------------
+# ensure_minisign
+# ---------------------------------------------------------------------------
+
+test_ensure_minisign_already_present_noop() {
+  echo '#!/bin/bash' > "$HOME/.local/bin/minisign"
+  chmod +x "$HOME/.local/bin/minisign"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(ensure_minisign 2>&1)
+  # No "Installing minisign" line should appear
+  if [[ "$output" == *"Installing minisign"* ]]; then
+    echo "  FAILED: ensure_minisign should noop when minisign already on PATH" >> "$ERROR_FILE"
+  fi
+}
+
+test_ensure_minisign_dry_run_arch_logs_install() {
+  DRY=true
+  mock_uname Linux
+  # Stub /etc/os-release detection — easier to override detect_platform directly
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+  # Make sure minisign is NOT on PATH
+  export PATH="/tmp/empty-$$:$HOME/.local/bin"
+  rm -f "$HOME/.local/bin/minisign"
+
+  local output
+  output=$(ensure_minisign 2>&1)
+  assert_contains "$output" "minisign not found"
+}
+
+test_ensure_minisign_dry_run_debian_logs_install() {
+  DRY=true
+  detect_platform() { echo "debian"; }
+  export -f detect_platform
+  export PATH="/tmp/empty-$$:$HOME/.local/bin"
+  rm -f "$HOME/.local/bin/minisign"
+
+  local output
+  output=$(ensure_minisign 2>&1)
+  assert_contains "$output" "minisign not found"
+}
+
+test_ensure_minisign_dry_run_mac_logs_install() {
+  DRY=true
+  detect_platform() { echo "mac"; }
+  export -f detect_platform
+  export PATH="/tmp/empty-$$:$HOME/.local/bin"
+  rm -f "$HOME/.local/bin/minisign"
+
+  local output
+  output=$(ensure_minisign 2>&1)
+  assert_contains "$output" "minisign not found"
+}
