@@ -86,6 +86,18 @@ JSON
   assert_equals "0.10.0" "$result"
 }
 
+test_zig_latest_stable_skips_rc_versions() {
+  http_get_retry() { cat <<'JSON'
+{"master": {}, "0.14.1": {}, "0.15.0-rc1": {}}
+JSON
+  }
+  export -f http_get_retry
+
+  local result
+  result="$(zig_latest_stable)"
+  assert_equals "0.14.1" "$result"
+}
+
 test_zig_latest_stable_fails_on_empty() {
   http_get_retry() { echo '{}'; }
   export -f http_get_retry

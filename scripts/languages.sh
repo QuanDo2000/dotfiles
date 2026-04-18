@@ -24,7 +24,9 @@ zig_target_triple() {
   esac
 }
 
-# Install jq via the platform package manager if missing. Used by zig_latest_stable.
+# Install jq via the platform package manager if missing.
+# Called by install_zig (Task 6) before zig_latest_stable runs, so jq is
+# guaranteed available at the point where index.json gets parsed.
 ensure_jq() {
   if command -v jq >/dev/null 2>&1; then
     return 0
@@ -43,7 +45,9 @@ ensure_jq() {
 }
 
 # Print the highest stable Zig version from the official index.json.
-# Skips the "master" key (development build).
+# Only accepts clean three-component semver keys (e.g. 0.14.1) — skips
+# "master" and any pre-release keys like "0.15.0-rc1" if Zig ever lists them
+# at the top level of the index.
 zig_latest_stable() {
   local json
   json="$(http_get_retry "https://ziglang.org/download/index.json")" \
@@ -51,8 +55,8 @@ zig_latest_stable() {
   local version
   version="$(echo "$json" | jq -r '
     keys_unsorted
-    | map(select(. != "master"))
-    | sort_by(split(".") | map(tonumber? // 0))
+    | map(select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$")))
+    | sort_by(split(".") | map(tonumber))
     | last // empty
   ')" || fail "Failed to parse Zig index.json"
   if [[ -z "$version" ]]; then
