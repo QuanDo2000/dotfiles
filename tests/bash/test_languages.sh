@@ -200,8 +200,16 @@ test_ensure_minisign_dry_run_arch_logs_install() {
   detect_platform() { echo "arch"; }
   export -f detect_platform
   # Make sure minisign is NOT on PATH
-  export PATH="/tmp/empty-$$:$HOME/.local/bin"
-  rm -f "$HOME/.local/bin/minisign"
+  # Shadow `command` so `command -v minisign` reports "not found", even on
+  # hosts where minisign is genuinely installed. Keeps PATH intact so basic
+  # tools like rm and the package-manager binaries are still usable.
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "minisign" ]]; then
+      return 1
+    fi
+    builtin command "$@"
+  }
+  export -f command
 
   local output
   output=$(ensure_minisign 2>&1)
@@ -212,8 +220,16 @@ test_ensure_minisign_dry_run_debian_logs_install() {
   DRY=true
   detect_platform() { echo "debian"; }
   export -f detect_platform
-  export PATH="/tmp/empty-$$:$HOME/.local/bin"
-  rm -f "$HOME/.local/bin/minisign"
+  # Shadow `command` so `command -v minisign` reports "not found", even on
+  # hosts where minisign is genuinely installed. Keeps PATH intact so basic
+  # tools like rm and the package-manager binaries are still usable.
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "minisign" ]]; then
+      return 1
+    fi
+    builtin command "$@"
+  }
+  export -f command
 
   local output
   output=$(ensure_minisign 2>&1)
@@ -224,8 +240,16 @@ test_ensure_minisign_dry_run_mac_logs_install() {
   DRY=true
   detect_platform() { echo "mac"; }
   export -f detect_platform
-  export PATH="/tmp/empty-$$:$HOME/.local/bin"
-  rm -f "$HOME/.local/bin/minisign"
+  # Shadow `command` so `command -v minisign` reports "not found", even on
+  # hosts where minisign is genuinely installed. Keeps PATH intact so basic
+  # tools like rm and the package-manager binaries are still usable.
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "minisign" ]]; then
+      return 1
+    fi
+    builtin command "$@"
+  }
+  export -f command
 
   local output
   output=$(ensure_minisign 2>&1)
@@ -338,6 +362,18 @@ test_install_languages_zig_only_arg() {
 
   local output
   output=$(install_languages zig 2>&1)
+  assert_contains "$output" "Installing Zig"
+}
+
+test_install_languages_all_arg() {
+  DRY=true
+  ensure_minisign() { return 0; }
+  export -f ensure_minisign
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(install_languages all 2>&1)
   assert_contains "$output" "Installing Zig"
 }
 

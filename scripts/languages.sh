@@ -180,22 +180,26 @@ install_zig() {
   local mirrors_text mirror tmpdir
   mirrors_text="$(http_get_retry "https://ziglang.org/download/community-mirrors.txt")" \
     || fail "Failed to fetch community-mirrors.txt"
+  if [[ -z "${mirrors_text//[[:space:]]/}" ]]; then
+    fail "community-mirrors.txt was empty — Zig has no published mirrors right now"
+  fi
   tmpdir="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$tmpdir'" RETURN
 
   local tar_path="$tmpdir/$tarball"
   local sig_path="$tar_path.minisig"
-  local got_it=false actual got_sha
+  local got_it=false actual got_sha tried=0
   while IFS= read -r mirror; do
     [[ -z "$mirror" ]] && continue
+    tried=$((tried + 1))
     info "Trying mirror: $mirror"
     rm -f "$tar_path" "$sig_path"
 
     if ! curl -sfL "$mirror/$tarball?source=quando-dotfiles" -o "$tar_path"; then
       continue
     fi
-    if ! curl -sfL "$mirror/$tarball.minisig" -o "$sig_path"; then
+    if ! curl -sfL "$mirror/$tarball.minisig?source=quando-dotfiles" -o "$sig_path"; then
       continue
     fi
     if ! minisign -V -P "$ZIG_PUBKEY" -m "$tar_path" -x "$sig_path" >/dev/null 2>&1; then
@@ -220,7 +224,7 @@ install_zig() {
   done < <(echo "$mirrors_text" | _shuffle_lines)
 
   if [[ "$got_it" != "true" ]]; then
-    fail "Could not fetch a verified Zig tarball from any mirror"
+    fail "Could not fetch a verified Zig tarball after trying $tried mirror(s). Re-run, check your network, or download manually from https://ziglang.org/download/"
   fi
 
   # Extract to a temp subdir, then move to ~/.local/zig-<version>/.
@@ -231,12 +235,15 @@ install_zig() {
   mkdir -p "$extract_dir"
   tar -xf "$tar_path" -C "$extract_dir" \
     || fail "Failed to extract Zig tarball"
-  local -a extracted_dirs
-  mapfile -t extracted_dirs < <(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d)
-  if [[ "${#extracted_dirs[@]}" -ne 1 ]]; then
-    fail "Tarball extracted to unexpected layout (${#extracted_dirs[@]} top-level dirs)"
+  # Portable single-dir check (avoid mapfile/-readarray for bash 3.2 on macOS).
+  local extracted="" extra_dir extracted_count=0
+  while IFS= read -r extra_dir; do
+    extracted_count=$((extracted_count + 1))
+    extracted="$extra_dir"
+  done < <(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d)
+  if [[ "$extracted_count" -ne 1 ]]; then
+    fail "Tarball extracted to unexpected layout ($extracted_count top-level dirs)"
   fi
-  local extracted="${extracted_dirs[0]}"
 
   local target_dir="$HOME/.local/zig-$version"
   rm -rf "$target_dir"
