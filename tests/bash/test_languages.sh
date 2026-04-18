@@ -273,3 +273,40 @@ test_install_zig_already_installed_short_circuits() {
   output=$(install_zig 2>&1)
   assert_contains "$output" "Already installed Zig 0.14.1"
 }
+
+# ---------------------------------------------------------------------------
+# update_zig
+# ---------------------------------------------------------------------------
+
+test_update_zig_no_op_when_not_installed() {
+  # No ~/.local/bin/zig at all
+  local output
+  output=$(update_zig 2>&1)
+  assert_equals "" "$output"
+}
+
+test_update_zig_skips_foreign_install() {
+  mkdir -p "$HOME/elsewhere"
+  touch "$HOME/elsewhere/zig"
+  ln -s "$HOME/elsewhere/zig" "$HOME/.local/bin/zig"
+
+  local output
+  output=$(update_zig 2>&1)
+  assert_equals "" "$output"
+}
+
+test_update_zig_dry_run_when_ours() {
+  DRY=true
+  mkdir -p "$HOME/.local/zig-0.14.0"
+  touch "$HOME/.local/zig-0.14.0/zig"
+  ln -s "$HOME/.local/zig-0.14.0/zig" "$HOME/.local/bin/zig"
+
+  ensure_minisign() { return 0; }
+  export -f ensure_minisign
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(update_zig 2>&1)
+  assert_contains "$output" "Installing Zig"
+}

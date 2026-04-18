@@ -256,3 +256,12 @@ install_zig() {
 
   success "Installed Zig $version"
 }
+
+# Update Zig — but only if it was installed by this script. Foreign installs
+# (system, brew, scoop) are left alone.
+update_zig() {
+  local current
+  current="$(zig_current_installed_version)"
+  [[ -z "$current" ]] && return 0
+  install_zig
+}
