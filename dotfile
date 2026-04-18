@@ -44,6 +44,7 @@ source "$SCRIPTS_DIR/extras.sh"
 source "$SCRIPTS_DIR/symlinks.sh"
 source "$SCRIPTS_DIR/verify.sh"
 source "$SCRIPTS_DIR/obsidian.sh"
+source "$SCRIPTS_DIR/languages.sh"
 
 function update_repo {
   info "Updating dotfiles repo..."
@@ -77,6 +78,7 @@ Commands:
   tmux        Install tmux plugins
   symlinks    Create symlinks only
   obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
+  languages [LANG]  Install language toolchains (currently: zig). LANG selects one.
   verify      Verify installation
 
 Options:
@@ -115,7 +117,10 @@ done
 # Run command
 case "${1:-all}" in
 all) setup_dotfiles ;;
-update) update_packages ;;
+update)
+  update_packages
+  update_languages
+  ;;
 packages)
   update_packages
   install_packages
@@ -128,6 +133,7 @@ zsh)
 tmux) install_tmux_plugins ;;
 symlinks) setup_symlinks ;;
 obsidian) setup_obsidian ;;
+languages) install_languages "${2:-}" ;;
 verify) verify ;;
 *)
   fail "Unknown command: $1"
