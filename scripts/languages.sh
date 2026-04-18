@@ -276,3 +276,8 @@ install_languages() {
     *)      fail "Unknown language: $target" ;;
   esac
 }
+
+# Update every language that this script previously installed.
+update_languages() {
+  update_zig
+}

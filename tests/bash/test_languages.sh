@@ -346,3 +346,15 @@ test_install_languages_unknown_fails() {
     echo "  FAILED: install_languages should fail on unknown language" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# update_languages
+# ---------------------------------------------------------------------------
+
+test_update_languages_dry_run_no_install() {
+  DRY=true
+  # No zig install present → update_zig is a no-op → no output
+  local output
+  output=$(update_languages 2>&1)
+  assert_equals "" "$output"
+}
