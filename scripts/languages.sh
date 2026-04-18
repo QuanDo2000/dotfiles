@@ -23,3 +23,40 @@ zig_target_triple() {
     *) fail "Unsupported platform for zig install: $os/$arch" ;;
   esac
 }
+
+# Install jq via the platform package manager if missing. Used by zig_latest_stable.
+ensure_jq() {
+  if command -v jq >/dev/null 2>&1; then
+    return 0
+  fi
+  info "jq not found; installing..."
+  if [[ "$DRY" == "true" ]]; then
+    return 0
+  fi
+  case "$(detect_platform)" in
+    debian) sudo apt install -y jq || fail "Failed to install jq" ;;
+    arch)   sudo pacman -S --needed --noconfirm jq || fail "Failed to install jq" ;;
+    mac)    brew install jq || fail "Failed to install jq" ;;
+    *)      fail "Cannot install jq on this platform" ;;
+  esac
+  success "Installed jq"
+}
+
+# Print the highest stable Zig version from the official index.json.
+# Skips the "master" key (development build).
+zig_latest_stable() {
+  local json
+  json="$(http_get_retry "https://ziglang.org/download/index.json")" \
+    || fail "Failed to fetch Zig index.json"
+  local version
+  version="$(echo "$json" | jq -r '
+    keys_unsorted
+    | map(select(. != "master"))
+    | sort_by(split(".") | map(tonumber? // 0))
+    | last // empty
+  ')" || fail "Failed to parse Zig index.json"
+  if [[ -z "$version" ]]; then
+    fail "No stable Zig version found in index.json"
+  fi
+  echo "$version"
+}

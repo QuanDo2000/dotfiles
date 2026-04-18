@@ -57,3 +57,42 @@ test_zig_target_triple_unsupported_arch_fails() {
     echo "  FAILED: zig_target_triple should fail on unsupported arch" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# zig_latest_stable
+# ---------------------------------------------------------------------------
+
+test_zig_latest_stable_picks_highest() {
+  http_get_retry() { cat <<'JSON'
+{"master": {"version": "0.15.0-dev"}, "0.13.0": {}, "0.14.1": {}, "0.12.0": {}}
+JSON
+  }
+  export -f http_get_retry
+
+  local result
+  result="$(zig_latest_stable)"
+  assert_equals "0.14.1" "$result"
+}
+
+test_zig_latest_stable_skips_master() {
+  http_get_retry() { cat <<'JSON'
+{"master": {}, "0.10.0": {}}
+JSON
+  }
+  export -f http_get_retry
+
+  local result
+  result="$(zig_latest_stable)"
+  assert_equals "0.10.0" "$result"
+}
+
+test_zig_latest_stable_fails_on_empty() {
+  http_get_retry() { echo '{}'; }
+  export -f http_get_retry
+
+  local exit_code=0
+  ( zig_latest_stable ) >/dev/null 2>&1 || exit_code=$?
+  if [[ "$exit_code" -eq 0 ]]; then
+    echo "  FAILED: zig_latest_stable should fail on empty index" >> "$ERROR_FILE"
+  fi
+}
