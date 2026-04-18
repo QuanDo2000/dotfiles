@@ -498,3 +498,37 @@ test_odin_current_installed_version_foreign_returns_empty() {
   result="$(odin_current_installed_version)"
   assert_equals "" "$result"
 }
+
+# ---------------------------------------------------------------------------
+# install_odin
+# ---------------------------------------------------------------------------
+
+test_install_odin_dry_run() {
+  DRY=true
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(install_odin 2>&1)
+  assert_contains "$output" "Installing Odin"
+  assert_contains "$output" "Finished"
+  if [[ -e "$HOME/.local/odin-dev-2026-04" ]]; then
+    echo "  FAILED: dry run created install dir" >> "$ERROR_FILE"
+  fi
+}
+
+test_install_odin_already_installed_short_circuits() {
+  # Pretend latest is dev-2026-04 AND that it's already installed.
+  mkdir -p "$HOME/.local/odin-dev-2026-04"
+  touch "$HOME/.local/odin-dev-2026-04/odin"
+  ln -s "$HOME/.local/odin-dev-2026-04/odin" "$HOME/.local/bin/odin"
+
+  http_get_retry() { echo '{"tag_name": "dev-2026-04", "assets": []}'; }
+  export -f http_get_retry
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(install_odin 2>&1)
+  assert_contains "$output" "Already installed Odin dev-2026-04"
+}

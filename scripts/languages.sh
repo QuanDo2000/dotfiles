@@ -336,6 +336,105 @@ odin_latest_release() {
   echo "$json"
 }
 
+# Install (or upgrade) Odin from the official GitHub releases.
+#
+# Layout: extracts to ~/.local/odin-<tag>/ and symlinks ~/.local/bin/odin.
+# Skips if the target tag is already installed.
+install_odin() {
+  info "Installing Odin..."
+  ensure_jq
+
+  local triple
+  triple="$(odin_target_triple)"
+  if [[ "$DRY" == "true" ]]; then
+    info "Would install latest Odin for $triple"
+    success "Finished installing Odin (dry run)"
+    return 0
+  fi
+
+  local release_json
+  release_json="$(odin_latest_release)"
+
+  local tag
+  tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
+  if [[ -z "$tag" ]]; then
+    fail "Could not read tag_name from Odin releases/latest"
+  fi
+  local asset="odin-${triple}-${tag}.tar.gz"
+
+  local current
+  current="$(odin_current_installed_version)"
+  if [[ "$current" == "$tag" ]]; then
+    success "Already installed Odin $tag"
+    return 0
+  fi
+
+  local digest
+  digest="$(echo "$release_json" | jq -r --arg a "$asset" \
+    '.assets[] | select(.name == $a) | .digest // empty')"
+  if [[ -z "$digest" ]]; then
+    fail "Could not find digest for $asset in Odin releases/latest"
+  fi
+  # GitHub formats digests as "sha256:<hex>"; strip the prefix.
+  local expected_sha="${digest#sha256:}"
+  if [[ "$expected_sha" == "$digest" ]]; then
+    fail "Unexpected digest format for $asset: $digest"
+  fi
+
+  local asset_url
+  asset_url="$(echo "$release_json" | jq -r --arg a "$asset" \
+    '.assets[] | select(.name == $a) | .browser_download_url // empty')"
+  if [[ -z "$asset_url" ]]; then
+    fail "Could not find download URL for $asset in Odin releases/latest"
+  fi
+
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmpdir'" RETURN
+
+  local tar_path="$tmpdir/$asset"
+  info "Downloading $asset_url"
+  curl -sfL "$asset_url" -o "$tar_path" \
+    || fail "Failed to download $asset_url"
+
+  local got_sha
+  got_sha="$(_sha256 "$tar_path")"
+  if [[ "$got_sha" != "$expected_sha" ]]; then
+    fail "sha256 mismatch for $asset (expected $expected_sha, got $got_sha)"
+  fi
+
+  local extract_dir="$tmpdir/extract"
+  mkdir -p "$extract_dir"
+  tar -xf "$tar_path" -C "$extract_dir" \
+    || fail "Failed to extract Odin tarball"
+  # Portable single-dir check (avoid mapfile/-readarray for bash 3.2 on macOS).
+  local extracted="" extra_dir extracted_count=0
+  while IFS= read -r extra_dir; do
+    extracted_count=$((extracted_count + 1))
+    extracted="$extra_dir"
+  done < <(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d)
+  if [[ "$extracted_count" -ne 1 ]]; then
+    fail "Odin tarball extracted to unexpected layout ($extracted_count top-level dirs)"
+  fi
+
+  local target_dir="$HOME/.local/odin-$tag"
+  rm -rf "$target_dir"
+  mv "$extracted" "$target_dir" || fail "Failed to move Odin into place"
+
+  mkdir -p "$HOME/.local/bin"
+  ln -sfn "$target_dir/odin" "$HOME/.local/bin/odin" \
+    || fail "Failed to create ~/.local/bin/odin symlink"
+
+  # Clean up old versions (any ~/.local/odin-*/ that isn't the current one).
+  local old
+  for old in "$HOME"/.local/odin-*; do
+    [[ -d "$old" && "$old" != "$target_dir" ]] && rm -rf "$old"
+  done
+
+  success "Installed Odin $tag"
+}
+
 # Update every language that this script previously installed.
 update_languages() {
   update_zig
