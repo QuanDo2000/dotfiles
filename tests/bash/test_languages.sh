@@ -195,3 +195,45 @@ test_ensure_minisign_dry_run_mac_logs_install() {
   output=$(ensure_minisign 2>&1)
   assert_contains "$output" "minisign not found"
 }
+
+# ---------------------------------------------------------------------------
+# install_zig
+# ---------------------------------------------------------------------------
+
+test_install_zig_dry_run() {
+  DRY=true
+  # Stub the lookup so we don't hit network. Pretend there is no install yet.
+  zig_latest_stable() { echo "0.14.1"; }
+  export -f zig_latest_stable
+  ensure_minisign() { return 0; }
+  export -f ensure_minisign
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(install_zig 2>&1)
+  assert_contains "$output" "Installing Zig"
+  assert_contains "$output" "Finished"
+  # No tarball should land on disk
+  if [[ -e "$HOME/.local/zig-0.14.1" ]]; then
+    echo "  FAILED: dry run created install dir" >> "$ERROR_FILE"
+  fi
+}
+
+test_install_zig_already_installed_short_circuits() {
+  # Pretend latest is 0.14.1 AND that 0.14.1 is already installed
+  mkdir -p "$HOME/.local/zig-0.14.1"
+  touch "$HOME/.local/zig-0.14.1/zig"
+  ln -s "$HOME/.local/zig-0.14.1/zig" "$HOME/.local/bin/zig"
+
+  zig_latest_stable() { echo "0.14.1"; }
+  export -f zig_latest_stable
+  ensure_minisign() { return 0; }
+  export -f ensure_minisign
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(install_zig 2>&1)
+  assert_contains "$output" "Already installed Zig 0.14.1"
+}
