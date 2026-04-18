@@ -13,6 +13,42 @@ teardown() {
 }
 
 # ---------------------------------------------------------------------------
+# _sha256 (portable hash)
+# ---------------------------------------------------------------------------
+
+test_sha256_matches_known_value() {
+  # echo -n "hello" | sha256sum -> 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+  echo -n "hello" > "$TEST_TMPDIR/hello.txt"
+  local result
+  result="$(_sha256 "$TEST_TMPDIR/hello.txt")"
+  assert_equals "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824" "$result"
+}
+
+# ---------------------------------------------------------------------------
+# _shuffle_lines (portable awk shuffle)
+# ---------------------------------------------------------------------------
+
+test_shuffle_lines_preserves_input_set() {
+  local input sorted_in sorted_out
+  input=$'a\nb\nc\nd\ne'
+  sorted_in="$(echo "$input" | sort)"
+  sorted_out="$(echo "$input" | _shuffle_lines | sort)"
+  assert_equals "$sorted_in" "$sorted_out"
+}
+
+test_shuffle_lines_empty_input() {
+  local result
+  result="$(echo -n "" | _shuffle_lines)"
+  assert_equals "" "$result"
+}
+
+test_shuffle_lines_single_line() {
+  local result
+  result="$(echo "only" | _shuffle_lines)"
+  assert_equals "only" "$result"
+}
+
+# ---------------------------------------------------------------------------
 # zig_target_triple
 # ---------------------------------------------------------------------------
 
