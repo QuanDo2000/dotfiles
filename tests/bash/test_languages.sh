@@ -257,13 +257,15 @@ test_install_zig_dry_run() {
 }
 
 test_install_zig_already_installed_short_circuits() {
-  # Pretend latest is 0.14.1 AND that 0.14.1 is already installed
+  # Pretend latest is 0.14.1 AND that 0.14.1 is already installed.
+  # Stubbing http_get_retry feeds zig_latest_stable a synthetic index.json
+  # so the test runs offline and stays deterministic.
   mkdir -p "$HOME/.local/zig-0.14.1"
   touch "$HOME/.local/zig-0.14.1/zig"
   ln -s "$HOME/.local/zig-0.14.1/zig" "$HOME/.local/bin/zig"
 
-  zig_latest_stable() { echo "0.14.1"; }
-  export -f zig_latest_stable
+  http_get_retry() { echo '{"0.14.1": {}}'; }
+  export -f http_get_retry
   ensure_minisign() { return 0; }
   export -f ensure_minisign
   ensure_jq() { return 0; }
