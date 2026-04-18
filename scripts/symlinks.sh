@@ -101,6 +101,7 @@ function copy_file {
     fi
   fi
 
+  rm -f "$dst"
   cp "$src" "$dst" || fail "Failed to copy $src to $dst"
   success "Copied $src to $dst"
 }
@@ -162,6 +163,17 @@ function setup_symlinks {
   setup_symlinks_folder "$DOTFILES_DIR/config/unix"
   if is_mac; then
     setup_symlinks_folder "$DOTFILES_DIR/config/mac"
+  fi
+
+  # SSH config lives in shared/.ssh/config but must land at ~/.ssh/config
+  # (not ~/.config/.ssh), so link only the config file to preserve any
+  # existing keys in ~/.ssh.
+  local ssh_src="$DOTFILES_DIR/config/shared/.ssh/config"
+  if [[ -f "$ssh_src" ]]; then
+    if [[ "$DRY" != "true" ]]; then
+      mkdir -p "$HOME/.ssh" || fail "Failed to create $HOME/.ssh"
+    fi
+    link_files "$ssh_src" "$HOME/.ssh/config"
   fi
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users

@@ -58,7 +58,13 @@
       "Bash(bash tests/bash/runner.sh --no-docker)",
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File C:/Users/Quan/Documents/Projects/dotfiles/tests/powershell/runner.ps1)",
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File C:/Users/Quan/Documents/Projects/dotfiles/dotfile.ps1 -d)",
-      "Bash(pwsh *)"
+      "Bash(pwsh *)",
+      "Read(//Users/quando/**)",
+      "Bash(mkdir -p /Users/quando/dotfiles/config/shared/.ssh)",
+      "Bash(git -C /Users/quando/dotfiles mv config/windows/.ssh/config config/shared/.ssh/config)",
+      "Bash(rmdir /Users/quando/dotfiles/config/windows/.ssh)",
+      "Bash(bash tests/bash/runner.sh)",
+      "Bash(bash tests/bash/runner.sh --no-docker test_symlinks.sh)"
     ]
   }
 }

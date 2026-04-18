@@ -7,7 +7,7 @@ function TestSetup {
     # Create the directory layout SetupSymlinks expects so path resolution works.
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\Powershell') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\Terminal') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\.ssh') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\.ssh') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\config\nvim') -Force | Out-Null
     'profile' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\Powershell\Microsoft.PowerShell_profile.ps1')
     '{}' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\Terminal\settings.json')
@@ -15,7 +15,7 @@ function TestSetup {
     'vim' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.vimrc')
     'gitconfig' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
     'winconfig' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\.gitconfig')
-    'ssh' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\.ssh\config')
+    'ssh' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.ssh\config')
     'dotfile' | Set-Content (Join-Path $script:DotfilesDir 'dotfile.ps1')
 
     Set-CommandMock 'git' { $global:LASTEXITCODE = 0 }

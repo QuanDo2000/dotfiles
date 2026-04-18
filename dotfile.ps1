@@ -430,7 +430,7 @@ function SetupSymlinks {
     if (-not (Test-Path $sshDest)) {
         New-Item -ItemType Directory -Path $sshDest | Out-Null
     }
-    LinkFile -source (Join-Path $configPath ".ssh\config") -destination (Join-Path $sshDest "config")
+    LinkFile -source (Join-Path $sharedPath ".ssh\config") -destination (Join-Path $sshDest "config")
 
     # Neovim settings (symlink the whole dir)
     $nvimSettingsPath = "$env:LOCALAPPDATA\nvim"
