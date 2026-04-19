@@ -270,6 +270,7 @@ function update_debian {
     setup_neovim --update
     setup_lazygit --update
     setup_zoxide --update
+    setup_pwsh --update
   fi
   success "Finished update for Debian"
 }
@@ -286,6 +287,7 @@ function install_debian {
     setup_zoxide
 
     setup_fdfind
+    setup_pwsh
   fi
   success "Finished install for Debian"
 }
@@ -303,6 +305,7 @@ function update_arch {
     sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
 
     setup_neovim --update
+    setup_pwsh --update
   fi
   success "Finished update for Arch Linux"
 }
@@ -315,6 +318,8 @@ function install_arch {
 
     setup_neovim
     setup_fdfind
+    setup_yay
+    setup_pwsh
   fi
   success "Finished install for Arch Linux"
 }
@@ -323,7 +328,7 @@ MAC_BREW_PACKAGES=(
   bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font
   gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide
 )
-MAC_BREW_CASKS=(ghostty)
+MAC_BREW_CASKS=(ghostty powershell)
 
 function update_mac {
   info "Updating packages for Mac..."
