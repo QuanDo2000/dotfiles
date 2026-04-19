@@ -303,31 +303,10 @@ install_zig() {
   mkdir -p "$extract_dir"
   tar -xf "$tar_path" -C "$extract_dir" \
     || fail "Failed to extract Zig tarball"
-  # Portable single-dir check (avoid mapfile/-readarray for bash 3.2 on macOS).
-  local extracted="" extra_dir extracted_count=0
-  while IFS= read -r extra_dir; do
-    extracted_count=$((extracted_count + 1))
-    extracted="$extra_dir"
-  done < <(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d)
-  if [[ "$extracted_count" -ne 1 ]]; then
-    fail "Tarball extracted to unexpected layout ($extracted_count top-level dirs)"
-  fi
+  local extracted
+  extracted=$(_assert_single_top_dir "$extract_dir" "Zig")
 
-  local target_dir="$HOME/.local/zig-$version"
-  rm -rf "$target_dir"
-  mv "$extracted" "$target_dir" || fail "Failed to move Zig into place"
-
-  mkdir -p "$HOME/.local/bin"
-  ln -sfn "$target_dir/zig" "$HOME/.local/bin/zig" \
-    || fail "Failed to create ~/.local/bin/zig symlink"
-
-  # Clean up old versions (any ~/.local/zig-*/ that isn't the current one).
-  # The [[ -d ]] guard handles the no-matches case where the glob returns
-  # the literal pattern unchanged.
-  local old
-  for old in "$HOME"/.local/zig-*; do
-    [[ -d "$old" && "$old" != "$target_dir" ]] && rm -rf "$old"
-  done
+  _install_into_local "zig" "$version" "zig" "$extracted"
 
   success "Installed Zig $version"
 }
