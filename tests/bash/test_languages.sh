@@ -981,3 +981,31 @@ test_jank_check_platform_unknown_returns_nonzero() {
     echo "  FAILED: jank_check_platform should return non-zero on unknown platform" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# jank_current_installed_version
+# ---------------------------------------------------------------------------
+
+test_jank_current_installed_version_none() {
+  # Shadow command so `command -v jank` reports not found regardless of host.
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "jank" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+
+  local result
+  result="$(jank_current_installed_version)"
+  assert_equals "" "$result"
+}
+
+test_jank_current_installed_version_present() {
+  # Drop a fake jank on PATH.
+  echo '#!/bin/bash' > "$HOME/.local/bin/jank"
+  chmod +x "$HOME/.local/bin/jank"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local result
+  result="$(jank_current_installed_version)"
+  assert_equals "installed" "$result"
+}

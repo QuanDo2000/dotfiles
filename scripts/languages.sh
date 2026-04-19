@@ -684,3 +684,10 @@ jank_check_platform() {
     *) return 1 ;;
   esac
 }
+
+# Returns "installed" if jank is on PATH, empty otherwise.
+# Jank has no --version flag, so we can't track precise versions like with
+# Zig/Odin/Gleam. The string "installed" is a sentinel value.
+jank_current_installed_version() {
+  command -v jank >/dev/null 2>&1 && echo "installed"
+}
