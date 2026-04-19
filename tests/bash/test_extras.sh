@@ -70,7 +70,8 @@ test_clone_if_missing_dry_run_does_not_call_git() {
 }
 
 test_clone_if_missing_skips_when_dest_exists() {
-  mkdir -p "$HOME/repo"
+  # A complete clone is identified by .git/ inside the dest dir.
+  mkdir -p "$HOME/repo/.git"
   mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
 
   local output exit_code=0
@@ -80,6 +81,42 @@ test_clone_if_missing_skips_when_dest_exists() {
     echo "  FAILED: clone_if_missing should not call git when dest exists ($output)" >> "$ERROR_FILE"
   fi
   assert_contains "$output" "Finished installing test-repo"
+}
+
+test_clone_if_missing_recovers_from_partial_clone() {
+  # Pre-existing dest with no .git inside — looks like a partial clone from
+  # a prior failed install. Should be wiped and re-cloned.
+  mkdir -p "$HOME/repo"
+  echo "leftover" > "$HOME/repo/some-file"
+  # Mock git clone to succeed, creating the .git marker so the result looks
+  # like a real clone.
+  mock_cmd git 'mkdir -p "$3/.git"; touch "$3/cloned-marker"; exit 0'
+
+  local output exit_code=0
+  output=$(clone_if_missing "test-repo" "https://example.com/repo.git" "$HOME/repo") || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: clone_if_missing should recover from partial clone ($output)" >> "$ERROR_FILE"
+  fi
+  if [ ! -f "$HOME/repo/cloned-marker" ]; then
+    echo "  FAILED: clone_if_missing did not re-clone over the partial dir" >> "$ERROR_FILE"
+  fi
+  if [ -f "$HOME/repo/some-file" ]; then
+    echo "  FAILED: leftover file from partial clone was not removed" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Found partial test-repo install"
+}
+
+test_clone_if_missing_does_not_leave_partial_on_failure() {
+  # Mock git to fail mid-clone (creates dir, then exits non-zero).
+  mock_cmd git 'mkdir -p "$3"; echo "partial" > "$3/file"; exit 1'
+
+  # Wrap in (...) so fail()'s exit 1 stays scoped to the inner subshell.
+  (clone_if_missing "test-repo" "https://example.com/repo.git" "$HOME/repo") >/dev/null 2>&1 || true
+
+  if [ -d "$HOME/repo" ]; then
+    echo "  FAILED: clone_if_missing left partial dest after git clone failure" >> "$ERROR_FILE"
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -118,12 +155,13 @@ test_install_zsh_plugins_git_clone_failure() {
 }
 
 test_install_zsh_plugins_all_already_installed() {
-  # With every plugin dir present, git should never be invoked — mock git as
-  # a canary that fails if called so we notice unwanted re-clones.
+  # With every plugin dir present (with .git inside, marking a complete
+  # clone), git should never be invoked — mock git as a canary that fails
+  # if called so we notice unwanted re-clones.
   local custom="$HOME/.oh-my-zsh/custom"
-  mkdir -p "$custom/plugins/zsh-autosuggestions" \
-    "$custom/plugins/fast-syntax-highlighting" \
-    "$custom/plugins/fzf-tab"
+  mkdir -p "$custom/plugins/zsh-autosuggestions/.git" \
+    "$custom/plugins/fast-syntax-highlighting/.git" \
+    "$custom/plugins/fzf-tab/.git"
   mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
 
   local output exit_code=0
@@ -148,8 +186,9 @@ test_install_tmux_plugins_dry_run() {
 }
 
 test_install_tmux_plugins_tpm_already_installed() {
-  # TPM + catppuccin already installed → no git calls expected.
-  mkdir -p "$HOME/.tmux/plugins/tpm" "$HOME/.tmux/plugins/catppuccin/tmux"
+  # TPM + catppuccin already installed (with .git inside, marking complete
+  # clones) → no git calls expected.
+  mkdir -p "$HOME/.tmux/plugins/tpm" "$HOME/.tmux/plugins/catppuccin/tmux/.git"
   mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
 
   local output exit_code=0

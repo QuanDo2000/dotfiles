@@ -19,11 +19,19 @@ function clone_if_missing {
   local name="$1" repo="$2" dest="$3"
   shift 3
   info "Installing $name..."
+  # If dest exists without .git inside, it's a leftover partial clone from
+  # a prior failure — wipe so the next branch can re-clone cleanly.
+  if [[ -d "$dest" && ! -d "$dest/.git" ]]; then
+    info "Found partial $name install at $dest; removing"
+    rm -rf "$dest"
+  fi
   if [ ! -d "$dest" ]; then
     if [[ "$DRY" == "true" ]]; then
       info "Would clone $repo into $dest"
     else
-      git clone "$@" "$repo" "$dest" || fail "Failed to clone $name"
+      # On clone failure, remove the (possibly partial) dest so the next
+      # run doesn't think it's already installed.
+      git clone "$@" "$repo" "$dest" || { rm -rf "$dest"; fail "Failed to clone $name"; }
     fi
   fi
   success "Finished installing $name"
