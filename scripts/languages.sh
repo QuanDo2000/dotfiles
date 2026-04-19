@@ -604,7 +604,6 @@ install_gleam() {
   if [[ -z "$tag" ]]; then
     fail "Could not read tag_name from Gleam releases/latest"
   fi
-  local asset="gleam-${tag}-${triple}.tar.gz"
 
   local current
   current="$(gleam_current_installed_version)"
@@ -613,73 +612,8 @@ install_gleam() {
     return 0
   fi
 
-  local digest
-  digest="$(echo "$release_json" | jq -r --arg a "$asset" \
-    '.assets[] | select(.name == $a) | .digest // empty')"
-  if [[ -z "$digest" ]]; then
-    fail "Could not find digest for $asset in Gleam releases/latest"
-  fi
-  # GitHub formats digests as "sha256:<hex>"; strip the prefix.
-  # If the prefix is absent (e.g. "sha512:" or bare hex), the expansion is a
-  # no-op, so expected_sha == digest — fail loudly rather than compare against
-  # a value of unknown algorithm.
-  local expected_sha="${digest#sha256:}"
-  if [[ "$expected_sha" == "$digest" ]]; then
-    fail "Unexpected digest format for $asset: $digest"
-  fi
-
-  local asset_url
-  asset_url="$(echo "$release_json" | jq -r --arg a "$asset" \
-    '.assets[] | select(.name == $a) | .browser_download_url // empty')"
-  if [[ -z "$asset_url" ]]; then
-    fail "Could not find download URL for $asset in Gleam releases/latest"
-  fi
-
-  local tmpdir
-  tmpdir="$(mktemp -d)"
-  # shellcheck disable=SC2064
-  trap "rm -rf '$tmpdir'" RETURN
-
-  local tar_path="$tmpdir/$asset"
-  info "Downloading $asset_url"
-  curl -sfL "$asset_url" -o "$tar_path" \
-    || fail "Failed to download $asset_url"
-
-  local got_sha
-  got_sha="$(_sha256 "$tar_path")"
-  if [[ "$got_sha" != "$expected_sha" ]]; then
-    fail "sha256 mismatch for $asset (expected $expected_sha, got $got_sha)"
-  fi
-
-  # Gleam tarballs extract flat — just the `gleam` binary at the archive root,
-  # NO top-level directory. This differs from Zig and Odin tarballs.
-  local extract_dir="$tmpdir/extract"
-  mkdir -p "$extract_dir"
-  tar -xf "$tar_path" -C "$extract_dir" \
-    || fail "Failed to extract Gleam tarball"
-  if [[ ! -f "$extract_dir/gleam" ]]; then
-    fail "Gleam binary not found at top level of tarball"
-  fi
-
-  local target_dir="$HOME/.local/gleam-$tag"
-  rm -rf "$target_dir"
-  mkdir -p "$target_dir"
-  mv "$extract_dir/gleam" "$target_dir/gleam" \
-    || fail "Failed to move Gleam binary into place"
-
-  mkdir -p "$HOME/.local/bin"
-  ln -sfn "$target_dir/gleam" "$HOME/.local/bin/gleam" \
-    || fail "Failed to create ~/.local/bin/gleam symlink"
-
-  # Clean up old versions (any ~/.local/gleam-*/ that isn't the current one).
-  # The [[ -d ]] guard handles the no-matches case where the glob returns
-  # the literal pattern unchanged.
-  local old
-  for old in "$HOME"/.local/gleam-*; do
-    [[ -d "$old" && "$old" != "$target_dir" ]] && rm -rf "$old"
-  done
-
-  success "Installed Gleam $tag"
+  local asset="gleam-${tag}-${triple}.tar.gz"
+  _install_from_github_release "Gleam" "gleam" "$release_json" "$tag" "$asset" "flat-binary" "gleam"
 }
 
 # Update Gleam — but only if it was installed by this script. Foreign installs
