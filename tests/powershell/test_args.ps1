@@ -36,7 +36,7 @@ function test_parseargs_help_short_returns_sentinel {
 }
 
 function test_parseargs_positional_command_recognised {
-    foreach ($c in 'packages', 'extras', 'symlinks', 'verify') {
+    foreach ($c in 'packages', 'extras', 'symlinks', 'verify', 'update') {
         $script:Dry = $false
         $result = ParseArgs @($c)
         Assert-Equals $c $result

@@ -706,10 +706,11 @@ Usage: dotfile.ps1 [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
+  update      Update system packages and language toolchains
   packages    Install system packages only
   extras      Install fonts
   symlinks    Create symlinks only
-  languages [LANG]  Install language toolchains (gleam). LANG selects one.
+  languages [LANG]  Install language toolchains. LANG selects one (only gleam is installed on Windows; zig comes from 'packages').
   verify      Verify installation
 
 Options:
@@ -754,6 +755,7 @@ if (-not $NoMain) {
 
     switch ($command) {
         "all"       { SetupDotfiles }
+        "update"    { Update-Packages; Update-Languages }
         "packages"  { InstallPackages }
         "extras"    { InstallExtras }
         "symlinks"  { SetupSymlinks }

@@ -3,7 +3,7 @@
 function test_showusage_mentions_all_commands {
     # ShowUsage uses Write-Host; capture the Information stream (6) to inspect it.
     $output = ShowUsage 6>&1 | Out-String
-    foreach ($cmd in 'all', 'packages', 'extras', 'symlinks', 'languages', 'verify') {
+    foreach ($cmd in 'all', 'packages', 'extras', 'symlinks', 'languages', 'verify', 'update') {
         Assert-Contains $output $cmd
     }
 }
