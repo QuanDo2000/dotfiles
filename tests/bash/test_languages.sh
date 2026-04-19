@@ -581,3 +581,49 @@ test_update_odin_dry_run_when_ours() {
   output=$(update_odin 2>&1)
   assert_contains "$output" "Installing Odin"
 }
+
+# ---------------------------------------------------------------------------
+# gleam_target_triple
+# ---------------------------------------------------------------------------
+
+test_gleam_target_triple_linux_x86_64() {
+  mock_uname Linux
+  mock_uname_m x86_64
+  local result
+  result="$(gleam_target_triple)"
+  assert_equals "x86_64-unknown-linux-musl" "$result"
+}
+
+test_gleam_target_triple_linux_aarch64() {
+  mock_uname Linux
+  mock_uname_m aarch64
+  local result
+  result="$(gleam_target_triple)"
+  assert_equals "aarch64-unknown-linux-musl" "$result"
+}
+
+test_gleam_target_triple_macos_x86_64() {
+  mock_uname Darwin
+  mock_uname_m x86_64
+  local result
+  result="$(gleam_target_triple)"
+  assert_equals "x86_64-apple-darwin" "$result"
+}
+
+test_gleam_target_triple_macos_aarch64() {
+  mock_uname Darwin
+  mock_uname_m arm64
+  local result
+  result="$(gleam_target_triple)"
+  assert_equals "aarch64-apple-darwin" "$result"
+}
+
+test_gleam_target_triple_unsupported_arch_fails() {
+  mock_uname Linux
+  mock_uname_m i686
+  local exit_code=0
+  ( gleam_target_triple ) >/dev/null 2>&1 || exit_code=$?
+  if [[ "$exit_code" -eq 0 ]]; then
+    echo "  FAILED: gleam_target_triple should fail on unsupported arch" >> "$ERROR_FILE"
+  fi
+}

@@ -45,6 +45,23 @@ zig_target_triple() {
   esac
 }
 
+# Map (uname -s, uname -m) to Gleam's release-asset triple (Rust-style).
+# Linux uses musl for static linking (no glibc version coupling).
+gleam_target_triple() {
+  local os arch
+  os="$(uname -s)"
+  arch="$(uname -m)"
+  case "$os/$arch" in
+    Linux/x86_64)        echo "x86_64-unknown-linux-musl" ;;
+    Linux/aarch64)       echo "aarch64-unknown-linux-musl" ;;
+    Linux/arm64)         echo "aarch64-unknown-linux-musl" ;;
+    Darwin/x86_64)       echo "x86_64-apple-darwin" ;;
+    Darwin/arm64)        echo "aarch64-apple-darwin" ;;
+    Darwin/aarch64)      echo "aarch64-apple-darwin" ;;
+    *) fail "Unsupported platform for gleam install: $os/$arch" ;;
+  esac
+}
+
 # Install jq via the platform package manager if missing.
 # Called by install_zig before zig_latest_stable runs, so jq is guaranteed
 # available at the point where index.json gets parsed.
