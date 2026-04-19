@@ -627,3 +627,28 @@ test_gleam_target_triple_unsupported_arch_fails() {
     echo "  FAILED: gleam_target_triple should fail on unsupported arch" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# gleam_latest_release
+# ---------------------------------------------------------------------------
+
+test_gleam_latest_release_uses_passed_json() {
+  http_get_retry() {
+    echo "  FAILED: http_get_retry should not be called when JSON arg supplied" >> "$ERROR_FILE"
+    return 1
+  }
+  export -f http_get_retry
+
+  local result
+  result="$(gleam_latest_release '{"tag_name": "v1.15.4"}')"
+  assert_equals '{"tag_name": "v1.15.4"}' "$result"
+}
+
+test_gleam_latest_release_fetches_when_no_arg() {
+  http_get_retry() { echo '{"tag_name": "v1.15.4"}'; }
+  export -f http_get_retry
+
+  local result
+  result="$(gleam_latest_release)"
+  assert_equals '{"tag_name": "v1.15.4"}' "$result"
+}

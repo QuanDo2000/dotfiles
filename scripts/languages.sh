@@ -467,6 +467,18 @@ update_odin() {
   install_odin
 }
 
+# Print the JSON body of the latest Gleam release from the GitHub API.
+# Optionally accepts a JSON string as $1 to skip the network fetch — lets
+# install_gleam fetch once and reuse the body for tag/digest/url lookups.
+gleam_latest_release() {
+  local json="${1:-}"
+  if [[ -z "$json" ]]; then
+    json="$(http_get_retry "https://api.github.com/repos/gleam-lang/gleam/releases/latest")" \
+      || fail "Failed to fetch Gleam releases/latest"
+  fi
+  echo "$json"
+}
+
 # Update every language that this script previously installed.
 update_languages() {
   update_zig
