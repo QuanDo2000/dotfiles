@@ -400,6 +400,26 @@ function Get-GleamCurrentInstalledVersion {
     return ''
 }
 
+function Install-Erlang {
+    if (Get-Command -Name 'erl' -ErrorAction SilentlyContinue) { return }
+    Info 'Erlang/OTP not found; installing...'
+    if ($script:Dry) { return }
+    scoop bucket add main *> $null
+    scoop install main/erlang
+    if ($LASTEXITCODE -ne 0) { Fail 'Failed to install erlang via scoop' }
+    Success 'Installed Erlang/OTP'
+}
+
+function Install-Rebar3 {
+    if (Get-Command -Name 'rebar3' -ErrorAction SilentlyContinue) { return }
+    Info 'rebar3 not found; installing...'
+    if ($script:Dry) { return }
+    scoop bucket add main *> $null
+    scoop install main/rebar3
+    if ($LASTEXITCODE -ne 0) { Fail 'Failed to install rebar3 via scoop' }
+    Success 'Installed rebar3'
+}
+
 function AddToUserPath($dir) {
     Info "Ensuring $dir is on user PATH"
     if ($script:Dry) { return }
