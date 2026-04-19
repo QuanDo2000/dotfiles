@@ -745,3 +745,22 @@ install_jank() {
   esac
   success "Installed Jank"
 }
+
+# Update Jank via the platform package manager. Silent no-op on unsupported
+# platforms or when jank isn't installed.
+update_jank() {
+  jank_check_platform || return 0
+  [[ -z "$(jank_current_installed_version)" ]] && return 0
+  info "Updating Jank..."
+  if [[ "$DRY" == "true" ]]; then
+    info "Would update Jank via the platform package manager"
+    success "Finished updating Jank (dry run)"
+    return 0
+  fi
+  case "$(detect_platform)" in
+    mac)    brew update && brew reinstall jank-lang/jank/jank || fail "Failed to update jank via brew" ;;
+    arch)   yay -Syy --noconfirm && yay -S --noconfirm jank-bin || fail "Failed to update jank via yay" ;;
+    debian) sudo apt update && sudo apt reinstall -y jank || fail "Failed to update jank via apt" ;;
+  esac
+  success "Updated Jank"
+}

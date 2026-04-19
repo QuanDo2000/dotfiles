@@ -1057,3 +1057,48 @@ test_install_jank_already_installed_short_circuits() {
   output=$(install_jank 2>&1)
   assert_contains "$output" "Already installed Jank"
 }
+
+# ---------------------------------------------------------------------------
+# update_jank
+# ---------------------------------------------------------------------------
+
+test_update_jank_no_op_when_not_installed() {
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "jank" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+
+  local output
+  output=$(update_jank 2>&1)
+  assert_equals "" "$output"
+}
+
+test_update_jank_unsupported_platform_no_op() {
+  mock_uname Darwin
+  mock_uname_m x86_64
+  detect_platform() { echo "mac"; }
+  export -f detect_platform
+
+  local output rc=0
+  output=$(update_jank 2>&1) || rc=$?
+  assert_equals "0" "$rc"
+  assert_equals "" "$output"
+}
+
+test_update_jank_dry_run_when_installed() {
+  DRY=true
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+  echo '#!/bin/bash' > "$HOME/.local/bin/jank"
+  chmod +x "$HOME/.local/bin/jank"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(update_jank 2>&1)
+  assert_contains "$output" "Updating Jank"
+  assert_contains "$output" "Would update Jank"
+  assert_contains "$output" "Finished updating Jank (dry run)"
+}
