@@ -137,3 +137,38 @@ test_install_cli_invokes_npm_when_missing() {
   fi
   assert_contains "$output" "Finished installing"
 }
+
+# ---------------------------------------------------------------------------
+# _obsidian_login
+# ---------------------------------------------------------------------------
+
+test_login_skips_when_already_logged_in() {
+  # `ob sync-list-remote` exits 0 → already logged in → `ob login` must NOT run.
+  mock_cmd ob 'case "$1" in
+    sync-list-remote) exit 0 ;;
+    login) echo "unexpected ob login call" >&2; exit 99 ;;
+    *) exit 0 ;;
+  esac'
+
+  local output exit_code=0
+  output=$(_obsidian_login 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_login should succeed when already logged in ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Already logged in"
+}
+
+test_login_dry_run_does_not_call_ob() {
+  DRY=true
+  # Canary: any ob invocation in DRY mode is a regression.
+  mock_cmd ob 'echo "unexpected ob call: $*" >&2; exit 99'
+
+  local output exit_code=0
+  output=$(_obsidian_login 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_login should not call ob in DRY mode ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Would run: ob login"
+}
