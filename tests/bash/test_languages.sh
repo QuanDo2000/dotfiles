@@ -1250,3 +1250,172 @@ test_strip_sha256_prefix_fails_on_sha512_prefix() {
   fi
   assert_contains "$output" "Unexpected digest format"
 }
+
+# ---------------------------------------------------------------------------
+# _install_from_github_release — integration tests
+# ---------------------------------------------------------------------------
+# These tests exercise the real download → verify → extract → install flow
+# with only `curl` mocked. The mock copies a real tarball fixture (built
+# fresh per test) to the requested -o path.
+
+# Build a tarball whose top-level layout is one directory containing $bin_name.
+# Echoes the tarball path on stdout.
+_build_single_dir_fixture() {
+  local bin_name="$1" inner_dir="$2"
+  local stage="$TEST_TMPDIR/stage_single_$$"
+  mkdir -p "$stage/$inner_dir"
+  echo "fake binary" > "$stage/$inner_dir/$bin_name"
+  local tar_path="$TEST_TMPDIR/fixture_single_$$.tar.gz"
+  tar -czf "$tar_path" -C "$stage" "$inner_dir"
+  rm -rf "$stage"
+  echo "$tar_path"
+}
+
+# Build a tarball whose root contains just the binary (no top-level dir).
+_build_flat_binary_fixture() {
+  local bin_name="$1"
+  local stage="$TEST_TMPDIR/stage_flat_$$"
+  mkdir -p "$stage"
+  echo "fake binary" > "$stage/$bin_name"
+  local tar_path="$TEST_TMPDIR/fixture_flat_$$.tar.gz"
+  tar -czf "$tar_path" -C "$stage" "$bin_name"
+  rm -rf "$stage"
+  echo "$tar_path"
+}
+
+# Synthesize a release JSON containing exactly one asset with the given
+# name, sha256, and download URL.
+_make_release_json() {
+  local tag="$1" asset="$2" sha="$3" url="$4"
+  cat <<EOF
+{
+  "tag_name": "$tag",
+  "assets": [
+    {
+      "name": "$asset",
+      "digest": "sha256:$sha",
+      "browser_download_url": "$url"
+    }
+  ]
+}
+EOF
+}
+
+# Install a curl mock that copies $INTEGRATION_FIXTURE to whatever -o path
+# the caller provides. Other curl flags are ignored.
+_mock_curl_copies_fixture() {
+  mock_cmd curl '
+out=""
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "-o" ]]; then
+    shift
+    out="$1"
+  fi
+  shift
+done
+[[ -z "$out" ]] && exit 1
+cp "$INTEGRATION_FIXTURE" "$out"
+'
+}
+
+test_install_from_github_release_single_dir_happy_path() {
+  export INTEGRATION_FIXTURE
+  INTEGRATION_FIXTURE=$(_build_single_dir_fixture "foo" "foo-1.0")
+  local sha
+  sha=$(_sha256 "$INTEGRATION_FIXTURE")
+  local json
+  json=$(_make_release_json "v1.0" "foo-1.0.tar.gz" "$sha" "https://example.com/foo.tar.gz")
+  _mock_curl_copies_fixture
+
+  _install_from_github_release "Foo" "foo" "$json" "v1.0" "foo-1.0.tar.gz" "single-dir" "foo"
+
+  assert_file_exists "$HOME/.local/foo-v1.0/foo"
+  assert_symlink "$HOME/.local/bin/foo" "$HOME/.local/foo-v1.0/foo"
+}
+
+test_install_from_github_release_flat_binary_happy_path() {
+  export INTEGRATION_FIXTURE
+  INTEGRATION_FIXTURE=$(_build_flat_binary_fixture "bar")
+  local sha
+  sha=$(_sha256 "$INTEGRATION_FIXTURE")
+  local json
+  json=$(_make_release_json "v2.0" "bar-2.0.tar.gz" "$sha" "https://example.com/bar.tar.gz")
+  _mock_curl_copies_fixture
+
+  _install_from_github_release "Bar" "bar" "$json" "v2.0" "bar-2.0.tar.gz" "flat-binary" "bar"
+
+  assert_file_exists "$HOME/.local/bar-v2.0/bar"
+  assert_symlink "$HOME/.local/bin/bar" "$HOME/.local/bar-v2.0/bar"
+}
+
+test_install_from_github_release_sha256_mismatch_fails() {
+  export INTEGRATION_FIXTURE
+  INTEGRATION_FIXTURE=$(_build_single_dir_fixture "foo" "foo-1.0")
+  # Use a deliberately wrong sha to trigger mismatch.
+  local json
+  json=$(_make_release_json "v1.0" "foo-1.0.tar.gz" "0000000000000000000000000000000000000000000000000000000000000000" "https://example.com/foo.tar.gz")
+  _mock_curl_copies_fixture
+
+  local output exit_code=0
+  output=$(_install_from_github_release "Foo" "foo" "$json" "v1.0" "foo-1.0.tar.gz" "single-dir" "foo" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: should have failed on sha256 mismatch" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "sha256 mismatch"
+}
+
+test_install_from_github_release_missing_digest_fails() {
+  # Asset name in the JSON does not match what the helper looks for, so
+  # jq returns empty for digest.
+  local json='{"tag_name": "v1.0", "assets": [{"name": "wrong-name.tar.gz", "digest": "sha256:abc", "browser_download_url": "https://example.com/x.tar.gz"}]}'
+  _mock_curl_copies_fixture
+
+  local output exit_code=0
+  output=$(_install_from_github_release "Foo" "foo" "$json" "v1.0" "expected-name.tar.gz" "single-dir" "foo" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: should have failed when digest missing" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Could not find digest for expected-name.tar.gz"
+}
+
+test_install_from_github_release_single_dir_zero_dirs_fails() {
+  # Build a tarball that extracts to flat layout (no top-level dir),
+  # then ask for single-dir layout — should fail.
+  export INTEGRATION_FIXTURE
+  INTEGRATION_FIXTURE=$(_build_flat_binary_fixture "foo")
+  local sha
+  sha=$(_sha256 "$INTEGRATION_FIXTURE")
+  local json
+  json=$(_make_release_json "v1.0" "foo.tar.gz" "$sha" "https://example.com/foo.tar.gz")
+  _mock_curl_copies_fixture
+
+  local output exit_code=0
+  output=$(_install_from_github_release "Foo" "foo" "$json" "v1.0" "foo.tar.gz" "single-dir" "foo" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: should have failed when single-dir requested but no top-level dir" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "0 top-level dirs"
+}
+
+test_install_from_github_release_flat_binary_missing_root_binary_fails() {
+  # Build a single-dir tarball, then ask for flat-binary layout — the
+  # binary won't be at the root, so the layout check should fail.
+  export INTEGRATION_FIXTURE
+  INTEGRATION_FIXTURE=$(_build_single_dir_fixture "foo" "foo-1.0")
+  local sha
+  sha=$(_sha256 "$INTEGRATION_FIXTURE")
+  local json
+  json=$(_make_release_json "v1.0" "foo.tar.gz" "$sha" "https://example.com/foo.tar.gz")
+  _mock_curl_copies_fixture
+
+  local output exit_code=0
+  output=$(_install_from_github_release "Foo" "foo" "$json" "v1.0" "foo.tar.gz" "flat-binary" "foo" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: should have failed when flat-binary requested but binary not at root" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Foo binary not found"
+}

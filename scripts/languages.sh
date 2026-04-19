@@ -79,6 +79,82 @@ _strip_sha256_prefix() {
   echo "$stripped"
 }
 
+# Install a binary from a GitHub release tarball. Used by install_odin and
+# install_gleam (zig has its own flow with mirror retry + minisign).
+#
+# Args (positional):
+#   $1 display_name  e.g. "Odin"
+#   $2 lc_name       e.g. "odin"
+#   $3 release_json  body of GitHub releases/latest
+#   $4 tag           already-extracted tag_name (e.g. "v1.2.3")
+#   $5 asset         asset filename inside the release (e.g. "odin-...-v1.2.3.tar.gz")
+#   $6 layout        "single-dir" (one top-level dir) or "flat-binary" (binary at root)
+#   $7 bin_name      binary name to symlink (e.g. "odin")
+_install_from_github_release() {
+  local display_name="$1" lc_name="$2" release_json="$3" tag="$4"
+  local asset="$5" layout="$6" bin_name="$7"
+
+  local digest
+  digest="$(echo "$release_json" | jq -r --arg a "$asset" \
+    '.assets[] | select(.name == $a) | .digest // empty')"
+  if [[ -z "$digest" ]]; then
+    fail "Could not find digest for $asset in $display_name releases/latest"
+  fi
+  local expected_sha
+  expected_sha="$(_strip_sha256_prefix "$digest")"
+
+  local asset_url
+  asset_url="$(echo "$release_json" | jq -r --arg a "$asset" \
+    '.assets[] | select(.name == $a) | .browser_download_url // empty')"
+  if [[ -z "$asset_url" ]]; then
+    fail "Could not find download URL for $asset in $display_name releases/latest"
+  fi
+
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmpdir'" RETURN
+
+  local tar_path="$tmpdir/$asset"
+  info "Downloading $asset_url"
+  curl -sfL "$asset_url" -o "$tar_path" \
+    || fail "Failed to download $asset_url"
+
+  local got_sha
+  got_sha="$(_sha256 "$tar_path")"
+  if [[ "$got_sha" != "$expected_sha" ]]; then
+    fail "sha256 mismatch for $asset (expected $expected_sha, got $got_sha)"
+  fi
+
+  local extract_dir="$tmpdir/extract"
+  mkdir -p "$extract_dir"
+  tar -xf "$tar_path" -C "$extract_dir" \
+    || fail "Failed to extract $display_name tarball"
+
+  local extracted
+  case "$layout" in
+    single-dir)
+      extracted="$(_assert_single_top_dir "$extract_dir" "$display_name")"
+      ;;
+    flat-binary)
+      if [[ ! -f "$extract_dir/$bin_name" ]]; then
+        fail "$display_name binary not found at top level of tarball"
+      fi
+      # Wrap the bare binary in a directory so _install_into_local can mv it.
+      mkdir -p "$tmpdir/wrapped"
+      mv "$extract_dir/$bin_name" "$tmpdir/wrapped/$bin_name"
+      extracted="$tmpdir/wrapped"
+      ;;
+    *)
+      fail "_install_from_github_release: unknown layout: $layout"
+      ;;
+  esac
+
+  _install_into_local "$lc_name" "$tag" "$bin_name" "$extracted"
+
+  success "Installed $display_name $tag"
+}
+
 # Map (uname -s, uname -m) to Zig's tarball arch slug.
 # Prints the slug on stdout. Fails if the platform is unsupported.
 zig_target_triple() {
