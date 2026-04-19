@@ -84,7 +84,12 @@
       "Bash(echo \"Exit code: $?\")",
       "Bash(echo \"exit: $?\")",
       "Bash(minisign -v)",
-      "Bash(ln -s __TRACKED_VAR__/.local/zig-foreign-test __TRACKED_VAR__/.local/bin/zig)"
+      "Bash(ln -s __TRACKED_VAR__/.local/zig-foreign-test __TRACKED_VAR__/.local/bin/zig)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(curl -sf \"https://api.github.com/repos/odin-lang/Odin/releases/latest\")",
+      "Bash(awk '{ prefix=\"sha256:\"; result=substr\\($0, length\\(prefix\\)+1\\); if \\(result == $0\\) print \"guard fires \\(bad\\)\"; else print \"guard does not fire \\(good\\)\" }')",
+      "Bash(awk '{ prefix=\"sha256:\"; result=substr\\($0, length\\(prefix\\)+1\\); if \\(result == $0\\) print \"guard fires \\(BAD - correct here\\)\"; else print \"guard does not fire\" }')",
+      "Bash(ln -s __TRACKED_VAR__/.local/odin-foreign-test __TRACKED_VAR__/.local/bin/odin)"
     ]
   }
 }
