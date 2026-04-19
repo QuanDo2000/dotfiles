@@ -185,3 +185,43 @@ test_pick_vault_dry_run_returns_example() {
 
   assert_equals "example-vault" "$stdout"
 }
+
+# ---------------------------------------------------------------------------
+# _obsidian_setup_vault
+# ---------------------------------------------------------------------------
+
+test_setup_vault_dry_run_does_not_mkdir_or_call_ob() {
+  DRY=true
+  mock_cmd ob 'echo "unexpected ob call: $*" >&2; exit 99'
+
+  local vault_path="$HOME/documents/obsidian/test-vault"
+  local output exit_code=0
+  output=$(_obsidian_setup_vault "test-vault" "$vault_path" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_setup_vault should not call ob in DRY mode ($output)" >> "$ERROR_FILE"
+  fi
+  if [ -d "$vault_path" ]; then
+    echo "  FAILED: _obsidian_setup_vault should not create vault dir in DRY mode" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Would run"
+}
+
+test_setup_vault_skips_when_already_configured() {
+  local vault_path="$HOME/documents/obsidian/test-vault"
+  mkdir -p "$vault_path"
+  # sync-status exits 0 → already configured → sync-setup must NOT run.
+  mock_cmd ob 'case "$1" in
+    sync-status) exit 0 ;;
+    sync-setup) echo "unexpected ob sync-setup call" >&2; exit 99 ;;
+    *) exit 0 ;;
+  esac'
+
+  local output exit_code=0
+  output=$(_obsidian_setup_vault "test-vault" "$vault_path" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_setup_vault should skip when configured ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "already configured"
+}
