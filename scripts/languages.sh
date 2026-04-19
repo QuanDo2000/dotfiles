@@ -440,6 +440,15 @@ install_odin() {
   success "Installed Odin $tag"
 }
 
+# Update Odin — but only if it was installed by this script. Foreign installs
+# (system, brew) are left alone.
+update_odin() {
+  local current
+  current="$(odin_current_installed_version)"
+  [[ -z "$current" ]] && return 0
+  install_odin
+}
+
 # Update every language that this script previously installed.
 update_languages() {
   update_zig

@@ -532,3 +532,37 @@ test_install_odin_already_installed_short_circuits() {
   output=$(install_odin 2>&1)
   assert_contains "$output" "Already installed Odin dev-2026-04"
 }
+
+# ---------------------------------------------------------------------------
+# update_odin
+# ---------------------------------------------------------------------------
+
+test_update_odin_no_op_when_not_installed() {
+  local output
+  output=$(update_odin 2>&1)
+  assert_equals "" "$output"
+}
+
+test_update_odin_skips_foreign_install() {
+  mkdir -p "$HOME/elsewhere"
+  touch "$HOME/elsewhere/odin"
+  ln -s "$HOME/elsewhere/odin" "$HOME/.local/bin/odin"
+
+  local output
+  output=$(update_odin 2>&1)
+  assert_equals "" "$output"
+}
+
+test_update_odin_dry_run_when_ours() {
+  DRY=true
+  mkdir -p "$HOME/.local/odin-dev-2026-03"
+  touch "$HOME/.local/odin-dev-2026-03/odin"
+  ln -s "$HOME/.local/odin-dev-2026-03/odin" "$HOME/.local/bin/odin"
+
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(update_odin 2>&1)
+  assert_contains "$output" "Installing Odin"
+}
