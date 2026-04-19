@@ -92,3 +92,48 @@ test_check_prereqs_succeeds_with_all_tools() {
     echo "  FAILED: _obsidian_check_prereqs should succeed with all tools ($output)" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# _obsidian_install_cli
+# ---------------------------------------------------------------------------
+
+test_install_cli_dry_run_does_not_call_npm() {
+  DRY=true
+  # Canary: any npm invocation in DRY mode is a regression.
+  mock_cmd npm 'echo "unexpected npm call: $*" >&2; exit 99'
+
+  local output exit_code=0
+  output=$(_obsidian_install_cli 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_install_cli should not call npm in DRY mode ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Would run: npm install -g obsidian-headless"
+}
+
+test_install_cli_already_installed_short_circuits() {
+  # `ob` present on PATH → command -v ob succeeds → npm should not be called.
+  mock_cmd ob 'exit 0'
+  mock_cmd npm 'echo "unexpected npm call: $*" >&2; exit 99'
+
+  local output exit_code=0
+  output=$(_obsidian_install_cli 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_install_cli should short-circuit when ob present ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "already installed"
+}
+
+test_install_cli_invokes_npm_when_missing() {
+  # No `ob` mock → command -v ob fails → npm install runs.
+  mock_cmd npm 'exit 0'
+
+  local output exit_code=0
+  output=$(_obsidian_install_cli 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_install_cli should succeed when npm exits 0 ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Finished installing"
+}
