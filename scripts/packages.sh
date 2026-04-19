@@ -202,8 +202,47 @@ function setup_pwsh {
   success "Finished pwsh"
 }
 
-# Placeholder branches — filled in by later tasks.
-_setup_pwsh_debian() { :; }
+# Install or update pwsh on Debian/Ubuntu via Microsoft's apt repo.
+# $1 = "true" for --update mode (skip repo bootstrap).
+_setup_pwsh_debian() {
+  local update="$1"
+  local ms_list="/etc/apt/sources.list.d/microsoft-prod.list"
+
+  if [[ ! -f "$ms_list" ]]; then
+    local id="" version_id=""
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    id="${ID:-}"
+    version_id="${VERSION_ID:-}"
+    local distro=""
+    case "$id" in
+      debian) distro="debian" ;;
+      ubuntu) distro="ubuntu" ;;
+      *)
+        if [[ "${ID_LIKE:-}" == *ubuntu* ]]; then distro="ubuntu"
+        elif [[ "${ID_LIKE:-}" == *debian* ]]; then distro="debian"
+        fi
+        ;;
+    esac
+    if [[ -z "$distro" || -z "$version_id" ]]; then
+      info "pwsh: could not detect Debian/Ubuntu variant (ID=$id VERSION_ID=$version_id); skipping"
+      return
+    fi
+    local deb_url="https://packages.microsoft.com/config/${distro}/${version_id}/packages-microsoft-prod.deb"
+    local tmp
+    tmp="$(mktemp -t packages-microsoft-prod.XXXXXX.deb)" || fail "Failed to create temp file"
+    # shellcheck disable=SC2064
+    trap "rm -f '$tmp'" RETURN
+    http_get_retry "$deb_url" "$tmp" \
+      || fail "Failed to download packages-microsoft-prod.deb from $deb_url"
+    sudo dpkg -i "$tmp" || fail "Failed to install packages-microsoft-prod.deb"
+    sudo apt update -y || fail "Failed to apt update after adding Microsoft repo"
+  fi
+
+  sudo apt install -y powershell || fail "Failed to install powershell via apt"
+}
+
+# Placeholder branch — filled in by Task 4.
 _setup_pwsh_arch() { :; }
 
 DEBIAN_PACKAGES=(
