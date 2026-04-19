@@ -804,3 +804,44 @@ test_ensure_rebar3_dry_run_mac_logs_install() {
   output=$(ensure_rebar3 2>&1)
   assert_contains "$output" "rebar3 not found"
 }
+
+# ---------------------------------------------------------------------------
+# install_gleam
+# ---------------------------------------------------------------------------
+
+test_install_gleam_dry_run() {
+  DRY=true
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+  ensure_erlang() { return 0; }
+  export -f ensure_erlang
+  ensure_rebar3() { return 0; }
+  export -f ensure_rebar3
+
+  local output
+  output=$(install_gleam 2>&1)
+  assert_contains "$output" "Installing Gleam"
+  assert_contains "$output" "Finished"
+  if [[ -e "$HOME/.local/gleam-v1.15.4" ]]; then
+    echo "  FAILED: dry run created install dir" >> "$ERROR_FILE"
+  fi
+}
+
+test_install_gleam_already_installed_short_circuits() {
+  mkdir -p "$HOME/.local/gleam-v1.15.4"
+  touch "$HOME/.local/gleam-v1.15.4/gleam"
+  ln -s "$HOME/.local/gleam-v1.15.4/gleam" "$HOME/.local/bin/gleam"
+
+  http_get_retry() { echo '{"tag_name": "v1.15.4", "assets": []}'; }
+  export -f http_get_retry
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+  ensure_erlang() { return 0; }
+  export -f ensure_erlang
+  ensure_rebar3() { return 0; }
+  export -f ensure_rebar3
+
+  local output
+  output=$(install_gleam 2>&1)
+  assert_contains "$output" "Already installed Gleam v1.15.4"
+}
