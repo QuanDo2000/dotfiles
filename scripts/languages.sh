@@ -520,6 +520,25 @@ ensure_erlang() {
   success "Installed Erlang/OTP"
 }
 
+# Install rebar3 via the platform package manager if missing. Optional Gleam
+# build helper — only some projects need it, but cheap to install upfront.
+ensure_rebar3() {
+  if command -v rebar3 >/dev/null 2>&1; then
+    return 0
+  fi
+  info "rebar3 not found; installing..."
+  if [[ "$DRY" == "true" ]]; then
+    return 0
+  fi
+  case "$(detect_platform)" in
+    debian) sudo apt install -y rebar3 || fail "Failed to install rebar3" ;;
+    arch)   sudo pacman -S --needed --noconfirm rebar3 || fail "Failed to install rebar3" ;;
+    mac)    brew install rebar3 || fail "Failed to install rebar3" ;;
+    *)      fail "Cannot install rebar3 on this platform" ;;
+  esac
+  success "Installed rebar3"
+}
+
 # Update every language that this script previously installed.
 update_languages() {
   update_zig

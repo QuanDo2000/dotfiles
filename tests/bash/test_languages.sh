@@ -743,3 +743,64 @@ test_ensure_erlang_dry_run_mac_logs_install() {
   output=$(ensure_erlang 2>&1)
   assert_contains "$output" "Erlang/OTP not found"
 }
+
+# ---------------------------------------------------------------------------
+# ensure_rebar3
+# ---------------------------------------------------------------------------
+
+test_ensure_rebar3_already_present_noop() {
+  echo '#!/bin/bash' > "$HOME/.local/bin/rebar3"
+  chmod +x "$HOME/.local/bin/rebar3"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(ensure_rebar3 2>&1)
+  if [[ "$output" == *"rebar3 not found"* ]]; then
+    echo "  FAILED: ensure_rebar3 should noop when already on PATH" >> "$ERROR_FILE"
+  fi
+}
+
+test_ensure_rebar3_dry_run_arch_logs_install() {
+  DRY=true
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "rebar3" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+
+  local output
+  output=$(ensure_rebar3 2>&1)
+  assert_contains "$output" "rebar3 not found"
+}
+
+test_ensure_rebar3_dry_run_debian_logs_install() {
+  DRY=true
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "rebar3" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+  detect_platform() { echo "debian"; }
+  export -f detect_platform
+
+  local output
+  output=$(ensure_rebar3 2>&1)
+  assert_contains "$output" "rebar3 not found"
+}
+
+test_ensure_rebar3_dry_run_mac_logs_install() {
+  DRY=true
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "rebar3" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+  detect_platform() { echo "mac"; }
+  export -f detect_platform
+
+  local output
+  output=$(ensure_rebar3 2>&1)
+  assert_contains "$output" "rebar3 not found"
+}
