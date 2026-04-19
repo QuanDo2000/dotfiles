@@ -269,7 +269,7 @@ function test_install_languages_zig_emits_scoop_message {
 function test_install_languages_odin_emits_unsupported_message {
     $output = Install-Languages -Target 'odin' 6>&1 | Out-String
     Assert-Contains $output 'odin'
-    Assert-Contains $output 'not wired up'
+    Assert-Contains $output 'no Windows installer'
 }
 
 function test_install_languages_jank_emits_unsupported_message {
@@ -306,4 +306,6 @@ function test_install_languages_empty_target_behaves_like_all {
 
     Assert-Contains $output 'STUB Install-Gleam called'
     Assert-Contains $output 'Skipping zig'
+    Assert-Contains $output 'Skipping odin'
+    Assert-Contains $output 'Skipping jank'
 }

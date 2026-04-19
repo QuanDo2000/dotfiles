@@ -14,6 +14,7 @@ dotfile symlinks             # Create symlinks only
 dotfile packages             # Install system packages only
 dotfile extras               # Install oh-my-zsh, zsh plugins, tmux plugins
 dotfile verify               # Verify installation
+dotfile update               # Update system packages and language toolchains
 dotfile languages [LANG]     # Install language toolchains (zig, odin, gleam, jank)
 dotfile -d <command>         # Dry run
 dotfile -f <command>         # Force overwrite existing files

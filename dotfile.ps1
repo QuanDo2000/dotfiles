@@ -523,17 +523,22 @@ function Update-Languages {
 
 function Install-Languages {
     param([string]$Target = 'all')
+    $skipMessages = @{
+        zig  = "Skipping zig: installed via scoop on Windows (run 'dotfile.ps1 packages')"
+        odin = "Skipping odin: no Windows installer wired up"
+        jank = "Skipping jank: Linux/macOS only (no Windows support upstream)"
+    }
     switch ($Target) {
         { $_ -in @('all', '') } {
             Install-Gleam
-            Info "Skipping zig: installed via scoop on Windows (run 'dotfile.ps1 packages')"
-            Info "Skipping odin: no Windows installer wired up"
-            Info "Skipping jank: Linux/macOS only (no Windows support upstream)"
+            Info $skipMessages.zig
+            Info $skipMessages.odin
+            Info $skipMessages.jank
         }
         'gleam' { Install-Gleam }
-        'zig'   { Info "zig is installed via scoop on Windows; run 'dotfile.ps1 packages'" }
-        'odin'  { Info "odin install is not wired up for Windows" }
-        'jank'  { Info "jank is Linux/macOS only (no Windows support upstream)" }
+        'zig'   { Info $skipMessages.zig }
+        'odin'  { Info $skipMessages.odin }
+        'jank'  { Info $skipMessages.jank }
         default { Fail "Unknown language: $Target" }
     }
 }
@@ -719,7 +724,7 @@ Commands:
   packages    Install system packages only
   extras      Install fonts
   symlinks    Create symlinks only
-  languages [LANG]  Install language toolchains. LANG selects one (only gleam is installed on Windows; zig comes from 'packages').
+  languages [LANG]  Install language toolchains. LANG selects one (Windows: gleam only).
   verify      Verify installation
 
 Options:
