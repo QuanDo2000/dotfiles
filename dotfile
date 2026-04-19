@@ -78,7 +78,7 @@ Commands:
   tmux        Install tmux plugins
   symlinks    Create symlinks only
   obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
-  languages [LANG]  Install language toolchains (zig, odin). LANG selects one.
+  languages [LANG]  Install language toolchains (zig, odin, gleam). LANG selects one.
   verify      Verify installation
 
 Options:

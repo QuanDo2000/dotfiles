@@ -102,3 +102,8 @@ test_dry_run_languages_odin() {
   is_windows_bash && return 0
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages odin
 }
+
+test_dry_run_languages_gleam() {
+  is_windows_bash && return 0
+  assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages gleam
+}
