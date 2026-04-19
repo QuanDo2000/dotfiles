@@ -1009,3 +1009,44 @@ test_jank_current_installed_version_present() {
   result="$(jank_current_installed_version)"
   assert_equals "installed" "$result"
 }
+
+# ---------------------------------------------------------------------------
+# install_jank
+# ---------------------------------------------------------------------------
+
+test_install_jank_unsupported_platform_skips() {
+  # Mocked Intel mac: jank_check_platform returns non-zero.
+  mock_uname Darwin
+  mock_uname_m x86_64
+  detect_platform() { echo "mac"; }
+  export -f detect_platform
+
+  local output rc=0
+  output=$(install_jank 2>&1) || rc=$?
+  assert_equals "0" "$rc"
+  assert_contains "$output" "Skipping Jank"
+}
+
+test_install_jank_dry_run_arch() {
+  DRY=true
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+
+  local output
+  output=$(install_jank 2>&1)
+  assert_contains "$output" "Installing Jank"
+  assert_contains "$output" "Would install Jank"
+  assert_contains "$output" "Finished installing Jank (dry run)"
+}
+
+test_install_jank_already_installed_short_circuits() {
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+  echo '#!/bin/bash' > "$HOME/.local/bin/jank"
+  chmod +x "$HOME/.local/bin/jank"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(install_jank 2>&1)
+  assert_contains "$output" "Already installed Jank"
+}

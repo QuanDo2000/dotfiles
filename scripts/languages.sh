@@ -691,3 +691,57 @@ jank_check_platform() {
 jank_current_installed_version() {
   command -v jank >/dev/null 2>&1 && echo "installed"
 }
+
+# Idempotent jank PPA setup (Ubuntu only — caller enforces). One-time
+# GPG key + sources.list addition + apt update. No-ops if jank.list exists.
+_install_jank_ppa() {
+  if [[ -f /etc/apt/sources.list.d/jank.list ]]; then
+    return 0
+  fi
+  info "Setting up jank PPA..."
+  sudo apt install -y curl gnupg || fail "Failed to install curl + gnupg"
+  curl -sf "https://ppa.jank-lang.org/KEY.gpg" \
+    | gpg --dearmor \
+    | sudo tee /etc/apt/trusted.gpg.d/jank.gpg >/dev/null \
+    || fail "Failed to import jank PPA signing key"
+  sudo curl -sfo /etc/apt/sources.list.d/jank.list "https://ppa.jank-lang.org/jank.list" \
+    || fail "Failed to fetch jank PPA sources list"
+  sudo apt update || fail "Failed to apt update after jank PPA setup"
+}
+
+# Install Jank via the platform package manager.
+# Lenient on unsupported platforms: visible skip + exit 0.
+install_jank() {
+  info "Installing Jank..."
+  if ! jank_check_platform; then
+    info "Skipping Jank: not supported on this platform — see https://book.jank-lang.org/getting-started/01-installation.html"
+    success "Finished (skipped Jank)"
+    return 0
+  fi
+
+  if [[ "$DRY" == "true" ]]; then
+    info "Would install Jank via the platform package manager"
+    success "Finished installing Jank (dry run)"
+    return 0
+  fi
+
+  if [[ -n "$(jank_current_installed_version)" ]]; then
+    success "Already installed Jank"
+    return 0
+  fi
+
+  case "$(detect_platform)" in
+    mac)
+      brew install jank-lang/jank/jank || fail "Failed to install jank via brew"
+      ;;
+    arch)
+      setup_yay  # idempotent helper from packages.sh
+      yay -S --needed --noconfirm jank-bin || fail "Failed to install jank-bin via yay"
+      ;;
+    debian)  # Ubuntu only — jank_check_platform already enforced
+      _install_jank_ppa
+      sudo apt install -y jank || fail "Failed to install jank via apt"
+      ;;
+  esac
+  success "Installed Jank"
+}
