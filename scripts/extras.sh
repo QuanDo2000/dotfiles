@@ -20,7 +20,11 @@ function clone_if_missing {
   shift 3
   info "Installing $name..."
   if [ ! -d "$dest" ]; then
-    git clone "$@" "$repo" "$dest" || fail "Failed to clone $name"
+    if [[ "$DRY" == "true" ]]; then
+      info "Would clone $repo into $dest"
+    else
+      git clone "$@" "$repo" "$dest" || fail "Failed to clone $name"
+    fi
   fi
   success "Finished installing $name"
 }

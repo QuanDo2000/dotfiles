@@ -50,6 +50,39 @@ test_install_oh_my_zsh_already_installed() {
 }
 
 # ---------------------------------------------------------------------------
+# clone_if_missing
+# ---------------------------------------------------------------------------
+
+test_clone_if_missing_dry_run_does_not_call_git() {
+  DRY=true
+  # Canary: any git invocation in DRY mode is a regression.
+  mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
+
+  local output exit_code=0
+  output=$(clone_if_missing "test-repo" "https://example.com/repo.git" "$HOME/repo") || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: clone_if_missing should not call git in DRY mode ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Installing test-repo"
+  assert_contains "$output" "Would clone https://example.com/repo.git"
+  assert_contains "$output" "Finished installing test-repo"
+}
+
+test_clone_if_missing_skips_when_dest_exists() {
+  mkdir -p "$HOME/repo"
+  mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
+
+  local output exit_code=0
+  output=$(clone_if_missing "test-repo" "https://example.com/repo.git" "$HOME/repo") || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: clone_if_missing should not call git when dest exists ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Finished installing test-repo"
+}
+
+# ---------------------------------------------------------------------------
 # install_zsh_plugins
 # ---------------------------------------------------------------------------
 
