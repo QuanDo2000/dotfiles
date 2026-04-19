@@ -515,6 +515,12 @@ function Update-Packages {
     Success "Finished updating packages"
 }
 
+function Update-Languages {
+    Update-Gleam
+    # zig is kept current via 'scoop update *' in Update-Packages.
+    # odin/jank aren't installed by this script on Windows -- nothing to update.
+}
+
 function Install-Languages {
     param([string]$Target = 'all')
     switch ($Target) {

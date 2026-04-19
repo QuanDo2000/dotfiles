@@ -242,3 +242,21 @@ function test_update_packages_dry_run_does_not_call_scoop {
     Assert-Contains $output 'Would run: scoop update *'
     Assert-False $called 'scoop should not be invoked in dry run'
 }
+
+# ---------------------------------------------------------------------------
+# Update-Languages
+# ---------------------------------------------------------------------------
+
+function test_update_languages_calls_update_gleam_only {
+    # Stub Update-Gleam to record invocation and produce a known marker.
+    $sbUpdateGleam = (Get-Command Update-Gleam).ScriptBlock
+    Set-Item -Path 'function:script:Update-Gleam' -Value { Info 'STUB Update-Gleam called' }
+
+    try {
+        $output = Update-Languages 6>&1 | Out-String
+    } finally {
+        Set-Item -Path 'function:script:Update-Gleam' -Value $sbUpdateGleam
+    }
+
+    Assert-Contains $output 'STUB Update-Gleam called'
+}
