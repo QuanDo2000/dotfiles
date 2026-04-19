@@ -508,6 +508,13 @@ function Update-Gleam {
     Install-Gleam
 }
 
+function Update-Packages {
+    Info "Updating packages..."
+    if ($script:Dry) { Success "Would run: scoop update *"; return }
+    scoop update *
+    Success "Finished updating packages"
+}
+
 function Install-Languages {
     param([string]$Target = 'all')
     switch ($Target) {
