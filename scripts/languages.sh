@@ -28,6 +28,57 @@ _shuffle_lines() {
   }'
 }
 
+# Assert that exactly one top-level directory exists under <extract_dir>.
+# Prints the resolved path on stdout. Fails with $display_name in the message
+# when the count is not 1. Uses a portable bash 3.2 loop (no mapfile/readarray).
+_assert_single_top_dir() {
+  local extract_dir="$1" display_name="$2"
+  local extracted="" extra_dir extracted_count=0
+  while IFS= read -r extra_dir; do
+    extracted_count=$((extracted_count + 1))
+    extracted="$extra_dir"
+  done < <(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d)
+  if [[ "$extracted_count" -ne 1 ]]; then
+    fail "$display_name tarball extracted to unexpected layout ($extracted_count top-level dirs)"
+  fi
+  echo "$extracted"
+}
+
+# Move <extracted_path> to ~/.local/<lc_name>-<version>/, symlink the binary
+# into ~/.local/bin/, and remove any prior ~/.local/<lc_name>-* siblings.
+# Idempotent — safe to call repeatedly.
+_install_into_local() {
+  local lc_name="$1" version="$2" bin_name="$3" extracted_path="$4"
+  local target_dir="$HOME/.local/${lc_name}-${version}"
+
+  rm -rf "$target_dir"
+  mv "$extracted_path" "$target_dir" || fail "Failed to move $lc_name into place"
+
+  mkdir -p "$HOME/.local/bin"
+  ln -sfn "$target_dir/$bin_name" "$HOME/.local/bin/$bin_name" \
+    || fail "Failed to create ~/.local/bin/$bin_name symlink"
+
+  # Clean up old versions (any ~/.local/<lc_name>-*/ that isn't the current one).
+  # The [[ -d ]] guard handles the no-matches case where the glob returns
+  # the literal pattern unchanged.
+  local old
+  for old in "$HOME"/.local/"${lc_name}"-*; do
+    [[ -d "$old" && "$old" != "$target_dir" ]] && rm -rf "$old"
+  done
+}
+
+# Strip the "sha256:" prefix from a GitHub release digest string.
+# Fails loudly if the prefix is absent — the caller MUST NOT silently
+# compare against a value of unknown algorithm.
+_strip_sha256_prefix() {
+  local digest="$1"
+  local stripped="${digest#sha256:}"
+  if [[ "$stripped" == "$digest" ]]; then
+    fail "Unexpected digest format: $digest"
+  fi
+  echo "$stripped"
+}
+
 # Map (uname -s, uname -m) to Zig's tarball arch slug.
 # Prints the slug on stdout. Fails if the platform is unsupported.
 zig_target_triple() {

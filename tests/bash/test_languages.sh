@@ -6,10 +6,25 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 setup() {
   init_test_env
   source_scripts utils.sh packages.sh languages.sh
+  FAKE_BIN="$TEST_TMPDIR/bin"
+  mkdir -p "$FAKE_BIN"
+  ORIG_PATH="$PATH"
+  export PATH="$FAKE_BIN:$PATH"
 }
 
 teardown() {
+  export PATH="$ORIG_PATH"
   cleanup_test_env
+}
+
+# Helper: install a fake executable in FAKE_BIN that runs $body.
+mock_cmd() {
+  local name="$1" body="$2"
+  cat > "$FAKE_BIN/$name" <<EOF
+#!/bin/bash
+$body
+EOF
+  chmod +x "$FAKE_BIN/$name"
 }
 
 # ---------------------------------------------------------------------------
@@ -1130,4 +1145,108 @@ test_update_jank_dry_run_when_installed() {
   assert_contains "$output" "Updating Jank"
   assert_contains "$output" "Would update Jank"
   assert_contains "$output" "Finished updating Jank (dry run)"
+}
+
+# ---------------------------------------------------------------------------
+# _assert_single_top_dir
+# ---------------------------------------------------------------------------
+
+test_assert_single_top_dir_returns_path_when_one_dir() {
+  local extract_dir="$TEST_TMPDIR/single"
+  mkdir -p "$extract_dir/inner"
+
+  local result
+  result=$(_assert_single_top_dir "$extract_dir" "TestPkg")
+  assert_equals "$extract_dir/inner" "$result"
+}
+
+test_assert_single_top_dir_fails_when_zero_dirs() {
+  local extract_dir="$TEST_TMPDIR/zero"
+  mkdir -p "$extract_dir"
+  # No subdirs.
+
+  local output exit_code=0
+  output=$(_assert_single_top_dir "$extract_dir" "TestPkg" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: _assert_single_top_dir should fail with 0 dirs" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "TestPkg"
+  assert_contains "$output" "0 top-level dirs"
+}
+
+test_assert_single_top_dir_fails_when_multiple_dirs() {
+  local extract_dir="$TEST_TMPDIR/multi"
+  mkdir -p "$extract_dir/a" "$extract_dir/b"
+
+  local output exit_code=0
+  output=$(_assert_single_top_dir "$extract_dir" "TestPkg" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: _assert_single_top_dir should fail with 2 dirs" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "2 top-level dirs"
+}
+
+# ---------------------------------------------------------------------------
+# _install_into_local
+# ---------------------------------------------------------------------------
+
+test_install_into_local_creates_target_and_symlink() {
+  local extracted="$TEST_TMPDIR/extracted"
+  mkdir -p "$extracted"
+  echo "fake binary" > "$extracted/foo"
+  chmod +x "$extracted/foo"
+
+  _install_into_local "foo" "v1.0" "foo" "$extracted"
+
+  assert_file_exists "$HOME/.local/foo-v1.0/foo"
+  assert_symlink "$HOME/.local/bin/foo" "$HOME/.local/foo-v1.0/foo"
+}
+
+test_install_into_local_cleans_old_versions() {
+  # Pre-create a prior version that should be removed by the cleanup loop.
+  mkdir -p "$HOME/.local/foo-v0.9"
+  echo "old" > "$HOME/.local/foo-v0.9/foo"
+
+  local extracted="$TEST_TMPDIR/extracted"
+  mkdir -p "$extracted"
+  echo "new" > "$extracted/foo"
+
+  _install_into_local "foo" "v1.0" "foo" "$extracted"
+
+  assert_file_exists "$HOME/.local/foo-v1.0/foo"
+  if [ -d "$HOME/.local/foo-v0.9" ]; then
+    echo "  FAILED: _install_into_local should have removed old version foo-v0.9" >> "$ERROR_FILE"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# _strip_sha256_prefix
+# ---------------------------------------------------------------------------
+
+test_strip_sha256_prefix_strips_known_format() {
+  local result
+  result=$(_strip_sha256_prefix "sha256:deadbeef")
+  assert_equals "deadbeef" "$result"
+}
+
+test_strip_sha256_prefix_fails_on_bare_hex() {
+  local output exit_code=0
+  output=$(_strip_sha256_prefix "deadbeef" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: _strip_sha256_prefix should fail on bare hex" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Unexpected digest format"
+}
+
+test_strip_sha256_prefix_fails_on_sha512_prefix() {
+  local output exit_code=0
+  output=$(_strip_sha256_prefix "sha512:abc" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: _strip_sha256_prefix should fail on sha512: prefix" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Unexpected digest format"
 }
