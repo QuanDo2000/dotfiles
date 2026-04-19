@@ -661,6 +661,12 @@ update_languages() {
   update_jank
 }
 
+# Jank diverges from Zig/Odin/Gleam: installs via system PM (brew tap / AUR /
+# PPA), not GitHub binary download. No SHA verify (PM provides trust), no
+# ~/.local/jank-<v>/ layout, no precise version (jank has no --version flag).
+# Lenient on unsupported platforms — see
+# docs/superpowers/specs/2026-04-18-jank-language-install-design.md.
+
 # Returns 0 if jank can be installed on this platform, non-zero otherwise.
 # Does NOT call fail — caller decides whether to error or skip.
 #
