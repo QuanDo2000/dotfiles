@@ -376,6 +376,9 @@ install_odin() {
     fail "Could not find digest for $asset in Odin releases/latest"
   fi
   # GitHub formats digests as "sha256:<hex>"; strip the prefix.
+  # If the prefix is absent (e.g. "sha512:" or bare hex), the expansion is a
+  # no-op, so expected_sha == digest — fail loudly rather than compare against
+  # a value of unknown algorithm.
   local expected_sha="${digest#sha256:}"
   if [[ "$expected_sha" == "$digest" ]]; then
     fail "Unexpected digest format for $asset: $digest"
@@ -427,6 +430,8 @@ install_odin() {
     || fail "Failed to create ~/.local/bin/odin symlink"
 
   # Clean up old versions (any ~/.local/odin-*/ that isn't the current one).
+  # The [[ -d ]] guard handles the no-matches case where the glob returns
+  # the literal pattern unchanged.
   local old
   for old in "$HOME"/.local/odin-*; do
     [[ -d "$old" && "$old" != "$target_dir" ]] && rm -rf "$old"
