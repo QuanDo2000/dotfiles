@@ -268,3 +268,100 @@ test_setup_fdfind_neither_available() {
   assert_contains "$output" "fd not found on system"
   export PATH="$orig_path"
 }
+
+# ---------------------------------------------------------------------------
+# setup_yay
+# ---------------------------------------------------------------------------
+
+test_setup_yay_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_yay 2>&1)
+
+  assert_contains "$output" "yay"
+  assert_contains "$output" "Finished yay"
+}
+
+test_setup_yay_already_installed() {
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/yay"
+  chmod +x "$HOME/.local/bin/yay"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_yay 2>&1)
+
+  assert_contains "$output" "Already installed yay"
+}
+
+# ---------------------------------------------------------------------------
+# setup_pwsh
+# ---------------------------------------------------------------------------
+
+test_setup_pwsh_skips_on_mac() {
+  detect_platform() { echo "mac"; }
+  DRY=false
+  local output
+  output=$(setup_pwsh 2>&1)
+
+  # Mac path uses brew casks via install_mac; setup_pwsh itself is a no-op.
+  assert_equals "" "$output"
+}
+
+test_setup_pwsh_dry_run_debian() {
+  detect_platform() { echo "debian"; }
+  DRY=true
+  local output
+  output=$(setup_pwsh 2>&1)
+
+  assert_contains "$output" "pwsh"
+  assert_contains "$output" "Finished pwsh"
+}
+
+test_setup_pwsh_already_installed() {
+  detect_platform() { echo "debian"; }
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/pwsh"
+  chmod +x "$HOME/.local/bin/pwsh"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_pwsh 2>&1)
+
+  assert_contains "$output" "Already installed pwsh"
+}
+
+test_setup_pwsh_update_dry_run() {
+  detect_platform() { echo "debian"; }
+  DRY=true
+  local output
+  output=$(setup_pwsh --update 2>&1)
+
+  assert_contains "$output" "pwsh"
+  assert_contains "$output" "Finished pwsh"
+}
+
+test_setup_pwsh_update_does_not_skip() {
+  detect_platform() { echo "debian"; }
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/pwsh"
+  chmod +x "$HOME/.local/bin/pwsh"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_pwsh --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}
+
+test_setup_pwsh_dry_run_arch() {
+  detect_platform() { echo "arch"; }
+  DRY=true
+  local output
+  output=$(setup_pwsh 2>&1)
+
+  assert_contains "$output" "pwsh"
+  assert_contains "$output" "Finished pwsh"
+}

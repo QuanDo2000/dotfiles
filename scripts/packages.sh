@@ -141,6 +141,119 @@ function setup_fdfind {
   success "Finished ensuring fd in '.local/bin'"
 }
 
+# Bootstrap yay (AUR helper) on Arch. Clones yay-bin from the AUR and builds
+# it with makepkg. Idempotent: no-op if yay is already on PATH.
+# Usage: setup_yay
+function setup_yay {
+  info "Installing yay..."
+  if [[ "$DRY" == "false" ]]; then
+    if command -v yay >/dev/null 2>&1; then
+      info "Already installed yay"
+      success "Finished yay"
+      return
+    fi
+    if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+      fail "setup_yay must not run as root (makepkg refuses root)"
+    fi
+    command -v git >/dev/null 2>&1 || fail "git required for setup_yay"
+    command -v makepkg >/dev/null 2>&1 || fail "makepkg required for setup_yay (install base-devel)"
+
+    local build_dir="/tmp/yay-bin"
+    rm -rf "$build_dir"
+    git clone https://aur.archlinux.org/yay-bin.git "$build_dir" \
+      || fail "Failed to clone yay-bin AUR repo"
+    (cd "$build_dir" && makepkg -si --noconfirm) \
+      || fail "Failed to build/install yay-bin"
+    rm -rf "$build_dir"
+  fi
+  success "Finished yay"
+}
+
+# Install or update pwsh (PowerShell 7+). Dispatches by platform:
+#   - debian: Microsoft apt repo via packages-microsoft-prod.deb
+#   - arch:   yay -S powershell-bin (AUR)
+#   - mac:    no-op (handled by MAC_BREW_CASKS)
+# Usage: setup_pwsh [--update]
+function setup_pwsh {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+
+  local platform
+  platform="$(detect_platform)"
+
+  case "$platform" in
+    mac) return ;;
+    debian|arch) ;;
+    *) return ;;
+  esac
+
+  info "${update:+Updating}${update:- Installing} pwsh..."
+  if [[ "$DRY" == "false" ]]; then
+    if [[ "$update" == "false" ]] && command -v pwsh >/dev/null 2>&1; then
+      info "Already installed pwsh"
+      success "Finished pwsh"
+      return
+    fi
+    case "$platform" in
+      debian) _setup_pwsh_debian "$update" ;;
+      arch)   _setup_pwsh_arch "$update" ;;
+    esac
+  fi
+  success "Finished pwsh"
+}
+
+# Install or update pwsh on Debian/Ubuntu via Microsoft's apt repo.
+# $1 = "true" for --update mode (skip repo bootstrap).
+_setup_pwsh_debian() {
+  local update="$1"
+  local ms_list="/etc/apt/sources.list.d/microsoft-prod.list"
+
+  if [[ ! -f "$ms_list" ]]; then
+    local id="" version_id=""
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    id="${ID:-}"
+    version_id="${VERSION_ID:-}"
+    local distro=""
+    case "$id" in
+      debian) distro="debian" ;;
+      ubuntu) distro="ubuntu" ;;
+      *)
+        if [[ "${ID_LIKE:-}" == *ubuntu* ]]; then distro="ubuntu"
+        elif [[ "${ID_LIKE:-}" == *debian* ]]; then distro="debian"
+        fi
+        ;;
+    esac
+    if [[ -z "$distro" || -z "$version_id" ]]; then
+      info "pwsh: could not detect Debian/Ubuntu variant (ID=$id VERSION_ID=$version_id); skipping"
+      return
+    fi
+    local deb_url="https://packages.microsoft.com/config/${distro}/${version_id}/packages-microsoft-prod.deb"
+    local tmp
+    tmp="$(mktemp -t packages-microsoft-prod.XXXXXX.deb)" || fail "Failed to create temp file"
+    # shellcheck disable=SC2064
+    trap "rm -f '$tmp'" RETURN
+    http_get_retry "$deb_url" "$tmp" \
+      || fail "Failed to download packages-microsoft-prod.deb from $deb_url"
+    sudo dpkg -i "$tmp" || fail "Failed to install packages-microsoft-prod.deb"
+    sudo apt update -y || fail "Failed to apt update after adding Microsoft repo"
+  fi
+
+  sudo apt install -y powershell || fail "Failed to install powershell via apt"
+}
+
+# Install or update pwsh on Arch via yay (AUR: powershell-bin).
+# $1 = "true" for --update mode (no --needed, so yay re-fetches).
+_setup_pwsh_arch() {
+  local update="$1"
+  command -v yay >/dev/null 2>&1 || fail "yay required for pwsh on Arch (run setup_yay first)"
+  if [[ "$update" == "true" ]]; then
+    yay -S --noconfirm powershell-bin || fail "Failed to update powershell-bin via yay"
+  else
+    yay -S --needed --noconfirm powershell-bin || fail "Failed to install powershell-bin via yay"
+  fi
+}
+
 DEBIAN_PACKAGES=(
   build-essential libssl-dev zlib1g-dev libbz2-dev
   libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils
@@ -157,6 +270,7 @@ function update_debian {
     setup_neovim --update
     setup_lazygit --update
     setup_zoxide --update
+    setup_pwsh --update
   fi
   success "Finished update for Debian"
 }
@@ -173,6 +287,7 @@ function install_debian {
     setup_zoxide
 
     setup_fdfind
+    setup_pwsh
   fi
   success "Finished install for Debian"
 }
@@ -190,6 +305,7 @@ function update_arch {
     sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
 
     setup_neovim --update
+    setup_pwsh --update
   fi
   success "Finished update for Arch Linux"
 }
@@ -202,6 +318,8 @@ function install_arch {
 
     setup_neovim
     setup_fdfind
+    setup_yay
+    setup_pwsh
   fi
   success "Finished install for Arch Linux"
 }
@@ -210,7 +328,7 @@ MAC_BREW_PACKAGES=(
   bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font
   gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide
 )
-MAC_BREW_CASKS=(ghostty)
+MAC_BREW_CASKS=(ghostty powershell)
 
 function update_mac {
   info "Updating packages for Mac..."

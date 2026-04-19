@@ -5,7 +5,7 @@ set -eo pipefail
 
 # Binaries expected on PATH after install_packages has run.
 # Keep in sync with scripts/packages.sh (DEBIAN_PACKAGES / ARCH_PACKAGES / MAC_BREW_PACKAGES).
-REQUIRED_TOOLS=(git zsh vim nvim tmux fzf fd rg lazygit zoxide)
+REQUIRED_TOOLS=(git zsh vim nvim tmux fzf fd rg lazygit zoxide pwsh)
 
 # Symlinked dotfiles under $HOME (resolved to $DOTFILES_DIR/...).
 # Keep in sync with scripts/symlinks.sh and the config/{shared,unix} layout.
