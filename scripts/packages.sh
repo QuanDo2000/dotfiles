@@ -105,8 +105,10 @@ function setup_zoxide {
     # download still executes whatever partial script arrived.
     local tmp
     tmp="$(mktemp -t zoxide-install.XXXXXX.sh)" || fail "Failed to create temp file"
+    # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
+    # EXIT, every fail() in this function would leak $tmp under /tmp.
     # shellcheck disable=SC2064
-    trap "rm -f '$tmp'" RETURN
+    trap "rm -f '$tmp'" EXIT RETURN
     http_get_retry "https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh" "$tmp" \
       || fail "Failed to download zoxide installer"
     # Sanity-check: the installer should be a shell script.
@@ -158,13 +160,16 @@ function setup_yay {
     command -v git >/dev/null 2>&1 || fail "git required for setup_yay"
     command -v makepkg >/dev/null 2>&1 || fail "makepkg required for setup_yay (install base-devel)"
 
-    local build_dir="/tmp/yay-bin"
-    rm -rf "$build_dir"
+    local build_dir
+    build_dir="$(mktemp -d -t yay-bin.XXXXXX)" || fail "Failed to create temp dir"
+    # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
+    # EXIT, every fail() in this function would leak $build_dir under /tmp.
+    # shellcheck disable=SC2064
+    trap "rm -rf '$build_dir'" EXIT RETURN
     git clone https://aur.archlinux.org/yay-bin.git "$build_dir" \
       || fail "Failed to clone yay-bin AUR repo"
     (cd "$build_dir" && makepkg -si --noconfirm) \
       || fail "Failed to build/install yay-bin"
-    rm -rf "$build_dir"
   fi
   success "Finished yay"
 }
@@ -231,8 +236,10 @@ _setup_pwsh_debian() {
     local deb_url="https://packages.microsoft.com/config/${distro}/${version_id}/packages-microsoft-prod.deb"
     local tmp
     tmp="$(mktemp -t packages-microsoft-prod.XXXXXX.deb)" || fail "Failed to create temp file"
+    # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
+    # EXIT, every fail() in this function would leak $tmp under /tmp.
     # shellcheck disable=SC2064
-    trap "rm -f '$tmp'" RETURN
+    trap "rm -f '$tmp'" EXIT RETURN
     http_get_retry "$deb_url" "$tmp" \
       || fail "Failed to download packages-microsoft-prod.deb from $deb_url"
     sudo dpkg -i "$tmp" || fail "Failed to install packages-microsoft-prod.deb"

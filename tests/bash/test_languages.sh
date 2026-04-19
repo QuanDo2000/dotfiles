@@ -1419,3 +1419,29 @@ test_install_from_github_release_flat_binary_missing_root_binary_fails() {
   fi
   assert_contains "$output" "Foo binary not found"
 }
+
+test_install_from_github_release_cleans_tmpdir_on_failure() {
+  # Regression: previously the trap was "rm -rf '$tmpdir'" RETURN, which never
+  # fired on fail()'s exit 1, leaking tmpdirs under /tmp on every error path.
+  # Override TMPDIR to an isolated dir so we can count what's left after a
+  # forced failure.
+  local check_dir="$TEST_TMPDIR/tmpdir_check"
+  mkdir -p "$check_dir"
+
+  export INTEGRATION_FIXTURE
+  INTEGRATION_FIXTURE=$(_build_single_dir_fixture "foo" "foo-1.0")
+  # Wrong sha forces failure after the tmpdir is created.
+  local json
+  json=$(_make_release_json "v1.0" "foo.tar.gz" "0000000000000000000000000000000000000000000000000000000000000000" "https://example.com/foo.tar.gz")
+  _mock_curl_copies_fixture
+
+  # Wrap in (...) so fail()'s exit 1 stays scoped to the inner subshell;
+  # the EXIT trap inside _install_from_github_release fires there as well.
+  (TMPDIR="$check_dir" _install_from_github_release "Foo" "foo" "$json" "v1.0" "foo.tar.gz" "single-dir" "foo") >/dev/null 2>&1 || true
+
+  local count
+  count=$(find "$check_dir" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')
+  if [ "$count" -ne 0 ]; then
+    echo "  FAILED: tmpdir leaked on failure path, $count entries remain in $check_dir" >> "$ERROR_FILE"
+  fi
+}

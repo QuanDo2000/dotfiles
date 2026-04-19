@@ -119,8 +119,10 @@ _install_from_github_release() {
 
   local tmpdir
   tmpdir="$(mktemp -d)"
+  # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
+  # EXIT, every fail() in this function would leak $tmpdir under /tmp.
   # shellcheck disable=SC2064
-  trap "rm -rf '$tmpdir'" RETURN
+  trap "rm -rf '$tmpdir'" EXIT RETURN
 
   local tar_path="$tmpdir/$asset"
   info "Downloading $asset_url"
@@ -335,8 +337,10 @@ install_zig() {
     fail "community-mirrors.txt was empty — Zig has no published mirrors right now"
   fi
   tmpdir="$(mktemp -d)"
+  # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
+  # EXIT, every fail() in this function would leak $tmpdir under /tmp.
   # shellcheck disable=SC2064
-  trap "rm -rf '$tmpdir'" RETURN
+  trap "rm -rf '$tmpdir'" EXIT RETURN
 
   local tar_path="$tmpdir/$tarball"
   local sig_path="$tar_path.minisig"
