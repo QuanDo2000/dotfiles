@@ -453,4 +453,5 @@ update_odin() {
 # Update every language that this script previously installed.
 update_languages() {
   update_zig
+  update_odin
 }
