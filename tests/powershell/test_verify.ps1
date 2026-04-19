@@ -1,8 +1,7 @@
-# Verify — drives the function end-to-end with mocked lookups. Note PowerShell's
-# $HOME automatic variable is read-only, so Verify always consults the *real*
-# home directory; these tests therefore focus on control-flow coverage (the
-# banner messages it emits and its reaction to mocked tool presence) rather
-# than asserting on specific file-existence outcomes.
+# Verify — drives the function end-to-end with mocked lookups. Verify uses
+# $env:USERPROFILE (overridden by Initialize-TestEnv) so it operates on the
+# temp home; tests still focus on control-flow coverage rather than asserting
+# specific file-existence outcomes.
 
 function TestSetup {
     Initialize-TestEnv | Out-Null

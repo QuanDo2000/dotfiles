@@ -46,6 +46,6 @@ function test_setupsymlinks_dry_run_creates_no_symlinks {
     # Dry mode: each LinkFile/LinkDir bails before creating anything.
     SetupSymlinks
 
-    $psProfileDest = Join-Path $env:USERPROFILE 'Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1'
+    $psProfileDest = Join-Path $env:USERPROFILE 'documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1'
     Assert-False (Test-Path $psProfileDest) 'no symlink should be created in dry run'
 }

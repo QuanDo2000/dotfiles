@@ -544,11 +544,19 @@ function SetupSymlinks {
     $configPath = Join-Path $script:DotfilesDir "config\windows"
     $sharedPath = Join-Path $script:DotfilesDir "config\shared"
 
-    # PowerShell profiles (link each file into the target dir)
+    # Use $env:USERPROFILE rather than $HOME so test fixtures can override the
+    # home directory by setting the env var. PowerShell's $HOME automatic
+    # variable is read-only and frozen at session start, so $HOME would always
+    # resolve to the real home — leaking test artifacts into ~/Documents etc.
+    $userHome = $env:USERPROFILE
+
+    # PowerShell profiles (link each file into the target dir).
+    # Lowercase "documents" works on Windows (case-insensitive) and matches
+    # the XDG-style lowercase convention on Unix/Mac when running PS tests.
     $psSource = Join-Path $configPath "Powershell"
     $targets = @(
-        "$HOME\Documents\WindowsPowerShell"
-        "$HOME\Documents\PowerShell"
+        "$userHome\documents\WindowsPowerShell"
+        "$userHome\documents\PowerShell"
     )
     foreach ($target in $targets) {
         if (-not (Test-Path $target)) {
@@ -565,13 +573,13 @@ function SetupSymlinks {
     LinkFile -source $terminalSettingsSource -destination $terminalSettingsPath
 
     # Vim settings
-    LinkFile -source (Join-Path $configPath "_gvimrc") -destination "$HOME\_gvimrc"
-    LinkFile -source (Join-Path $sharedPath ".vimrc") -destination "$HOME\_vimrc"
-    LinkFile -source (Join-Path $sharedPath ".gitconfig") -destination "$HOME\.gitconfig"
-    LinkFile -source (Join-Path $configPath ".gitconfig") -destination "$HOME\.gitconfig.windows"
+    LinkFile -source (Join-Path $configPath "_gvimrc") -destination "$userHome\_gvimrc"
+    LinkFile -source (Join-Path $sharedPath ".vimrc") -destination "$userHome\_vimrc"
+    LinkFile -source (Join-Path $sharedPath ".gitconfig") -destination "$userHome\.gitconfig"
+    LinkFile -source (Join-Path $configPath ".gitconfig") -destination "$userHome\.gitconfig.windows"
 
     # SSH config
-    $sshDest = "$HOME\.ssh"
+    $sshDest = "$userHome\.ssh"
     if (-not (Test-Path $sshDest)) {
         New-Item -ItemType Directory -Path $sshDest | Out-Null
     }
@@ -584,7 +592,7 @@ function SetupSymlinks {
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
     $dotfileSource = Join-Path $script:DotfilesDir "dotfile.ps1"
     if (Test-Path $dotfileSource) {
-        $binDest = "$HOME\.local\bin"
+        $binDest = "$userHome\.local\bin"
         if (-not (Test-Path $binDest)) {
             New-Item -ItemType Directory -Path $binDest | Out-Null
         }
@@ -632,10 +640,12 @@ function Verify {
     $configPath = Join-Path $script:DotfilesDir "config\windows"
     $sharedPath = Join-Path $script:DotfilesDir "config\shared"
 
+    # Match SetupSymlinks: use $env:USERPROFILE so test fixtures can override.
+    $userHome = $env:USERPROFILE
     $filesToCheck = @(
-        @{ Source = (Join-Path $sharedPath ".gitconfig"); Dest = "$HOME\.gitconfig" }
-        @{ Source = (Join-Path $sharedPath ".vimrc"); Dest = "$HOME\_vimrc" }
-        @{ Source = (Join-Path $configPath "_gvimrc"); Dest = "$HOME\_gvimrc" }
+        @{ Source = (Join-Path $sharedPath ".gitconfig"); Dest = "$userHome\.gitconfig" }
+        @{ Source = (Join-Path $sharedPath ".vimrc"); Dest = "$userHome\_vimrc" }
+        @{ Source = (Join-Path $configPath "_gvimrc"); Dest = "$userHome\_gvimrc" }
     )
     foreach ($file in $filesToCheck) {
         if (Test-Path $file.Dest) {
