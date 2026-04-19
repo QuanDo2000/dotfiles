@@ -268,3 +268,28 @@ test_setup_fdfind_neither_available() {
   assert_contains "$output" "fd not found on system"
   export PATH="$orig_path"
 }
+
+# ---------------------------------------------------------------------------
+# setup_yay
+# ---------------------------------------------------------------------------
+
+test_setup_yay_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_yay 2>&1)
+
+  assert_contains "$output" "yay"
+  assert_contains "$output" "Finished yay"
+}
+
+test_setup_yay_already_installed() {
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/yay"
+  chmod +x "$HOME/.local/bin/yay"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_yay 2>&1)
+
+  assert_contains "$output" "Already installed yay"
+}
