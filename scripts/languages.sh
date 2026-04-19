@@ -739,7 +739,7 @@ install_jank() {
       yay -S --needed --noconfirm jank-bin || fail "Failed to install jank-bin via yay"
       ;;
     debian)  # Ubuntu only — jank_check_platform already enforced
-      _install_jank_ppa
+      _install_jank_ppa || fail "Failed to set up jank PPA"
       sudo apt install -y jank || fail "Failed to install jank via apt"
       ;;
   esac

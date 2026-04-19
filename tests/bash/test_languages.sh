@@ -1031,6 +1031,13 @@ test_install_jank_dry_run_arch() {
   DRY=true
   detect_platform() { echo "arch"; }
   export -f detect_platform
+  # Shadow command so the test stays correct even if jank is on the host PATH
+  # and a future refactor moves the skip-if-installed gate before the dry-run gate.
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "jank" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
 
   local output
   output=$(install_jank 2>&1)
