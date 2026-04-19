@@ -3,8 +3,15 @@
 # Sourced by `dotfile`. Requires utils.sh, platform.sh, packages.sh already sourced.
 set -eo pipefail
 
-# Zig signing public key. Source: https://ziglang.org/download/  Copied: 2026-04-17
-# Re-check periodically; the Zig project rarely rotates this but does occasionally.
+# Zig signing public key. Pinned to defend against MITM during install.
+# Source: https://ziglang.org/download/  Copied: 2026-04-17
+#
+# Rotation is rare but happens. Suspect it when install_zig fails at
+# minisign verification on a known-good network (the failure message
+# will mention "Signature verification failed"). To update:
+#   1. Visit https://ziglang.org/download/ and copy the new minisign key.
+#   2. Replace ZIG_PUBKEY below.
+#   3. Update the "Copied:" date in this comment.
 ZIG_PUBKEY="RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U"
 
 # Portable sha256 of a file. Linux ships sha256sum; macOS ships shasum.
