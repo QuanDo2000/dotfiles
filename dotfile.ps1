@@ -371,6 +371,35 @@ function InstallNeovimNightly {
     AddToUserPath $binDir
 }
 
+function Get-GleamTargetTriple {
+    if (-not [System.Environment]::Is64BitOperatingSystem) {
+        Fail "Unsupported architecture for Gleam (need 64-bit Windows)"
+    }
+    return 'x86_64-pc-windows-msvc'
+}
+
+function Get-GleamLatestRelease {
+    param([string]$Json = $null)
+    if (-not $Json) {
+        $obj = InvokeRestMethodRetry -Uri 'https://api.github.com/repos/gleam-lang/gleam/releases/latest'
+        $Json = ConvertTo-Json -InputObject $obj -Depth 100 -Compress
+    }
+    return $Json
+}
+
+function Get-GleamCurrentInstalledVersion {
+    $junction = Join-Path $env:LOCALAPPDATA 'Programs\gleam'
+    if (-not (Test-Path -LiteralPath $junction)) { return '' }
+    $item = Get-Item -LiteralPath $junction -ErrorAction SilentlyContinue
+    if (-not $item -or -not $item.Target) { return '' }
+    $target = if ($item.Target -is [array]) { $item.Target[0] } else { $item.Target }
+    $prefix = Join-Path $env:LOCALAPPDATA 'Programs\gleam-'
+    if ($target.StartsWith($prefix)) {
+        return $target.Substring($prefix.Length)
+    }
+    return ''
+}
+
 function AddToUserPath($dir) {
     Info "Ensuring $dir is on user PATH"
     if ($script:Dry) { return }
