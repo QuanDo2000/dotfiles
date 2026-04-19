@@ -114,3 +114,67 @@ function test_install_rebar3_dry_run_does_not_call_scoop {
     Assert-Contains $output 'rebar3 not found'
     Assert-False $called 'scoop should not be invoked in dry run'
 }
+
+# ---------------------------------------------------------------------------
+# Install-Gleam
+# ---------------------------------------------------------------------------
+
+function test_install_gleam_dry_run {
+    $script:Dry = $true
+    $env:LOCALAPPDATA = $script:_TestTmp.FullName
+
+    # Stub the dependency installs so the dry-run test doesn't need scoop/erl.
+    # Capture ScriptBlock into plain variables before stubbing so the finally
+    # block can reliably restore them (property access on FunctionInfo can
+    # return empty in some scopes).
+    $sbErlang = (Get-Item 'function:Install-Erlang').ScriptBlock
+    $sbRebar3 = (Get-Item 'function:Install-Rebar3').ScriptBlock
+    Set-Item -Path 'function:script:Install-Erlang' -Value { }
+    Set-Item -Path 'function:script:Install-Rebar3' -Value { }
+
+    try {
+        $output = Install-Gleam 6>&1 | Out-String
+    } finally {
+        Set-Item -Path 'function:script:Install-Erlang' -Value $sbErlang
+        Set-Item -Path 'function:script:Install-Rebar3' -Value $sbRebar3
+    }
+
+    Assert-Contains $output 'Installing Gleam'
+    Assert-Contains $output 'Finished'
+    $created = Test-Path (Join-Path $env:LOCALAPPDATA 'Programs\gleam-v1.15.4')
+    Assert-False $created 'dry run should not create install dir'
+}
+
+function test_install_gleam_already_installed_short_circuits {
+    $env:LOCALAPPDATA = $script:_TestTmp.FullName
+    $programs = Join-Path $env:LOCALAPPDATA 'Programs'
+    $versioned = Join-Path $programs 'gleam-v1.15.4'
+    New-Item -ItemType Directory -Force -Path $versioned | Out-Null
+    New-Item -ItemType File -Force -Path (Join-Path $versioned 'gleam.exe') | Out-Null
+
+    # Cross-platform link type — junction on Windows, symlink on Linux.
+    $linkType = if ($IsWindows) { 'Junction' } else { 'SymbolicLink' }
+    New-Item -ItemType $linkType -Path (Join-Path $programs 'gleam') -Target $versioned | Out-Null
+
+    # Capture ScriptBlocks into plain variables before stubbing so the finally
+    # block can reliably restore them.
+    $sbErlang        = (Get-Item 'function:Install-Erlang').ScriptBlock
+    $sbRebar3        = (Get-Item 'function:Install-Rebar3').ScriptBlock
+    $sbLatestRelease = (Get-Item 'function:Get-GleamLatestRelease').ScriptBlock
+    Set-Item -Path 'function:script:Install-Erlang' -Value { }
+    Set-Item -Path 'function:script:Install-Rebar3' -Value { }
+    Set-Item -Path 'function:script:Get-GleamLatestRelease' -Value {
+        param([string]$Json = $null)
+        return '{"tag_name": "v1.15.4", "assets": []}'
+    }
+
+    try {
+        $output = Install-Gleam 6>&1 | Out-String
+    } finally {
+        Set-Item -Path 'function:script:Install-Erlang' -Value $sbErlang
+        Set-Item -Path 'function:script:Install-Rebar3' -Value $sbRebar3
+        Set-Item -Path 'function:script:Get-GleamLatestRelease' -Value $sbLatestRelease
+    }
+
+    Assert-Contains $output 'Already installed Gleam v1.15.4'
+}

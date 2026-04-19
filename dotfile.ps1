@@ -420,6 +420,89 @@ function Install-Rebar3 {
     Success 'Installed rebar3'
 }
 
+function Install-Gleam {
+    Info 'Installing Gleam...'
+    Install-Erlang
+    Install-Rebar3
+
+    $triple = Get-GleamTargetTriple
+    if ($script:Dry) {
+        Info "Would install latest Gleam for $triple"
+        Success 'Finished installing Gleam (dry run)'
+        return
+    }
+
+    $releaseJson = Get-GleamLatestRelease
+    $release = $releaseJson | ConvertFrom-Json
+
+    $tag = $release.tag_name
+    if (-not $tag) { Fail 'Could not read tag_name from Gleam releases/latest' }
+    $asset = "gleam-$tag-$triple.zip"
+
+    $current = Get-GleamCurrentInstalledVersion
+    if ($current -eq $tag) {
+        Success "Already installed Gleam $tag"
+        return
+    }
+
+    $assetMeta = $release.assets | Where-Object { $_.name -eq $asset } | Select-Object -First 1
+    if (-not $assetMeta) { Fail "Could not find asset $asset in Gleam releases/latest" }
+
+    $digest = $assetMeta.digest
+    if (-not $digest) { Fail "Could not find digest for $asset" }
+    if (-not $digest.StartsWith('sha256:')) {
+        Fail "Unexpected digest format for ${asset}: $digest"
+    }
+    $expectedSha = $digest.Substring('sha256:'.Length)
+
+    $url = $assetMeta.browser_download_url
+    if (-not $url) { Fail "Could not find download URL for $asset" }
+
+    $tmpZip = New-TemporaryFile
+    Rename-Item $tmpZip "$($tmpZip.FullName).zip"
+    $tmpZip = Get-Item "$($tmpZip.FullName).zip"
+    $tmpExtract = Join-Path ([System.IO.Path]::GetTempPath()) ("gleam-extract-$([Guid]::NewGuid().ToString('N'))")
+
+    try {
+        Info "Downloading $url"
+        Invoke-WebRequest -Uri $url -OutFile $tmpZip.FullName -UseBasicParsing
+
+        $gotSha = (Get-FileHash -Path $tmpZip.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($gotSha -ne $expectedSha.ToLowerInvariant()) {
+            Fail "sha256 mismatch for $asset (expected $expectedSha, got $gotSha)"
+        }
+
+        New-Item -ItemType Directory -Force -Path $tmpExtract | Out-Null
+        Expand-Archive -Path $tmpZip.FullName -DestinationPath $tmpExtract -Force
+        $extractedExe = Join-Path $tmpExtract 'gleam.exe'
+        if (-not (Test-Path -LiteralPath $extractedExe)) {
+            Fail 'gleam.exe not found at top level of zip'
+        }
+
+        $programs = Join-Path $env:LOCALAPPDATA 'Programs'
+        $targetDir = Join-Path $programs "gleam-$tag"
+        if (Test-Path -LiteralPath $targetDir) { Remove-Item -Recurse -Force $targetDir }
+        New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+        Move-Item $extractedExe (Join-Path $targetDir 'gleam.exe')
+
+        $junction = Join-Path $programs 'gleam'
+        if (Test-Path -LiteralPath $junction) { Remove-Item -Force $junction }
+        New-Item -ItemType Junction -Path $junction -Target $targetDir | Out-Null
+
+        AddToUserPath $junction
+
+        # Clean up old versioned dirs
+        Get-ChildItem -Path $programs -Directory -Filter 'gleam-*' -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -ne $targetDir } |
+            ForEach-Object { Remove-Item -Recurse -Force $_.FullName }
+
+        Success "Installed Gleam $tag"
+    } finally {
+        if (Test-Path -LiteralPath $tmpZip.FullName) { Remove-Item -Force $tmpZip.FullName }
+        if (Test-Path -LiteralPath $tmpExtract) { Remove-Item -Recurse -Force $tmpExtract }
+    }
+}
+
 function AddToUserPath($dir) {
     Info "Ensuring $dir is on user PATH"
     if ($script:Dry) { return }
