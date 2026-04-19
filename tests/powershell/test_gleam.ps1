@@ -178,3 +178,48 @@ function test_install_gleam_already_installed_short_circuits {
 
     Assert-Contains $output 'Already installed Gleam v1.15.4'
 }
+
+# ---------------------------------------------------------------------------
+# Update-Gleam
+# ---------------------------------------------------------------------------
+
+function test_update_gleam_no_op_when_not_installed {
+    $env:LOCALAPPDATA = $script:_TestTmp.FullName
+    $output = Update-Gleam 6>&1 | Out-String
+    Assert-Equals '' $output.Trim()
+}
+
+# ---------------------------------------------------------------------------
+# Install-Languages
+# ---------------------------------------------------------------------------
+
+function test_install_languages_dispatches_gleam_only {
+    $script:Dry = $true
+    # Save the real Install-Gleam ScriptBlock so the stub doesn't leak.
+    $sbInstallGleam = (Get-Command Install-Gleam).ScriptBlock
+    Set-Item -Path 'function:script:Install-Gleam' -Value { Info 'STUB Install-Gleam called' }
+
+    try {
+        $output = Install-Languages -Target 'gleam' 6>&1 | Out-String
+    } finally {
+        Set-Item -Path 'function:script:Install-Gleam' -Value $sbInstallGleam
+    }
+
+    Assert-Contains $output 'STUB Install-Gleam called'
+}
+
+function test_install_languages_unknown_fails {
+    # Stub Fail to throw instead of calling exit so we can catch it in tests.
+    $sbFail = (Get-Command Fail).ScriptBlock
+    Set-Item -Path 'function:script:Fail' -Value { param($msg) throw "FAIL: $msg" }
+
+    $threw = $false
+    try {
+        Install-Languages -Target 'java'
+    } catch {
+        $threw = $true
+    } finally {
+        Set-Item -Path 'function:script:Fail' -Value $sbFail
+    }
+    Assert-True $threw 'Install-Languages java should throw'
+}

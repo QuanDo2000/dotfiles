@@ -47,6 +47,7 @@ function Reset-DotfileState {
     $script:OverwriteAll = $false
     $script:BackupAll = $false
     $script:SkipAll = $false
+    $script:CommandArg = ''
 }
 
 # Create an isolated temp dir + fake HOME. Returns the temp dir path.

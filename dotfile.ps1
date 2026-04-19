@@ -503,6 +503,19 @@ function Install-Gleam {
     }
 }
 
+function Update-Gleam {
+    if (-not (Get-GleamCurrentInstalledVersion)) { return }
+    Install-Gleam
+}
+
+function Install-Languages {
+    param([string]$Target = 'all')
+    switch ($Target) {
+        { $_ -in @('all', '', 'gleam') } { Install-Gleam }
+        default { Fail "Unknown language: $Target" }
+    }
+}
+
 function AddToUserPath($dir) {
     Info "Ensuring $dir is on user PATH"
     if ($script:Dry) { return }
@@ -673,6 +686,7 @@ Commands:
   packages    Install system packages only
   extras      Install fonts
   symlinks    Create symlinks only
+  languages [LANG]  Install language toolchains (gleam). LANG selects one.
   verify      Verify installation
 
 Options:
@@ -698,6 +712,8 @@ function ParseArgs([string[]]$Arguments) {
         }
     }
     if ($positional.Count -gt 0) { $command = $positional[0] }
+    # Expose the second positional (if any) for subcommands like `languages [LANG]`.
+    $script:CommandArg = if ($positional.Count -gt 1) { $positional[1] } else { '' }
     return $command
 }
 
@@ -714,11 +730,12 @@ if (-not $NoMain) {
     EnsureRepo
 
     switch ($command) {
-        "all"      { SetupDotfiles }
-        "packages" { InstallPackages }
-        "extras"   { InstallExtras }
-        "symlinks" { SetupSymlinks }
-        "verify"   { Verify }
-        default    { Fail "Unknown command: $command"; ShowUsage }
+        "all"       { SetupDotfiles }
+        "packages"  { InstallPackages }
+        "extras"    { InstallExtras }
+        "symlinks"  { SetupSymlinks }
+        "languages" { Install-Languages -Target $script:CommandArg }
+        "verify"    { Verify }
+        default     { Fail "Unknown command: $command"; ShowUsage }
     }
 }
