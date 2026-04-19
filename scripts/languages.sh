@@ -278,8 +278,9 @@ update_zig() {
 install_languages() {
   local target="${1:-all}"
   case "$target" in
-    all|"") install_zig ;;
+    all|"") install_zig; install_odin ;;
     zig)    install_zig ;;
+    odin)   install_odin ;;
     *)      fail "Unknown language: $target" ;;
   esac
 }

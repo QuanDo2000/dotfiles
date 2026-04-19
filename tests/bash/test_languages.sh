@@ -351,6 +351,7 @@ test_install_languages_dry_run() {
   local output
   output=$(install_languages 2>&1)
   assert_contains "$output" "Installing Zig"
+  assert_contains "$output" "Installing Odin"
 }
 
 test_install_languages_zig_only_arg() {
@@ -375,6 +376,7 @@ test_install_languages_all_arg() {
   local output
   output=$(install_languages all 2>&1)
   assert_contains "$output" "Installing Zig"
+  assert_contains "$output" "Installing Odin"
 }
 
 test_install_languages_unknown_fails() {
@@ -382,6 +384,19 @@ test_install_languages_unknown_fails() {
   ( install_languages java ) >/dev/null 2>&1 || exit_code=$?
   if [[ "$exit_code" -eq 0 ]]; then
     echo "  FAILED: install_languages should fail on unknown language" >> "$ERROR_FILE"
+  fi
+}
+
+test_install_languages_odin_only_arg() {
+  DRY=true
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+
+  local output
+  output=$(install_languages odin 2>&1)
+  assert_contains "$output" "Installing Odin"
+  if [[ "$output" == *"Installing Zig"* ]]; then
+    echo "  FAILED: install_languages odin should not run Zig" >> "$ERROR_FILE"
   fi
 }
 
