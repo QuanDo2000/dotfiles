@@ -347,11 +347,16 @@ test_install_languages_dry_run() {
   export -f ensure_minisign
   ensure_jq() { return 0; }
   export -f ensure_jq
+  ensure_erlang() { return 0; }
+  export -f ensure_erlang
+  ensure_rebar3() { return 0; }
+  export -f ensure_rebar3
 
   local output
   output=$(install_languages 2>&1)
   assert_contains "$output" "Installing Zig"
   assert_contains "$output" "Installing Odin"
+  assert_contains "$output" "Installing Gleam"
 }
 
 test_install_languages_zig_only_arg() {
@@ -372,11 +377,16 @@ test_install_languages_all_arg() {
   export -f ensure_minisign
   ensure_jq() { return 0; }
   export -f ensure_jq
+  ensure_erlang() { return 0; }
+  export -f ensure_erlang
+  ensure_rebar3() { return 0; }
+  export -f ensure_rebar3
 
   local output
   output=$(install_languages all 2>&1)
   assert_contains "$output" "Installing Zig"
   assert_contains "$output" "Installing Odin"
+  assert_contains "$output" "Installing Gleam"
 }
 
 test_install_languages_unknown_fails() {
@@ -384,6 +394,26 @@ test_install_languages_unknown_fails() {
   ( install_languages java ) >/dev/null 2>&1 || exit_code=$?
   if [[ "$exit_code" -eq 0 ]]; then
     echo "  FAILED: install_languages should fail on unknown language" >> "$ERROR_FILE"
+  fi
+}
+
+test_install_languages_gleam_only_arg() {
+  DRY=true
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+  ensure_erlang() { return 0; }
+  export -f ensure_erlang
+  ensure_rebar3() { return 0; }
+  export -f ensure_rebar3
+
+  local output
+  output=$(install_languages gleam 2>&1)
+  assert_contains "$output" "Installing Gleam"
+  if [[ "$output" == *"Installing Zig"* ]]; then
+    echo "  FAILED: install_languages gleam should not run Zig" >> "$ERROR_FILE"
+  fi
+  if [[ "$output" == *"Installing Odin"* ]]; then
+    echo "  FAILED: install_languages gleam should not run Odin" >> "$ERROR_FILE"
   fi
 }
 

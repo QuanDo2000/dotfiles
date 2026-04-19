@@ -295,9 +295,10 @@ update_zig() {
 install_languages() {
   local target="${1:-all}"
   case "$target" in
-    all|"") install_zig; install_odin ;;
+    all|"") install_zig; install_odin; install_gleam ;;
     zig)    install_zig ;;
     odin)   install_odin ;;
+    gleam)  install_gleam ;;
     *)      fail "Unknown language: $target" ;;
   esac
 }
@@ -655,4 +656,5 @@ update_gleam() {
 update_languages() {
   update_zig
   update_odin
+  update_gleam
 }
