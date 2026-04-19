@@ -242,8 +242,17 @@ _setup_pwsh_debian() {
   sudo apt install -y powershell || fail "Failed to install powershell via apt"
 }
 
-# Placeholder branch — filled in by Task 4.
-_setup_pwsh_arch() { :; }
+# Install or update pwsh on Arch via yay (AUR: powershell-bin).
+# $1 = "true" for --update mode (no --needed, so yay re-fetches).
+_setup_pwsh_arch() {
+  local update="$1"
+  command -v yay >/dev/null 2>&1 || fail "yay required for pwsh on Arch (run setup_yay first)"
+  if [[ "$update" == "true" ]]; then
+    yay -S --noconfirm powershell-bin || fail "Failed to update powershell-bin via yay"
+  else
+    yay -S --needed --noconfirm powershell-bin || fail "Failed to install powershell-bin via yay"
+  fi
+}
 
 DEBIAN_PACKAGES=(
   build-essential libssl-dev zlib1g-dev libbz2-dev

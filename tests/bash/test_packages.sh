@@ -355,3 +355,13 @@ test_setup_pwsh_update_does_not_skip() {
     echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
   fi
 }
+
+test_setup_pwsh_dry_run_arch() {
+  detect_platform() { echo "arch"; }
+  DRY=true
+  local output
+  output=$(setup_pwsh 2>&1)
+
+  assert_contains "$output" "pwsh"
+  assert_contains "$output" "Finished pwsh"
+}
