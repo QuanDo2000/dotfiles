@@ -652,3 +652,33 @@ test_gleam_latest_release_fetches_when_no_arg() {
   result="$(gleam_latest_release)"
   assert_equals '{"tag_name": "v1.15.4"}' "$result"
 }
+
+# ---------------------------------------------------------------------------
+# gleam_current_installed_version
+# ---------------------------------------------------------------------------
+
+test_gleam_current_installed_version_none() {
+  local result
+  result="$(gleam_current_installed_version)"
+  assert_equals "" "$result"
+}
+
+test_gleam_current_installed_version_ours_returns_tag() {
+  mkdir -p "$HOME/.local/gleam-v1.15.4"
+  touch "$HOME/.local/gleam-v1.15.4/gleam"
+  ln -s "$HOME/.local/gleam-v1.15.4/gleam" "$HOME/.local/bin/gleam"
+
+  local result
+  result="$(gleam_current_installed_version)"
+  assert_equals "v1.15.4" "$result"
+}
+
+test_gleam_current_installed_version_foreign_returns_empty() {
+  mkdir -p "$HOME/elsewhere"
+  touch "$HOME/elsewhere/gleam"
+  ln -s "$HOME/elsewhere/gleam" "$HOME/.local/bin/gleam"
+
+  local result
+  result="$(gleam_current_installed_version)"
+  assert_equals "" "$result"
+}

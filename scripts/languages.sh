@@ -479,6 +479,28 @@ gleam_latest_release() {
   echo "$json"
 }
 
+# Print the currently-installed Gleam tag IF it was installed by this script.
+# Returns empty for: no install, foreign install (system/brew/scoop).
+# Detection rule: ~/.local/bin/gleam must be a symlink to ~/.local/gleam-<tag>/gleam.
+gleam_current_installed_version() {
+  local link="$HOME/.local/bin/gleam"
+  [[ -L "$link" ]] || return 0
+  local target
+  target="$(resolve_symlink "$link")" || return 0
+  local prefix="$HOME/.local/gleam-"
+  local suffix="/gleam"
+  case "$target" in
+    "$prefix"*"$suffix")
+      local middle="${target#$prefix}"
+      middle="${middle%$suffix}"
+      case "$middle" in
+        */*) return 0 ;;
+      esac
+      echo "$middle"
+      ;;
+  esac
+}
+
 # Update every language that this script previously installed.
 update_languages() {
   update_zig
