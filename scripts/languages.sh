@@ -658,3 +658,29 @@ update_languages() {
   update_odin
   update_gleam
 }
+
+# Returns 0 if jank can be installed on this platform, non-zero otherwise.
+# Does NOT call fail — caller decides whether to error or skip.
+#
+# Optional $1: override the /etc/os-release ID lookup (for tests).
+jank_check_platform() {
+  local id_override="${1:-}"
+  local platform
+  platform="$(detect_platform)"
+  case "$platform" in
+    mac)
+      [[ "$(uname -m)" == "arm64" ]] || return 1
+      ;;
+    arch) ;;  # supported
+    debian)
+      # detect_platform groups Ubuntu under "debian"; jank's PPA targets Ubuntu only.
+      local ID="$id_override"
+      if [[ -z "$ID" && -f /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+      fi
+      [[ "${ID:-}" == "ubuntu" ]] || return 1
+      ;;
+    *) return 1 ;;
+  esac
+}

@@ -913,3 +913,71 @@ test_update_gleam_dry_run_when_ours() {
   output=$(update_gleam 2>&1)
   assert_contains "$output" "Installing Gleam"
 }
+
+# ---------------------------------------------------------------------------
+# jank_check_platform
+# ---------------------------------------------------------------------------
+
+test_jank_check_platform_mac_arm64_succeeds() {
+  mock_uname Darwin
+  mock_uname_m arm64
+  detect_platform() { echo "mac"; }
+  export -f detect_platform
+
+  jank_check_platform
+  local rc=$?
+  assert_equals "0" "$rc"
+}
+
+test_jank_check_platform_mac_x86_64_returns_nonzero() {
+  mock_uname Darwin
+  mock_uname_m x86_64
+  detect_platform() { echo "mac"; }
+  export -f detect_platform
+
+  local rc=0
+  jank_check_platform || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    echo "  FAILED: jank_check_platform should return non-zero on Intel mac" >> "$ERROR_FILE"
+  fi
+}
+
+test_jank_check_platform_arch_succeeds() {
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+
+  jank_check_platform
+  local rc=$?
+  assert_equals "0" "$rc"
+}
+
+test_jank_check_platform_ubuntu_via_arg_succeeds() {
+  detect_platform() { echo "debian"; }
+  export -f detect_platform
+
+  jank_check_platform ubuntu
+  local rc=$?
+  assert_equals "0" "$rc"
+}
+
+test_jank_check_platform_debian_via_arg_returns_nonzero() {
+  detect_platform() { echo "debian"; }
+  export -f detect_platform
+
+  local rc=0
+  jank_check_platform debian || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    echo "  FAILED: jank_check_platform should return non-zero on plain Debian" >> "$ERROR_FILE"
+  fi
+}
+
+test_jank_check_platform_unknown_returns_nonzero() {
+  detect_platform() { echo "unknown"; }
+  export -f detect_platform
+
+  local rc=0
+  jank_check_platform || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    echo "  FAILED: jank_check_platform should return non-zero on unknown platform" >> "$ERROR_FILE"
+  fi
+}
