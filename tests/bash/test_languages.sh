@@ -457,7 +457,15 @@ test_install_languages_odin_only_arg() {
 
 test_update_languages_dry_run_no_install() {
   DRY=true
-  # No zig install present → update_zig is a no-op → no output
+  # update_zig/odin/gleam check ~/.local/bin/<lang> in the temp HOME (none
+  # exist → silent no-op). update_jank uses `command -v jank` which finds
+  # the system PATH — shadow it so the test stays independent of the host.
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "jank" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+
   local output
   output=$(update_languages 2>&1)
   assert_equals "" "$output"
