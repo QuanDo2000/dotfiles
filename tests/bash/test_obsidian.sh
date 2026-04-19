@@ -225,3 +225,86 @@ test_setup_vault_skips_when_already_configured() {
   fi
   assert_contains "$output" "already configured"
 }
+
+# ---------------------------------------------------------------------------
+# _obsidian_install_service
+# ---------------------------------------------------------------------------
+
+test_install_service_dry_run_writes_nothing() {
+  DRY=true
+  # ob must be on PATH so command -v ob succeeds (the helper resolves the path).
+  mock_cmd ob 'exit 0'
+  mock_cmd systemctl 'echo "unexpected systemctl call: $*" >&2; exit 99'
+
+  local vault_path="$HOME/documents/obsidian/test-vault"
+  local output exit_code=0
+  output=$(_obsidian_install_service "$vault_path" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_install_service should not call systemctl in DRY mode ($output)" >> "$ERROR_FILE"
+  fi
+  if [ -f "$OBSIDIAN_SERVICE_PATH" ]; then
+    echo "  FAILED: _obsidian_install_service should not write service file in DRY mode" >> "$ERROR_FILE"
+  fi
+}
+
+test_install_service_writes_unit_and_enables() {
+  mock_cmd ob 'exit 0'
+  mock_cmd systemctl 'exit 0'
+
+  local vault_path="$HOME/documents/obsidian/test-vault"
+  local output exit_code=0
+  output=$(_obsidian_install_service "$vault_path" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_install_service should succeed ($output)" >> "$ERROR_FILE"
+  fi
+  assert_file_exists "$OBSIDIAN_SERVICE_PATH"
+
+  local unit_content
+  unit_content=$(cat "$OBSIDIAN_SERVICE_PATH")
+  assert_contains "$unit_content" "ob sync --path $vault_path --continuous"
+  assert_contains "$unit_content" "WantedBy=default.target"
+}
+
+test_install_service_skips_when_file_exists_without_force() {
+  mock_cmd ob 'exit 0'
+  mock_cmd systemctl 'exit 0'
+  FORCE=false
+  mkdir -p "$(dirname "$OBSIDIAN_SERVICE_PATH")"
+  echo "SENTINEL_PRE_EXISTING_CONTENT" > "$OBSIDIAN_SERVICE_PATH"
+
+  local vault_path="$HOME/documents/obsidian/test-vault"
+  local output exit_code=0
+  output=$(_obsidian_install_service "$vault_path" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_install_service should succeed without overwriting ($output)" >> "$ERROR_FILE"
+  fi
+  local unit_content
+  unit_content=$(cat "$OBSIDIAN_SERVICE_PATH")
+  assert_contains "$unit_content" "SENTINEL_PRE_EXISTING_CONTENT"
+  assert_contains "$output" "use -f to overwrite"
+}
+
+test_install_service_force_overwrites() {
+  mock_cmd ob 'exit 0'
+  mock_cmd systemctl 'exit 0'
+  FORCE=true
+  mkdir -p "$(dirname "$OBSIDIAN_SERVICE_PATH")"
+  echo "SENTINEL_PRE_EXISTING_CONTENT" > "$OBSIDIAN_SERVICE_PATH"
+
+  local vault_path="$HOME/documents/obsidian/test-vault"
+  local output exit_code=0
+  output=$(_obsidian_install_service "$vault_path" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_install_service should overwrite with FORCE ($output)" >> "$ERROR_FILE"
+  fi
+  local unit_content
+  unit_content=$(cat "$OBSIDIAN_SERVICE_PATH")
+  if [[ "$unit_content" == *"SENTINEL_PRE_EXISTING_CONTENT"* ]]; then
+    echo "  FAILED: _obsidian_install_service with FORCE should overwrite sentinel" >> "$ERROR_FILE"
+  fi
+  assert_contains "$unit_content" "ob sync --path $vault_path --continuous"
+}
