@@ -486,7 +486,6 @@ install_odin() {
   if [[ -z "$tag" ]]; then
     fail "Could not read tag_name from Odin releases/latest"
   fi
-  local asset="odin-${triple}-${tag}.tar.gz"
 
   local current
   current="$(odin_current_installed_version)"
@@ -495,75 +494,8 @@ install_odin() {
     return 0
   fi
 
-  local digest
-  digest="$(echo "$release_json" | jq -r --arg a "$asset" \
-    '.assets[] | select(.name == $a) | .digest // empty')"
-  if [[ -z "$digest" ]]; then
-    fail "Could not find digest for $asset in Odin releases/latest"
-  fi
-  # GitHub formats digests as "sha256:<hex>"; strip the prefix.
-  # If the prefix is absent (e.g. "sha512:" or bare hex), the expansion is a
-  # no-op, so expected_sha == digest — fail loudly rather than compare against
-  # a value of unknown algorithm.
-  local expected_sha="${digest#sha256:}"
-  if [[ "$expected_sha" == "$digest" ]]; then
-    fail "Unexpected digest format for $asset: $digest"
-  fi
-
-  local asset_url
-  asset_url="$(echo "$release_json" | jq -r --arg a "$asset" \
-    '.assets[] | select(.name == $a) | .browser_download_url // empty')"
-  if [[ -z "$asset_url" ]]; then
-    fail "Could not find download URL for $asset in Odin releases/latest"
-  fi
-
-  local tmpdir
-  tmpdir="$(mktemp -d)"
-  # shellcheck disable=SC2064
-  trap "rm -rf '$tmpdir'" RETURN
-
-  local tar_path="$tmpdir/$asset"
-  info "Downloading $asset_url"
-  curl -sfL "$asset_url" -o "$tar_path" \
-    || fail "Failed to download $asset_url"
-
-  local got_sha
-  got_sha="$(_sha256 "$tar_path")"
-  if [[ "$got_sha" != "$expected_sha" ]]; then
-    fail "sha256 mismatch for $asset (expected $expected_sha, got $got_sha)"
-  fi
-
-  local extract_dir="$tmpdir/extract"
-  mkdir -p "$extract_dir"
-  tar -xf "$tar_path" -C "$extract_dir" \
-    || fail "Failed to extract Odin tarball"
-  # Portable single-dir check (avoid mapfile/-readarray for bash 3.2 on macOS).
-  local extracted="" extra_dir extracted_count=0
-  while IFS= read -r extra_dir; do
-    extracted_count=$((extracted_count + 1))
-    extracted="$extra_dir"
-  done < <(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d)
-  if [[ "$extracted_count" -ne 1 ]]; then
-    fail "Odin tarball extracted to unexpected layout ($extracted_count top-level dirs)"
-  fi
-
-  local target_dir="$HOME/.local/odin-$tag"
-  rm -rf "$target_dir"
-  mv "$extracted" "$target_dir" || fail "Failed to move Odin into place"
-
-  mkdir -p "$HOME/.local/bin"
-  ln -sfn "$target_dir/odin" "$HOME/.local/bin/odin" \
-    || fail "Failed to create ~/.local/bin/odin symlink"
-
-  # Clean up old versions (any ~/.local/odin-*/ that isn't the current one).
-  # The [[ -d ]] guard handles the no-matches case where the glob returns
-  # the literal pattern unchanged.
-  local old
-  for old in "$HOME"/.local/odin-*; do
-    [[ -d "$old" && "$old" != "$target_dir" ]] && rm -rf "$old"
-  done
-
-  success "Installed Odin $tag"
+  local asset="odin-${triple}-${tag}.tar.gz"
+  _install_from_github_release "Odin" "odin" "$release_json" "$tag" "$asset" "single-dir" "odin"
 }
 
 # Update Odin — but only if it was installed by this script. Foreign installs
