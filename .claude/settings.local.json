@@ -89,7 +89,25 @@
       "Bash(curl -sf \"https://api.github.com/repos/odin-lang/Odin/releases/latest\")",
       "Bash(awk '{ prefix=\"sha256:\"; result=substr\\($0, length\\(prefix\\)+1\\); if \\(result == $0\\) print \"guard fires \\(bad\\)\"; else print \"guard does not fire \\(good\\)\" }')",
       "Bash(awk '{ prefix=\"sha256:\"; result=substr\\($0, length\\(prefix\\)+1\\); if \\(result == $0\\) print \"guard fires \\(BAD - correct here\\)\"; else print \"guard does not fire\" }')",
-      "Bash(ln -s __TRACKED_VAR__/.local/odin-foreign-test __TRACKED_VAR__/.local/bin/odin)"
+      "Bash(ln -s __TRACKED_VAR__/.local/odin-foreign-test __TRACKED_VAR__/.local/bin/odin)",
+      "WebFetch(domain:gleam.run)",
+      "Bash(curl -sfL \"https://github.com/gleam-lang/gleam/releases/download/v1.15.4/gleam-v1.15.4-x86_64-unknown-linux-musl.tar.gz\" -o /tmp/gleam-test.tar.gz)",
+      "Bash(tar -tzf /tmp/gleam-test.tar.gz)",
+      "Bash(command -v pwsh)",
+      "Bash(command -v powershell pwsh-preview)",
+      "Bash(pacman -Qs powershell)",
+      "Bash(shellcheck *)",
+      "Bash(./dotfile -d packages)",
+      "Bash(command -v erl rebar3)",
+      "Bash(erl -eval 'erlang:display\\({otp_release, erlang:system_info\\(otp_release\\)}\\), halt\\(\\).' -noshell)",
+      "Bash(ln -s __TRACKED_VAR__/.local/gleam-foreign-test __TRACKED_VAR__/.local/bin/gleam)",
+      "WebFetch(domain:book.jank-lang.org)",
+      "WebFetch(domain:github.com)",
+      "Bash(command -v jank)",
+      "Bash(gpg --dearmor)",
+      "Bash(echo \"exit on empty: $?\")",
+      "Bash(command -v jank yay)",
+      "Bash(jank --help)"
     ]
   }
 }
