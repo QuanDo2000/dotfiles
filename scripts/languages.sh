@@ -501,6 +501,25 @@ gleam_current_installed_version() {
   esac
 }
 
+# Install Erlang/OTP via the platform package manager if missing. Required
+# for Gleam runtime (gleam compiles to BEAM bytecode).
+ensure_erlang() {
+  if command -v erl >/dev/null 2>&1; then
+    return 0
+  fi
+  info "Erlang/OTP not found; installing..."
+  if [[ "$DRY" == "true" ]]; then
+    return 0
+  fi
+  case "$(detect_platform)" in
+    debian) sudo apt install -y erlang || fail "Failed to install erlang" ;;
+    arch)   sudo pacman -S --needed --noconfirm erlang || fail "Failed to install erlang" ;;
+    mac)    brew install erlang || fail "Failed to install erlang" ;;
+    *)      fail "Cannot install Erlang on this platform" ;;
+  esac
+  success "Installed Erlang/OTP"
+}
+
 # Update every language that this script previously installed.
 update_languages() {
   update_zig

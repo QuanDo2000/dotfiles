@@ -682,3 +682,64 @@ test_gleam_current_installed_version_foreign_returns_empty() {
   result="$(gleam_current_installed_version)"
   assert_equals "" "$result"
 }
+
+# ---------------------------------------------------------------------------
+# ensure_erlang
+# ---------------------------------------------------------------------------
+
+test_ensure_erlang_already_present_noop() {
+  echo '#!/bin/bash' > "$HOME/.local/bin/erl"
+  chmod +x "$HOME/.local/bin/erl"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(ensure_erlang 2>&1)
+  if [[ "$output" == *"Erlang/OTP not found"* ]]; then
+    echo "  FAILED: ensure_erlang should noop when erl already on PATH" >> "$ERROR_FILE"
+  fi
+}
+
+test_ensure_erlang_dry_run_arch_logs_install() {
+  DRY=true
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "erl" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+
+  local output
+  output=$(ensure_erlang 2>&1)
+  assert_contains "$output" "Erlang/OTP not found"
+}
+
+test_ensure_erlang_dry_run_debian_logs_install() {
+  DRY=true
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "erl" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+  detect_platform() { echo "debian"; }
+  export -f detect_platform
+
+  local output
+  output=$(ensure_erlang 2>&1)
+  assert_contains "$output" "Erlang/OTP not found"
+}
+
+test_ensure_erlang_dry_run_mac_logs_install() {
+  DRY=true
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "erl" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+  detect_platform() { echo "mac"; }
+  export -f detect_platform
+
+  local output
+  output=$(ensure_erlang 2>&1)
+  assert_contains "$output" "Erlang/OTP not found"
+}
