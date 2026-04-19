@@ -10,9 +10,12 @@
 
 **Spec:** `docs/superpowers/specs/2026-04-18-gleam-language-install-design.md`.
 
-**Pre-execution baseline:** 180 tests passing on `main` (bash). PowerShell tests not validated on this Arch host — they'll be run when next on Windows. Bash counts after this plan: ~204 (24 new tests).
+**Pre-execution baseline:**
+- Bash (`bash tests/bash/runner.sh --no-docker`): 180 passed / 0 failed on `main` (178/1 inside a worktree; the 1 is the pre-existing path-brittle `test_dotfile_symlinks_command_mac` test).
+- PowerShell (`pwsh tests/powershell/runner.ps1`): 48 passed / 1 failed on `main`. The 1 failure is pre-existing: `test_addtouserpath_already_present_does_not_duplicate_process_path` — unrelated to this work, stems from running pwsh on Linux where `[Environment]::GetEnvironmentVariable('Path', 'User')` behaves differently.
+- After this plan: ~204 bash, ~57 PowerShell (9 new in test_gleam.ps1 + 2 new in test_args.ps1).
 
-**PowerShell verification gap (read this before starting):** This Arch development host has no `pwsh` binary, so PowerShell tests written in Tasks 9–13 cannot be exercised during implementation. They're written following the existing patterns in `tests/powershell/test_dry_installers.ps1` and `tests/powershell/test_args.ps1` so they'll work when next on Windows. The Windows manual smoke test (Task 17) is also deferred. **Don't try to run `pwsh tests/powershell/runner.ps1` from this Arch host — it'll fail with "pwsh: command not found".**
+**Cross-platform test runs from this Arch host:** `pwsh` 7.5.4 is available and runs the existing PowerShell test suite fine. `New-Item -ItemType Junction` creates a symlink on Linux (transparent substitute for a Windows junction), so even the `Get-GleamCurrentInstalledVersion` tests that create junctions will work. The only thing that truly can't be exercised here is the full Windows smoke test — that stays deferred to Task 16.
 
 ---
 
