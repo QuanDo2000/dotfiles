@@ -107,3 +107,8 @@ test_dry_run_languages_gleam() {
   is_windows_bash && return 0
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages gleam
 }
+
+test_dry_run_languages_jank() {
+  is_windows_bash && return 0
+  assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages jank
+}
