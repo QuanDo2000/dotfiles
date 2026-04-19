@@ -722,7 +722,7 @@ Commands:
   all         Run full setup (default)
   update      Update system packages and language toolchains
   packages    Install system packages only
-  extras      Install fonts
+  extras      Install FiraCode font, Node.js LTS (fnm), and tree-sitter CLI
   symlinks    Create symlinks only
   languages [LANG]  Install language toolchains. LANG selects one (Windows: gleam only).
   verify      Verify installation
