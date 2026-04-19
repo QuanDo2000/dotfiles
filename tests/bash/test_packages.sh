@@ -293,3 +293,17 @@ test_setup_yay_already_installed() {
 
   assert_contains "$output" "Already installed yay"
 }
+
+# ---------------------------------------------------------------------------
+# setup_pwsh
+# ---------------------------------------------------------------------------
+
+test_setup_pwsh_skips_on_mac() {
+  detect_platform() { echo "mac"; }
+  DRY=false
+  local output
+  output=$(setup_pwsh 2>&1)
+
+  # Mac path uses brew casks via install_mac; setup_pwsh itself is a no-op.
+  assert_equals "" "$output"
+}

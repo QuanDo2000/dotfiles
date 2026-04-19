@@ -169,6 +169,43 @@ function setup_yay {
   success "Finished yay"
 }
 
+# Install or update pwsh (PowerShell 7+). Dispatches by platform:
+#   - debian: Microsoft apt repo via packages-microsoft-prod.deb
+#   - arch:   yay -S powershell-bin (AUR)
+#   - mac:    no-op (handled by MAC_BREW_CASKS)
+# Usage: setup_pwsh [--update]
+function setup_pwsh {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+
+  local platform
+  platform="$(detect_platform)"
+
+  case "$platform" in
+    mac) return ;;
+    debian|arch) ;;
+    *) return ;;
+  esac
+
+  info "${update:+Updating}${update:- Installing} pwsh..."
+  if [[ "$DRY" == "false" ]]; then
+    if [[ "$update" == "false" ]] && command -v pwsh >/dev/null 2>&1; then
+      info "Already installed pwsh"
+      success "Finished pwsh"
+      return
+    fi
+    case "$platform" in
+      debian) _setup_pwsh_debian "$update" ;;
+      arch)   _setup_pwsh_arch "$update" ;;
+    esac
+  fi
+  success "Finished pwsh"
+}
+
+# Placeholder branches — filled in by later tasks.
+_setup_pwsh_debian() { :; }
+_setup_pwsh_arch() { :; }
+
 DEBIAN_PACKAGES=(
   build-essential libssl-dev zlib1g-dev libbz2-dev
   libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils
