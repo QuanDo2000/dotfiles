@@ -260,3 +260,50 @@ function test_update_languages_calls_update_gleam_only {
 
     Assert-Contains $output 'STUB Update-Gleam called'
 }
+
+function test_install_languages_zig_emits_scoop_message {
+    $output = Install-Languages -Target 'zig' 6>&1 | Out-String
+    Assert-Contains $output 'scoop'
+}
+
+function test_install_languages_odin_emits_unsupported_message {
+    $output = Install-Languages -Target 'odin' 6>&1 | Out-String
+    Assert-Contains $output 'odin'
+    Assert-Contains $output 'not wired up'
+}
+
+function test_install_languages_jank_emits_unsupported_message {
+    $output = Install-Languages -Target 'jank' 6>&1 | Out-String
+    Assert-Contains $output 'jank'
+    Assert-Contains $output 'Linux/macOS only'
+}
+
+function test_install_languages_all_runs_gleam_and_skips_others {
+    $sbInstallGleam = (Get-Command Install-Gleam).ScriptBlock
+    Set-Item -Path 'function:script:Install-Gleam' -Value { Info 'STUB Install-Gleam called' }
+
+    try {
+        $output = Install-Languages -Target 'all' 6>&1 | Out-String
+    } finally {
+        Set-Item -Path 'function:script:Install-Gleam' -Value $sbInstallGleam
+    }
+
+    Assert-Contains $output 'STUB Install-Gleam called'
+    Assert-Contains $output 'Skipping zig'
+    Assert-Contains $output 'Skipping odin'
+    Assert-Contains $output 'Skipping jank'
+}
+
+function test_install_languages_empty_target_behaves_like_all {
+    $sbInstallGleam = (Get-Command Install-Gleam).ScriptBlock
+    Set-Item -Path 'function:script:Install-Gleam' -Value { Info 'STUB Install-Gleam called' }
+
+    try {
+        $output = Install-Languages -Target '' 6>&1 | Out-String
+    } finally {
+        Set-Item -Path 'function:script:Install-Gleam' -Value $sbInstallGleam
+    }
+
+    Assert-Contains $output 'STUB Install-Gleam called'
+    Assert-Contains $output 'Skipping zig'
+}

@@ -524,7 +524,16 @@ function Update-Languages {
 function Install-Languages {
     param([string]$Target = 'all')
     switch ($Target) {
-        { $_ -in @('all', '', 'gleam') } { Install-Gleam }
+        { $_ -in @('all', '') } {
+            Install-Gleam
+            Info "Skipping zig: installed via scoop on Windows (run 'dotfile.ps1 packages')"
+            Info "Skipping odin: no Windows installer wired up"
+            Info "Skipping jank: Linux/macOS only (no Windows support upstream)"
+        }
+        'gleam' { Install-Gleam }
+        'zig'   { Info "zig is installed via scoop on Windows; run 'dotfile.ps1 packages'" }
+        'odin'  { Info "odin install is not wired up for Windows" }
+        'jank'  { Info "jank is Linux/macOS only (no Windows support upstream)" }
         default { Fail "Unknown language: $Target" }
     }
 }
