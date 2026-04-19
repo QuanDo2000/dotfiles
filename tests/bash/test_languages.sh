@@ -357,6 +357,7 @@ test_install_languages_dry_run() {
   assert_contains "$output" "Installing Zig"
   assert_contains "$output" "Installing Odin"
   assert_contains "$output" "Installing Gleam"
+  assert_contains "$output" "Installing Jank"
 }
 
 test_install_languages_zig_only_arg() {
@@ -387,6 +388,26 @@ test_install_languages_all_arg() {
   assert_contains "$output" "Installing Zig"
   assert_contains "$output" "Installing Odin"
   assert_contains "$output" "Installing Gleam"
+  assert_contains "$output" "Installing Jank"
+}
+
+test_install_languages_jank_only_arg() {
+  DRY=true
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+
+  local output
+  output=$(install_languages jank 2>&1)
+  assert_contains "$output" "Installing Jank"
+  if [[ "$output" == *"Installing Zig"* ]]; then
+    echo "  FAILED: install_languages jank should not run Zig" >> "$ERROR_FILE"
+  fi
+  if [[ "$output" == *"Installing Odin"* ]]; then
+    echo "  FAILED: install_languages jank should not run Odin" >> "$ERROR_FILE"
+  fi
+  if [[ "$output" == *"Installing Gleam"* ]]; then
+    echo "  FAILED: install_languages jank should not run Gleam" >> "$ERROR_FILE"
+  fi
 }
 
 test_install_languages_unknown_fails() {

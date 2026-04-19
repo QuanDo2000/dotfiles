@@ -295,10 +295,11 @@ update_zig() {
 install_languages() {
   local target="${1:-all}"
   case "$target" in
-    all|"") install_zig; install_odin; install_gleam ;;
+    all|"") install_zig; install_odin; install_gleam; install_jank ;;
     zig)    install_zig ;;
     odin)   install_odin ;;
     gleam)  install_gleam ;;
+    jank)   install_jank ;;
     *)      fail "Unknown language: $target" ;;
   esac
 }
@@ -657,6 +658,7 @@ update_languages() {
   update_zig
   update_odin
   update_gleam
+  update_jank
 }
 
 # Returns 0 if jank can be installed on this platform, non-zero otherwise.
