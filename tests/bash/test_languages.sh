@@ -845,3 +845,41 @@ test_install_gleam_already_installed_short_circuits() {
   output=$(install_gleam 2>&1)
   assert_contains "$output" "Already installed Gleam v1.15.4"
 }
+
+# ---------------------------------------------------------------------------
+# update_gleam
+# ---------------------------------------------------------------------------
+
+test_update_gleam_no_op_when_not_installed() {
+  local output
+  output=$(update_gleam 2>&1)
+  assert_equals "" "$output"
+}
+
+test_update_gleam_skips_foreign_install() {
+  mkdir -p "$HOME/elsewhere"
+  touch "$HOME/elsewhere/gleam"
+  ln -s "$HOME/elsewhere/gleam" "$HOME/.local/bin/gleam"
+
+  local output
+  output=$(update_gleam 2>&1)
+  assert_equals "" "$output"
+}
+
+test_update_gleam_dry_run_when_ours() {
+  DRY=true
+  mkdir -p "$HOME/.local/gleam-v1.14.0"
+  touch "$HOME/.local/gleam-v1.14.0/gleam"
+  ln -s "$HOME/.local/gleam-v1.14.0/gleam" "$HOME/.local/bin/gleam"
+
+  ensure_jq() { return 0; }
+  export -f ensure_jq
+  ensure_erlang() { return 0; }
+  export -f ensure_erlang
+  ensure_rebar3() { return 0; }
+  export -f ensure_rebar3
+
+  local output
+  output=$(update_gleam 2>&1)
+  assert_contains "$output" "Installing Gleam"
+}
