@@ -172,3 +172,16 @@ test_login_dry_run_does_not_call_ob() {
   fi
   assert_contains "$output" "Would run: ob login"
 }
+
+# ---------------------------------------------------------------------------
+# _obsidian_pick_vault
+# ---------------------------------------------------------------------------
+
+test_pick_vault_dry_run_returns_example() {
+  DRY=true
+
+  local stdout
+  stdout=$(_obsidian_pick_vault 2>/dev/null)
+
+  assert_equals "example-vault" "$stdout"
+}
