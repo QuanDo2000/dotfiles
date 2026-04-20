@@ -47,14 +47,18 @@ Behavior by platform (via `detect_platform`):
   `command -v clang`. Rationale: macOS ships a `/usr/bin/clang` stub that
   exists on PATH even when Command Line Tools aren't installed; the stub
   errors at invoke time. `xcode-select -p` is the authoritative check for a
-  usable CLT install. If the check fails, call `fail` with the message:
+  usable CLT install.
 
-  > clang not found. Run `xcode-select --install` to install Apple Command
-  > Line Tools, then re-run.
-
-  Honors `DRY=true` by logging the same instruction and returning 0 (so
-  dry-run output reflects what a real run would do without aborting the
-  rest of the dry-run pipeline).
+  When CLT is missing:
+  - **Real mode** (`DRY` unset/false) — call `fail` with the message:
+    > clang not found. Run `xcode-select --install` to install Apple Command
+    > Line Tools, then re-run.
+  - **Dry-run mode** (`DRY=true`) — log an `info` message starting with
+    `clang not found` and including the same `xcode-select --install`
+    instruction, then `return 0`. This keeps the dry-run pipeline alive
+    (matching how the other `_dry_run_mac_*` tests expect dry-run to log
+    intent rather than abort) while still surfacing the missing prerequisite
+    in the dry-run report.
 
 - **other** — `fail "Cannot install clang on this platform"`, matching the
   closing case of every other `ensure_*` helper.
@@ -96,11 +100,12 @@ Add a new section to `tests/bash/test_languages.sh` after the
    print a path and exit 0, mock `detect_platform` → `mac`, assert no
    failure / no "not found" output.
 
-5. **`test_ensure_clang_mac_missing_clt_fails`** — `DRY=true`, mock
-   `xcode-select -p` to exit non-zero, mock `detect_platform` → `mac`, assert
-   the function logs the instruction text. (Under `DRY=true` the helper
-   returns 0 without calling `fail`, matching the other `_dry_run_mac_*`
-   tests' expectations and matching the dry-run contract above.)
+5. **`test_ensure_clang_dry_run_mac_missing_clt_logs_instruction`** —
+   `DRY=true`, mock `xcode-select -p` to exit non-zero, mock
+   `detect_platform` → `mac`, assert output contains `clang not found` and
+   `xcode-select --install`. Under `DRY=true` the helper returns 0 without
+   calling `fail` (per the dry-run contract above), matching the other
+   `_dry_run_mac_*` tests' expectations.
 
 A real-mode mac-missing-CLT failure path (no `DRY=true`, expect non-zero exit
 and the instruction text) is intentionally **not** asserted, because the other
