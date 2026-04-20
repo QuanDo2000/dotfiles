@@ -479,6 +479,7 @@ odin_latest_release() {
 # Skips if the target tag is already installed.
 install_odin() {
   info "Installing Odin..."
+  ensure_clang
   ensure_jq
 
   local triple

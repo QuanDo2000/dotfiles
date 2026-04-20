@@ -596,6 +596,8 @@ test_install_odin_dry_run() {
   DRY=true
   ensure_jq() { return 0; }
   export -f ensure_jq
+  ensure_clang() { return 0; }
+  export -f ensure_clang
 
   local output
   output=$(install_odin 2>&1)
@@ -616,6 +618,8 @@ test_install_odin_already_installed_short_circuits() {
   export -f http_get_retry
   ensure_jq() { return 0; }
   export -f ensure_jq
+  ensure_clang() { return 0; }
+  export -f ensure_clang
 
   local output
   output=$(install_odin 2>&1)
@@ -650,6 +654,8 @@ test_update_odin_dry_run_when_ours() {
 
   ensure_jq() { return 0; }
   export -f ensure_jq
+  ensure_clang() { return 0; }
+  export -f ensure_clang
 
   local output
   output=$(update_odin 2>&1)
