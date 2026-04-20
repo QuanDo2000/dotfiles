@@ -107,7 +107,15 @@
       "Bash(gpg --dearmor)",
       "Bash(echo \"exit on empty: $?\")",
       "Bash(command -v jank yay)",
-      "Bash(jank --help)"
+      "Bash(jank --help)",
+      "Bash(rmdir /home/quando/Documents/PowerShell /home/quando/Documents/WindowsPowerShell /home/quando/Documents)",
+      "Read(//home/quando/**)",
+      "Bash(xargs ls *)",
+      "Bash(command -v npm)",
+      "Bash(command -v systemctl)",
+      "Bash(systemctl --user show-environment)",
+      "Bash(echo \"systemctl --user show-environment failed with $?\")",
+      "Bash(docker info *)"
     ]
   }
 }

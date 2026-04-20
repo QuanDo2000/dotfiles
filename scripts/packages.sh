@@ -265,7 +265,7 @@ DEBIAN_PACKAGES=(
   build-essential libssl-dev zlib1g-dev libbz2-dev
   libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils
   tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
-  unzip zsh vim tmux fontconfig fzf fd-find ripgrep
+  unzip zsh vim tmux fontconfig fzf fd-find ripgrep nmap
 )
 
 function update_debian {
@@ -303,7 +303,7 @@ ARCH_PACKAGES=(
   base-devel curl wget git unzip zsh vim tmux fontconfig
   fzf fd ripgrep lazygit ttf-firacode-nerd zoxide
   gnupg wl-clipboard openssh lua51 luarocks nvm
-  tree-sitter-cli
+  tree-sitter-cli nmap
 )
 
 function update_arch {
@@ -333,7 +333,7 @@ function install_arch {
 
 MAC_BREW_PACKAGES=(
   bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font
-  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide
+  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide nmap
 )
 MAC_BREW_CASKS=(ghostty powershell)
 
