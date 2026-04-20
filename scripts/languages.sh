@@ -479,6 +479,7 @@ odin_latest_release() {
 # Skips if the target tag is already installed.
 install_odin() {
   info "Installing Odin..."
+  ensure_clang
   ensure_jq
 
   local triple
@@ -588,6 +589,39 @@ ensure_rebar3() {
     *)      fail "Cannot install rebar3 on this platform" ;;
   esac
   success "Installed rebar3"
+}
+
+# Ensure clang is available. Required at runtime by Odin to assemble/link
+# generated C code (see https://odin-lang.org/docs/install/).
+#
+# macOS uses xcode-select -p instead of `command -v clang` because the
+# /usr/bin/clang stub exists on PATH even when Command Line Tools aren't
+# installed (the stub errors at invoke time). On macOS we don't auto-install
+# CLT — `xcode-select --install` opens a blocking GUI prompt unsuitable for
+# unattended `dotfile` runs — so we fail with instructions instead.
+ensure_clang() {
+  local platform
+  platform="$(detect_platform)"
+
+  case "$platform" in
+    mac)
+      xcode-select -p >/dev/null 2>&1 && return 0
+      info "clang not found. Run \`xcode-select --install\` to install Apple Command Line Tools, then re-run."
+      [[ "$DRY" == "true" ]] && return 0
+      fail "clang not found. Run \`xcode-select --install\` to install Apple Command Line Tools, then re-run."
+      ;;
+    *)
+      command -v clang >/dev/null 2>&1 && return 0
+      info "clang not found; installing..."
+      [[ "$DRY" == "true" ]] && return 0
+      case "$platform" in
+        debian) sudo apt install -y clang || fail "Failed to install clang" ;;
+        arch)   sudo pacman -S --needed --noconfirm clang || fail "Failed to install clang" ;;
+        *)      fail "Cannot install clang on this platform" ;;
+      esac
+      success "Installed clang"
+      ;;
+  esac
 }
 
 # Install (or upgrade) Gleam from the official GitHub releases.

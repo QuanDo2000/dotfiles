@@ -596,6 +596,8 @@ test_install_odin_dry_run() {
   DRY=true
   ensure_jq() { return 0; }
   export -f ensure_jq
+  ensure_clang() { return 0; }
+  export -f ensure_clang
 
   local output
   output=$(install_odin 2>&1)
@@ -616,6 +618,8 @@ test_install_odin_already_installed_short_circuits() {
   export -f http_get_retry
   ensure_jq() { return 0; }
   export -f ensure_jq
+  ensure_clang() { return 0; }
+  export -f ensure_clang
 
   local output
   output=$(install_odin 2>&1)
@@ -650,6 +654,8 @@ test_update_odin_dry_run_when_ours() {
 
   ensure_jq() { return 0; }
   export -f ensure_jq
+  ensure_clang() { return 0; }
+  export -f ensure_clang
 
   local output
   output=$(update_odin 2>&1)
@@ -877,6 +883,76 @@ test_ensure_rebar3_dry_run_mac_logs_install() {
   local output
   output=$(ensure_rebar3 2>&1)
   assert_contains "$output" "rebar3 not found"
+}
+
+# ---------------------------------------------------------------------------
+# ensure_clang
+# ---------------------------------------------------------------------------
+
+test_ensure_clang_already_present_noop() {
+  echo '#!/bin/bash' > "$HOME/.local/bin/clang"
+  chmod +x "$HOME/.local/bin/clang"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(ensure_clang 2>&1)
+  if [[ "$output" == *"clang not found"* ]]; then
+    echo "  FAILED: ensure_clang should noop when clang already on PATH" >> "$ERROR_FILE"
+  fi
+}
+
+test_ensure_clang_dry_run_arch_logs_install() {
+  DRY=true
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "clang" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+
+  local output
+  output=$(ensure_clang 2>&1)
+  assert_contains "$output" "clang not found"
+}
+
+test_ensure_clang_dry_run_debian_logs_install() {
+  DRY=true
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "clang" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+  detect_platform() { echo "debian"; }
+  export -f detect_platform
+
+  local output
+  output=$(ensure_clang 2>&1)
+  assert_contains "$output" "clang not found"
+}
+
+test_ensure_clang_mac_clt_present_noop() {
+  detect_platform() { echo "mac"; }
+  export -f detect_platform
+  mock_cmd "xcode-select" 'echo "/Library/Developer/CommandLineTools"; exit 0'
+
+  local output
+  output=$(ensure_clang 2>&1)
+  if [[ "$output" == *"clang not found"* ]]; then
+    echo "  FAILED: ensure_clang should noop when CLT present on mac" >> "$ERROR_FILE"
+  fi
+}
+
+test_ensure_clang_dry_run_mac_missing_clt_logs_instruction() {
+  DRY=true
+  detect_platform() { echo "mac"; }
+  export -f detect_platform
+  mock_cmd "xcode-select" 'exit 1'
+
+  local output
+  output=$(ensure_clang 2>&1)
+  assert_contains "$output" "clang not found"
+  assert_contains "$output" "xcode-select --install"
 }
 
 # ---------------------------------------------------------------------------
