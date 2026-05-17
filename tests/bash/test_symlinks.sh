@@ -372,3 +372,96 @@ test_setup_symlinks_folder_dotted_config_subdir() {
 
   assert_symlink "$HOME/.config/.hidden" "$root/config/.hidden"
 }
+
+# ---------------------------------------------------------------------------
+# AI tool carveouts: ~/.claude/settings.json and ~/.opencode/package.json
+# ---------------------------------------------------------------------------
+
+test_setup_symlinks_links_claude_settings() {
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/claude"
+  echo '{"enabledPlugins":{}}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.claude/settings.json" \
+    "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
+}
+
+test_setup_symlinks_links_opencode_config() {
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
+  echo '{"plugin":["oh-my-openagent@latest"]}' \
+    > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.config/opencode/opencode.json" \
+    "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
+}
+
+test_setup_symlinks_links_oh_my_openagent_config() {
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
+  echo '{"agents":{}}' \
+    > "$DOTFILES_DIR/config/shared/ai/opencode/oh-my-openagent.json"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.config/opencode/oh-my-openagent.json" \
+    "$DOTFILES_DIR/config/shared/ai/opencode/oh-my-openagent.json"
+}
+
+test_setup_symlinks_links_only_present_opencode_files() {
+  # When only one of the two opencode files exists, the other must not be
+  # linked as a dangling symlink.
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
+  echo '{}' > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.config/opencode/opencode.json" \
+    "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
+  if [ -e "$HOME/.config/opencode/oh-my-openagent.json" ] || \
+     [ -L "$HOME/.config/opencode/oh-my-openagent.json" ]; then
+    echo "  FAILED: oh-my-openagent.json should not be linked when source absent" >> "$ERROR_FILE"
+  fi
+}
+
+test_setup_symlinks_skips_ai_when_missing() {
+  # When the source files don't exist in the repo, setup_symlinks must not
+  # create $HOME/.claude or $HOME/.config/opencode parent dirs.
+  create_dotfiles_dirs
+  rm -rf "$HOME/.config/opencode"
+
+  setup_symlinks
+
+  if [ -d "$HOME/.claude" ]; then
+    echo "  FAILED: $HOME/.claude should not be created without source" >> "$ERROR_FILE"
+  fi
+  if [ -d "$HOME/.config/opencode" ]; then
+    echo "  FAILED: $HOME/.config/opencode should not be created without source" >> "$ERROR_FILE"
+  fi
+}
+
+test_setup_symlinks_ai_dry_run() {
+  DRY=true
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/claude" "$DOTFILES_DIR/config/shared/ai/opencode"
+  echo '{}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
+  echo '{}' > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
+  echo '{}' > "$DOTFILES_DIR/config/shared/ai/opencode/oh-my-openagent.json"
+
+  setup_symlinks
+
+  if [ -e "$HOME/.claude/settings.json" ] || [ -L "$HOME/.claude/settings.json" ]; then
+    echo "  FAILED: claude settings should not be linked in dry run" >> "$ERROR_FILE"
+  fi
+  if [ -e "$HOME/.config/opencode/opencode.json" ] || [ -L "$HOME/.config/opencode/opencode.json" ]; then
+    echo "  FAILED: opencode.json should not be linked in dry run" >> "$ERROR_FILE"
+  fi
+  if [ -e "$HOME/.config/opencode/oh-my-openagent.json" ] || [ -L "$HOME/.config/opencode/oh-my-openagent.json" ]; then
+    echo "  FAILED: oh-my-openagent.json should not be linked in dry run" >> "$ERROR_FILE"
+  fi
+}

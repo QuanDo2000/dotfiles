@@ -141,6 +141,32 @@ function setup_symlinks {
     link_files "$ssh_src" "$HOME/.ssh/config"
   fi
 
+  # AI tool configs live in their own dotfolders under $HOME (not ~/.config),
+  # alongside runtime state we don't want to track. Link only the tracked
+  # config files to leave caches, sessions, credentials, etc. untouched.
+  local claude_src="$DOTFILES_DIR/config/shared/ai/claude/settings.json"
+  if [[ -f "$claude_src" ]]; then
+    if [[ "$DRY" != "true" ]]; then
+      mkdir -p "$HOME/.claude" || fail "Failed to create $HOME/.claude"
+    fi
+    link_files "$claude_src" "$HOME/.claude/settings.json"
+  fi
+
+  # OpenCode keeps its user config under XDG ~/.config/opencode/ alongside
+  # plugin runtime artifacts (node_modules, package.json, bun.lock). Upstream
+  # explicitly excludes those from tracking via the dir's own .gitignore, so
+  # we link only the two hand-edited / install-generated config files.
+  local opencode_dir="$DOTFILES_DIR/config/shared/ai/opencode"
+  if [[ -f "$opencode_dir/opencode.json" || -f "$opencode_dir/oh-my-openagent.json" ]]; then
+    if [[ "$DRY" != "true" ]]; then
+      mkdir -p "$HOME/.config/opencode" || fail "Failed to create $HOME/.config/opencode"
+    fi
+    [[ -f "$opencode_dir/opencode.json" ]] && \
+      link_files "$opencode_dir/opencode.json" "$HOME/.config/opencode/opencode.json"
+    [[ -f "$opencode_dir/oh-my-openagent.json" ]] && \
+      link_files "$opencode_dir/oh-my-openagent.json" "$HOME/.config/opencode/oh-my-openagent.json"
+  fi
+
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
   # can run `dotfile` from any shell.
   if [[ -f "$DOTFILES_DIR/dotfile" ]]; then

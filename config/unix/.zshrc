@@ -24,6 +24,7 @@ export NVM_DIR="$HOME/.nvm"
 
 # opencode
 [ -d "$HOME/.opencode/bin" ] && export PATH="$HOME/.opencode/bin:$PATH"
+export OMO_SEND_ANONYMOUS_TELEMETRY=0
 
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"

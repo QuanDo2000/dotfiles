@@ -45,6 +45,7 @@ source "$SCRIPTS_DIR/symlinks.sh"
 source "$SCRIPTS_DIR/verify.sh"
 source "$SCRIPTS_DIR/obsidian.sh"
 source "$SCRIPTS_DIR/languages.sh"
+source "$SCRIPTS_DIR/ai.sh"
 
 function update_repo {
   info "Updating dotfiles repo..."
@@ -79,6 +80,7 @@ Commands:
   symlinks    Create symlinks only
   obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank). LANG selects one.
+  ai          Install OpenCode, Claude Code, and oh-my-openagent plugin
   verify      Verify installation
 
 Options:
@@ -134,6 +136,7 @@ tmux) install_tmux_plugins ;;
 symlinks) setup_symlinks ;;
 obsidian) setup_obsidian ;;
 languages) install_languages "${2:-}" ;;
+ai) install_ai ;;
 verify) verify ;;
 *)
   fail "Unknown command: $1"

@@ -83,5 +83,6 @@ function install_extras {
   install_oh_my_zsh
   install_zsh_plugins
   install_tmux_plugins
+  install_oh_my_openagent
   success "Finished installing extras"
 }
