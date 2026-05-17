@@ -37,112 +37,6 @@ test_install_font_debian_already_installed() {
 }
 
 # ---------------------------------------------------------------------------
-# setup_lazygit (install mode)
-# ---------------------------------------------------------------------------
-
-test_setup_lazygit_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_lazygit 2>&1)
-
-  assert_contains "$output" "lazygit"
-  assert_contains "$output" "Finished lazygit"
-}
-
-test_setup_lazygit_already_installed() {
-  DRY=false
-  # Create a fake lazygit on PATH
-  echo '#!/bin/bash' > "$HOME/.local/bin/lazygit"
-  chmod +x "$HOME/.local/bin/lazygit"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_lazygit 2>&1)
-
-  assert_contains "$output" "Already installed lazygit"
-}
-
-# ---------------------------------------------------------------------------
-# setup_lazygit (update mode)
-# ---------------------------------------------------------------------------
-
-test_setup_lazygit_update_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_lazygit --update 2>&1)
-
-  assert_contains "$output" "lazygit"
-  assert_contains "$output" "Finished lazygit"
-}
-
-test_setup_lazygit_update_does_not_skip() {
-  DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/lazygit"
-  chmod +x "$HOME/.local/bin/lazygit"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_lazygit --update 2>&1)
-
-  # With --update, should NOT say "Already installed"
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# setup_zoxide (install mode)
-# ---------------------------------------------------------------------------
-
-test_setup_zoxide_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_zoxide 2>&1)
-
-  assert_contains "$output" "zoxide"
-  assert_contains "$output" "Finished zoxide"
-}
-
-test_setup_zoxide_already_installed() {
-  DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/zoxide"
-  chmod +x "$HOME/.local/bin/zoxide"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_zoxide 2>&1)
-
-  assert_contains "$output" "Already installed zoxide"
-}
-
-# ---------------------------------------------------------------------------
-# setup_zoxide (update mode)
-# ---------------------------------------------------------------------------
-
-test_setup_zoxide_update_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_zoxide --update 2>&1)
-
-  assert_contains "$output" "zoxide"
-  assert_contains "$output" "Finished zoxide"
-}
-
-test_setup_zoxide_update_does_not_skip() {
-  DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/zoxide"
-  chmod +x "$HOME/.local/bin/zoxide"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_zoxide --update 2>&1)
-
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
-}
-
-# ---------------------------------------------------------------------------
 # setup_neovim (install mode)
 # ---------------------------------------------------------------------------
 
@@ -292,6 +186,54 @@ test_setup_yay_already_installed() {
   output=$(setup_yay 2>&1)
 
   assert_contains "$output" "Already installed yay"
+}
+
+# ---------------------------------------------------------------------------
+# setup_brew_linux
+# ---------------------------------------------------------------------------
+
+test_setup_brew_linux_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_brew_linux 2>&1)
+
+  assert_contains "$output" "Homebrew"
+  assert_contains "$output" "Finished Homebrew"
+}
+
+test_setup_brew_linux_already_installed() {
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/brew"
+  chmod +x "$HOME/.local/bin/brew"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_brew_linux 2>&1)
+
+  assert_contains "$output" "Already installed Homebrew"
+}
+
+test_setup_brew_linux_update_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_brew_linux --update 2>&1)
+
+  assert_contains "$output" "Homebrew"
+  assert_contains "$output" "Finished Homebrew"
+}
+
+test_setup_brew_linux_update_does_not_skip() {
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/brew"
+  chmod +x "$HOME/.local/bin/brew"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_brew_linux --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
 }
 
 # ---------------------------------------------------------------------------

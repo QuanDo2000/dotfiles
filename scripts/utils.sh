@@ -31,3 +31,25 @@ fail() {
 fail_soft() {
   printf '\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n' "$1"
 }
+
+# Fetch a URL with retry + exponential backoff. Useful for GitHub API calls
+# which are rate-limited to 60 req/hr unauthenticated.
+# Usage: http_get_retry <url> [output-file]
+function http_get_retry {
+  local url="$1" out="${2:-}"
+  local attempt=1 max=4 delay=2
+  while (( attempt <= max )); do
+    if [[ -n "$out" ]]; then
+      if curl -sfL --retry 2 -o "$out" "$url"; then return 0; fi
+    else
+      if curl -sfL --retry 2 "$url"; then return 0; fi
+    fi
+    if (( attempt < max )); then
+      info "curl $url failed (attempt $attempt/$max); retrying in ${delay}s..."
+      sleep "$delay"
+      delay=$((delay * 2))
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
+}

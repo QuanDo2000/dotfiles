@@ -1,28 +1,6 @@
 #!/bin/bash
 set -eo pipefail
 
-# Fetch a URL with retry + exponential backoff. Useful for GitHub API calls
-# which are rate-limited to 60 req/hr unauthenticated.
-# Usage: http_get_retry <url> [output-file]
-function http_get_retry {
-  local url="$1" out="${2:-}"
-  local attempt=1 max=4 delay=2
-  while (( attempt <= max )); do
-    if [[ -n "$out" ]]; then
-      if curl -sfL --retry 2 -o "$out" "$url"; then return 0; fi
-    else
-      if curl -sfL --retry 2 "$url"; then return 0; fi
-    fi
-    if (( attempt < max )); then
-      info "curl $url failed (attempt $attempt/$max); retrying in ${delay}s..."
-      sleep "$delay"
-      delay=$((delay * 2))
-    fi
-    attempt=$((attempt + 1))
-  done
-  return 1
-}
-
 function install_font_debian {
   # https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
   info "Installing Fira Code..."
@@ -62,61 +40,6 @@ function setup_neovim {
     rm -f nvim-linux-x86_64.tar.gz
   fi
   success "Finished neovim"
-}
-
-# Install or update lazygit from GitHub releases.
-# Usage: setup_lazygit [--update]
-function setup_lazygit {
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} lazygit..."
-  if [[ "$DRY" == "false" ]]; then
-    if [[ "$update" == "false" ]] && command -v lazygit >/dev/null 2>&1; then
-      info "Already installed lazygit"
-      return
-    fi
-    local lazygit_json
-    lazygit_json="$(http_get_retry "https://api.github.com/repos/jesseduffield/lazygit/releases/latest")" \
-      || fail "Failed to fetch lazygit version (GitHub API unreachable or rate-limited)"
-    LAZYGIT_VERSION="$(echo "$lazygit_json" | grep -Po '"tag_name": "v\K[^"]*')" \
-      || fail "Failed to parse lazygit version"
-    curl -fLo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" \
-      || fail "Failed to download lazygit"
-    tar xf lazygit.tar.gz lazygit || fail "Failed to extract lazygit"
-    sudo install lazygit /usr/local/bin || fail "Failed to install lazygit"
-    rm -f lazygit.tar.gz lazygit
-  fi
-  success "Finished lazygit"
-}
-
-# Install or update zoxide via its install script.
-# Usage: setup_zoxide [--update]
-function setup_zoxide {
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} zoxide..."
-  if [[ "$DRY" == "false" ]]; then
-    if [[ "$update" == "false" ]] && command -v zoxide >/dev/null 2>&1; then
-      info "Already installed zoxide"
-      return
-    fi
-    # Download to a temp file first so the fetch and execution are distinct
-    # steps — avoids the classic `curl | sh` anti-pattern where a truncated
-    # download still executes whatever partial script arrived.
-    local tmp
-    tmp="$(mktemp -t zoxide-install.XXXXXX.sh)" || fail "Failed to create temp file"
-    # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
-    # EXIT, every fail() in this function would leak $tmp under /tmp.
-    # shellcheck disable=SC2064
-    trap "rm -f '$tmp'" EXIT RETURN
-    http_get_retry "https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh" "$tmp" \
-      || fail "Failed to download zoxide installer"
-    # Sanity-check: the installer should be a shell script.
-    head -n1 "$tmp" | grep -q '^#!' \
-      || fail "Downloaded zoxide installer does not look like a shell script"
-    sh "$tmp" || fail "Failed to install zoxide"
-  fi
-  success "Finished zoxide"
 }
 
 function setup_fdfind {
@@ -261,12 +184,44 @@ _setup_pwsh_arch() {
   fi
 }
 
+# Bootstrap Homebrew on Linux. Idempotent. Sources brew's shellenv so the rest
+# of the script run can use `brew` directly. In --update mode, also runs
+# `brew update && brew upgrade` for all linuxbrew-managed formulae.
+# Usage: setup_brew_linux [--update]
+function setup_brew_linux {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "${update:+Updating}${update:- Installing} Homebrew (linuxbrew)..."
+  if [[ "$DRY" == "false" ]]; then
+    if ! command -v brew >/dev/null 2>&1; then
+      if [[ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+        NONINTERACTIVE=1 /bin/bash -c \
+          "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
+          || fail "Failed to install Homebrew"
+      fi
+      eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    elif [[ "$update" == "false" ]]; then
+      info "Already installed Homebrew"
+    fi
+    if [[ "$update" == "true" ]]; then
+      brew update || fail "Failed to update Homebrew"
+      brew upgrade || fail "Failed to upgrade Homebrew packages"
+    fi
+  fi
+  success "Finished Homebrew"
+}
+
 DEBIAN_PACKAGES=(
   build-essential libssl-dev zlib1g-dev libbz2-dev
   libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils
   tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
   unzip zsh vim tmux fontconfig fzf fd-find ripgrep nmap
+  procps file
 )
+
+# Packages installed via linuxbrew on Debian/Ubuntu. Use this list for tools
+# that aren't in apt (or are too stale there).
+DEBIAN_BREW_PACKAGES=(lazygit zoxide)
 
 function update_debian {
   info "Updating packages for Debian..."
@@ -275,9 +230,8 @@ function update_debian {
     sudo apt upgrade -y || fail "Failed to upgrade apt packages"
 
     setup_neovim --update
-    setup_lazygit --update
-    setup_zoxide --update
     setup_pwsh --update
+    setup_brew_linux --update
   fi
   success "Finished update for Debian"
 }
@@ -289,12 +243,13 @@ function install_debian {
       || fail "Failed to install Debian packages"
 
     install_font_debian
-    setup_lazygit
     setup_neovim
-    setup_zoxide
 
     setup_fdfind
     setup_pwsh
+    setup_brew_linux
+    brew install "${DEBIAN_BREW_PACKAGES[@]}" \
+      || fail "Failed to install Debian brew packages"
   fi
   success "Finished install for Debian"
 }
