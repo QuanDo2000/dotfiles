@@ -105,21 +105,3 @@ test_verify_symlink_wrong_target() {
   output=$(verify 2>&1) || true
   assert_contains "$output" "expected"
 }
-
-test_verify_zshrc_exists() {
-  mkdir -p "$DOTFILES_DIR/config/unix"
-  echo "zshrc content" > "$DOTFILES_DIR/config/unix/.zshrc"
-  echo "zshrc content" > "$HOME/.zshrc"
-  local output
-  output=$(verify 2>&1) || true
-  assert_contains "$output" ".zshrc matches source"
-}
-
-test_verify_zshrc_source_missing() {
-  mkdir -p "$DOTFILES_DIR"
-  # .zshrc exists in HOME but source file does not
-  echo "zshrc content" > "$HOME/.zshrc"
-  local output
-  output=$(verify 2>&1) || true
-  assert_contains "$output" "source not found"
-}

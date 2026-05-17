@@ -28,7 +28,7 @@ dotfile -f <command>         # Force overwrite existing files
   - `utils.sh` — Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` — OS-specific package installation (apt/pacman/brew).
   - `extras.sh` — oh-my-zsh, zsh plugins, tmux plugin manager.
-  - `symlinks.sh` — Links/copies dotfiles to `$HOME`. `.zshrc` files are **copied** (not symlinked) so local edits don't pollute the repo. Files in `bin/` directories under each platform layer are symlinked into `$HOME/.local/bin/`.
+  - `symlinks.sh` — Links dotfiles to `$HOME`. Files in `bin/` directories under each platform layer are symlinked into `$HOME/.local/bin/`.
   - `verify.sh` — Post-install checks.
 
 ## Dotfile Layers

@@ -9,7 +9,7 @@ REQUIRED_TOOLS=(git zsh vim nvim tmux fzf fd rg lazygit zoxide pwsh)
 
 # Symlinked dotfiles under $HOME (resolved to $DOTFILES_DIR/...).
 # Keep in sync with scripts/symlinks.sh and the config/{shared,unix} layout.
-REQUIRED_SYMLINKS=(.zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
+REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
 
 # Helper: check that a command exists on PATH.
 # Increments $errors on failure.
@@ -81,22 +81,6 @@ function verify {
   for f in "${REQUIRED_SYMLINKS[@]}"; do
     _check_symlink "$f"
   done
-
-  info "Verifying copied files..."
-  local source="$DOTFILES_DIR/config/unix/.zshrc"
-  local target="$HOME/.zshrc"
-  if [ -f "$target" ]; then
-    if [ ! -f "$source" ]; then
-      info ".zshrc exists but source not found at $source"
-    elif diff -q "$source" "$target" >/dev/null 2>&1; then
-      success ".zshrc matches source"
-    else
-      info ".zshrc exists but differs from source (local edits are expected)"
-    fi
-  else
-    fail_soft ".zshrc not found"
-    errors=$((errors + 1))
-  fi
 
   echo ""
   if [ "$errors" -eq 0 ]; then

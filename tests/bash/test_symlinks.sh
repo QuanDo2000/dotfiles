@@ -35,45 +35,6 @@ test_link_files_skips_existing() {
   assert_contains "$output" "Skipped"
 }
 
-test_copy_file_copies() {
-  local src="$TEST_TMPDIR/srcfile"
-  local dst="$TEST_TMPDIR/home/dstfile"
-  echo "hello" > "$src"
-
-  copy_file "$src" "$dst"
-
-  assert_file_exists "$dst"
-  local actual
-  actual="$(cat "$dst")"
-  assert_equals "hello" "$actual"
-}
-
-test_copy_file_skips_identical() {
-  local src="$TEST_TMPDIR/srcfile"
-  local dst="$TEST_TMPDIR/home/dstfile"
-  echo "same" > "$src"
-  echo "same" > "$dst"
-
-  local output
-  output=$(copy_file "$src" "$dst" 2>&1)
-
-  assert_contains "$output" "Skipped"
-}
-
-test_copy_file_force_overwrites() {
-  FORCE=true
-  local src="$TEST_TMPDIR/srcfile"
-  local dst="$TEST_TMPDIR/home/dstfile"
-  echo "new content" > "$src"
-  echo "old content" > "$dst"
-
-  copy_file "$src" "$dst"
-
-  local actual
-  actual="$(cat "$dst")"
-  assert_equals "new content" "$actual"
-}
-
 test_dry_run_link() {
   DRY=true
   local overwrite_all=false backup_all=false skip_all=false
@@ -82,19 +43,6 @@ test_dry_run_link() {
   echo "content" > "$src"
 
   link_files "$src" "$dst"
-
-  if [ -e "$dst" ] || [ -L "$dst" ]; then
-    echo "  FAILED: dst should not exist in dry run" >> "$ERROR_FILE"
-  fi
-}
-
-test_dry_run_copy() {
-  DRY=true
-  local src="$TEST_TMPDIR/srcfile"
-  local dst="$TEST_TMPDIR/home/dstfile"
-  echo "content" > "$src"
-
-  copy_file "$src" "$dst"
 
   if [ -e "$dst" ] || [ -L "$dst" ]; then
     echo "  FAILED: dst should not exist in dry run" >> "$ERROR_FILE"
@@ -134,23 +82,6 @@ test_setup_symlinks_folder_config() {
   setup_symlinks_folder "$root"
 
   assert_symlink "$HOME/.config/nvim" "$root/config/nvim"
-}
-
-test_setup_symlinks_folder_zshrc_copied() {
-  local overwrite_all=false backup_all=false skip_all=false
-  local root="$TEST_TMPDIR/fakedir"
-  mkdir -p "$root"
-  echo "zsh config" > "$root/.zshrc"
-
-  setup_symlinks_folder "$root"
-
-  assert_file_exists "$HOME/.zshrc"
-  if [ -L "$HOME/.zshrc" ]; then
-    echo "  FAILED: .zshrc should be a regular file, not a symlink" >> "$ERROR_FILE"
-  fi
-  local actual
-  actual="$(cat "$HOME/.zshrc")"
-  assert_equals "zsh config" "$actual"
 }
 
 test_link_files_overwrite_all() {
@@ -283,32 +214,6 @@ test_link_files_interactive_skip_all() {
   assert_file_exists "$dst"
 }
 
-test_copy_file_interactive_overwrite() {
-  local src="$TEST_TMPDIR/srcfile"
-  local dst="$TEST_TMPDIR/home/dstfile"
-  echo "new content" > "$src"
-  echo "old content" > "$dst"
-
-  echo -n "y" | copy_file "$src" "$dst"
-
-  local actual
-  actual="$(cat "$dst")"
-  assert_equals "new content" "$actual"
-}
-
-test_copy_file_interactive_skip() {
-  local src="$TEST_TMPDIR/srcfile"
-  local dst="$TEST_TMPDIR/home/dstfile"
-  echo "new content" > "$src"
-  echo "old content" > "$dst"
-
-  echo -n "n" | copy_file "$src" "$dst"
-
-  local actual
-  actual="$(cat "$dst")"
-  assert_equals "old content" "$actual"
-}
-
 test_link_files_interactive_invalid_input_skips() {
   local overwrite_all=false backup_all=false skip_all=false
   local src="$TEST_TMPDIR/srcfile"
@@ -322,19 +227,6 @@ test_link_files_interactive_invalid_input_skips() {
 
   # Invalid input should default to skip — dst keeps pointing at old target
   assert_symlink "$dst" "$old_target"
-}
-
-test_copy_file_interactive_invalid_input_skips() {
-  local src="$TEST_TMPDIR/srcfile"
-  local dst="$TEST_TMPDIR/home/dstfile"
-  echo "new content" > "$src"
-  echo "old content" > "$dst"
-
-  echo -n "x" | copy_file "$src" "$dst"
-
-  local actual
-  actual="$(cat "$dst")"
-  assert_equals "old content" "$actual"
 }
 
 # ---------------------------------------------------------------------------
@@ -401,24 +293,6 @@ test_link_files_fails_unwritable_dst_dir() {
   chmod 755 "$dst_dir"  # restore so teardown can clean up
   if [[ "$exit_code" -eq 0 ]]; then
     echo "  FAILED: link_files should fail with unwritable destination dir" >> "$ERROR_FILE"
-  fi
-}
-
-test_copy_file_fails_unwritable_dst_dir() {
-  # chmod 555 does not prevent the owner from writing on Windows NTFS.
-  is_windows_bash && return 0
-  local src="$TEST_TMPDIR/srcfile"
-  local dst_dir="$TEST_TMPDIR/readonly"
-  mkdir -p "$dst_dir"
-  echo "content" > "$src"
-  chmod 555 "$dst_dir"
-
-  local exit_code=0
-  (copy_file "$src" "$dst_dir/dstfile" 2>&1) || exit_code=$?
-
-  chmod 755 "$dst_dir"
-  if [[ "$exit_code" -eq 0 ]]; then
-    echo "  FAILED: copy_file should fail with unwritable destination dir" >> "$ERROR_FILE"
   fi
 }
 
