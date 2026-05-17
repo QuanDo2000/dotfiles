@@ -196,7 +196,7 @@ function InstallPackages {
         "Microsoft.Powershell", "Git.Git", "Microsoft.WindowsTerminal",
         "JanDeDobbeleer.OhMyPosh", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "JernejSimoncic.Wget",
-        "junegunn.fzf", "Schniz.fnm"
+        "junegunn.fzf", "Schniz.fnm", "jj-vcs.jj"
     )
     Info "Checking winget packages ($($wingetPkgs.Count) total)..."
     $missing = @()
@@ -615,6 +615,9 @@ function SetupSymlinks {
     # Neovim settings (symlink the whole dir)
     $nvimSettingsPath = "$env:LOCALAPPDATA\nvim"
     LinkDir -source (Join-Path $sharedPath "config\nvim") -destination $nvimSettingsPath
+
+    # Jujutsu config (lives at %APPDATA%\jj\config.toml on Windows)
+    LinkDir -source (Join-Path $sharedPath "config\jj") -destination "$env:APPDATA\jj"
 
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
     $dotfileSource = Join-Path $script:DotfilesDir "dotfile.ps1"

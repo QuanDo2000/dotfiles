@@ -221,7 +221,7 @@ DEBIAN_PACKAGES=(
 
 # Packages installed via linuxbrew on Debian/Ubuntu. Use this list for tools
 # that aren't in apt (or are too stale there).
-DEBIAN_BREW_PACKAGES=(lazygit zoxide)
+DEBIAN_BREW_PACKAGES=(jj lazygit zoxide)
 
 function update_debian {
   info "Updating packages for Debian..."
@@ -258,7 +258,7 @@ ARCH_PACKAGES=(
   base-devel curl wget git unzip zsh vim tmux fontconfig
   fzf fd ripgrep lazygit ttf-firacode-nerd zoxide
   gnupg wl-clipboard openssh lua51 luarocks nvm
-  tree-sitter-cli nmap
+  tree-sitter-cli nmap jujutsu
 )
 
 function update_arch {
@@ -288,7 +288,7 @@ function install_arch {
 
 MAC_BREW_PACKAGES=(
   bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font
-  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide nmap
+  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide nmap jj
 )
 MAC_BREW_CASKS=(ghostty powershell)
 

@@ -16,3 +16,10 @@ Set-PSReadLineKeyHandler -Key Tab -Function Complete
 
 # fnm
 fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
+
+# jj (jujutsu) completion — dynamic mode
+if (Get-Command jj -ErrorAction SilentlyContinue) {
+    $env:COMPLETE = "powershell"
+    jj | Out-String | Invoke-Expression
+    Remove-Item Env:\COMPLETE
+}

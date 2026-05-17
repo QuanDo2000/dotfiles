@@ -7,6 +7,9 @@
 # Source oh-my-zsh (after all plugins and settings are configured)
 source "$ZSH/oh-my-zsh.sh"
 
+# jj (jujutsu) completion — dynamic mode, requires compinit (set up by oh-my-zsh).
+command -v jj >/dev/null 2>&1 && source <(COMPLETE=zsh jj)
+
 # Go
 export GOPATH="$HOME/.local/go"
 if [[ -e "$GOPATH" ]]; then
