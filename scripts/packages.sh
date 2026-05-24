@@ -276,6 +276,8 @@ function update_debian {
     setup_neovim --update
     setup_pwsh --update
     setup_brew_linux --update
+    setup_claude_code --update
+    setup_opencode --update
   fi
   success "Finished update for Debian"
 }
@@ -314,6 +316,8 @@ function update_arch {
 
     setup_neovim --update
     setup_pwsh --update
+    setup_claude_code --update
+    setup_opencode --update
   fi
   success "Finished update for Arch Linux"
 }
@@ -345,6 +349,8 @@ function update_mac {
   if [[ "$DRY" == "false" ]]; then
     brew update || fail "Failed to update brew"
     brew upgrade || fail "Failed to upgrade brew packages"
+    setup_claude_code --update
+    setup_opencode --update
   fi
   success "Finished update for Mac"
 }
