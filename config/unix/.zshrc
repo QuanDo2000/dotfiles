@@ -26,6 +26,9 @@ export NVM_DIR="$HOME/.nvm"
 [ -d "$HOME/.opencode/bin" ] && export PATH="$HOME/.opencode/bin:$PATH"
 export OMO_SEND_ANONYMOUS_TELEMETRY=0
 
+# bun
+[ -d "$HOME/.bun/bin" ] && export PATH="$HOME/.bun/bin:$PATH"
+
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"
 case ":$PATH:" in
