@@ -403,3 +403,90 @@ test_setup_opencode_update_does_not_skip() {
     echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# setup_bun
+# ---------------------------------------------------------------------------
+
+test_setup_bun_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_bun 2>&1)
+
+  assert_contains "$output" "bun"
+  assert_contains "$output" "Finished bun"
+}
+
+test_setup_bun_already_installed() {
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/bun"
+  chmod +x "$HOME/.local/bin/bun"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_bun 2>&1)
+
+  assert_contains "$output" "Already installed bun"
+}
+
+test_setup_bun_update_does_not_skip() {
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/bun"
+  chmod +x "$HOME/.local/bin/bun"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_bun --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# setup_codex
+# ---------------------------------------------------------------------------
+
+test_setup_codex_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_codex 2>&1)
+
+  assert_contains "$output" "Codex"
+  assert_contains "$output" "Finished Codex"
+}
+
+test_setup_codex_already_installed() {
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/codex"
+  chmod +x "$HOME/.local/bin/codex"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_codex 2>&1)
+
+  assert_contains "$output" "Already installed Codex"
+}
+
+test_setup_codex_update_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_codex --update 2>&1)
+
+  assert_contains "$output" "Codex"
+  assert_contains "$output" "Finished Codex"
+}
+
+test_setup_codex_update_does_not_skip() {
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/codex"
+  chmod +x "$HOME/.local/bin/codex"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_codex --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}

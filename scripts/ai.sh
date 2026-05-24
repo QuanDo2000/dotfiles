@@ -29,20 +29,7 @@ function install_opencode {
 }
 
 function install_bun {
-  if command -v bun &>/dev/null; then
-    info "bun $(bun --version) already installed"
-    return
-  fi
-
-  info "Installing bun..."
-  if [[ "$DRY" == "true" ]]; then
-    info "Would run: curl -fsSL https://bun.sh/install | bash"
-  else
-    curl -fsSL https://bun.sh/install | bash \
-      || fail "bun installation failed"
-    export PATH="$HOME/.bun/bin:$PATH"
-  fi
-  success "Finished installing bun"
+  setup_bun
 }
 
 function install_oh_my_openagent {
@@ -88,8 +75,27 @@ function install_claude_code {
   success "Finished installing Claude Code"
 }
 
+function install_codex {
+  if command -v codex &>/dev/null; then
+    info "Codex $(codex --version 2>/dev/null || echo 'installed') already installed"
+    return
+  fi
+
+  install_bun
+
+  info "Installing Codex..."
+  if [[ "$DRY" == "true" ]]; then
+    info "Would run: bun install -g @openai/codex"
+  else
+    bun install -g @openai/codex \
+      || fail "Codex installation failed"
+  fi
+  success "Finished installing Codex"
+}
+
 function install_ai {
   install_opencode
   install_claude_code
+  install_codex
   install_oh_my_openagent
 }

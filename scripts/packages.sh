@@ -255,6 +255,52 @@ function setup_opencode {
   success "Finished OpenCode"
 }
 
+# Install or update bun via the official install script. Self-updates via
+# `bun upgrade`. Idempotent: no-op if `bun` is on PATH (unless --update is
+# passed). Usage: setup_bun [--update]
+function setup_bun {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "${update:+Updating}${update:- Installing} bun..."
+  if [[ "$DRY" == "false" ]]; then
+    if command -v bun >/dev/null 2>&1; then
+      if [[ "$update" == "true" ]]; then
+        bun upgrade || fail "Failed to update bun"
+      else
+        info "Already installed bun"
+      fi
+    else
+      curl -fsSL https://bun.sh/install | bash \
+        || fail "Failed to install bun"
+      export PATH="$HOME/.bun/bin:$PATH"
+    fi
+  fi
+  success "Finished bun"
+}
+
+# Install or update OpenAI Codex CLI via bun's global package manager. Codex
+# has no first-party curl installer, so we install the npm package globally
+# via bun. Ensures bun is present first. Idempotent: no-op if `codex` is on
+# PATH (unless --update is passed). Usage: setup_codex [--update]
+function setup_codex {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "${update:+Updating}${update:- Installing} Codex..."
+  if [[ "$DRY" == "false" ]]; then
+    if command -v codex >/dev/null 2>&1 && [[ "$update" == "false" ]]; then
+      info "Already installed Codex"
+    else
+      setup_bun
+      if [[ "$update" == "true" ]]; then
+        bun update -g @openai/codex || fail "Failed to update Codex"
+      else
+        bun install -g @openai/codex || fail "Failed to install Codex"
+      fi
+    fi
+  fi
+  success "Finished Codex"
+}
+
 DEBIAN_PACKAGES=(
   build-essential libssl-dev zlib1g-dev libbz2-dev
   libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils
@@ -278,6 +324,7 @@ function update_debian {
     setup_brew_linux --update
     setup_claude_code --update
     setup_opencode --update
+    setup_codex --update
   fi
   success "Finished update for Debian"
 }
@@ -298,6 +345,7 @@ function install_debian {
       || fail "Failed to install Debian brew packages"
     setup_claude_code
     setup_opencode
+    setup_codex
   fi
   success "Finished install for Debian"
 }
@@ -318,6 +366,7 @@ function update_arch {
     setup_pwsh --update
     setup_claude_code --update
     setup_opencode --update
+    setup_codex --update
   fi
   success "Finished update for Arch Linux"
 }
@@ -334,6 +383,7 @@ function install_arch {
     setup_pwsh
     setup_claude_code
     setup_opencode
+    setup_codex
   fi
   success "Finished install for Arch Linux"
 }
@@ -351,6 +401,7 @@ function update_mac {
     brew upgrade || fail "Failed to upgrade brew packages"
     setup_claude_code --update
     setup_opencode --update
+    setup_codex --update
   fi
   success "Finished update for Mac"
 }
@@ -365,6 +416,7 @@ function install_mac {
     brew install --cask "${MAC_BREW_CASKS[@]}"
     setup_claude_code
     setup_opencode
+    setup_codex
   fi
   success "Finished install for Mac"
 }
