@@ -1,0 +1,19 @@
+#!/bin/bash
+set -eu
+
+PID_FILE=/tmp/caf.pid
+
+if [[ -f "$PID_FILE" ]]; then
+  pid=$(cat "$PID_FILE")
+  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+    kill "$pid"
+    rm -f "$PID_FILE"
+    echo "caf: OFF"
+    exit 0
+  fi
+  rm -f "$PID_FILE"
+fi
+
+nohup caffeinate -d -i >/dev/null 2>&1 &
+echo "$!" > "$PID_FILE"
+echo "caf: ON (pid $!)"

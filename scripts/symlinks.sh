@@ -157,11 +157,16 @@ function setup_symlinks {
   # explicitly excludes those from tracking via the dir's own .gitignore, so
   # we link only the hand-edited config file.
   local opencode_dir="$DOTFILES_DIR/config/shared/ai/opencode"
-  if [[ -f "$opencode_dir/opencode.json" ]]; then
+  if [[ -f "$opencode_dir/opencode.json" || -f "$opencode_dir/AGENTS.md" ]]; then
     if [[ "$DRY" != "true" ]]; then
       mkdir -p "$HOME/.config/opencode" || fail "Failed to create $HOME/.config/opencode"
     fi
+  fi
+  if [[ -f "$opencode_dir/opencode.json" ]]; then
     link_files "$opencode_dir/opencode.json" "$HOME/.config/opencode/opencode.json"
+  fi
+  if [[ -f "$opencode_dir/AGENTS.md" ]]; then
+    link_files "$opencode_dir/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
   fi
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users

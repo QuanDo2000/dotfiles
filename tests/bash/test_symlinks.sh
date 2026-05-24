@@ -400,6 +400,18 @@ test_setup_symlinks_links_opencode_config() {
     "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
 }
 
+test_setup_symlinks_links_opencode_agents() {
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
+  echo '# AGENTS.md' \
+    > "$DOTFILES_DIR/config/shared/ai/opencode/AGENTS.md"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.config/opencode/AGENTS.md" \
+    "$DOTFILES_DIR/config/shared/ai/opencode/AGENTS.md"
+}
+
 test_setup_symlinks_skips_ai_when_missing() {
   # When the source files don't exist in the repo, setup_symlinks must not
   # create $HOME/.claude or $HOME/.config/opencode parent dirs.
@@ -431,4 +443,17 @@ test_setup_symlinks_ai_dry_run() {
   if [ -e "$HOME/.config/opencode/opencode.json" ] || [ -L "$HOME/.config/opencode/opencode.json" ]; then
     echo "  FAILED: opencode.json should not be linked in dry run" >> "$ERROR_FILE"
   fi
+}
+
+test_setup_symlinks_links_caf_on_mac() {
+  local overwrite_all=false backup_all=false skip_all=false
+  mock_uname Darwin
+
+  mkdir -p "$DOTFILES_DIR/config/mac/bin"
+  cp "$REPO_DIR/config/mac/bin/caf" "$DOTFILES_DIR/config/mac/bin/caf"
+  chmod +x "$DOTFILES_DIR/config/mac/bin/caf"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.local/bin/caf" "$DOTFILES_DIR/config/mac/bin/caf"
 }
