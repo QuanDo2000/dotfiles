@@ -233,6 +233,28 @@ function setup_claude_code {
   success "Finished Claude Code"
 }
 
+# Install or update OpenCode via the official install script. Self-updates
+# via `opencode upgrade`. Idempotent: no-op if `opencode` is on PATH (unless
+# --update is passed). Usage: setup_opencode [--update]
+function setup_opencode {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "${update:+Updating}${update:- Installing} OpenCode..."
+  if [[ "$DRY" == "false" ]]; then
+    if command -v opencode >/dev/null 2>&1; then
+      if [[ "$update" == "true" ]]; then
+        opencode upgrade || fail "Failed to update OpenCode"
+      else
+        info "Already installed OpenCode"
+      fi
+    else
+      curl -fsSL https://opencode.ai/install | bash \
+        || fail "Failed to install OpenCode"
+    fi
+  fi
+  success "Finished OpenCode"
+}
+
 DEBIAN_PACKAGES=(
   build-essential libssl-dev zlib1g-dev libbz2-dev
   libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils

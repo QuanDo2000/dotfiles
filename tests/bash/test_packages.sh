@@ -355,3 +355,51 @@ test_setup_claude_code_update_does_not_skip() {
     echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# setup_opencode
+# ---------------------------------------------------------------------------
+
+test_setup_opencode_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_opencode 2>&1)
+
+  assert_contains "$output" "OpenCode"
+  assert_contains "$output" "Finished OpenCode"
+}
+
+test_setup_opencode_already_installed() {
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/opencode"
+  chmod +x "$HOME/.local/bin/opencode"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_opencode 2>&1)
+
+  assert_contains "$output" "Already installed OpenCode"
+}
+
+test_setup_opencode_update_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_opencode --update 2>&1)
+
+  assert_contains "$output" "OpenCode"
+  assert_contains "$output" "Finished OpenCode"
+}
+
+test_setup_opencode_update_does_not_skip() {
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/opencode"
+  chmod +x "$HOME/.local/bin/opencode"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_opencode --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}
