@@ -141,7 +141,13 @@
       "Bash(mkdir -p /tmp/dotfiles-commit-split)",
       "Bash(cp scripts/symlinks.sh scripts/packages.sh tests/bash/test_symlinks.sh /tmp/dotfiles-commit-split/)",
       "Bash(cp config/unix/.zshrc /tmp/dotfiles-commit-split/.zshrc)",
-      "Bash(cp CLAUDE.md /tmp/dotfiles-commit-split/)"
+      "Bash(cp CLAUDE.md /tmp/dotfiles-commit-split/)",
+      "Bash(tee test_output.log)",
+      "Bash(DRY=true bash *)",
+      "Bash(awk '/function install_debian/,/^}/' scripts/packages.sh)",
+      "Bash(awk '/function install_arch/,/^}/' scripts/packages.sh)",
+      "Bash(awk '/function install_mac/,/^}/' scripts/packages.sh)",
+      "Bash(awk '/function install_debian/,/^}/')"
     ]
   }
 }
