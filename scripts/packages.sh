@@ -294,6 +294,8 @@ function install_debian {
     setup_brew_linux
     brew install "${DEBIAN_BREW_PACKAGES[@]}" \
       || fail "Failed to install Debian brew packages"
+    setup_claude_code
+    setup_opencode
   fi
   success "Finished install for Debian"
 }
@@ -326,6 +328,8 @@ function install_arch {
     setup_fdfind
     setup_yay
     setup_pwsh
+    setup_claude_code
+    setup_opencode
   fi
   success "Finished install for Arch Linux"
 }
@@ -353,6 +357,8 @@ function install_mac {
     fi
     brew install "${MAC_BREW_PACKAGES[@]}"
     brew install --cask "${MAC_BREW_CASKS[@]}"
+    setup_claude_code
+    setup_opencode
   fi
   success "Finished install for Mac"
 }
