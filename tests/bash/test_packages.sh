@@ -307,3 +307,51 @@ test_setup_pwsh_dry_run_arch() {
   assert_contains "$output" "pwsh"
   assert_contains "$output" "Finished pwsh"
 }
+
+# ---------------------------------------------------------------------------
+# setup_claude_code
+# ---------------------------------------------------------------------------
+
+test_setup_claude_code_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_claude_code 2>&1)
+
+  assert_contains "$output" "Claude Code"
+  assert_contains "$output" "Finished Claude Code"
+}
+
+test_setup_claude_code_already_installed() {
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/claude"
+  chmod +x "$HOME/.local/bin/claude"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_claude_code 2>&1)
+
+  assert_contains "$output" "Already installed Claude Code"
+}
+
+test_setup_claude_code_update_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_claude_code --update 2>&1)
+
+  assert_contains "$output" "Claude Code"
+  assert_contains "$output" "Finished Claude Code"
+}
+
+test_setup_claude_code_update_does_not_skip() {
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/claude"
+  chmod +x "$HOME/.local/bin/claude"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_claude_code --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}

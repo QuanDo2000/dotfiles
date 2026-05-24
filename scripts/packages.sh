@@ -211,6 +211,28 @@ function setup_brew_linux {
   success "Finished Homebrew"
 }
 
+# Install or update Claude Code via the official install script. Self-updates
+# via `claude update`. Idempotent: no-op if `claude` is on PATH (unless
+# --update is passed). Usage: setup_claude_code [--update]
+function setup_claude_code {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "${update:+Updating}${update:- Installing} Claude Code..."
+  if [[ "$DRY" == "false" ]]; then
+    if command -v claude >/dev/null 2>&1; then
+      if [[ "$update" == "true" ]]; then
+        claude update || fail "Failed to update Claude Code"
+      else
+        info "Already installed Claude Code"
+      fi
+    else
+      curl -fsSL https://claude.ai/install.sh | bash \
+        || fail "Failed to install Claude Code"
+    fi
+  fi
+  success "Finished Claude Code"
+}
+
 DEBIAN_PACKAGES=(
   build-essential libssl-dev zlib1g-dev libbz2-dev
   libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils
