@@ -129,15 +129,10 @@
       "Bash(bun --version)",
       "Bash(command -v opencode)",
       "Bash(opencode --version)",
-      "Bash(bunx oh-my-openagent *)",
       "Bash(cp /home/quando/.config/opencode/opencode.json /tmp/opencode.json.bak)",
-      "Bash(OMO_SEND_ANONYMOUS_TELEMETRY=0 bunx oh-my-openagent install --no-tui --claude=no --openai=yes --gemini=no --copilot=no --opencode-zen=yes --opencode-go=yes --zai-coding-plan=no --kimi-for-coding=no --vercel-ai-gateway=no)",
-      "Bash(OMO_SEND_ANONYMOUS_TELEMETRY=0 bunx oh-my-openagent doctor)",
-      "Bash(cp /home/quando/.config/opencode/oh-my-openagent.json /home/quando/dotfiles/config/shared/ai/opencode/oh-my-openagent.json)",
       "Bash(cp /home/quando/.config/opencode/opencode.json /home/quando/dotfiles/config/shared/ai/opencode/opencode.json)",
       "Bash(rm /home/quando/.config/opencode/opencode.json.backup-2026-05-17T20-29-42-211Z)",
       "Bash(python3 -m json.tool config/shared/ai/opencode/opencode.json)",
-      "Bash(python3 -m json.tool config/shared/ai/opencode/oh-my-openagent.json)",
       "Bash(mkdir -p /tmp/dotfiles-commit-split)",
       "Bash(cp scripts/symlinks.sh scripts/packages.sh tests/bash/test_symlinks.sh /tmp/dotfiles-commit-split/)",
       "Bash(cp config/unix/.zshrc /tmp/dotfiles-commit-split/.zshrc)",
@@ -147,7 +142,8 @@
       "Bash(awk '/function install_debian/,/^}/' scripts/packages.sh)",
       "Bash(awk '/function install_arch/,/^}/' scripts/packages.sh)",
       "Bash(awk '/function install_mac/,/^}/' scripts/packages.sh)",
-      "Bash(awk '/function install_debian/,/^}/')"
+      "Bash(awk '/function install_debian/,/^}/')",
+      "Bash(zsh -n /home/quando/dotfiles/config/unix/.zshrc)"
     ]
   }
 }

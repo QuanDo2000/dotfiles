@@ -155,16 +155,13 @@ function setup_symlinks {
   # OpenCode keeps its user config under XDG ~/.config/opencode/ alongside
   # plugin runtime artifacts (node_modules, package.json, bun.lock). Upstream
   # explicitly excludes those from tracking via the dir's own .gitignore, so
-  # we link only the two hand-edited / install-generated config files.
+  # we link only the hand-edited config file.
   local opencode_dir="$DOTFILES_DIR/config/shared/ai/opencode"
-  if [[ -f "$opencode_dir/opencode.json" || -f "$opencode_dir/oh-my-openagent.json" ]]; then
+  if [[ -f "$opencode_dir/opencode.json" ]]; then
     if [[ "$DRY" != "true" ]]; then
       mkdir -p "$HOME/.config/opencode" || fail "Failed to create $HOME/.config/opencode"
     fi
-    [[ -f "$opencode_dir/opencode.json" ]] && \
-      link_files "$opencode_dir/opencode.json" "$HOME/.config/opencode/opencode.json"
-    [[ -f "$opencode_dir/oh-my-openagent.json" ]] && \
-      link_files "$opencode_dir/oh-my-openagent.json" "$HOME/.config/opencode/oh-my-openagent.json"
+    link_files "$opencode_dir/opencode.json" "$HOME/.config/opencode/opencode.json"
   fi
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
