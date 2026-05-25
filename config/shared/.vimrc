@@ -29,3 +29,6 @@ set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx  " 
 nnoremap <space> <nop>
 let mapleader = " "
 
+"" jk to escape from insert mode
+inoremap jk <Esc>
+
