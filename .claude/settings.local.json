@@ -157,7 +157,12 @@
       "Bash(curl -fsSL https://raw.githubusercontent.com/tmux-plugins/tmux-pain-control/master/pain_control.tmux)",
       "Bash(awk '/^main\\\\\\(\\\\\\) \\\\{/,/^}/')",
       "Bash(command -v tmux)",
-      "Bash(tmux -L dotfiletest -f /dev/null start-server \\\\; source-file config/unix/.tmux.conf)"
+      "Bash(tmux -L dotfiletest -f /dev/null start-server \\\\; source-file config/unix/.tmux.conf)",
+      "Bash(zsh -n config/unix/.zprofile)",
+      "Bash(command -v luac5.1)",
+      "Bash(luac5.1 -p config/shared/config/nvim/lua/config/options.lua)",
+      "Bash(command -v luajit)",
+      "Bash(luajit -bl config/shared/config/nvim/lua/config/options.lua)"
     ]
   }
 }
