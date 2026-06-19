@@ -27,7 +27,7 @@ dotfile -f <command>         # Force overwrite existing files
 - **scripts/** — Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` — Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` — OS-specific package installation (apt/pacman/brew).
-  - `extras.sh` — oh-my-zsh, zsh plugins, tmux plugin manager.
+  - `extras.sh` — oh-my-zsh, zsh plugins, and the directly-cloned tmux plugins (tmux-yank, catppuccin); no tmux plugin manager (sensible/pain-control are inlined in `.tmux.conf`).
   - `symlinks.sh` — Links dotfiles to `$HOME`. Files in `bin/` directories under each platform layer are symlinked into `$HOME/.local/bin/`.
   - `verify.sh` — Post-install checks.
 

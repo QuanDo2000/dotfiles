@@ -144,16 +144,16 @@ test_install_tmux_plugins_dry_run() {
   assert_contains "$output" "Finished installing tmux plugins"
 }
 
-test_install_tmux_plugins_tpm_already_installed() {
+test_install_tmux_plugins_already_installed() {
   DRY=false
-  mkdir -p "$HOME/.tmux/plugins/tpm/bin"
-  echo '#!/bin/bash' > "$HOME/.tmux/plugins/tpm/bin/install_plugins"
-  chmod +x "$HOME/.tmux/plugins/tpm/bin/install_plugins"
+  # Both plugins present with .git inside → clone_if_missing skips, no git call.
+  mkdir -p "$HOME/.tmux/plugins/tmux-yank/.git" \
+    "$HOME/.tmux/plugins/catppuccin/tmux/.git"
 
   local output
   output=$(install_tmux_plugins 2>&1)
 
-  assert_contains "$output" "Already installed TPM"
+  assert_contains "$output" "Finished installing tmux plugins"
 }
 
 test_install_extras_dry_run() {

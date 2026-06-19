@@ -59,17 +59,13 @@ function install_zsh_plugins {
 
 function install_tmux_plugins {
   info "Installing tmux plugins..."
+  # No plugin manager: tmux-sensible and tmux-pain-control are inlined in
+  # .tmux.conf, so we only clone the two plugins that ship runnable scripts
+  # (tmux-yank, catppuccin) and `run` them directly from .tmux.conf.
   if [[ "$DRY" == "false" ]]; then
-    info "Installing TPM..."
-    if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
-      git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm" \
-        || fail "Failed to clone TPM"
-      "$HOME/.tmux/plugins/tpm/bin/install_plugins"
-    else
-      info "Already installed TPM"
-    fi
-    success "Finished installing TPM"
-
+    clone_if_missing "tmux-yank" \
+      "https://github.com/tmux-plugins/tmux-yank.git" \
+      "$HOME/.tmux/plugins/tmux-yank"
     clone_if_missing "catppuccin for tmux" \
       "https://github.com/catppuccin/tmux.git" \
       "$HOME/.tmux/plugins/catppuccin/tmux" \

@@ -75,7 +75,9 @@ function verify {
   done
 
   info "Verifying tmux plugins..."
-  _check_dir "$HOME/.tmux/plugins/tpm" "TPM installed" "TPM not installed"
+  for plugin_dir in "tmux-yank" "catppuccin/tmux"; do
+    _check_dir "$HOME/.tmux/plugins/$plugin_dir" "tmux plugin: $plugin_dir" "tmux plugin missing: $plugin_dir"
+  done
 
   info "Verifying symlinks..."
   for f in "${REQUIRED_SYMLINKS[@]}"; do

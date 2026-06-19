@@ -185,10 +185,11 @@ test_install_tmux_plugins_dry_run() {
   assert_contains "$output" "Installing tmux plugins"
 }
 
-test_install_tmux_plugins_tpm_already_installed() {
-  # TPM + catppuccin already installed (with .git inside, marking complete
-  # clones) → no git calls expected.
-  mkdir -p "$HOME/.tmux/plugins/tpm" "$HOME/.tmux/plugins/catppuccin/tmux/.git"
+test_install_tmux_plugins_already_installed() {
+  # tmux-yank + catppuccin already installed (with .git inside, marking
+  # complete clones) → no git calls expected. No plugin manager involved.
+  mkdir -p "$HOME/.tmux/plugins/tmux-yank/.git" \
+    "$HOME/.tmux/plugins/catppuccin/tmux/.git"
   mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
 
   local output exit_code=0
@@ -197,5 +198,5 @@ test_install_tmux_plugins_tpm_already_installed() {
   if [ "$exit_code" -ne 0 ]; then
     echo "  FAILED: install_tmux_plugins should not re-clone ($output)" >> "$ERROR_FILE"
   fi
-  assert_contains "$output" "Already installed TPM"
+  assert_contains "$output" "Finished installing tmux plugins"
 }

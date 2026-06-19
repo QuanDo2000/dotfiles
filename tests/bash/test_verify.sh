@@ -88,12 +88,12 @@ test_verify_zsh_plugin_detected() {
   assert_contains "$output" "zsh plugin: zsh-autosuggestions"
 }
 
-test_verify_tpm_detected() {
+test_verify_tmux_plugin_detected() {
   mkdir -p "$DOTFILES_DIR"
-  mkdir -p "$HOME/.tmux/plugins/tpm"
+  mkdir -p "$HOME/.tmux/plugins/tmux-yank"
   local output
   output=$(verify 2>&1) || true
-  assert_contains "$output" "TPM installed"
+  assert_contains "$output" "tmux plugin: tmux-yank"
 }
 
 test_verify_symlink_wrong_target() {

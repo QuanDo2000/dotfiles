@@ -23,13 +23,13 @@ export HYPRSHOT_DIR=$HOME/hyprshot
 ZSH_THEME="ys"
 
 plugins=(
-    git gitignore
+    git
     vi-mode
     tmux
     fzf fzf-tab
     zsh-autosuggestions
     fast-syntax-highlighting
-    aliases alias-finder
+    alias-finder
     colored-man-pages
     zoxide
 )
