@@ -242,7 +242,7 @@ function setup_codex {
 # xz-utils: required to extract the Zig .tar.xz in `dotfile languages zig`.
 DEBIAN_PACKAGES=(
   build-essential curl git xz-utils
-  unzip zsh vim tmux fontconfig fzf fd-find ripgrep nmap
+  unzip zsh tmux fontconfig fzf fd-find ripgrep
   procps file zoxide
 )
 
@@ -280,10 +280,10 @@ function install_debian {
 }
 
 ARCH_PACKAGES=(
-  base-devel curl wget git unzip zsh vim tmux fontconfig
+  base-devel curl wget git unzip zsh tmux fontconfig
   fzf fd ripgrep lazygit ttf-firacode-nerd zoxide
   gnupg wl-clipboard openssh lua51 luarocks nvm
-  tree-sitter-cli nmap jujutsu
+  tree-sitter-cli jujutsu
 )
 
 function update_arch {
@@ -313,8 +313,8 @@ function install_arch {
 }
 
 MAC_BREW_PACKAGES=(
-  bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font
-  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide nmap jj
+  bash wget tmux git neovim fzf fd ripgrep gcc font-fira-code-nerd-font
+  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide jj
 )
 MAC_BREW_CASKS=(ghostty)
 

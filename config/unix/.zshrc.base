@@ -6,6 +6,9 @@ export SHELL=$(which zsh)
 export EDITOR=nvim
 export GPG_TTY=$(tty)
 
+# vim is no longer installed locally (neovim is the editor); keep muscle memory.
+alias vim=nvim
+
 # Hyprshot
 [ ! -d $HOME/hyprshot ] && mkdir -p $HOME/hyprshot
 export HYPRSHOT_DIR=$HOME/hyprshot
