@@ -1,6 +1,12 @@
 #!/bin/bash
 set -eo pipefail
 
+# Echo the log verb for a setup_* installer: "Updating" when $1 is "true"
+# (i.e. --update mode), otherwise "Installing".
+_action_verb() {
+  if [[ "${1:-}" == "true" ]]; then echo "Updating"; else echo "Installing"; fi
+}
+
 # ---------------------------------------------------------------------------
 # Generic GitHub-release download helpers
 #
@@ -193,7 +199,7 @@ function setup_neovim {
   fi
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} neovim..."
+  info "$(_action_verb "$update") neovim..."
   if [[ "$DRY" == "false" ]]; then
     if [[ "$update" == "false" ]] && command -v nvim >/dev/null 2>&1; then
       info "Already installed neovim"
@@ -280,7 +286,7 @@ _lazygit_arch() {
 function setup_lazygit {
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} lazygit..."
+  info "$(_action_verb "$update") lazygit..."
   if [[ "$DRY" == "false" ]]; then
     if [[ "$update" == "false" ]] && command -v lazygit >/dev/null 2>&1; then
       info "Already installed lazygit"
@@ -316,7 +322,7 @@ _jj_arch() {
 function setup_jj {
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} jj..."
+  info "$(_action_verb "$update") jj..."
   if [[ "$DRY" == "false" ]]; then
     if [[ "$update" == "false" ]] && command -v jj >/dev/null 2>&1; then
       info "Already installed jj"
@@ -342,7 +348,7 @@ function setup_jj {
 function setup_opencode {
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} OpenCode..."
+  info "$(_action_verb "$update") OpenCode..."
   if [[ "$DRY" == "false" ]]; then
     if command -v opencode >/dev/null 2>&1; then
       if [[ "$update" == "true" ]]; then
@@ -364,7 +370,7 @@ function setup_opencode {
 function setup_bun {
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} bun..."
+  info "$(_action_verb "$update") bun..."
   if [[ "$DRY" == "false" ]]; then
     if command -v bun >/dev/null 2>&1; then
       if [[ "$update" == "true" ]]; then
@@ -388,7 +394,7 @@ function setup_bun {
 function setup_codex {
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} Codex..."
+  info "$(_action_verb "$update") Codex..."
   if [[ "$DRY" == "false" ]]; then
     if command -v codex >/dev/null 2>&1 && [[ "$update" == "false" ]]; then
       info "Already installed Codex"
