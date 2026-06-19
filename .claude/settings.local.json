@@ -144,7 +144,13 @@
       "Bash(awk '/function install_mac/,/^}/' scripts/packages.sh)",
       "Bash(awk '/function install_debian/,/^}/')",
       "Bash(zsh -n /home/quando/dotfiles/config/unix/.zshrc)",
-      "Bash(chmod +x /home/quando/dotfiles/config/mac/bin/caf)"
+      "Bash(chmod +x /home/quando/dotfiles/config/mac/bin/caf)",
+      "Bash(curl -sf https://api.github.com/repos/jesseduffield/lazygit/releases/latest)",
+      "Bash(curl -sf https://api.github.com/repos/jj-vcs/jj/releases/latest)",
+      "Bash(curl -sfL https://api.github.com/repos/jesseduffield/lazygit/releases/latest)",
+      "Bash(zsh -n config/unix/.zshrc.base)",
+      "Bash(echo \"=== rebase exit: $? ===\")",
+      "Bash(./dotfile -d ai)"
     ]
   }
 }
