@@ -150,7 +150,14 @@
       "Bash(curl -sfL https://api.github.com/repos/jesseduffield/lazygit/releases/latest)",
       "Bash(zsh -n config/unix/.zshrc.base)",
       "Bash(echo \"=== rebase exit: $? ===\")",
-      "Bash(./dotfile -d ai)"
+      "Bash(./dotfile -d ai)",
+      "Bash(command -v shellcheck)",
+      "Bash(gh run *)",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/tmux-plugins/tmux-sensible/master/sensible.tmux)",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/tmux-plugins/tmux-pain-control/master/pain_control.tmux)",
+      "Bash(awk '/^main\\\\\\(\\\\\\) \\\\{/,/^}/')",
+      "Bash(command -v tmux)",
+      "Bash(tmux -L dotfiletest -f /dev/null start-server \\\\; source-file config/unix/.tmux.conf)"
     ]
   }
 }
