@@ -189,47 +189,47 @@ test_setup_yay_already_installed() {
 }
 
 # ---------------------------------------------------------------------------
-# setup_brew_linux
+# setup_lazygit (Debian GitHub-release installer)
 # ---------------------------------------------------------------------------
 
-test_setup_brew_linux_dry_run() {
+test_setup_lazygit_dry_run() {
   DRY=true
   local output
-  output=$(setup_brew_linux 2>&1)
+  output=$(setup_lazygit 2>&1)
 
-  assert_contains "$output" "Homebrew"
-  assert_contains "$output" "Finished Homebrew"
+  assert_contains "$output" "lazygit"
+  assert_contains "$output" "Finished lazygit"
 }
 
-test_setup_brew_linux_already_installed() {
+test_setup_lazygit_already_installed() {
   DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/brew"
-  chmod +x "$HOME/.local/bin/brew"
+  echo '#!/bin/bash' > "$HOME/.local/bin/lazygit"
+  chmod +x "$HOME/.local/bin/lazygit"
   export PATH="$HOME/.local/bin:$PATH"
 
   local output
-  output=$(setup_brew_linux 2>&1)
+  output=$(setup_lazygit 2>&1)
 
-  assert_contains "$output" "Already installed Homebrew"
+  assert_contains "$output" "Already installed lazygit"
 }
 
-test_setup_brew_linux_update_dry_run() {
+test_setup_lazygit_update_dry_run() {
   DRY=true
   local output
-  output=$(setup_brew_linux --update 2>&1)
+  output=$(setup_lazygit --update 2>&1)
 
-  assert_contains "$output" "Homebrew"
-  assert_contains "$output" "Finished Homebrew"
+  assert_contains "$output" "lazygit"
+  assert_contains "$output" "Finished lazygit"
 }
 
-test_setup_brew_linux_update_does_not_skip() {
+test_setup_lazygit_update_does_not_skip() {
   DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/brew"
-  chmod +x "$HOME/.local/bin/brew"
+  echo '#!/bin/bash' > "$HOME/.local/bin/lazygit"
+  chmod +x "$HOME/.local/bin/lazygit"
   export PATH="$HOME/.local/bin:$PATH"
 
   local output
-  output=$(setup_brew_linux --update 2>&1)
+  output=$(setup_lazygit --update 2>&1)
 
   if [[ "$output" == *"Already installed"* ]]; then
     echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
@@ -237,119 +237,47 @@ test_setup_brew_linux_update_does_not_skip() {
 }
 
 # ---------------------------------------------------------------------------
-# setup_pwsh
+# setup_jj (Debian GitHub-release installer)
 # ---------------------------------------------------------------------------
 
-test_setup_pwsh_skips_on_mac() {
-  detect_platform() { echo "mac"; }
+test_setup_jj_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_jj 2>&1)
+
+  assert_contains "$output" "jj"
+  assert_contains "$output" "Finished jj"
+}
+
+test_setup_jj_already_installed() {
   DRY=false
-  local output
-  output=$(setup_pwsh 2>&1)
-
-  # Mac path uses brew casks via install_mac; setup_pwsh itself is a no-op.
-  assert_equals "" "$output"
-}
-
-test_setup_pwsh_dry_run_debian() {
-  detect_platform() { echo "debian"; }
-  DRY=true
-  local output
-  output=$(setup_pwsh 2>&1)
-
-  assert_contains "$output" "pwsh"
-  assert_contains "$output" "Finished pwsh"
-}
-
-test_setup_pwsh_already_installed() {
-  detect_platform() { echo "debian"; }
-  DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/pwsh"
-  chmod +x "$HOME/.local/bin/pwsh"
+  echo '#!/bin/bash' > "$HOME/.local/bin/jj"
+  chmod +x "$HOME/.local/bin/jj"
   export PATH="$HOME/.local/bin:$PATH"
 
   local output
-  output=$(setup_pwsh 2>&1)
+  output=$(setup_jj 2>&1)
 
-  assert_contains "$output" "Already installed pwsh"
+  assert_contains "$output" "Already installed jj"
 }
 
-test_setup_pwsh_update_dry_run() {
-  detect_platform() { echo "debian"; }
+test_setup_jj_update_dry_run() {
   DRY=true
   local output
-  output=$(setup_pwsh --update 2>&1)
+  output=$(setup_jj --update 2>&1)
 
-  assert_contains "$output" "pwsh"
-  assert_contains "$output" "Finished pwsh"
+  assert_contains "$output" "jj"
+  assert_contains "$output" "Finished jj"
 }
 
-test_setup_pwsh_update_does_not_skip() {
-  detect_platform() { echo "debian"; }
+test_setup_jj_update_does_not_skip() {
   DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/pwsh"
-  chmod +x "$HOME/.local/bin/pwsh"
+  echo '#!/bin/bash' > "$HOME/.local/bin/jj"
+  chmod +x "$HOME/.local/bin/jj"
   export PATH="$HOME/.local/bin:$PATH"
 
   local output
-  output=$(setup_pwsh --update 2>&1)
-
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
-}
-
-test_setup_pwsh_dry_run_arch() {
-  detect_platform() { echo "arch"; }
-  DRY=true
-  local output
-  output=$(setup_pwsh 2>&1)
-
-  assert_contains "$output" "pwsh"
-  assert_contains "$output" "Finished pwsh"
-}
-
-# ---------------------------------------------------------------------------
-# setup_claude_code
-# ---------------------------------------------------------------------------
-
-test_setup_claude_code_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_claude_code 2>&1)
-
-  assert_contains "$output" "Claude Code"
-  assert_contains "$output" "Finished Claude Code"
-}
-
-test_setup_claude_code_already_installed() {
-  DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/claude"
-  chmod +x "$HOME/.local/bin/claude"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_claude_code 2>&1)
-
-  assert_contains "$output" "Already installed Claude Code"
-}
-
-test_setup_claude_code_update_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_claude_code --update 2>&1)
-
-  assert_contains "$output" "Claude Code"
-  assert_contains "$output" "Finished Claude Code"
-}
-
-test_setup_claude_code_update_does_not_skip() {
-  DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/claude"
-  chmod +x "$HOME/.local/bin/claude"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_claude_code --update 2>&1)
+  output=$(setup_jj --update 2>&1)
 
   if [[ "$output" == *"Already installed"* ]]; then
     echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"

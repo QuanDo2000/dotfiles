@@ -80,7 +80,7 @@ Commands:
   symlinks    Create symlinks only
   obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank). LANG selects one.
-  ai          Install OpenCode, Claude Code, and Codex
+  ai          Install OpenCode and Codex
   verify      Verify installation
 
 Options:

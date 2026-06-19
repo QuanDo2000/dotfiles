@@ -97,140 +97,77 @@ function setup_yay {
   success "Finished yay"
 }
 
-# Install or update pwsh (PowerShell 7+). Dispatches by platform:
-#   - debian: Microsoft apt repo via packages-microsoft-prod.deb
-#   - arch:   yay -S powershell-bin (AUR)
-#   - mac:    no-op (handled by MAC_BREW_CASKS)
-# Usage: setup_pwsh [--update]
-function setup_pwsh {
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-
-  local platform
-  platform="$(detect_platform)"
-
-  case "$platform" in
-    mac) return ;;
-    debian|arch) ;;
-    *) return ;;
+# Map `uname -m` to the arch slug used by lazygit release assets.
+_lazygit_arch() {
+  case "$(uname -m)" in
+    x86_64)        echo "x86_64" ;;
+    aarch64|arm64) echo "arm64" ;;
+    *) fail "Unsupported arch for lazygit: $(uname -m)" ;;
   esac
-
-  info "${update:+Updating}${update:- Installing} pwsh..."
-  if [[ "$DRY" == "false" ]]; then
-    if [[ "$update" == "false" ]] && command -v pwsh >/dev/null 2>&1; then
-      info "Already installed pwsh"
-      success "Finished pwsh"
-      return
-    fi
-    case "$platform" in
-      debian) _setup_pwsh_debian "$update" ;;
-      arch)   _setup_pwsh_arch "$update" ;;
-    esac
-  fi
-  success "Finished pwsh"
 }
 
-# Install or update pwsh on Debian/Ubuntu via Microsoft's apt repo.
-# $1 = "true" for --update mode (skip repo bootstrap).
-_setup_pwsh_debian() {
-  local update="$1"
-  local ms_list="/etc/apt/sources.list.d/microsoft-prod.list"
-
-  if [[ ! -f "$ms_list" ]]; then
-    local id="" version_id=""
-    # shellcheck disable=SC1091
-    . /etc/os-release
-    id="${ID:-}"
-    version_id="${VERSION_ID:-}"
-    local distro=""
-    case "$id" in
-      debian) distro="debian" ;;
-      ubuntu) distro="ubuntu" ;;
-      *)
-        if [[ "${ID_LIKE:-}" == *ubuntu* ]]; then distro="ubuntu"
-        elif [[ "${ID_LIKE:-}" == *debian* ]]; then distro="debian"
-        fi
-        ;;
-    esac
-    if [[ -z "$distro" || -z "$version_id" ]]; then
-      info "pwsh: could not detect Debian/Ubuntu variant (ID=$id VERSION_ID=$version_id); skipping"
-      return
-    fi
-    local deb_url="https://packages.microsoft.com/config/${distro}/${version_id}/packages-microsoft-prod.deb"
-    local tmp
-    tmp="$(mktemp -t packages-microsoft-prod.XXXXXX.deb)" || fail "Failed to create temp file"
-    # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
-    # EXIT, every fail() in this function would leak $tmp under /tmp.
-    # shellcheck disable=SC2064
-    trap "rm -f '$tmp'" EXIT RETURN
-    http_get_retry "$deb_url" "$tmp" \
-      || fail "Failed to download packages-microsoft-prod.deb from $deb_url"
-    sudo dpkg -i "$tmp" || fail "Failed to install packages-microsoft-prod.deb"
-    sudo apt update -y || fail "Failed to apt update after adding Microsoft repo"
-  fi
-
-  sudo apt install -y powershell || fail "Failed to install powershell via apt"
-}
-
-# Install or update pwsh on Arch via yay (AUR: powershell-bin).
-# $1 = "true" for --update mode (no --needed, so yay re-fetches).
-_setup_pwsh_arch() {
-  local update="$1"
-  command -v yay >/dev/null 2>&1 || fail "yay required for pwsh on Arch (run setup_yay first)"
-  if [[ "$update" == "true" ]]; then
-    yay -S --noconfirm powershell-bin || fail "Failed to update powershell-bin via yay"
-  else
-    yay -S --needed --noconfirm powershell-bin || fail "Failed to install powershell-bin via yay"
-  fi
-}
-
-# Bootstrap Homebrew on Linux. Idempotent. Sources brew's shellenv so the rest
-# of the script run can use `brew` directly. In --update mode, also runs
-# `brew update && brew upgrade` for all linuxbrew-managed formulae.
-# Usage: setup_brew_linux [--update]
-function setup_brew_linux {
+# Install or update lazygit from its GitHub releases into ~/.local/bin.
+# Debian only — Arch installs it via pacman, macOS via brew. Idempotent: in
+# install mode, no-op if `lazygit` is already on PATH; --update always fetches
+# the latest. Reuses _install_from_github_release (sha256-verified) and
+# ensure_jq from languages.sh. Usage: setup_lazygit [--update]
+function setup_lazygit {
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} Homebrew (linuxbrew)..."
+  info "${update:+Updating}${update:- Installing} lazygit..."
   if [[ "$DRY" == "false" ]]; then
-    if ! command -v brew >/dev/null 2>&1; then
-      if [[ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
-        NONINTERACTIVE=1 /bin/bash -c \
-          "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
-          || fail "Failed to install Homebrew"
-      fi
-      eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-    elif [[ "$update" == "false" ]]; then
-      info "Already installed Homebrew"
+    if [[ "$update" == "false" ]] && command -v lazygit >/dev/null 2>&1; then
+      info "Already installed lazygit"
+      success "Finished lazygit"
+      return
     fi
-    if [[ "$update" == "true" ]]; then
-      brew update || fail "Failed to update Homebrew"
-      brew upgrade || fail "Failed to upgrade Homebrew packages"
-    fi
+    ensure_jq
+    local release_json tag
+    release_json="$(http_get_retry https://api.github.com/repos/jesseduffield/lazygit/releases/latest)" \
+      || fail "Failed to fetch lazygit releases/latest"
+    tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
+    [[ -n "$tag" ]] || fail "Could not read tag_name from lazygit releases/latest"
+    # lazygit asset drops the leading 'v' from the tag (e.g. lazygit_0.44.2_Linux_x86_64.tar.gz).
+    local asset="lazygit_${tag#v}_Linux_$(_lazygit_arch).tar.gz"
+    _install_from_github_release "lazygit" "lazygit" "$release_json" "$tag" "$asset" "flat-binary" "lazygit"
   fi
-  success "Finished Homebrew"
+  success "Finished lazygit"
 }
 
-# Install or update Claude Code via the official install script. Self-updates
-# via `claude update`. Idempotent: no-op if `claude` is on PATH (unless
-# --update is passed). Usage: setup_claude_code [--update]
-function setup_claude_code {
+# Map `uname -m` to the arch slug used by jj (jujutsu) release assets.
+_jj_arch() {
+  case "$(uname -m)" in
+    x86_64)        echo "x86_64" ;;
+    aarch64|arm64) echo "aarch64" ;;
+    *) fail "Unsupported arch for jj: $(uname -m)" ;;
+  esac
+}
+
+# Install or update jj (jujutsu) from its GitHub releases into ~/.local/bin.
+# Debian only — Arch installs it via pacman (jujutsu), macOS via brew (jj).
+# Idempotent: in install mode, no-op if `jj` is already on PATH; --update
+# always fetches the latest. Usage: setup_jj [--update]
+function setup_jj {
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
-  info "${update:+Updating}${update:- Installing} Claude Code..."
+  info "${update:+Updating}${update:- Installing} jj..."
   if [[ "$DRY" == "false" ]]; then
-    if command -v claude >/dev/null 2>&1; then
-      if [[ "$update" == "true" ]]; then
-        claude update || fail "Failed to update Claude Code"
-      else
-        info "Already installed Claude Code"
-      fi
-    else
-      curl -fsSL https://claude.ai/install.sh | bash \
-        || fail "Failed to install Claude Code"
+    if [[ "$update" == "false" ]] && command -v jj >/dev/null 2>&1; then
+      info "Already installed jj"
+      success "Finished jj"
+      return
     fi
+    ensure_jq
+    local release_json tag
+    release_json="$(http_get_retry https://api.github.com/repos/jj-vcs/jj/releases/latest)" \
+      || fail "Failed to fetch jj releases/latest"
+    tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
+    [[ -n "$tag" ]] || fail "Could not read tag_name from jj releases/latest"
+    # jj asset keeps the leading 'v' (e.g. jj-v0.42.0-x86_64-unknown-linux-musl.tar.gz).
+    local asset="jj-${tag}-$(_jj_arch)-unknown-linux-musl.tar.gz"
+    _install_from_github_release "jj" "jj" "$release_json" "$tag" "$asset" "flat-binary" "jj"
   fi
-  success "Finished Claude Code"
+  success "Finished jj"
 }
 
 # Install or update OpenCode via the official install script. Self-updates
@@ -301,17 +238,13 @@ function setup_codex {
   success "Finished Codex"
 }
 
+# build-essential: nvim-treesitter compiles parsers with cc.
+# xz-utils: required to extract the Zig .tar.xz in `dotfile languages zig`.
 DEBIAN_PACKAGES=(
-  build-essential libssl-dev zlib1g-dev libbz2-dev
-  libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils
-  tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+  build-essential curl git xz-utils
   unzip zsh vim tmux fontconfig fzf fd-find ripgrep nmap
-  procps file
+  procps file zoxide
 )
-
-# Packages installed via linuxbrew on Debian/Ubuntu. Use this list for tools
-# that aren't in apt (or are too stale there).
-DEBIAN_BREW_PACKAGES=(jj lazygit zoxide)
 
 function update_debian {
   info "Updating packages for Debian..."
@@ -320,9 +253,8 @@ function update_debian {
     sudo apt upgrade -y || fail "Failed to upgrade apt packages"
 
     setup_neovim --update
-    setup_pwsh --update
-    setup_brew_linux --update
-    setup_claude_code --update
+    setup_lazygit --update
+    setup_jj --update
     setup_opencode --update
     setup_codex --update
   fi
@@ -339,11 +271,8 @@ function install_debian {
     setup_neovim
 
     setup_fdfind
-    setup_pwsh
-    setup_brew_linux
-    brew install "${DEBIAN_BREW_PACKAGES[@]}" \
-      || fail "Failed to install Debian brew packages"
-    setup_claude_code
+    setup_lazygit
+    setup_jj
     setup_opencode
     setup_codex
   fi
@@ -363,8 +292,6 @@ function update_arch {
     sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
 
     setup_neovim --update
-    setup_pwsh --update
-    setup_claude_code --update
     setup_opencode --update
     setup_codex --update
   fi
@@ -379,9 +306,6 @@ function install_arch {
 
     setup_neovim
     setup_fdfind
-    setup_yay
-    setup_pwsh
-    setup_claude_code
     setup_opencode
     setup_codex
   fi
@@ -392,14 +316,13 @@ MAC_BREW_PACKAGES=(
   bash wget tmux git vim neovim fzf fd ripgrep gcc font-fira-code-nerd-font
   gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide nmap jj
 )
-MAC_BREW_CASKS=(ghostty powershell)
+MAC_BREW_CASKS=(ghostty)
 
 function update_mac {
   info "Updating packages for Mac..."
   if [[ "$DRY" == "false" ]]; then
     brew update || fail "Failed to update brew"
     brew upgrade || fail "Failed to upgrade brew packages"
-    setup_claude_code --update
     setup_opencode --update
     setup_codex --update
   fi
@@ -414,7 +337,6 @@ function install_mac {
     fi
     brew install "${MAC_BREW_PACKAGES[@]}"
     brew install --cask "${MAC_BREW_CASKS[@]}"
-    setup_claude_code
     setup_opencode
     setup_codex
   fi
