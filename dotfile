@@ -45,7 +45,6 @@ source "$SCRIPTS_DIR/symlinks.sh"
 source "$SCRIPTS_DIR/verify.sh"
 source "$SCRIPTS_DIR/obsidian.sh"
 source "$SCRIPTS_DIR/languages.sh"
-source "$SCRIPTS_DIR/ai.sh"
 
 function update_repo {
   info "Updating dotfiles repo..."

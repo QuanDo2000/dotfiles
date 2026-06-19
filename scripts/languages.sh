@@ -1,6 +1,9 @@
 #!/bin/bash
 # Language toolchain installers (Linux + macOS only).
-# Sourced by `dotfile`. Requires utils.sh, platform.sh, packages.sh already sourced.
+# Sourced by `dotfile`. Requires utils.sh, platform.sh, packages.sh already
+# sourced — the generic GitHub-release helpers (_install_from_github_release,
+# _install_into_local, _assert_single_top_dir, _sha256, _strip_sha256_prefix,
+# ensure_jq) live in packages.sh.
 set -eo pipefail
 
 # Zig signing public key. Pinned to defend against MITM during install.
@@ -14,15 +17,6 @@ set -eo pipefail
 #   3. Update the "Copied:" date in this comment.
 ZIG_PUBKEY="RWSGOq2NVecA2UPNdBUZykf1CCb147pkmdtYxgb3Ti+JO/wCYvhbAb/U"
 
-# Portable sha256 of a file. Linux ships sha256sum; macOS ships shasum.
-_sha256() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" | awk '{print $1}'
-  else
-    shasum -a 256 "$1" | awk '{print $1}'
-  fi
-}
-
 # Portable line shuffle. Reads stdin, prints lines in random order on stdout.
 # `shuf` is GNU coreutils — present on Linux but not stock macOS, so we use awk.
 _shuffle_lines() {
@@ -33,135 +27,6 @@ _shuffle_lines() {
     }
     for (i = 1; i <= NR; i++) print lines[i]
   }'
-}
-
-# Assert that exactly one top-level directory exists under <extract_dir>.
-# Prints the resolved path on stdout. Fails with $display_name in the message
-# when the count is not 1. Uses a portable bash 3.2 loop (no mapfile/readarray).
-_assert_single_top_dir() {
-  local extract_dir="$1" display_name="$2"
-  local extracted="" extra_dir extracted_count=0
-  while IFS= read -r extra_dir; do
-    extracted_count=$((extracted_count + 1))
-    extracted="$extra_dir"
-  done < <(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d)
-  if [[ "$extracted_count" -ne 1 ]]; then
-    fail "$display_name tarball extracted to unexpected layout ($extracted_count top-level dirs)"
-  fi
-  echo "$extracted"
-}
-
-# Move <extracted_path> to ~/.local/<lc_name>-<version>/, symlink the binary
-# into ~/.local/bin/, and remove any prior ~/.local/<lc_name>-* siblings.
-# Idempotent — safe to call repeatedly.
-_install_into_local() {
-  local lc_name="$1" version="$2" bin_name="$3" extracted_path="$4"
-  local target_dir="$HOME/.local/${lc_name}-${version}"
-
-  rm -rf "$target_dir"
-  mv "$extracted_path" "$target_dir" || fail "Failed to move $lc_name into place"
-
-  mkdir -p "$HOME/.local/bin"
-  ln -sfn "$target_dir/$bin_name" "$HOME/.local/bin/$bin_name" \
-    || fail "Failed to create ~/.local/bin/$bin_name symlink"
-
-  # Clean up old versions (any ~/.local/<lc_name>-*/ that isn't the current one).
-  # The [[ -d ]] guard handles the no-matches case where the glob returns
-  # the literal pattern unchanged.
-  local old
-  for old in "$HOME"/.local/"${lc_name}"-*; do
-    [[ -d "$old" && "$old" != "$target_dir" ]] && rm -rf "$old"
-  done
-}
-
-# Strip the "sha256:" prefix from a GitHub release digest string.
-# Fails loudly if the prefix is absent — the caller MUST NOT silently
-# compare against a value of unknown algorithm.
-_strip_sha256_prefix() {
-  local digest="$1"
-  local stripped="${digest#sha256:}"
-  if [[ "$stripped" == "$digest" ]]; then
-    fail "Unexpected digest format: $digest"
-  fi
-  echo "$stripped"
-}
-
-# Install a binary from a GitHub release tarball. Used by install_odin and
-# install_gleam (zig has its own flow with mirror retry + minisign).
-#
-# Args (positional):
-#   $1 display_name  e.g. "Odin"
-#   $2 lc_name       e.g. "odin"
-#   $3 release_json  body of GitHub releases/latest
-#   $4 tag           already-extracted tag_name (e.g. "v1.2.3")
-#   $5 asset         asset filename inside the release (e.g. "odin-...-v1.2.3.tar.gz")
-#   $6 layout        "single-dir" (one top-level dir) or "flat-binary" (binary at root)
-#   $7 bin_name      binary name to symlink (e.g. "odin")
-_install_from_github_release() {
-  local display_name="$1" lc_name="$2" release_json="$3" tag="$4"
-  local asset="$5" layout="$6" bin_name="$7"
-
-  local digest
-  digest="$(echo "$release_json" | jq -r --arg a "$asset" \
-    '.assets[] | select(.name == $a) | .digest // empty')"
-  if [[ -z "$digest" ]]; then
-    fail "Could not find digest for $asset in $display_name releases/latest"
-  fi
-  local expected_sha
-  expected_sha="$(_strip_sha256_prefix "$digest")"
-
-  local asset_url
-  asset_url="$(echo "$release_json" | jq -r --arg a "$asset" \
-    '.assets[] | select(.name == $a) | .browser_download_url // empty')"
-  if [[ -z "$asset_url" ]]; then
-    fail "Could not find download URL for $asset in $display_name releases/latest"
-  fi
-
-  local tmpdir
-  tmpdir="$(mktemp -d)"
-  # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
-  # EXIT, every fail() in this function would leak $tmpdir under /tmp.
-  # shellcheck disable=SC2064
-  trap "rm -rf '$tmpdir'" EXIT RETURN
-
-  local tar_path="$tmpdir/$asset"
-  info "Downloading $asset_url"
-  curl -sfL "$asset_url" -o "$tar_path" \
-    || fail "Failed to download $asset_url"
-
-  local got_sha
-  got_sha="$(_sha256 "$tar_path")"
-  if [[ "$got_sha" != "$expected_sha" ]]; then
-    fail "sha256 mismatch for $asset (expected $expected_sha, got $got_sha)"
-  fi
-
-  local extract_dir="$tmpdir/extract"
-  mkdir -p "$extract_dir"
-  tar -xf "$tar_path" -C "$extract_dir" \
-    || fail "Failed to extract $display_name tarball"
-
-  local extracted
-  case "$layout" in
-    single-dir)
-      extracted="$(_assert_single_top_dir "$extract_dir" "$display_name")"
-      ;;
-    flat-binary)
-      if [[ ! -f "$extract_dir/$bin_name" ]]; then
-        fail "$display_name binary not found at top level of tarball"
-      fi
-      # Wrap the bare binary in a directory so _install_into_local can mv it.
-      mkdir -p "$tmpdir/wrapped"
-      mv "$extract_dir/$bin_name" "$tmpdir/wrapped/$bin_name"
-      extracted="$tmpdir/wrapped"
-      ;;
-    *)
-      fail "_install_from_github_release: unknown layout: $layout"
-      ;;
-  esac
-
-  _install_into_local "$lc_name" "$tag" "$bin_name" "$extracted"
-
-  success "Installed $display_name $tag"
 }
 
 # Map (uname -s, uname -m) to Zig's tarball arch slug.
@@ -196,26 +61,6 @@ gleam_target_triple() {
     Darwin/aarch64)      echo "aarch64-apple-darwin" ;;
     *) fail "Unsupported platform for gleam install: $os/$arch" ;;
   esac
-}
-
-# Install jq via the platform package manager if missing.
-# Called by install_zig before zig_latest_stable runs, so jq is guaranteed
-# available at the point where index.json gets parsed.
-ensure_jq() {
-  if command -v jq >/dev/null 2>&1; then
-    return 0
-  fi
-  info "jq not found; installing..."
-  if [[ "$DRY" == "true" ]]; then
-    return 0
-  fi
-  case "$(detect_platform)" in
-    debian) sudo apt install -y jq || fail "Failed to install jq" ;;
-    arch)   sudo pacman -S --needed --noconfirm jq || fail "Failed to install jq" ;;
-    mac)    brew install jq || fail "Failed to install jq" ;;
-    *)      fail "Cannot install jq on this platform" ;;
-  esac
-  success "Installed jq"
 }
 
 # Print the highest stable Zig version from the official index.json.

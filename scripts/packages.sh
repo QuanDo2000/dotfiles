@@ -1,6 +1,172 @@
 #!/bin/bash
 set -eo pipefail
 
+# ---------------------------------------------------------------------------
+# Generic GitHub-release download helpers
+#
+# Shared by setup_neovim/setup_lazygit/setup_jj here and by the language
+# installers in languages.sh (install_zig/odin/gleam). Defined in packages.sh
+# because it is sourced before languages.sh, keeping the dependency direction
+# one-way (languages.sh -> packages.sh).
+# ---------------------------------------------------------------------------
+
+# Portable sha256 of a file. Linux ships sha256sum; macOS ships shasum.
+_sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
+}
+
+# Assert that exactly one top-level directory exists under <extract_dir>.
+# Prints the resolved path on stdout. Fails with $display_name in the message
+# when the count is not 1. Uses a portable bash 3.2 loop (no mapfile/readarray).
+_assert_single_top_dir() {
+  local extract_dir="$1" display_name="$2"
+  local extracted="" extra_dir extracted_count=0
+  while IFS= read -r extra_dir; do
+    extracted_count=$((extracted_count + 1))
+    extracted="$extra_dir"
+  done < <(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d)
+  if [[ "$extracted_count" -ne 1 ]]; then
+    fail "$display_name tarball extracted to unexpected layout ($extracted_count top-level dirs)"
+  fi
+  echo "$extracted"
+}
+
+# Move <extracted_path> to ~/.local/<lc_name>-<version>/, symlink the binary
+# into ~/.local/bin/, and remove any prior ~/.local/<lc_name>-* siblings.
+# Idempotent — safe to call repeatedly.
+_install_into_local() {
+  local lc_name="$1" version="$2" bin_name="$3" extracted_path="$4"
+  local target_dir="$HOME/.local/${lc_name}-${version}"
+
+  rm -rf "$target_dir"
+  mv "$extracted_path" "$target_dir" || fail "Failed to move $lc_name into place"
+
+  mkdir -p "$HOME/.local/bin"
+  ln -sfn "$target_dir/$bin_name" "$HOME/.local/bin/$bin_name" \
+    || fail "Failed to create ~/.local/bin/$bin_name symlink"
+
+  # Clean up old versions (any ~/.local/<lc_name>-*/ that isn't the current one).
+  # The [[ -d ]] guard handles the no-matches case where the glob returns
+  # the literal pattern unchanged.
+  local old
+  for old in "$HOME"/.local/"${lc_name}"-*; do
+    [[ -d "$old" && "$old" != "$target_dir" ]] && rm -rf "$old"
+  done
+}
+
+# Strip the "sha256:" prefix from a GitHub release digest string.
+# Fails loudly if the prefix is absent — the caller MUST NOT silently
+# compare against a value of unknown algorithm.
+_strip_sha256_prefix() {
+  local digest="$1"
+  local stripped="${digest#sha256:}"
+  if [[ "$stripped" == "$digest" ]]; then
+    fail "Unexpected digest format: $digest"
+  fi
+  echo "$stripped"
+}
+
+# Install a binary from a GitHub release tarball. Used by install_odin and
+# install_gleam (zig has its own flow with mirror retry + minisign).
+#
+# Args (positional):
+#   $1 display_name  e.g. "Odin"
+#   $2 lc_name       e.g. "odin"
+#   $3 release_json  body of GitHub releases/latest
+#   $4 tag           already-extracted tag_name (e.g. "v1.2.3")
+#   $5 asset         asset filename inside the release (e.g. "odin-...-v1.2.3.tar.gz")
+#   $6 layout        "single-dir" (one top-level dir) or "flat-binary" (binary at root)
+#   $7 bin_name      binary name to symlink (e.g. "odin")
+_install_from_github_release() {
+  local display_name="$1" lc_name="$2" release_json="$3" tag="$4"
+  local asset="$5" layout="$6" bin_name="$7"
+
+  local digest
+  digest="$(echo "$release_json" | jq -r --arg a "$asset" \
+    '.assets[] | select(.name == $a) | .digest // empty')"
+  if [[ -z "$digest" ]]; then
+    fail "Could not find digest for $asset in $display_name releases/latest"
+  fi
+  local expected_sha
+  expected_sha="$(_strip_sha256_prefix "$digest")"
+
+  local asset_url
+  asset_url="$(echo "$release_json" | jq -r --arg a "$asset" \
+    '.assets[] | select(.name == $a) | .browser_download_url // empty')"
+  if [[ -z "$asset_url" ]]; then
+    fail "Could not find download URL for $asset in $display_name releases/latest"
+  fi
+
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
+  # EXIT, every fail() in this function would leak $tmpdir under /tmp.
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmpdir'" EXIT RETURN
+
+  local tar_path="$tmpdir/$asset"
+  info "Downloading $asset_url"
+  curl -sfL "$asset_url" -o "$tar_path" \
+    || fail "Failed to download $asset_url"
+
+  local got_sha
+  got_sha="$(_sha256 "$tar_path")"
+  if [[ "$got_sha" != "$expected_sha" ]]; then
+    fail "sha256 mismatch for $asset (expected $expected_sha, got $got_sha)"
+  fi
+
+  local extract_dir="$tmpdir/extract"
+  mkdir -p "$extract_dir"
+  tar -xf "$tar_path" -C "$extract_dir" \
+    || fail "Failed to extract $display_name tarball"
+
+  local extracted
+  case "$layout" in
+    single-dir)
+      extracted="$(_assert_single_top_dir "$extract_dir" "$display_name")"
+      ;;
+    flat-binary)
+      if [[ ! -f "$extract_dir/$bin_name" ]]; then
+        fail "$display_name binary not found at top level of tarball"
+      fi
+      # Wrap the bare binary in a directory so _install_into_local can mv it.
+      mkdir -p "$tmpdir/wrapped"
+      mv "$extract_dir/$bin_name" "$tmpdir/wrapped/$bin_name"
+      extracted="$tmpdir/wrapped"
+      ;;
+    *)
+      fail "_install_from_github_release: unknown layout: $layout"
+      ;;
+  esac
+
+  _install_into_local "$lc_name" "$tag" "$bin_name" "$extracted"
+
+  success "Installed $display_name $tag"
+}
+
+# Install jq via the platform package manager if missing. Required to parse
+# GitHub release metadata (and the Zig index.json).
+ensure_jq() {
+  if command -v jq >/dev/null 2>&1; then
+    return 0
+  fi
+  info "jq not found; installing..."
+  if [[ "$DRY" == "true" ]]; then
+    return 0
+  fi
+  case "$(detect_platform)" in
+    debian) sudo apt install -y jq || fail "Failed to install jq" ;;
+    arch)   sudo pacman -S --needed --noconfirm jq || fail "Failed to install jq" ;;
+    mac)    brew install jq || fail "Failed to install jq" ;;
+    *)      fail "Cannot install jq on this platform" ;;
+  esac
+  success "Installed jq"
+}
+
 function install_font_debian {
   # https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
   info "Installing Fira Code..."
@@ -238,6 +404,13 @@ function setup_codex {
   success "Finished Codex"
 }
 
+# Install the AI coding assistants (OpenCode + Codex). Shared by the full
+# `dotfile all` run and the standalone `dotfile ai` subcommand.
+function install_ai {
+  setup_opencode
+  setup_codex
+}
+
 # build-essential: nvim-treesitter compiles parsers with cc.
 # xz-utils: required to extract the Zig .tar.xz in `dotfile languages zig`.
 DEBIAN_PACKAGES=(
@@ -280,7 +453,7 @@ function install_debian {
 }
 
 ARCH_PACKAGES=(
-  base-devel curl wget git unzip zsh tmux fontconfig
+  base-devel curl git unzip zsh tmux fontconfig
   fzf fd ripgrep lazygit ttf-firacode-nerd zoxide
   gnupg wl-clipboard openssh lua51 luarocks nvm
   tree-sitter-cli jujutsu
@@ -313,7 +486,7 @@ function install_arch {
 }
 
 MAC_BREW_PACKAGES=(
-  bash wget tmux git neovim fzf fd ripgrep gcc font-fira-code-nerd-font
+  bash tmux git neovim fzf fd ripgrep font-fira-code-nerd-font
   gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide jj
 )
 MAC_BREW_CASKS=(ghostty)
