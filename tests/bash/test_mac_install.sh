@@ -82,26 +82,8 @@ test_set_zsh_default_already_zsh() {
 }
 
 # ---------------------------------------------------------------------------
-# install_extras (oh-my-zsh, zsh plugins, tmux plugins)
+# install_extras (zsh plugins, tmux plugins)
 # ---------------------------------------------------------------------------
-
-test_install_oh_my_zsh_dry_run() {
-  local output
-  output=$(install_oh_my_zsh 2>&1)
-
-  assert_contains "$output" "Installing oh-my-zsh"
-  assert_contains "$output" "Finished installing oh-my-zsh"
-}
-
-test_install_oh_my_zsh_already_installed() {
-  DRY=false
-  mkdir -p "$HOME/.oh-my-zsh"
-
-  local output
-  output=$(install_oh_my_zsh 2>&1)
-
-  assert_contains "$output" "oh-my-zsh already installed"
-}
 
 test_install_zsh_plugins_dry_run() {
   local output
@@ -113,27 +95,15 @@ test_install_zsh_plugins_dry_run() {
 
 test_install_zsh_plugins_already_installed() {
   DRY=false
-  local custom="$HOME/.oh-my-zsh/custom/plugins"
-  mkdir -p "$custom/zsh-autosuggestions"
-  mkdir -p "$custom/fast-syntax-highlighting"
-  mkdir -p "$custom/fzf-tab"
+  local plugins_dir="$HOME/.local/share/zsh/plugins"
+  mkdir -p "$plugins_dir/zsh-autosuggestions/.git"
+  mkdir -p "$plugins_dir/fast-syntax-highlighting/.git"
+  mkdir -p "$plugins_dir/fzf-tab/.git"
 
   local output
   output=$(install_zsh_plugins 2>&1)
 
   assert_contains "$output" "Finished installing zsh plugins"
-}
-
-test_install_zsh_plugins_fails_without_omz() {
-  DRY=false
-  rm -rf "$HOME/.oh-my-zsh"
-
-  local exit_code=0
-  (install_zsh_plugins 2>&1) || exit_code=$?
-
-  if [ "$exit_code" -eq 0 ]; then
-    echo "  FAILED: install_zsh_plugins should fail when oh-my-zsh missing" >> "$ERROR_FILE"
-  fi
 }
 
 test_install_tmux_plugins_dry_run() {
@@ -160,7 +130,6 @@ test_install_extras_dry_run() {
   local output
   output=$(install_extras 2>&1)
 
-  assert_contains "$output" "Installing oh-my-zsh"
   assert_contains "$output" "Installing zsh plugins"
   assert_contains "$output" "Installing tmux plugins"
   assert_contains "$output" "Finished installing extras"
@@ -195,7 +164,7 @@ test_setup_dotfiles_dry_run_mac() {
 
   assert_contains "$output" "Setting up dotfiles"
   assert_contains "$output" "Installing packages and programs for Mac"
-  assert_contains "$output" "Installing oh-my-zsh"
+  assert_contains "$output" "Installing zsh plugins"
   assert_contains "$output" "Setting up symlinks"
   assert_contains "$output" "Done!"
 }
@@ -215,7 +184,6 @@ test_dotfile_extras_command_dry() {
   local output
   output=$(bash "$DOTFILE_CMD" --dry extras 2>&1)
 
-  assert_contains "$output" "Installing oh-my-zsh"
   assert_contains "$output" "Installing zsh plugins"
   assert_contains "$output" "Installing tmux plugins"
 }

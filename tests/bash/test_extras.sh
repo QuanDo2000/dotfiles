@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tests for scripts/extras.sh (oh-my-zsh, zsh plugins, tmux plugins).
+# Tests for scripts/extras.sh (zsh plugins, tmux plugins).
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
@@ -26,27 +26,6 @@ mock_cmd() {
 $body
 EOF
   chmod +x "$FAKE_BIN/$name"
-}
-
-# ---------------------------------------------------------------------------
-# install_oh_my_zsh
-# ---------------------------------------------------------------------------
-
-test_install_oh_my_zsh_dry_run() {
-  DRY=true
-  local output
-  output=$(install_oh_my_zsh 2>&1)
-
-  assert_contains "$output" "Installing oh-my-zsh"
-  assert_contains "$output" "Finished installing oh-my-zsh"
-}
-
-test_install_oh_my_zsh_already_installed() {
-  mkdir -p "$HOME/.oh-my-zsh"
-  local output
-  output=$(install_oh_my_zsh 2>&1)
-
-  assert_contains "$output" "already installed"
 }
 
 # ---------------------------------------------------------------------------
@@ -131,19 +110,19 @@ test_install_zsh_plugins_dry_run() {
   assert_contains "$output" "Installing zsh plugins"
 }
 
-test_install_zsh_plugins_fails_without_oh_my_zsh() {
-  # oh-my-zsh dir does not exist → plugin install must fail hard.
-  local exit_code=0
-  (install_zsh_plugins 2>&1) || exit_code=$?
+test_install_zsh_plugins_creates_target_dir() {
+  mock_cmd git 'mkdir -p "$3/.git"; exit 0'
 
-  if [ "$exit_code" -eq 0 ]; then
-    echo "  FAILED: install_zsh_plugins should fail when oh-my-zsh is missing" >> "$ERROR_FILE"
+  (install_zsh_plugins 2>&1) >/dev/null
+
+  local git_dir="$HOME/.local/share/zsh/plugins/zsh-autosuggestions/.git"
+  if [ ! -d "$git_dir" ]; then
+    echo "  FAILED: install_zsh_plugins should create $git_dir" >> "$ERROR_FILE"
   fi
 }
 
 test_install_zsh_plugins_git_clone_failure() {
   # Simulate a flaky network: mock git so `git clone` always exits non-zero.
-  mkdir -p "$HOME/.oh-my-zsh/custom/plugins"
   mock_cmd git 'echo "mock git: $*" >&2; exit 42'
 
   local exit_code=0
@@ -158,10 +137,10 @@ test_install_zsh_plugins_all_already_installed() {
   # With every plugin dir present (with .git inside, marking a complete
   # clone), git should never be invoked — mock git as a canary that fails
   # if called so we notice unwanted re-clones.
-  local custom="$HOME/.oh-my-zsh/custom"
-  mkdir -p "$custom/plugins/zsh-autosuggestions/.git" \
-    "$custom/plugins/fast-syntax-highlighting/.git" \
-    "$custom/plugins/fzf-tab/.git"
+  local plugins_dir="$HOME/.local/share/zsh/plugins"
+  mkdir -p "$plugins_dir/zsh-autosuggestions/.git" \
+    "$plugins_dir/fast-syntax-highlighting/.git" \
+    "$plugins_dir/fzf-tab/.git"
   mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
 
   local output exit_code=0
