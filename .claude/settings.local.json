@@ -163,7 +163,8 @@
       "Bash(luac5.1 -p config/shared/config/nvim/lua/config/options.lua)",
       "Bash(command -v luajit)",
       "Bash(luajit -bl config/shared/config/nvim/lua/config/options.lua)",
-      "Bash(python3 -c \"import json; json.load\\(open\\('config/shared/config/nvim/lazy-lock.json'\\)\\); print\\('JSON OK'\\)\")"
+      "Bash(python3 -c \"import json; json.load\\(open\\('config/shared/config/nvim/lazy-lock.json'\\)\\); print\\('JSON OK'\\)\")",
+      "Bash(gpg --batch --no-tty --clearsign)"
     ]
   }
 }
