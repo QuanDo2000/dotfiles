@@ -1,17 +1,14 @@
 return {
+  -- catppuccin options; lazy.nvim runs require("catppuccin").setup(opts).
   {
     "catppuccin/nvim",
     name = "catppuccin",
-    lazy = false,
-    priority = 1000,
-    config = function()
-      require("catppuccin").setup({
-        flavour = "macchiato",
-        compile = true,
-      })
-      vim.cmd.colorscheme("catppuccin")
-    end,
+    opts = {
+      flavour = "macchiato",
+      compile = true,
+    },
   },
+  -- LazyVim applies the colorscheme (single source of truth).
   {
     "LazyVim/LazyVim",
     opts = {
