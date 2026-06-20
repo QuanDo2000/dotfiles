@@ -73,8 +73,8 @@ Commands:
   all         Run full setup (default)
   update      Update system packages only
   packages    Install system packages only
-  extras      Install oh-my-zsh, zsh plugins, tmux plugins
-  zsh         Install oh-my-zsh and zsh plugins
+  extras      Install zsh plugins, tmux plugins
+  zsh         Install zsh plugins
   tmux        Install tmux plugins
   symlinks    Create symlinks only
   obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
@@ -128,7 +128,6 @@ packages)
   ;;
 extras) install_extras ;;
 zsh)
-  install_oh_my_zsh
   install_zsh_plugins
   ;;
 tmux) install_tmux_plugins ;;

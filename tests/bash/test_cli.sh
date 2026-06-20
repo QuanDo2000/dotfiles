@@ -112,3 +112,12 @@ test_dry_run_languages_jank() {
   is_windows_bash && return 0
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages jank
 }
+
+test_help_no_oh_my_zsh() {
+  local output
+  output=$(bash "$DOTFILE_CMD" --help 2>&1)
+  if [[ "$output" == *"oh-my-zsh"* ]]; then
+    echo "  FAILED: help text should no longer mention oh-my-zsh" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "zsh plugins"
+}
