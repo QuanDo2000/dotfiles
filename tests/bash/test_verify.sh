@@ -64,28 +64,22 @@ test_verify_error_count() {
   assert_contains "$output" "issue(s) found"
 }
 
-test_verify_oh_my_zsh_detected() {
-  mkdir -p "$DOTFILES_DIR"
-  mkdir -p "$HOME/.oh-my-zsh"
-  local output
-  output=$(verify 2>&1) || true
-  assert_contains "$output" "oh-my-zsh installed"
-}
-
-test_verify_oh_my_zsh_missing() {
-  mkdir -p "$DOTFILES_DIR"
-  rm -rf "$HOME/.oh-my-zsh"
-  local output
-  output=$(verify 2>&1) || true
-  assert_contains "$output" "oh-my-zsh not installed"
-}
-
 test_verify_zsh_plugin_detected() {
   mkdir -p "$DOTFILES_DIR"
-  mkdir -p "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+  mkdir -p "$HOME/.local/share/zsh/plugins/zsh-autosuggestions"
   local output
   output=$(verify 2>&1) || true
   assert_contains "$output" "zsh plugin: zsh-autosuggestions"
+}
+
+test_verify_starship_checked() {
+  mkdir -p "$DOTFILES_DIR"
+  local output
+  output=$(verify 2>&1) || true
+  # starship is in REQUIRED_TOOLS, so verify reports it either way.
+  if [[ "$output" != *"starship"* ]]; then
+    echo "  FAILED: verify should check for starship" >> "$ERROR_FILE"
+  fi
 }
 
 test_verify_tmux_plugin_detected() {

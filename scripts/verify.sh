@@ -5,7 +5,7 @@ set -eo pipefail
 
 # Binaries expected on PATH after install_packages has run.
 # Keep in sync with scripts/packages.sh (DEBIAN_PACKAGES / ARCH_PACKAGES / MAC_BREW_PACKAGES).
-REQUIRED_TOOLS=(git zsh nvim tmux fzf fd rg lazygit zoxide)
+REQUIRED_TOOLS=(git zsh nvim tmux fzf fd rg lazygit zoxide starship)
 
 # Symlinked dotfiles under $HOME (resolved to $DOTFILES_DIR/...).
 # Keep in sync with scripts/symlinks.sh and the config/{shared,unix} layout.
@@ -65,13 +65,10 @@ function verify {
     _check_tool "$cmd"
   done
 
-  info "Verifying oh-my-zsh..."
-  _check_dir "$HOME/.oh-my-zsh" "oh-my-zsh installed" "oh-my-zsh not installed"
-
   info "Verifying zsh plugins..."
-  local zsh_custom="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+  local plugins_dir="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
   for plugin in zsh-autosuggestions fast-syntax-highlighting fzf-tab; do
-    _check_dir "$zsh_custom/plugins/$plugin" "zsh plugin: $plugin" "zsh plugin missing: $plugin"
+    _check_dir "$plugins_dir/$plugin" "zsh plugin: $plugin" "zsh plugin missing: $plugin"
   done
 
   info "Verifying tmux plugins..."
