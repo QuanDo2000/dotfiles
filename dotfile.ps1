@@ -371,45 +371,6 @@ function InstallNeovimNightly {
     AddToUserPath $binDir
 }
 
-function Get-GleamTargetTriple {
-    if (-not [System.Environment]::Is64BitOperatingSystem) {
-        Fail "Unsupported architecture for Gleam (need 64-bit Windows)"
-    }
-    return 'x86_64-pc-windows-msvc'
-}
-
-function Get-GleamLatestRelease {
-    param([string]$Json = $null)
-    if (-not $Json) {
-        $obj = InvokeRestMethodRetry -Uri 'https://api.github.com/repos/gleam-lang/gleam/releases/latest'
-        $Json = ConvertTo-Json -InputObject $obj -Depth 100 -Compress
-    }
-    return $Json
-}
-
-function Get-GleamCurrentInstalledVersion {
-    $junction = Join-Path $env:LOCALAPPDATA 'Programs\gleam'
-    if (-not (Test-Path -LiteralPath $junction)) { return '' }
-    $item = Get-Item -LiteralPath $junction -ErrorAction SilentlyContinue
-    if (-not $item -or -not $item.Target) { return '' }
-    $target = if ($item.Target -is [array]) { $item.Target[0] } else { $item.Target }
-    $prefix = Join-Path $env:LOCALAPPDATA 'Programs\gleam-'
-    if ($target.StartsWith($prefix)) {
-        return $target.Substring($prefix.Length)
-    }
-    return ''
-}
-
-function Install-Erlang {
-    if (Get-Command -Name 'erl' -ErrorAction SilentlyContinue) { return }
-    Info 'Erlang/OTP not found; installing...'
-    if ($script:Dry) { return }
-    scoop bucket add main *> $null
-    scoop install main/erlang
-    if ($LASTEXITCODE -ne 0) { Fail 'Failed to install erlang via scoop' }
-    Success 'Installed Erlang/OTP'
-}
-
 function Install-Rebar3 {
     if (Get-Command -Name 'rebar3' -ErrorAction SilentlyContinue) { return }
     Info 'rebar3 not found; installing...'
@@ -422,90 +383,14 @@ function Install-Rebar3 {
 
 function Install-Gleam {
     Info 'Installing Gleam...'
-    Install-Erlang
+    if ($script:Dry) { Success 'Would install gleam via scoop (dry run)'; return }
+    # scoop's gleam manifest depends on erlang, so the runtime comes along.
+    # rebar3 is still needed to build hex deps that use it.
     Install-Rebar3
-
-    $triple = Get-GleamTargetTriple
-    if ($script:Dry) {
-        Info "Would install latest Gleam for $triple"
-        Success 'Finished installing Gleam (dry run)'
-        return
-    }
-
-    $releaseJson = Get-GleamLatestRelease
-    $release = $releaseJson | ConvertFrom-Json
-
-    $tag = $release.tag_name
-    if (-not $tag) { Fail 'Could not read tag_name from Gleam releases/latest' }
-    $asset = "gleam-$tag-$triple.zip"
-
-    $current = Get-GleamCurrentInstalledVersion
-    if ($current -eq $tag) {
-        Success "Already installed Gleam $tag"
-        return
-    }
-
-    $assetMeta = $release.assets | Where-Object { $_.name -eq $asset } | Select-Object -First 1
-    if (-not $assetMeta) { Fail "Could not find asset $asset in Gleam releases/latest" }
-
-    $digest = $assetMeta.digest
-    if (-not $digest) { Fail "Could not find digest for $asset" }
-    if (-not $digest.StartsWith('sha256:')) {
-        Fail "Unexpected digest format for ${asset}: $digest"
-    }
-    $expectedSha = $digest.Substring('sha256:'.Length)
-
-    $url = $assetMeta.browser_download_url
-    if (-not $url) { Fail "Could not find download URL for $asset" }
-
-    $tmpZip = New-TemporaryFile
-    Rename-Item $tmpZip "$($tmpZip.FullName).zip"
-    $tmpZip = Get-Item "$($tmpZip.FullName).zip"
-    $tmpExtract = Join-Path ([System.IO.Path]::GetTempPath()) ("gleam-extract-$([Guid]::NewGuid().ToString('N'))")
-
-    try {
-        Info "Downloading $url"
-        Invoke-WebRequest -Uri $url -OutFile $tmpZip.FullName -UseBasicParsing
-
-        $gotSha = (Get-FileHash -Path $tmpZip.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($gotSha -ne $expectedSha.ToLowerInvariant()) {
-            Fail "sha256 mismatch for $asset (expected $expectedSha, got $gotSha)"
-        }
-
-        New-Item -ItemType Directory -Force -Path $tmpExtract | Out-Null
-        Expand-Archive -Path $tmpZip.FullName -DestinationPath $tmpExtract -Force
-        $extractedExe = Join-Path $tmpExtract 'gleam.exe'
-        if (-not (Test-Path -LiteralPath $extractedExe)) {
-            Fail 'gleam.exe not found at top level of zip'
-        }
-
-        $programs = Join-Path $env:LOCALAPPDATA 'Programs'
-        $targetDir = Join-Path $programs "gleam-$tag"
-        if (Test-Path -LiteralPath $targetDir) { Remove-Item -Recurse -Force $targetDir }
-        New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
-        Move-Item $extractedExe (Join-Path $targetDir 'gleam.exe')
-
-        $junction = Join-Path $programs 'gleam'
-        if (Test-Path -LiteralPath $junction) { Remove-Item -Force $junction }
-        New-Item -ItemType Junction -Path $junction -Target $targetDir | Out-Null
-
-        AddToUserPath $junction
-
-        # Clean up old versioned dirs
-        Get-ChildItem -Path $programs -Directory -Filter 'gleam-*' -ErrorAction SilentlyContinue |
-            Where-Object { $_.FullName -ne $targetDir } |
-            ForEach-Object { Remove-Item -Recurse -Force $_.FullName }
-
-        Success "Installed Gleam $tag"
-    } finally {
-        if (Test-Path -LiteralPath $tmpZip.FullName) { Remove-Item -Force $tmpZip.FullName }
-        if (Test-Path -LiteralPath $tmpExtract) { Remove-Item -Recurse -Force $tmpExtract }
-    }
-}
-
-function Update-Gleam {
-    if (-not (Get-GleamCurrentInstalledVersion)) { return }
-    Install-Gleam
+    scoop bucket add main *> $null
+    scoop install main/gleam
+    if ($LASTEXITCODE -ne 0) { Fail 'Failed to install gleam via scoop' }
+    Success 'Installed Gleam'
 }
 
 function Update-Packages {
@@ -516,9 +401,8 @@ function Update-Packages {
 }
 
 function Update-Languages {
-    Update-Gleam
-    # zig is kept current via 'scoop update *' in Update-Packages.
-    # odin/jank aren't installed by this script on Windows -- nothing to update.
+    # gleam and zig are scoop packages kept current by 'scoop update *' in
+    # Update-Packages. odin/jank aren't installed on Windows. Nothing to do.
 }
 
 function Install-Languages {

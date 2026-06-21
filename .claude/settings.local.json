@@ -191,7 +191,11 @@
       "Bash(timeout 60 nvim --headless '+lua vim.defer_fn\\(function\\(\\) *)",
       "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"Normal bg=#%06X fg=#%06X  scheme=%s\", h.bg or 0, h.fg or 0, tostring\\(vim.g.colors_name\\)\\)\\); vim.cmd\\(\"qa!\"\\) end, 2500\\)')",
       "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"Normal bg=#%06X fg=#%06X\", h.bg or 0, h.fg or 0\\)\\); vim.cmd\\(\"qa!\"\\) end, 2500\\)')",
-      "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) vim.o.background=\"light\"; vim.o.background=\"dark\"; local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"after toggle bg=#%06X\", h.bg or 0\\)\\); vim.cmd\\(\"qa!\"\\) end, 2500\\)')"
+      "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) vim.o.background=\"light\"; vim.o.background=\"dark\"; local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"after toggle bg=#%06X\", h.bg or 0\\)\\); vim.cmd\\(\"qa!\"\\) end, 2500\\)')",
+      "Bash(scoop search *)",
+      "Bash(scoop --version)",
+      "Bash(scoop cat *)",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-Object -Last 20)"
     ]
   }
 }
