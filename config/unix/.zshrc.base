@@ -83,6 +83,14 @@ if [[ -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" \
   tmux attach -t main 2>/dev/null || tmux new -s main
 fi
 
+# History (replaces omz lib/history.zsh). Without this, HISTFILE is unset and
+# SAVEHIST=0, so nothing persists and zsh-autosuggestions has nothing to suggest.
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=10000
+setopt append_history inc_append_history share_history
+setopt hist_ignore_dups hist_ignore_space hist_verify
+
 # Completion system (cached for fast startup). Rebuild + security-check the dump
 # only when it is older than 24h; otherwise load it fast (-C skips the check).
 autoload -Uz compinit
