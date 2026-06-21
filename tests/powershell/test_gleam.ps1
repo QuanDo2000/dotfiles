@@ -105,15 +105,6 @@ function test_update_packages_dry_run_does_not_call_scoop {
 }
 
 # ---------------------------------------------------------------------------
-# Update-Languages (no-op: scoop update handles gleam/zig)
-# ---------------------------------------------------------------------------
-
-function test_update_languages_is_noop {
-    $output = Update-Languages 6>&1 | Out-String
-    Assert-Equals '' $output.Trim()
-}
-
-# ---------------------------------------------------------------------------
 # Install-Languages skip messages
 # ---------------------------------------------------------------------------
 

@@ -268,7 +268,6 @@ function InstallFont {
 
     scoop bucket add nerd-fonts
     scoop install FiraCode
-    scoop update FiraCode
 
     Success "Finished installing font"
 }
@@ -398,11 +397,6 @@ function Update-Packages {
     if ($script:Dry) { Success "Would run: scoop update *"; return }
     scoop update *
     Success "Finished updating packages"
-}
-
-function Update-Languages {
-    # gleam and zig are scoop packages kept current by 'scoop update *' in
-    # Update-Packages. odin/jank aren't installed on Windows. Nothing to do.
 }
 
 function Install-Languages {
@@ -664,7 +658,7 @@ if (-not $NoMain) {
 
     switch ($command) {
         "all"       { SetupDotfiles }
-        "update"    { Update-Packages; Update-Languages }
+        "update"    { Update-Packages }
         "packages"  { InstallPackages }
         "extras"    { InstallExtras }
         "symlinks"  { SetupSymlinks }
