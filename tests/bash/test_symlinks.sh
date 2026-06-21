@@ -480,6 +480,59 @@ test_setup_symlinks_no_stray_starship_in_home() {
   fi
 }
 
+# ---------------------------------------------------------------------------
+# Machine-local ~/.zshrc stub (_ensure_local_zshrc)
+# ---------------------------------------------------------------------------
+
+test_ensure_local_zshrc_creates_stub_when_missing() {
+  DOTFILES_DIR="$TEST_TMPDIR/dotfiles"
+  rm -f "$HOME/.zshrc"
+
+  _ensure_local_zshrc
+
+  assert_file_exists "$HOME/.zshrc"
+  if [ -L "$HOME/.zshrc" ]; then
+    echo "  FAILED: ~/.zshrc should be a real file, not a symlink" >> "$ERROR_FILE"
+  fi
+  assert_contains "$(cat "$HOME/.zshrc")" 'source "$HOME/.zshrc.base"'
+}
+
+test_ensure_local_zshrc_replaces_repo_symlink() {
+  DOTFILES_DIR="$TEST_TMPDIR/dotfiles"
+  mkdir -p "$DOTFILES_DIR/config/unix"
+  echo "old tracked zshrc" > "$DOTFILES_DIR/config/unix/.zshrc"
+  ln -sf "$DOTFILES_DIR/config/unix/.zshrc" "$HOME/.zshrc"
+
+  _ensure_local_zshrc
+
+  if [ -L "$HOME/.zshrc" ]; then
+    echo "  FAILED: repo-linked ~/.zshrc should be replaced by a real stub" >> "$ERROR_FILE"
+  fi
+  assert_contains "$(cat "$HOME/.zshrc")" 'source "$HOME/.zshrc.base"'
+}
+
+test_ensure_local_zshrc_preserves_existing_local_file() {
+  DOTFILES_DIR="$TEST_TMPDIR/dotfiles"
+  printf 'my machine-local config\n' > "$HOME/.zshrc"
+
+  _ensure_local_zshrc
+
+  # Must NOT clobber a real (non-repo) ~/.zshrc — that's where installers append.
+  assert_contains "$(cat "$HOME/.zshrc")" "my machine-local config"
+}
+
+test_ensure_local_zshrc_dry_run_creates_nothing() {
+  DRY=true
+  DOTFILES_DIR="$TEST_TMPDIR/dotfiles"
+  rm -f "$HOME/.zshrc"
+
+  _ensure_local_zshrc
+
+  if [ -e "$HOME/.zshrc" ]; then
+    echo "  FAILED: dry run should not create ~/.zshrc" >> "$ERROR_FILE"
+  fi
+}
+
 test_setup_symlinks_links_caf_on_mac() {
   local overwrite_all=false backup_all=false skip_all=false
   mock_uname Darwin

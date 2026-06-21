@@ -131,6 +131,28 @@ function setup_symlinks_folder {
   success "Finished setting up symlinks for $root"
 }
 
+# ~/.zshrc is machine-local (NOT tracked): it sources the tracked ~/.zshrc.base
+# and is where tool installers (nvm, bun, pnpm, ...) append their lines, so those
+# per-machine edits never touch the repo. Create the stub if missing; if an older
+# setup left ~/.zshrc symlinked into the repo, replace it with a real stub.
+function _ensure_local_zshrc {
+  local dst="$HOME/.zshrc"
+  if [[ -L "$dst" && "$(resolve_symlink "$dst")" == "$DOTFILES_DIR"/* ]]; then
+    info "Replacing repo-linked $dst with a machine-local stub"
+    [[ "$DRY" == "true" ]] || rm -f "$dst"
+  fi
+  [[ -e "$dst" ]] && return 0
+  info "Creating machine-local $dst"
+  if [[ "$DRY" != "true" ]]; then
+    cat > "$dst" <<'EOF'
+# Machine-local zsh config (NOT tracked in dotfiles).
+# Sources the tracked base; tool installers append their lines below.
+[ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
+EOF
+    success "Created $dst"
+  fi
+}
+
 function setup_symlinks {
   local overwrite_all=false backup_all=false skip_all=false
 
@@ -143,6 +165,8 @@ function setup_symlinks {
   if is_mac; then
     setup_symlinks_folder "$DOTFILES_DIR/config/mac"
   fi
+
+  _ensure_local_zshrc
 
   # These configs live in dotfolders alongside runtime state we don't want to
   # track (caches, sessions, credentials, ~/.ssh keys, OpenCode node_modules),

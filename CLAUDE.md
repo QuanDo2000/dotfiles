@@ -46,6 +46,8 @@ Both loose files and directories under a layer's `config/` are linked into `~/.c
 
 Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` → `~/.ssh/config`, `config/shared/ai/claude/settings.json` → `~/.claude/settings.json`, `config/shared/ai/opencode/opencode.json` → `~/.config/opencode/opencode.json`, and `config/shared/ai/codex/dotfiles.config.toml` → `~/.codex/dotfiles.config.toml`. Codex rewrites its own `~/.codex/config.toml` at runtime (trust levels, TUI state), so that base file is left machine-local; the tracked overlay is layered on top via `alias codex='codex -p dotfiles'`. Only the listed files are linked — caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
 
+`~/.zshrc` is the one shell file that is **machine-local, not symlinked**. All tracked zsh config lives in `config/unix/.zshrc.base` (symlinked to `~/.zshrc.base`). `setup_symlinks` calls `_ensure_local_zshrc`, which creates `~/.zshrc` if missing — a stub that just sources `~/.zshrc.base` — and replaces it if an older setup left it symlinked into the repo. This keeps the repo clean: tool installers (nvm, bun, pnpm, opencode, …) append their lines to the real `~/.zshrc` below the source line, so per-machine edits never modify tracked files. Existing local `~/.zshrc` files are never overwritten.
+
 ## Global Variables
 
 Scripts share state via exported globals: `DRY`, `QUIET`, `FORCE`. These are set by `dotfile` CLI flags and checked throughout all sourced scripts.
