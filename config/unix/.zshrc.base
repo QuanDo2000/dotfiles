@@ -1,5 +1,4 @@
-# Path to your oh-my-zsh installation.
-export ZSH="$HOME/.oh-my-zsh"
+# Base config (tracked in dotfiles repo). Sourced first by ~/.zshrc.
 
 # Environment variables
 export SHELL=$(which zsh)
@@ -10,8 +9,8 @@ export GPG_TTY=$(tty)
 alias vim=nvim
 
 # Hyprshot
-[ ! -d $HOME/hyprshot ] && mkdir -p $HOME/hyprshot
-export HYPRSHOT_DIR=$HOME/hyprshot
+[ ! -d "$HOME/hyprshot" ] && mkdir -p "$HOME/hyprshot"
+export HYPRSHOT_DIR="$HOME/hyprshot"
 
 # Path
 [ -d "/opt/nvim-linux-x86_64/bin" ] && export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
@@ -19,33 +18,70 @@ export HYPRSHOT_DIR=$HOME/hyprshot
 [ -d "/snap/bin" ] && export PATH="/snap/bin:$PATH"
 [ -d "$HOME/.devcontainers/bin" ] && export PATH="$HOME/.devcontainers/bin:$PATH"
 
-# oh-my-zsh
-ZSH_THEME="ys"
+# macOS-specific config (brew shellenv, etc.) — must run before tools below so
+# brew-installed binaries (starship, zoxide, fzf) are on PATH.
+[ -e "$HOME/.zshrc.mac" ] && source "$HOME/.zshrc.mac"
 
-plugins=(
-    git
-    vi-mode
-    tmux
-    fzf fzf-tab
-    zsh-autosuggestions
-    fast-syntax-highlighting
-    alias-finder
-    colored-man-pages
-    zoxide
-)
+# tmux autostart: on an interactive shell not already inside tmux, attach to
+# (or create) the "main" session. Replaces the omz tmux plugin. Not exec'd, so
+# exiting tmux drops back to this shell (old ZSH_TMUX_AUTOQUIT=false). Guards
+# avoid nested tmux and embedded shells (VS Code, Emacs, Vim).
+if [[ -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" \
+      && "$TERM_PROGRAM" != "vscode" && -z "$INSIDE_EMACS" && -z "$VIMRUNTIME" ]] \
+   && command -v tmux >/dev/null 2>&1; then
+  export ZSH_TMUX_STARTED=1
+  tmux attach -t main 2>/dev/null || tmux new -s main
+fi
 
-[ -e "$HOME/.zshrc.mac" ] && source $HOME/.zshrc.mac
+# Completion system (cached for fast startup). Rebuild + security-check the dump
+# only when it is older than 24h; otherwise load it fast (-C skips the check).
+autoload -Uz compinit
+_zcompdump="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
+mkdir -p "${_zcompdump:h}"
+if [[ -n "$_zcompdump"(#qN.mh+24) ]]; then
+  compinit -d "$_zcompdump"
+else
+  compinit -C -d "$_zcompdump"
+fi
 
-ZSH_TMUX_AUTOSTART=true
-ZSH_TMUX_AUTOSTART_ONCE=true
-ZSH_TMUX_AUTOCONNECT=true
-ZSH_TMUX_AUTOQUIT=false
-ZSH_TMUX_DEFAULT_SESSION_NAME="main"
-VI_MODE_SET_CURSOR=true
+# vi mode (replaces the omz vi-mode plugin + VI_MODE_SET_CURSOR=true)
+bindkey -v
+export KEYTIMEOUT=1
+_set_cursor_shape() {
+  case "$KEYMAP" in
+    vicmd|visual) printf '\e[2 q' ;;  # block cursor in normal mode
+    *)            printf '\e[6 q' ;;  # beam cursor in insert mode
+  esac
+}
+zle-keymap-select() { _set_cursor_shape }
+zle-line-init() { _set_cursor_shape }
+zle -N zle-keymap-select
+zle -N zle-line-init
 
-ZOXIDE_CMD_OVERRIDE="cd"
+# colored man pages (replaces the omz colored-man-pages plugin)
+export LESS_TERMCAP_mb=$'\e[1;31m'
+export LESS_TERMCAP_md=$'\e[1;36m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[1;44;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[1;32m'
 
-zstyle ':omz:plugins:alias-finder' autoload yes # disabled by default
-zstyle ':omz:plugins:alias-finder' longer yes # disabled by default
-zstyle ':omz:plugins:alias-finder' exact yes # disabled by default
-zstyle ':omz:plugins:alias-finder' cheaper yes # disabled by default
+# zoxide — bind it to `cd` (replaces the omz zoxide plugin + ZOXIDE_CMD_OVERRIDE)
+command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh --cmd cd)"
+
+# fzf key bindings + fuzzy completion (replaces the omz fzf plugin; needs fzf >= 0.48)
+command -v fzf >/dev/null 2>&1 && source <(fzf --zsh)
+
+# Standalone plugins — sourced directly, order matters:
+# fzf-tab (after compinit) -> autosuggestions -> fast-syntax-highlighting (last).
+_zsh_plugins="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
+[ -f "$_zsh_plugins/fzf-tab/fzf-tab.plugin.zsh" ] \
+  && source "$_zsh_plugins/fzf-tab/fzf-tab.plugin.zsh"
+[ -f "$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ] \
+  && source "$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+[ -f "$_zsh_plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ] \
+  && source "$_zsh_plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
+
+# Prompt (replaces the omz "ys" theme). Reads ~/.config/starship.toml.
+command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"

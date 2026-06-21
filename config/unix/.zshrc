@@ -1,13 +1,7 @@
 # Base config (tracked in dotfiles repo)
 [ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
 
-# Custom plugins and oh-my-zsh settings can be added here
-# e.g. plugins+=(docker kubectl)
-
-# Source oh-my-zsh (after all plugins and settings are configured)
-source "$ZSH/oh-my-zsh.sh"
-
-# jj (jujutsu) completion — dynamic mode, requires compinit (set up by oh-my-zsh).
+# jj (jujutsu) completion — dynamic mode, requires compinit (set up in .zshrc.base).
 command -v jj >/dev/null 2>&1 && source <(COMPLETE=zsh jj)
 
 # Go
