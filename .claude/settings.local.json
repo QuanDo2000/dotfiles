@@ -198,7 +198,8 @@
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-Object -Last 20)",
       "Bash(scoop bucket *)",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-Object -Last 4)",
-      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-Object -Last 3)"
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-Object -Last 3)",
+      "PowerShell(git pull *)"
     ]
   }
 }
