@@ -57,8 +57,8 @@ dotfile [OPTIONS] [COMMAND]
 Commands:
   all         Run full setup (default)
   packages    Install system packages only
-  extras      Install oh-my-zsh, zsh plugins, tmux plugins
-  zsh         Install oh-my-zsh and zsh plugins
+  extras      Install zsh plugins, tmux plugins, starship prompt
+  zsh         Install zsh plugins
   tmux        Install tmux plugins
   symlinks    Create symlinks only
   verify      Verify installation

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The installer clones this repo to `~/dotfiles` and runs shell scripts to install packages, set up extras (oh-my-zsh, tmux plugins), and create symlinks.
+Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The installer clones this repo to `~/dotfiles` and runs shell scripts to install packages, set up extras (zsh plugins, tmux plugins, starship prompt), and create symlinks.
 
 ## Key Commands
 
@@ -12,7 +12,7 @@ Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The in
 dotfile                      # Full setup (packages → extras → symlinks)
 dotfile symlinks             # Create symlinks only
 dotfile packages             # Install system packages only
-dotfile extras               # Install oh-my-zsh, zsh plugins, tmux plugins
+dotfile extras               # Install zsh plugins, tmux plugins, starship prompt
 dotfile verify               # Verify installation
 dotfile update               # Update system packages and language toolchains
 dotfile languages [LANG]     # Install language toolchains (zig, odin, gleam, jank)
@@ -27,7 +27,7 @@ dotfile -f <command>         # Force overwrite existing files
 - **scripts/** — Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` — Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` — OS-specific package installation (apt/pacman/brew).
-  - `extras.sh` — oh-my-zsh, zsh plugins, and the directly-cloned tmux plugins (tmux-yank, catppuccin); no tmux plugin manager (sensible/pain-control are inlined in `.tmux.conf`).
+  - `extras.sh` — zsh plugins (cloned to `~/.local/share/zsh/plugins`) and the directly-cloned tmux plugins (tmux-yank, catppuccin); no tmux plugin manager (sensible/pain-control are inlined in `.tmux.conf`). The prompt is starship (config at `config/shared/starship/starship.toml`, symlinked to `~/.config/starship.toml` on all platforms).
   - `symlinks.sh` — Links dotfiles to `$HOME`. Files in `bin/` directories under each platform layer are symlinked into `$HOME/.local/bin/`.
   - `verify.sh` — Post-install checks.
 
@@ -42,7 +42,7 @@ Platform config lives under `config/`. Symlinks are created in priority order by
 
 Files in `config/` subdirectories of each platform layer are symlinked into `~/.config/`. Top-level dotfiles are symlinked directly to `$HOME`.
 
-Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` → `~/.ssh/config`, `config/shared/ai/claude/settings.json` → `~/.claude/settings.json`, and `config/shared/ai/opencode/opencode.json` → `~/.config/opencode/opencode.json`. Only the listed files are linked — caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
+Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` → `~/.ssh/config`, `config/shared/ai/claude/settings.json` → `~/.claude/settings.json`, `config/shared/ai/opencode/opencode.json` → `~/.config/opencode/opencode.json`, and `config/shared/starship/starship.toml` → `~/.config/starship.toml`. Only the listed files are linked — caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
 
 ## Global Variables
 
@@ -76,3 +76,14 @@ pwsh tests/powershell/runner.ps1           # PowerShell tests (Windows / pwsh)
 ### When adding a new subcommand or script
 
 Add a `tests/bash/test_<name>.sh` (and `tests/powershell/test_<name>.ps1` if Windows-relevant) covering the dry-run path, the skip-if-already-installed path, and any platform branching. Also add a CLI dispatch test in `test_cli.sh` (e.g., `--dry <newcommand>` exits 0 and the help text mentions it).
+
+## Migrating an existing machine off oh-my-zsh
+
+oh-my-zsh is no longer used. On a machine provisioned before this change:
+
+1. `dotfile packages`  # installs starship
+2. `dotfile zsh`       # clones plugins to ~/.local/share/zsh/plugins
+3. `dotfile symlinks`  # links ~/.config/starship.toml and the new .zshrc files
+4. `rm -rf ~/.oh-my-zsh`  # optional: remove the now-unused framework
+
+On Windows, `oh-my-posh` can likewise be uninstalled: `winget uninstall JanDeDobbeleer.OhMyPosh`.
