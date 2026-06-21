@@ -229,7 +229,20 @@
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 test_symlinks.ps1)",
       "PowerShell(pwsh -NoProfile tests/powershell/runner.ps1)",
       "PowerShell(git stash *)",
-      "PowerShell(pwsh -NoProfile tests/powershell/runner.ps1 2>&1 | Select-String -Pattern \"FAIL|Results:\")"
+      "PowerShell(pwsh -NoProfile tests/powershell/runner.ps1 2>&1 | Select-String -Pattern \"FAIL|Results:\")",
+      "Skill(code-review)",
+      "Bash(/home/quando/.bun/bin/codex -p dotfiles plugin list)",
+      "Bash(/home/quando/.bun/bin/codex debug *)",
+      "Bash(rm ~/.codex/config.toml)",
+      "Bash(DRY=false QUIET=false bash -c 'source scripts/utils.sh; source scripts/platform.sh; source scripts/extras.sh; install_codex_plugins')",
+      "Bash(/home/quando/.bun/bin/codex plugin *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(timeout 20 /home/quando/.bun/bin/codex -p dotfiles debug prompt-input)",
+      "Bash(DRY=false QUIET=true bash -c 'source scripts/utils.sh; source scripts/platform.sh; source scripts/extras.sh; install_codex_plugins; echo \"RC=$?\"')",
+      "Bash(python3 -c \"import json;json.load\\(open\\('.claude/settings.local.json'\\)\\);print\\('valid JSON'\\)\")",
+      "Bash(git add *)",
+      "Bash(git rebase *)",
+      "Bash(git push *)"
     ]
   }
 }

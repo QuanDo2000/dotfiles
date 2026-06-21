@@ -181,6 +181,41 @@ test_install_tmux_plugins_already_installed() {
 }
 
 # ---------------------------------------------------------------------------
+# install_codex_plugins
+# ---------------------------------------------------------------------------
+
+test_install_codex_plugins_dry_run() {
+  DRY=true
+  mock_cmd codex 'echo "unexpected codex call: $*" >&2; exit 99'
+  local output
+  output=$(install_codex_plugins 2>&1)
+
+  assert_contains "$output" "Installing codex plugins"
+}
+
+test_install_codex_plugins_runs_install_commands() {
+  # Record codex invocations so we can assert both the marketplace add and the
+  # plugin add ran (cache population a fresh machine needs).
+  mock_cmd codex "echo \"\$*\" >> '$HOME/codex-calls.log'"
+
+  (install_codex_plugins 2>&1) >/dev/null
+
+  local log; log=$(cat "$HOME/codex-calls.log" 2>/dev/null)
+  assert_contains "$log" "plugin marketplace add DietrichGebert/ponytail"
+  assert_contains "$log" "plugin add ponytail@ponytail"
+}
+
+test_install_codex_plugins_propagates_failure() {
+  mock_cmd codex 'exit 1'
+  local exit_code=0
+  (install_codex_plugins 2>&1) >/dev/null || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: install_codex_plugins should fail when codex add fails" >> "$ERROR_FILE"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # install_opencode_plugins
 # ---------------------------------------------------------------------------
 
@@ -200,11 +235,11 @@ test_install_opencode_plugins_links_commands() {
   (install_opencode_plugins 2>&1) >/dev/null
 
   assert_symlink "$HOME/.config/opencode/command/ponytail.md" \
-    "${XDG_DATA_HOME:-$HOME/.local/share}/ponytail/.opencode/command/ponytail.md"
+    "$HOME/.local/share/ponytail/.opencode/command/ponytail.md"
 }
 
 test_install_opencode_plugins_already_installed() {
-  local ponytail_dir="${XDG_DATA_HOME:-$HOME/.local/share}/ponytail"
+  local ponytail_dir="$HOME/.local/share/ponytail"
   mkdir -p "$ponytail_dir/.git" "$ponytail_dir/.opencode/command"
   echo "# c" > "$ponytail_dir/.opencode/command/ponytail.md"
   mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'

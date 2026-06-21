@@ -60,6 +60,24 @@ function install_tmux_plugins {
   success "Finished installing tmux plugins"
 }
 
+function install_codex_plugins {
+  info "Installing codex plugins..."
+  # Codex keeps its marketplace/plugin state and plugin cache in the
+  # machine-local ~/.codex/config.toml (never tracked). dotfiles.config.toml
+  # declares the ponytail marketplace+plugin for `codex -p dotfiles`, but the
+  # plugin CACHE must be populated locally or runtime activation silently
+  # no-ops. These two commands do that and are idempotent. `codex plugin*`
+  # rejects -p, but the `codex -p dotfiles` alias isn't active in this
+  # non-interactive shell, so plain `codex` resolves to the real binary.
+  if [[ "$DRY" == "false" ]] && command -v codex >/dev/null 2>&1; then
+    codex plugin marketplace add DietrichGebert/ponytail \
+      || fail "Failed to add ponytail marketplace for codex"
+    codex plugin add ponytail@ponytail \
+      || fail "Failed to install ponytail plugin for codex"
+  fi
+  success "Finished installing codex plugins"
+}
+
 function install_opencode_plugins {
   info "Installing opencode plugins..."
   # Claude and Codex install ponytail via their own plugin marketplaces, but
@@ -67,8 +85,10 @@ function install_opencode_plugins {
   # skills/ relative to its own file, so it needs a full checkout. We own a
   # stable clone here (the tool caches are version-pinned) and point
   # opencode.json at ~/.local/share/ponytail/.opencode/plugins/ponytail.mjs.
+  # Hardcode ~/.local/share (not $XDG_DATA_HOME) so this path matches the
+  # ~-relative one in opencode.json, which can't expand an env var.
   if [[ "$DRY" == "false" ]]; then
-    local ponytail_dir="${XDG_DATA_HOME:-$HOME/.local/share}/ponytail"
+    local ponytail_dir="$HOME/.local/share/ponytail"
     clone_if_missing "ponytail (opencode)" \
       "https://github.com/DietrichGebert/ponytail.git" \
       "$ponytail_dir"
@@ -89,6 +109,7 @@ function install_extras {
   info "Installing extras"
   install_zsh_plugins
   install_tmux_plugins
+  install_codex_plugins
   install_opencode_plugins
   success "Finished installing extras"
 }
