@@ -12,6 +12,52 @@ alias vim=nvim
 # ~/.codex/config.toml stays machine-local (trust levels, runtime state).
 alias codex='codex -p dotfiles'
 
+# ls aliases (replaces omz lib/directories.zsh + theme-and-appearance color).
+# Listing aliases re-expand `ls`, so color propagates from the base alias.
+if [[ "$OSTYPE" == darwin* ]]; then
+  alias ls='ls -G'        # BSD ls
+else
+  alias ls='ls --color=tty'
+fi
+alias l='ls -lah'
+alias la='ls -lAh'
+alias ll='ls -lh'
+alias lsa='ls -lah'
+
+# git aliases — common subset of the omz git plugin (it shipped ~197; these are
+# the ones in daily use). helper-dependent omz aliases rewritten HEAD-based.
+alias g='git'
+alias ga='git add'
+alias gaa='git add --all'
+alias gst='git status'
+alias gss='git status --short'
+alias gc='git commit --verbose'
+alias gca='git commit --verbose --all'
+alias gco='git checkout'
+alias gcb='git checkout -b'
+# gcm — checkout the main branch (omz git_main_branch, inlined)
+gcm() { for b in main master trunk; do git show-ref -q --verify "refs/heads/$b" && { git checkout "$b"; return; }; done; }
+alias gb='git branch'
+alias gba='git branch --all'
+alias gbd='git branch --delete'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gf='git fetch'
+alias gl='git pull'
+alias gp='git push'
+alias gpsup='git push --set-upstream origin HEAD'
+alias gm='git merge'
+alias grb='git rebase'
+alias grh='git reset'
+alias glo='git log --oneline --decorate'
+alias glog='git log --oneline --decorate --graph'
+alias gloga='git log --oneline --decorate --graph --all'
+alias glol='git log --graph --pretty="%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ar) %C(bold blue)<%an>%Creset"'
+alias glola='git log --graph --pretty="%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ar) %C(bold blue)<%an>%Creset" --all'
+alias gcl='git clone --recurse-submodules'
+alias gsta='git stash'
+alias gstp='git stash pop'
+
 # Hyprshot
 [ ! -d "$HOME/hyprshot" ] && mkdir -p "$HOME/hyprshot"
 export HYPRSHOT_DIR="$HOME/hyprshot"
