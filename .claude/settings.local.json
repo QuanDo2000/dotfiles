@@ -176,7 +176,22 @@
       "Bash(ls -la config/shared/starship/)",
       "Bash(rmdir config/shared/starship)",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-Object -Last 5)",
-      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern \"starship|FAIL|Results\" | Select-Object -Last 15)"
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern \"starship|FAIL|Results\" | Select-Object -Last 15)",
+      "Bash(nvim --headless +'lua print\\(\"termguicolors=\"..tostring\\(vim.o.termguicolors\\)\\)' +q)",
+      "Bash(tmux -V)",
+      "Bash(infocmp xterm-ghostty *)",
+      "Bash(tmux -L _cfgtest -f config/unix/.tmux.conf new-session -d -x 80 -y 24 'true')",
+      "Bash(tmux -L _cfgtest kill-server)",
+      "Bash(timeout 40 nvim --headless '+lua vim.cmd.colorscheme\\(\"catppuccin\"\\)' '+lua print\\(\"colors_name=\"..tostring\\(vim.g.colors_name\\)..\", tgc=\"..tostring\\(vim.o.termguicolors\\)\\)' '+lua print\\(\"Normal=\"..vim.inspect\\(vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\)\\)\\)' +q)",
+      "Bash(timeout 40 nvim --headless '+lua require\\(\"catppuccin\"\\).setup\\({flavour=\"macchiato\", compile=false}\\)' '+lua vim.cmd.colorscheme\\(\"catppuccin\"\\)' '+lua local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"bg=#%06X fg=#%06X\", h.bg, h.fg\\)\\)' +q)",
+      "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) print\\(\"flavour=\"..tostring\\(\\(require\\(\"catppuccin\"\\).options or {}\\).flavour or vim.g.catppuccin_flavour\\)\\); local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"Normal bg=#%06X\", h.bg or 0\\)\\); vim.cmd\\(\"qa!\"\\) end, 1500\\)')",
+      "Bash(rm -rf /home/quando/.cache/nvim/catppuccin)",
+      "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"flavour=%s Normal bg=#%06X\", tostring\\(\\(require\\(\"catppuccin\"\\).options or {}\\).flavour\\), h.bg or 0\\)\\); vim.cmd\\(\"qa!\"\\) end, 2000\\)')",
+      "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"flavour=%s  Normal bg=#%06X fg=#%06X\", tostring\\(\\(require\\(\"catppuccin\"\\).options or {}\\).flavour\\), h.bg or 0, h.fg or 0\\)\\); vim.cmd\\(\"qa!\"\\) end, 2000\\)')",
+      "Bash(timeout 60 nvim --headless '+lua vim.defer_fn\\(function\\(\\) *)",
+      "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"Normal bg=#%06X fg=#%06X  scheme=%s\", h.bg or 0, h.fg or 0, tostring\\(vim.g.colors_name\\)\\)\\); vim.cmd\\(\"qa!\"\\) end, 2500\\)')",
+      "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"Normal bg=#%06X fg=#%06X\", h.bg or 0, h.fg or 0\\)\\); vim.cmd\\(\"qa!\"\\) end, 2500\\)')",
+      "Bash(timeout 60 nvim --headless +'lua vim.defer_fn\\(function\\(\\) vim.o.background=\"light\"; vim.o.background=\"dark\"; local h=vim.api.nvim_get_hl\\(0,{name=\"Normal\"}\\); print\\(string.format\\(\"after toggle bg=#%06X\", h.bg or 0\\)\\); vim.cmd\\(\"qa!\"\\) end, 2500\\)')"
     ]
   }
 }
