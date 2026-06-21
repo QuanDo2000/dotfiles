@@ -12,8 +12,6 @@ function TestSetup {
     'starship' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\config\starship.toml')
     'profile' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\Powershell\Microsoft.PowerShell_profile.ps1')
     '{}' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\Terminal\settings.json')
-    'gvim' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\_gvimrc')
-    'vim' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.vimrc')
     'gitconfig' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
     'winconfig' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\.gitconfig')
     'ssh' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.ssh\config')

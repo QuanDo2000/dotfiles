@@ -11,8 +11,6 @@ function TestSetup {
     # Create stub source files so Verify's Compare-Object call never throws on
     # missing sources when the real $HOME happens to contain matching dests.
     'g' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
-    'v' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.vimrc')
-    'gv' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\_gvimrc')
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\config') -Force | Out-Null
     's' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\config\starship.toml')
     # Verify's informational output flows through Info/Success, which are

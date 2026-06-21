@@ -477,9 +477,7 @@ function SetupSymlinks {
     $terminalSettingsSource = Join-Path $configPath "Terminal\settings.json"
     LinkFile -source $terminalSettingsSource -destination $terminalSettingsPath
 
-    # Vim settings
-    LinkFile -source (Join-Path $configPath "_gvimrc") -destination "$userHome\_gvimrc"
-    LinkFile -source (Join-Path $sharedPath ".vimrc") -destination "$userHome\_vimrc"
+    # Git config
     LinkFile -source (Join-Path $sharedPath ".gitconfig") -destination "$userHome\.gitconfig"
     LinkFile -source (Join-Path $configPath ".gitconfig") -destination "$userHome\.gitconfig.windows"
 
@@ -552,15 +550,12 @@ function Verify {
     }
 
     Info "Verifying copied files..."
-    $configPath = Join-Path $script:DotfilesDir "config\windows"
     $sharedPath = Join-Path $script:DotfilesDir "config\shared"
 
     # Match SetupSymlinks: use $env:USERPROFILE so test fixtures can override.
     $userHome = $env:USERPROFILE
     $filesToCheck = @(
         @{ Source = (Join-Path $sharedPath ".gitconfig"); Dest = "$userHome\.gitconfig" }
-        @{ Source = (Join-Path $sharedPath ".vimrc"); Dest = "$userHome\_vimrc" }
-        @{ Source = (Join-Path $configPath "_gvimrc"); Dest = "$userHome\_gvimrc" }
         @{ Source = (Join-Path $sharedPath "config\starship.toml"); Dest = "$userHome\.config\starship.toml" }
     )
     foreach ($file in $filesToCheck) {
