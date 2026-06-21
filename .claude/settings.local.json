@@ -257,7 +257,8 @@
       "PowerShell(if \\(Get-Module -ListAvailable PSScriptAnalyzer\\) { $r = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning,Error; $errs = @\\($r | Where-Object { $_.Severity -eq 'Error' }\\); if \\($r\\) { $r | Format-Table -AutoSize | Out-String | Write-Host }; \"ERROR count: $\\($errs.Count\\)\" } else { \"PSScriptAnalyzer not installed locally\" })",
       "Bash(echo \"jq present: $\\(jq --version\\)\")",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern 'test_plugins|test_install_codex|test_install_opencode|Results:')",
-      "Bash(GIT_EDITOR=true git rebase --continue)"
+      "Bash(GIT_EDITOR=true git rebase --continue)",
+      "Bash(echo \"=== push exit: $? ===\")"
     ]
   }
 }
