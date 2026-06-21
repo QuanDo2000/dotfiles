@@ -161,12 +161,12 @@ test_zig_latest_stable_fails_on_empty() {
 }
 
 # ---------------------------------------------------------------------------
-# zig_current_installed_version
+# _local_installed_version (zig)
 # ---------------------------------------------------------------------------
 
 test_zig_current_installed_version_none() {
   local result
-  result="$(zig_current_installed_version)"
+  result="$(_local_installed_version zig)"
   assert_equals "" "$result"
 }
 
@@ -176,7 +176,7 @@ test_zig_current_installed_version_ours_returns_version() {
   ln -s "$HOME/.local/zig-0.14.1/zig" "$HOME/.local/bin/zig"
 
   local result
-  result="$(zig_current_installed_version)"
+  result="$(_local_installed_version zig)"
   assert_equals "0.14.1" "$result"
 }
 
@@ -187,87 +187,67 @@ test_zig_current_installed_version_foreign_returns_empty() {
   ln -s "$HOME/elsewhere/zig" "$HOME/.local/bin/zig"
 
   local result
-  result="$(zig_current_installed_version)"
+  result="$(_local_installed_version zig)"
   assert_equals "" "$result"
 }
 
 # ---------------------------------------------------------------------------
-# ensure_minisign
+# ensure_pkg (in packages.sh; lives here because the install_zig/gleam call
+# sites pull in package-install behaviour and these were originally split
+# across ensure_minisign / ensure_erlang wrappers using the same fixture.)
 # ---------------------------------------------------------------------------
 
-test_ensure_minisign_already_present_noop() {
+test_ensure_pkg_already_present_noop() {
   echo '#!/bin/bash' > "$HOME/.local/bin/minisign"
   chmod +x "$HOME/.local/bin/minisign"
   export PATH="$HOME/.local/bin:$PATH"
 
   local output
-  output=$(ensure_minisign 2>&1)
-  # No "Installing minisign" line should appear
+  output=$(ensure_pkg minisign 2>&1)
   if [[ "$output" == *"Installing minisign"* ]]; then
-    echo "  FAILED: ensure_minisign should noop when minisign already on PATH" >> "$ERROR_FILE"
+    echo "  FAILED: ensure_pkg should noop when binary already on PATH" >> "$ERROR_FILE"
   fi
 }
 
-test_ensure_minisign_dry_run_arch_logs_install() {
+# Shadow `command` so `command -v minisign` reports "not found" even on hosts
+# where minisign is genuinely installed; keeps PATH intact so rm and package
+# managers still work.
+_shadow_command_v_miss() {
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "minisign" ]]; then return 1; fi
+    builtin command "$@"
+  }
+  export -f command
+}
+
+test_ensure_pkg_dry_run_arch_logs_install() {
   DRY=true
   mock_uname Linux
-  # Stub /etc/os-release detection — easier to override detect_platform directly
-  detect_platform() { echo "arch"; }
-  export -f detect_platform
-  # Make sure minisign is NOT on PATH
-  # Shadow `command` so `command -v minisign` reports "not found", even on
-  # hosts where minisign is genuinely installed. Keeps PATH intact so basic
-  # tools like rm and the package-manager binaries are still usable.
-  command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" == "minisign" ]]; then
-      return 1
-    fi
-    builtin command "$@"
-  }
-  export -f command
+  detect_platform() { echo "arch"; }; export -f detect_platform
+  _shadow_command_v_miss
 
   local output
-  output=$(ensure_minisign 2>&1)
+  output=$(ensure_pkg minisign 2>&1)
   assert_contains "$output" "minisign not found"
 }
 
-test_ensure_minisign_dry_run_debian_logs_install() {
+test_ensure_pkg_dry_run_debian_logs_install() {
   DRY=true
-  detect_platform() { echo "debian"; }
-  export -f detect_platform
-  # Shadow `command` so `command -v minisign` reports "not found", even on
-  # hosts where minisign is genuinely installed. Keeps PATH intact so basic
-  # tools like rm and the package-manager binaries are still usable.
-  command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" == "minisign" ]]; then
-      return 1
-    fi
-    builtin command "$@"
-  }
-  export -f command
+  detect_platform() { echo "debian"; }; export -f detect_platform
+  _shadow_command_v_miss
 
   local output
-  output=$(ensure_minisign 2>&1)
+  output=$(ensure_pkg minisign 2>&1)
   assert_contains "$output" "minisign not found"
 }
 
-test_ensure_minisign_dry_run_mac_logs_install() {
+test_ensure_pkg_dry_run_mac_logs_install() {
   DRY=true
-  detect_platform() { echo "mac"; }
-  export -f detect_platform
-  # Shadow `command` so `command -v minisign` reports "not found", even on
-  # hosts where minisign is genuinely installed. Keeps PATH intact so basic
-  # tools like rm and the package-manager binaries are still usable.
-  command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" == "minisign" ]]; then
-      return 1
-    fi
-    builtin command "$@"
-  }
-  export -f command
+  detect_platform() { echo "mac"; }; export -f detect_platform
+  _shadow_command_v_miss
 
   local output
-  output=$(ensure_minisign 2>&1)
+  output=$(ensure_pkg minisign 2>&1)
   assert_contains "$output" "minisign not found"
 }
 
@@ -280,10 +260,8 @@ test_install_zig_dry_run() {
   # Stub the lookup so we don't hit network. Pretend there is no install yet.
   zig_latest_stable() { echo "0.14.1"; }
   export -f zig_latest_stable
-  ensure_minisign() { return 0; }
-  export -f ensure_minisign
-  ensure_jq() { return 0; }
-  export -f ensure_jq
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(install_zig 2>&1)
@@ -305,10 +283,8 @@ test_install_zig_already_installed_short_circuits() {
 
   http_get_retry() { echo '{"0.14.1": {}}'; }
   export -f http_get_retry
-  ensure_minisign() { return 0; }
-  export -f ensure_minisign
-  ensure_jq() { return 0; }
-  export -f ensure_jq
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(install_zig 2>&1)
@@ -342,10 +318,8 @@ test_update_zig_dry_run_when_ours() {
   touch "$HOME/.local/zig-0.14.0/zig"
   ln -s "$HOME/.local/zig-0.14.0/zig" "$HOME/.local/bin/zig"
 
-  ensure_minisign() { return 0; }
-  export -f ensure_minisign
-  ensure_jq() { return 0; }
-  export -f ensure_jq
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(update_zig 2>&1)
@@ -358,12 +332,8 @@ test_update_zig_dry_run_when_ours() {
 
 test_install_languages_dry_run() {
   DRY=true
-  ensure_minisign() { return 0; }
-  export -f ensure_minisign
-  ensure_jq() { return 0; }
-  export -f ensure_jq
-  ensure_erlang() { return 0; }
-  export -f ensure_erlang
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(install_languages 2>&1)
@@ -375,10 +345,8 @@ test_install_languages_dry_run() {
 
 test_install_languages_zig_only_arg() {
   DRY=true
-  ensure_minisign() { return 0; }
-  export -f ensure_minisign
-  ensure_jq() { return 0; }
-  export -f ensure_jq
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(install_languages zig 2>&1)
@@ -387,12 +355,8 @@ test_install_languages_zig_only_arg() {
 
 test_install_languages_all_arg() {
   DRY=true
-  ensure_minisign() { return 0; }
-  export -f ensure_minisign
-  ensure_jq() { return 0; }
-  export -f ensure_jq
-  ensure_erlang() { return 0; }
-  export -f ensure_erlang
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(install_languages all 2>&1)
@@ -431,10 +395,8 @@ test_install_languages_unknown_fails() {
 
 test_install_languages_gleam_only_arg() {
   DRY=true
-  ensure_jq() { return 0; }
-  export -f ensure_jq
-  ensure_erlang() { return 0; }
-  export -f ensure_erlang
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(install_languages gleam 2>&1)
@@ -540,12 +502,12 @@ test_odin_latest_release_fetches_when_no_arg() {
 }
 
 # ---------------------------------------------------------------------------
-# odin_current_installed_version
+# _local_installed_version (odin)
 # ---------------------------------------------------------------------------
 
 test_odin_current_installed_version_none() {
   local result
-  result="$(odin_current_installed_version)"
+  result="$(_local_installed_version odin)"
   assert_equals "" "$result"
 }
 
@@ -555,7 +517,7 @@ test_odin_current_installed_version_ours_returns_tag() {
   ln -s "$HOME/.local/odin-dev-2026-04/odin" "$HOME/.local/bin/odin"
 
   local result
-  result="$(odin_current_installed_version)"
+  result="$(_local_installed_version odin)"
   assert_equals "dev-2026-04" "$result"
 }
 
@@ -565,7 +527,7 @@ test_odin_current_installed_version_foreign_returns_empty() {
   ln -s "$HOME/elsewhere/odin" "$HOME/.local/bin/odin"
 
   local result
-  result="$(odin_current_installed_version)"
+  result="$(_local_installed_version odin)"
   assert_equals "" "$result"
 }
 
@@ -703,12 +665,12 @@ test_gleam_latest_release_fetches_when_no_arg() {
 }
 
 # ---------------------------------------------------------------------------
-# gleam_current_installed_version
+# _local_installed_version (gleam)
 # ---------------------------------------------------------------------------
 
 test_gleam_current_installed_version_none() {
   local result
-  result="$(gleam_current_installed_version)"
+  result="$(_local_installed_version gleam)"
   assert_equals "" "$result"
 }
 
@@ -718,7 +680,7 @@ test_gleam_current_installed_version_ours_returns_tag() {
   ln -s "$HOME/.local/gleam-v1.15.4/gleam" "$HOME/.local/bin/gleam"
 
   local result
-  result="$(gleam_current_installed_version)"
+  result="$(_local_installed_version gleam)"
   assert_equals "v1.15.4" "$result"
 }
 
@@ -728,69 +690,8 @@ test_gleam_current_installed_version_foreign_returns_empty() {
   ln -s "$HOME/elsewhere/gleam" "$HOME/.local/bin/gleam"
 
   local result
-  result="$(gleam_current_installed_version)"
+  result="$(_local_installed_version gleam)"
   assert_equals "" "$result"
-}
-
-# ---------------------------------------------------------------------------
-# ensure_erlang
-# ---------------------------------------------------------------------------
-
-test_ensure_erlang_already_present_noop() {
-  echo '#!/bin/bash' > "$HOME/.local/bin/erl"
-  chmod +x "$HOME/.local/bin/erl"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(ensure_erlang 2>&1)
-  if [[ "$output" == *"Erlang/OTP not found"* ]]; then
-    echo "  FAILED: ensure_erlang should noop when erl already on PATH" >> "$ERROR_FILE"
-  fi
-}
-
-test_ensure_erlang_dry_run_arch_logs_install() {
-  DRY=true
-  command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" == "erl" ]]; then return 1; fi
-    builtin command "$@"
-  }
-  export -f command
-  detect_platform() { echo "arch"; }
-  export -f detect_platform
-
-  local output
-  output=$(ensure_erlang 2>&1)
-  assert_contains "$output" "Erlang/OTP not found"
-}
-
-test_ensure_erlang_dry_run_debian_logs_install() {
-  DRY=true
-  command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" == "erl" ]]; then return 1; fi
-    builtin command "$@"
-  }
-  export -f command
-  detect_platform() { echo "debian"; }
-  export -f detect_platform
-
-  local output
-  output=$(ensure_erlang 2>&1)
-  assert_contains "$output" "Erlang/OTP not found"
-}
-
-test_ensure_erlang_dry_run_mac_logs_install() {
-  DRY=true
-  command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" == "erl" ]]; then return 1; fi
-    builtin command "$@"
-  }
-  export -f command
-  detect_platform() { echo "mac"; }
-  export -f detect_platform
-
-  local output
-  output=$(ensure_erlang 2>&1)
-  assert_contains "$output" "Erlang/OTP not found"
 }
 
 # ---------------------------------------------------------------------------
@@ -869,10 +770,8 @@ test_ensure_clang_dry_run_mac_missing_clt_logs_instruction() {
 
 test_install_gleam_dry_run() {
   DRY=true
-  ensure_jq() { return 0; }
-  export -f ensure_jq
-  ensure_erlang() { return 0; }
-  export -f ensure_erlang
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(install_gleam 2>&1)
@@ -890,10 +789,8 @@ test_install_gleam_already_installed_short_circuits() {
 
   http_get_retry() { echo '{"tag_name": "v1.15.4", "assets": []}'; }
   export -f http_get_retry
-  ensure_jq() { return 0; }
-  export -f ensure_jq
-  ensure_erlang() { return 0; }
-  export -f ensure_erlang
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(install_gleam 2>&1)
@@ -926,10 +823,8 @@ test_update_gleam_dry_run_when_ours() {
   touch "$HOME/.local/gleam-v1.14.0/gleam"
   ln -s "$HOME/.local/gleam-v1.14.0/gleam" "$HOME/.local/bin/gleam"
 
-  ensure_jq() { return 0; }
-  export -f ensure_jq
-  ensure_erlang() { return 0; }
-  export -f ensure_erlang
+  ensure_pkg() { return 0; }
+  export -f ensure_pkg
 
   local output
   output=$(update_gleam 2>&1)

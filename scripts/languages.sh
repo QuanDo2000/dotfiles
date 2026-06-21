@@ -68,12 +68,10 @@ zig_target_triple() {
   os="$(uname -s)"
   arch="$(uname -m)"
   case "$os/$arch" in
-    Linux/x86_64)        echo "x86_64-linux" ;;
-    Linux/aarch64)       echo "aarch64-linux" ;;
-    Linux/arm64)         echo "aarch64-linux" ;;
-    Darwin/x86_64)       echo "x86_64-macos" ;;
-    Darwin/arm64)        echo "aarch64-macos" ;;
-    Darwin/aarch64)      echo "aarch64-macos" ;;
+    Linux/x86_64)                 echo "x86_64-linux" ;;
+    Linux/aarch64|Linux/arm64)    echo "aarch64-linux" ;;
+    Darwin/x86_64)                echo "x86_64-macos" ;;
+    Darwin/arm64|Darwin/aarch64)  echo "aarch64-macos" ;;
     *) fail "Unsupported platform for zig install: $os/$arch" ;;
   esac
 }
@@ -85,12 +83,10 @@ gleam_target_triple() {
   os="$(uname -s)"
   arch="$(uname -m)"
   case "$os/$arch" in
-    Linux/x86_64)        echo "x86_64-unknown-linux-musl" ;;
-    Linux/aarch64)       echo "aarch64-unknown-linux-musl" ;;
-    Linux/arm64)         echo "aarch64-unknown-linux-musl" ;;
-    Darwin/x86_64)       echo "x86_64-apple-darwin" ;;
-    Darwin/arm64)        echo "aarch64-apple-darwin" ;;
-    Darwin/aarch64)      echo "aarch64-apple-darwin" ;;
+    Linux/x86_64)                 echo "x86_64-unknown-linux-musl" ;;
+    Linux/aarch64|Linux/arm64)    echo "aarch64-unknown-linux-musl" ;;
+    Darwin/x86_64)                echo "x86_64-apple-darwin" ;;
+    Darwin/arm64|Darwin/aarch64)  echo "aarch64-apple-darwin" ;;
     *) fail "Unsupported platform for gleam install: $os/$arch" ;;
   esac
 }
@@ -121,19 +117,14 @@ zig_latest_stable() {
   echo "$version"
 }
 
-# Install minisign if missing. Required for tarball signature verification.
-ensure_minisign() { ensure_pkg minisign; }
-
-zig_current_installed_version() { _local_installed_version zig; }
-
 # Install (or upgrade) Zig from the official community mirrors with full
 # minisign signature verification + sha256 cross-check.
 #
 # Layout: extracts to ~/.local/zig-<version>/ and symlinks ~/.local/bin/zig.
-# Skips if the target version is already installed (per zig_current_installed_version).
+# Skips if the target version is already installed (per _local_installed_version).
 install_zig() {
   info "Installing Zig..."
-  ensure_minisign
+  ensure_pkg minisign
   ensure_jq
 
   local triple
@@ -154,7 +145,7 @@ install_zig() {
   local tarball="zig-${triple}-${version}.tar.xz"
 
   local current
-  current="$(zig_current_installed_version)"
+  current="$(_local_installed_version zig)"
   if [[ "$current" == "$version" ]]; then
     success "Already installed Zig $version"
     return 0
@@ -221,7 +212,7 @@ install_zig() {
 
   # Extract to a temp subdir, then move to ~/.local/zig-<version>/.
   # The upstream tarball top-level is zig-<arch>-<os>-<version>/; we strip
-  # the arch portion when moving so zig_current_installed_version's parsing
+  # the arch portion when moving so _local_installed_version's parsing
   # rule stays simple.
   local extract_dir="$tmpdir/extract"
   mkdir -p "$extract_dir"
@@ -251,8 +242,6 @@ install_languages() {
   esac
 }
 
-odin_current_installed_version() { _local_installed_version odin; }
-
 # Map (uname -s, uname -m) to Odin's release-asset slug.
 # Prints the slug on stdout. Fails if the platform is unsupported.
 odin_target_triple() {
@@ -260,12 +249,10 @@ odin_target_triple() {
   os="$(uname -s)"
   arch="$(uname -m)"
   case "$os/$arch" in
-    Linux/x86_64)        echo "linux-amd64" ;;
-    Linux/aarch64)       echo "linux-arm64" ;;
-    Linux/arm64)         echo "linux-arm64" ;;
-    Darwin/x86_64)       echo "macos-amd64" ;;
-    Darwin/arm64)        echo "macos-arm64" ;;
-    Darwin/aarch64)      echo "macos-arm64" ;;
+    Linux/x86_64)                 echo "linux-amd64" ;;
+    Linux/aarch64|Linux/arm64)    echo "linux-arm64" ;;
+    Darwin/x86_64)                echo "macos-amd64" ;;
+    Darwin/arm64|Darwin/aarch64)  echo "macos-arm64" ;;
     *) fail "Unsupported platform for odin install: $os/$arch" ;;
   esac
 }
@@ -303,7 +290,7 @@ install_odin() {
   fi
 
   local current
-  current="$(odin_current_installed_version)"
+  current="$(_local_installed_version odin)"
   if [[ "$current" == "$tag" ]]; then
     success "Already installed Odin $tag"
     return 0
@@ -321,11 +308,6 @@ gleam_latest_release() {
   http_get_retry "https://api.github.com/repos/gleam-lang/gleam/releases/latest" \
     || fail "Failed to fetch Gleam releases/latest"
 }
-
-gleam_current_installed_version() { _local_installed_version gleam; }
-
-# Install Erlang/OTP if missing. Required for the Gleam runtime (BEAM bytecode).
-ensure_erlang() { ensure_pkg erl erlang "Erlang/OTP"; }
 
 # Ensure clang is available. Required at runtime by Odin to assemble/link
 # generated C code (see https://odin-lang.org/docs/install/).
@@ -359,7 +341,7 @@ ensure_clang() {
 install_gleam() {
   info "Installing Gleam..."
   ensure_jq
-  ensure_erlang
+  ensure_pkg erl erlang "Erlang/OTP"
 
   local triple
   triple="$(gleam_target_triple)"
@@ -379,7 +361,7 @@ install_gleam() {
   fi
 
   local current
-  current="$(gleam_current_installed_version)"
+  current="$(_local_installed_version gleam)"
   if [[ "$current" == "$tag" ]]; then
     success "Already installed Gleam $tag"
     return 0

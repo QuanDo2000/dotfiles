@@ -28,7 +28,11 @@ detect_platform() {
   echo "unknown"
 }
 
-# Resolve a symlink target to an absolute path (portable: macOS lacks readlink -f).
+# Resolve a symlink one level to an absolute path. Single-level on purpose:
+# macOS's `readlink -f` follows parent-dir symlinks too (e.g. /tmp →
+# /private/tmp), which breaks $HOME-prefix matching when callers compare the
+# resolved path back against $HOME. This keeps the literal target the caller
+# wrote with `ln -s`.
 # Usage: resolve_symlink <path>
 resolve_symlink() {
   local target="$1"
