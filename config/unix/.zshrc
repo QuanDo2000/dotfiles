@@ -29,3 +29,8 @@ case ":$PATH:" in
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 # pnpm end
+
+# zoxide — initialized last (after all other PATH/config) so its `cd` override and
+# chpwd hook aren't clobbered by anything sourced later, and to satisfy zoxide's
+# own "init at end of config" guidance. Replaces the omz zoxide plugin + ZOXIDE_CMD_OVERRIDE.
+command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh --cmd cd)"

@@ -67,9 +67,6 @@ export LESS_TERMCAP_so=$'\e[1;44;33m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;32m'
 
-# zoxide — bind it to `cd` (replaces the omz zoxide plugin + ZOXIDE_CMD_OVERRIDE)
-command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh --cmd cd)"
-
 # fzf key bindings + fuzzy completion (replaces the omz fzf plugin; needs fzf >= 0.48)
 command -v fzf >/dev/null 2>&1 && source <(fzf --zsh)
 
