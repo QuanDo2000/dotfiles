@@ -228,7 +228,8 @@
       "Bash(cd *)",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 test_symlinks.ps1)",
       "PowerShell(pwsh -NoProfile tests/powershell/runner.ps1)",
-      "PowerShell(git stash *)"
+      "PowerShell(git stash *)",
+      "PowerShell(pwsh -NoProfile tests/powershell/runner.ps1 2>&1 | Select-String -Pattern \"FAIL|Results:\")"
     ]
   }
 }
