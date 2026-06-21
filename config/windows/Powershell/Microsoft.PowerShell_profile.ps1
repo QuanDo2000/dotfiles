@@ -1,5 +1,8 @@
 Invoke-Expression (&starship init powershell)
 
+# Aliases (parity with .zshrc.base)
+. "$PSScriptRoot\aliases.ps1"
+
 # PSReadLine Options (PSReadLine auto-loads in interactive pwsh)
 Set-PSReadLineOption -EditMode Vi
 Set-PSReadLineOption -PredictionSource History

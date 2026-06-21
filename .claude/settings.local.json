@@ -258,7 +258,9 @@
       "Bash(echo \"jq present: $\\(jq --version\\)\")",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern 'test_plugins|test_install_codex|test_install_opencode|Results:')",
       "Bash(GIT_EDITOR=true git rebase --continue)",
-      "Bash(echo \"=== push exit: $? ===\")"
+      "Bash(echo \"=== push exit: $? ===\")",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 test_aliases.ps1)",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern '=== Results|FAIL')"
     ]
   }
 }
