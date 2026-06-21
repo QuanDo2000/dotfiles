@@ -194,25 +194,72 @@ test_install_codex_plugins_dry_run() {
 }
 
 test_install_codex_plugins_runs_install_commands() {
-  # Record codex invocations so we can assert both the marketplace add and the
-  # plugin add ran (cache population a fresh machine needs).
+  # Record codex invocations so we can assert all three install steps ran
+  # (cache population a fresh machine needs). `login status` and the
+  # superpowers `plugin add` both exit 0 to simulate the happy path.
   mock_cmd codex "echo \"\$*\" >> '$HOME/codex-calls.log'"
 
-  (install_codex_plugins 2>&1) >/dev/null
+  local output
+  output=$(install_codex_plugins 2>&1)
 
   local log; log=$(cat "$HOME/codex-calls.log" 2>/dev/null)
   assert_contains "$log" "plugin marketplace add DietrichGebert/ponytail"
   assert_contains "$log" "plugin add ponytail@ponytail"
   assert_contains "$log" "plugin add superpowers@openai-curated"
+  assert_contains "$output" "Installed superpowers plugin for codex"
 }
 
-test_install_codex_plugins_propagates_failure() {
-  mock_cmd codex 'exit 1'
+# Regression: when `codex login status` exits non-zero OR the openai-curated
+# marketplace isn't populated yet (`codex plugin add` fails), skip
+# superpowers with a recovery-step message instead of `fail`ing the run.
+test_install_codex_plugins_skips_superpowers_when_logged_out() {
+  mock_cmd codex "echo \"\$*\" >> '$HOME/codex-calls.log'
+if [[ \"\$1\" == \"login\" && \"\$2\" == \"status\" ]]; then exit 1; fi"
+
+  local output
+  output=$(install_codex_plugins 2>&1)
+
+  local log; log=$(cat "$HOME/codex-calls.log" 2>/dev/null)
+  assert_contains "$log" "plugin add ponytail@ponytail"
+  assert_contains "$output" "superpowers plugin skipped"
+  assert_contains "$output" "codex login"
+  assert_contains "$output" "dotfile extras"
+  if [[ "$log" == *"plugin add superpowers"* ]]; then
+    echo "  FAILED: superpowers add must not run when login check fails" >> "$ERROR_FILE"
+  fi
+}
+
+# Regression: even when logged in, the openai-curated marketplace clone
+# may not exist yet on a fresh machine. The superpowers `plugin add`
+# failure must NOT take down the whole run — just print recovery steps.
+test_install_codex_plugins_skips_superpowers_when_marketplace_missing() {
+  # login status exits 0 (logged in), but `plugin add superpowers@*` exits 1
+  # (the "plugin `superpowers` was not found in marketplace" case).
+  mock_cmd codex "echo \"\$*\" >> '$HOME/codex-calls.log'
+if [[ \"\$1 \$2\" == \"plugin add\" && \"\$3\" == superpowers@* ]]; then exit 1; fi
+exit 0"
+
+  local output exit_code=0
+  output=$(install_codex_plugins 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: missing-marketplace must skip, not fail (exit=$exit_code)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "superpowers plugin skipped"
+  assert_contains "$output" "codex"
+  assert_contains "$output" "dotfile extras"
+}
+
+test_install_codex_plugins_propagates_ponytail_failure() {
+  # Ponytail failures are still fatal — only the superpowers step is soft.
+  # Make `plugin marketplace add` fail; the function must propagate it.
+  mock_cmd codex "if [[ \"\$1 \$2\" == \"plugin marketplace\" ]]; then exit 1; fi
+exit 0"
   local exit_code=0
   (install_codex_plugins 2>&1) >/dev/null || exit_code=$?
 
   if [ "$exit_code" -eq 0 ]; then
-    echo "  FAILED: install_codex_plugins should fail when codex add fails" >> "$ERROR_FILE"
+    echo "  FAILED: install_codex_plugins should fail when ponytail add fails" >> "$ERROR_FILE"
   fi
 }
 

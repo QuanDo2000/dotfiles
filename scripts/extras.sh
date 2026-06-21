@@ -68,15 +68,30 @@ function install_codex_plugins {
   # populated locally or runtime activation silently no-ops. These commands do
   # that and are idempotent. `codex plugin*` rejects -p, but the
   # `codex -p dotfiles` alias isn't active in this non-interactive shell, so
-  # plain `codex` resolves to the real binary. ponytail needs its marketplace
-  # added first; superpowers ships in the built-in openai-curated marketplace.
+  # plain `codex` resolves to the real binary.
+  #
+  # ponytail needs its marketplace added first. Superpowers ships in the
+  # built-in `openai-curated` marketplace, which codex only populates after
+  # `codex login` *and* an interactive `/plugins` picker session — `codex
+  # login status` alone isn't sufficient. If the install fails, we print the
+  # recovery steps instead of dying.
   if [[ "$DRY" == "false" ]] && command -v codex >/dev/null 2>&1; then
     codex plugin marketplace add DietrichGebert/ponytail \
       || fail "Failed to add ponytail marketplace for codex"
     codex plugin add ponytail@ponytail \
       || fail "Failed to install ponytail plugin for codex"
-    codex plugin add superpowers@openai-curated \
-      || fail "Failed to install superpowers plugin for codex"
+    if codex login status >/dev/null 2>&1 \
+       && codex plugin add superpowers@openai-curated >/dev/null 2>&1; then
+      info "Installed superpowers plugin for codex"
+    else
+      # Use `user` (yellow ?? prefix, ignores QUIET) so this action item is
+      # impossible to miss in a long `dotfile` run.
+      user "Codex superpowers plugin skipped (openai-curated marketplace not ready)."
+      user "  To finish installation:"
+      user "    1) codex login    # if not already logged in"
+      user "    2) codex          # open the TUI once, /plugins, then quit"
+      user "    3) dotfile extras"
+    fi
   fi
   success "Finished installing codex plugins"
 }
