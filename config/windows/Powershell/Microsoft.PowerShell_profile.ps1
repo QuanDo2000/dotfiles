@@ -1,8 +1,6 @@
 Invoke-Expression (&starship init powershell)
 
-# PSReadLine Options
-Import-Module Terminal-Icons
-Import-Module PSReadLine
+# PSReadLine Options (PSReadLine auto-loads in interactive pwsh)
 Set-PSReadLineOption -EditMode Vi
 Set-PSReadLineOption -PredictionSource History
 Set-PSReadLineOption -PredictionViewStyle ListView

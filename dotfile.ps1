@@ -219,7 +219,7 @@ function InstallPackages {
 
     # Run module installs in a fresh pwsh process to avoid
     # "module is currently in use" warnings from PackageManagement/PowerShellGet.
-    $modules = @("PowerShellGet", "PSReadLine", "Terminal-Icons")
+    $modules = @("PowerShellGet", "PSReadLine")
     Info "Checking PowerShell modules..."
     $missingMods = @($modules | Where-Object { -not (Get-Module -ListAvailable -Name $_) })
     if ($missingMods.Count -gt 0) {
@@ -230,7 +230,6 @@ function InstallPackages {
 $ErrorActionPreference = "Stop"
 Install-Module -Name PowerShellGet -Force -AllowClobber -Scope CurrentUser
 Install-Module PSReadLine -AllowPrerelease -Force -Scope CurrentUser
-Install-Module -Name Terminal-Icons -Repository PSGallery -Force -Scope CurrentUser
 Update-Module
 '@
         & $pwsh -NoProfile -ExecutionPolicy Bypass -Command $moduleScript
@@ -540,7 +539,7 @@ function Verify {
     }
 
     Info "Verifying PowerShell modules..."
-    foreach ($mod in @("PSReadLine", "Terminal-Icons")) {
+    foreach ($mod in @("PSReadLine")) {
         if (Get-Module -ListAvailable -Name $mod) {
             Success "PowerShell module: $mod"
         } else {
