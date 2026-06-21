@@ -29,6 +29,38 @@ _shuffle_lines() {
   }'
 }
 
+# Print the version embedded in a tool's ~/.local/bin/<name> symlink IF this
+# script installed it (target must be ~/.local/<name>-<version>/<name>).
+# Empty string for: no install, or a foreign install (system/brew/scoop).
+# Shared by zig/odin/gleam — their layouts are identical modulo the name.
+_local_installed_version() {
+  local name="$1"
+  local link="$HOME/.local/bin/$name"
+  [[ -L "$link" ]] || return 0
+  local target
+  target="$(resolve_symlink "$link")" || return 0
+  local prefix="$HOME/.local/${name}-" suffix="/$name"
+  case "$target" in
+    "$prefix"*"$suffix")
+      local middle="${target#"$prefix"}"
+      middle="${middle%"$suffix"}"
+      # Reject a nested dir (slash left in the middle) — not our flat layout.
+      case "$middle" in
+        */*) return 0 ;;
+      esac
+      echo "$middle"
+      ;;
+  esac
+}
+
+# Re-run an installer, but only if this script previously installed the tool.
+# Foreign installs (system/brew/scoop) are left alone.
+_update_if_ours() {
+  local name="$1" install_fn="$2"
+  [[ -n "$(_local_installed_version "$name")" ]] && "$install_fn"
+  return 0
+}
+
 # Map (uname -s, uname -m) to Zig's tarball arch slug.
 # Prints the slug on stdout. Fails if the platform is unsupported.
 zig_target_triple() {
@@ -108,31 +140,7 @@ ensure_minisign() {
   success "Installed minisign"
 }
 
-# Print the currently-installed Zig version IF it was installed by this script.
-# Returns empty string for: no install, foreign install (e.g., system zig).
-# Detection rule: ~/.local/bin/zig must be a symlink whose target is
-# ~/.local/zig-<version>/zig.
-zig_current_installed_version() {
-  local link="$HOME/.local/bin/zig"
-  [[ -L "$link" ]] || return 0
-  local target
-  target="$(resolve_symlink "$link")" || return 0
-  # Match $HOME/.local/zig-<version>/zig (use a parameter expansion check
-  # rather than regex to stay portable across bash versions).
-  local prefix="$HOME/.local/zig-"
-  local suffix="/zig"
-  case "$target" in
-    "$prefix"*"$suffix")
-      local middle="${target#$prefix}"
-      middle="${middle%$suffix}"
-      # Reject if middle still contains a slash (would mean nested dir)
-      case "$middle" in
-        */*) return 0 ;;
-      esac
-      echo "$middle"
-      ;;
-  esac
-}
+zig_current_installed_version() { _local_installed_version zig; }
 
 # Install (or upgrade) Zig from the official community mirrors with full
 # minisign signature verification + sha256 cross-check.
@@ -243,14 +251,7 @@ install_zig() {
   success "Installed Zig $version"
 }
 
-# Update Zig — but only if it was installed by this script. Foreign installs
-# (system, brew, scoop) are left alone.
-update_zig() {
-  local current
-  current="$(zig_current_installed_version)"
-  [[ -z "$current" ]] && return 0
-  install_zig
-}
+update_zig() { _update_if_ours zig install_zig; }
 
 # Umbrella: install all languages, or just one if specified.
 # Usage: install_languages [LANG]
@@ -266,28 +267,7 @@ install_languages() {
   esac
 }
 
-# Print the currently-installed Odin tag IF it was installed by this script.
-# Returns empty string for: no install, foreign install (e.g., system odin).
-# Detection rule: ~/.local/bin/odin must be a symlink whose target is
-# ~/.local/odin-<tag>/odin.
-odin_current_installed_version() {
-  local link="$HOME/.local/bin/odin"
-  [[ -L "$link" ]] || return 0
-  local target
-  target="$(resolve_symlink "$link")" || return 0
-  local prefix="$HOME/.local/odin-"
-  local suffix="/odin"
-  case "$target" in
-    "$prefix"*"$suffix")
-      local middle="${target#$prefix}"
-      middle="${middle%$suffix}"
-      case "$middle" in
-        */*) return 0 ;;
-      esac
-      echo "$middle"
-      ;;
-  esac
-}
+odin_current_installed_version() { _local_installed_version odin; }
 
 # Map (uname -s, uname -m) to Odin's release-asset slug.
 # Prints the slug on stdout. Fails if the platform is unsupported.
@@ -307,15 +287,9 @@ odin_target_triple() {
 }
 
 # Print the JSON body of the latest Odin release from the GitHub API.
-# Optionally accepts a JSON string as $1 to skip the network fetch — lets
-# install_odin fetch once and reuse the body for tag/digest/url lookups.
 odin_latest_release() {
-  local json="${1:-}"
-  if [[ -z "$json" ]]; then
-    json="$(http_get_retry "https://api.github.com/repos/odin-lang/Odin/releases/latest")" \
-      || fail "Failed to fetch Odin releases/latest"
-  fi
-  echo "$json"
+  http_get_retry "https://api.github.com/repos/odin-lang/Odin/releases/latest" \
+    || fail "Failed to fetch Odin releases/latest"
 }
 
 # Install (or upgrade) Odin from the official GitHub releases.
@@ -355,48 +329,16 @@ install_odin() {
   _install_from_github_release "Odin" "odin" "$release_json" "$tag" "$asset" "single-dir" "odin"
 }
 
-# Update Odin — but only if it was installed by this script. Foreign installs
-# (system, brew) are left alone.
-update_odin() {
-  local current
-  current="$(odin_current_installed_version)"
-  [[ -z "$current" ]] && return 0
-  install_odin
-}
+# Update Odin — but only if it was installed by this script.
+update_odin() { _update_if_ours odin install_odin; }
 
 # Print the JSON body of the latest Gleam release from the GitHub API.
-# Optionally accepts a JSON string as $1 to skip the network fetch — lets
-# install_gleam fetch once and reuse the body for tag/digest/url lookups.
 gleam_latest_release() {
-  local json="${1:-}"
-  if [[ -z "$json" ]]; then
-    json="$(http_get_retry "https://api.github.com/repos/gleam-lang/gleam/releases/latest")" \
-      || fail "Failed to fetch Gleam releases/latest"
-  fi
-  echo "$json"
+  http_get_retry "https://api.github.com/repos/gleam-lang/gleam/releases/latest" \
+    || fail "Failed to fetch Gleam releases/latest"
 }
 
-# Print the currently-installed Gleam tag IF it was installed by this script.
-# Returns empty for: no install, foreign install (system/brew/scoop).
-# Detection rule: ~/.local/bin/gleam must be a symlink to ~/.local/gleam-<tag>/gleam.
-gleam_current_installed_version() {
-  local link="$HOME/.local/bin/gleam"
-  [[ -L "$link" ]] || return 0
-  local target
-  target="$(resolve_symlink "$link")" || return 0
-  local prefix="$HOME/.local/gleam-"
-  local suffix="/gleam"
-  case "$target" in
-    "$prefix"*"$suffix")
-      local middle="${target#$prefix}"
-      middle="${middle%$suffix}"
-      case "$middle" in
-        */*) return 0 ;;
-      esac
-      echo "$middle"
-      ;;
-  esac
-}
+gleam_current_installed_version() { _local_installed_version gleam; }
 
 # Install Erlang/OTP via the platform package manager if missing. Required
 # for Gleam runtime (gleam compiles to BEAM bytecode).
@@ -415,25 +357,6 @@ ensure_erlang() {
     *)      fail "Cannot install Erlang on this platform" ;;
   esac
   success "Installed Erlang/OTP"
-}
-
-# Install rebar3 via the platform package manager if missing. Optional Gleam
-# build helper — only some projects need it, but cheap to install upfront.
-ensure_rebar3() {
-  if command -v rebar3 >/dev/null 2>&1; then
-    return 0
-  fi
-  info "rebar3 not found; installing..."
-  if [[ "$DRY" == "true" ]]; then
-    return 0
-  fi
-  case "$(detect_platform)" in
-    debian) sudo apt install -y rebar3 || fail "Failed to install rebar3" ;;
-    arch)   sudo pacman -S --needed --noconfirm rebar3 || fail "Failed to install rebar3" ;;
-    mac)    brew install rebar3 || fail "Failed to install rebar3" ;;
-    *)      fail "Cannot install rebar3 on this platform" ;;
-  esac
-  success "Installed rebar3"
 }
 
 # Ensure clang is available. Required at runtime by Odin to assemble/link
@@ -471,12 +394,12 @@ ensure_clang() {
 
 # Install (or upgrade) Gleam from the official GitHub releases.
 # Layout: extracts to ~/.local/gleam-<tag>/gleam and symlinks ~/.local/bin/gleam.
-# Auto-installs Erlang/OTP and rebar3 dependencies. Skips if at the target tag.
+# Auto-installs the Erlang/OTP runtime (gleam compiles to BEAM). rebar3 is only
+# needed by some hex deps, so it's left for the user to install on demand.
 install_gleam() {
   info "Installing Gleam..."
   ensure_jq
   ensure_erlang
-  ensure_rebar3
 
   local triple
   triple="$(gleam_target_triple)"
@@ -506,14 +429,8 @@ install_gleam() {
   _install_from_github_release "Gleam" "gleam" "$release_json" "$tag" "$asset" "flat-binary" "gleam"
 }
 
-# Update Gleam — but only if it was installed by this script. Foreign installs
-# (system, brew) are left alone.
-update_gleam() {
-  local current
-  current="$(gleam_current_installed_version)"
-  [[ -z "$current" ]] && return 0
-  install_gleam
-}
+# Update Gleam — but only if it was installed by this script.
+update_gleam() { _update_if_ours gleam install_gleam; }
 
 # Update every language that this script previously installed.
 update_languages() {

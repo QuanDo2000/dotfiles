@@ -364,8 +364,6 @@ test_install_languages_dry_run() {
   export -f ensure_jq
   ensure_erlang() { return 0; }
   export -f ensure_erlang
-  ensure_rebar3() { return 0; }
-  export -f ensure_rebar3
 
   local output
   output=$(install_languages 2>&1)
@@ -395,8 +393,6 @@ test_install_languages_all_arg() {
   export -f ensure_jq
   ensure_erlang() { return 0; }
   export -f ensure_erlang
-  ensure_rebar3() { return 0; }
-  export -f ensure_rebar3
 
   local output
   output=$(install_languages all 2>&1)
@@ -439,8 +435,6 @@ test_install_languages_gleam_only_arg() {
   export -f ensure_jq
   ensure_erlang() { return 0; }
   export -f ensure_erlang
-  ensure_rebar3() { return 0; }
-  export -f ensure_rebar3
 
   local output
   output=$(install_languages gleam 2>&1)
@@ -535,19 +529,6 @@ test_odin_target_triple_unsupported_arch_fails() {
 # ---------------------------------------------------------------------------
 # odin_latest_release
 # ---------------------------------------------------------------------------
-
-test_odin_latest_release_uses_passed_json() {
-  # If a JSON arg is given, return it verbatim — http_get_retry must NOT be called.
-  http_get_retry() {
-    echo "  FAILED: http_get_retry should not be called when JSON arg supplied" >> "$ERROR_FILE"
-    return 1
-  }
-  export -f http_get_retry
-
-  local result
-  result="$(odin_latest_release '{"tag_name": "dev-2026-04"}')"
-  assert_equals '{"tag_name": "dev-2026-04"}' "$result"
-}
 
 test_odin_latest_release_fetches_when_no_arg() {
   http_get_retry() { echo '{"tag_name": "dev-2026-04"}'; }
@@ -712,18 +693,6 @@ test_gleam_target_triple_unsupported_arch_fails() {
 # gleam_latest_release
 # ---------------------------------------------------------------------------
 
-test_gleam_latest_release_uses_passed_json() {
-  http_get_retry() {
-    echo "  FAILED: http_get_retry should not be called when JSON arg supplied" >> "$ERROR_FILE"
-    return 1
-  }
-  export -f http_get_retry
-
-  local result
-  result="$(gleam_latest_release '{"tag_name": "v1.15.4"}')"
-  assert_equals '{"tag_name": "v1.15.4"}' "$result"
-}
-
 test_gleam_latest_release_fetches_when_no_arg() {
   http_get_retry() { echo '{"tag_name": "v1.15.4"}'; }
   export -f http_get_retry
@@ -825,67 +794,6 @@ test_ensure_erlang_dry_run_mac_logs_install() {
 }
 
 # ---------------------------------------------------------------------------
-# ensure_rebar3
-# ---------------------------------------------------------------------------
-
-test_ensure_rebar3_already_present_noop() {
-  echo '#!/bin/bash' > "$HOME/.local/bin/rebar3"
-  chmod +x "$HOME/.local/bin/rebar3"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(ensure_rebar3 2>&1)
-  if [[ "$output" == *"rebar3 not found"* ]]; then
-    echo "  FAILED: ensure_rebar3 should noop when already on PATH" >> "$ERROR_FILE"
-  fi
-}
-
-test_ensure_rebar3_dry_run_arch_logs_install() {
-  DRY=true
-  command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" == "rebar3" ]]; then return 1; fi
-    builtin command "$@"
-  }
-  export -f command
-  detect_platform() { echo "arch"; }
-  export -f detect_platform
-
-  local output
-  output=$(ensure_rebar3 2>&1)
-  assert_contains "$output" "rebar3 not found"
-}
-
-test_ensure_rebar3_dry_run_debian_logs_install() {
-  DRY=true
-  command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" == "rebar3" ]]; then return 1; fi
-    builtin command "$@"
-  }
-  export -f command
-  detect_platform() { echo "debian"; }
-  export -f detect_platform
-
-  local output
-  output=$(ensure_rebar3 2>&1)
-  assert_contains "$output" "rebar3 not found"
-}
-
-test_ensure_rebar3_dry_run_mac_logs_install() {
-  DRY=true
-  command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" == "rebar3" ]]; then return 1; fi
-    builtin command "$@"
-  }
-  export -f command
-  detect_platform() { echo "mac"; }
-  export -f detect_platform
-
-  local output
-  output=$(ensure_rebar3 2>&1)
-  assert_contains "$output" "rebar3 not found"
-}
-
-# ---------------------------------------------------------------------------
 # ensure_clang
 # ---------------------------------------------------------------------------
 
@@ -965,8 +873,6 @@ test_install_gleam_dry_run() {
   export -f ensure_jq
   ensure_erlang() { return 0; }
   export -f ensure_erlang
-  ensure_rebar3() { return 0; }
-  export -f ensure_rebar3
 
   local output
   output=$(install_gleam 2>&1)
@@ -988,8 +894,6 @@ test_install_gleam_already_installed_short_circuits() {
   export -f ensure_jq
   ensure_erlang() { return 0; }
   export -f ensure_erlang
-  ensure_rebar3() { return 0; }
-  export -f ensure_rebar3
 
   local output
   output=$(install_gleam 2>&1)
@@ -1026,8 +930,6 @@ test_update_gleam_dry_run_when_ours() {
   export -f ensure_jq
   ensure_erlang() { return 0; }
   export -f ensure_erlang
-  ensure_rebar3() { return 0; }
-  export -f ensure_rebar3
 
   local output
   output=$(update_gleam 2>&1)

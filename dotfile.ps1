@@ -456,22 +456,11 @@ function InstallNeovimNightly {
     AddToUserPath $binDir
 }
 
-function Install-Rebar3 {
-    if (Get-Command -Name 'rebar3' -ErrorAction SilentlyContinue) { return }
-    Info 'rebar3 not found; installing...'
-    if ($script:Dry) { return }
-    scoop bucket add main *> $null
-    scoop install main/rebar3
-    if ($LASTEXITCODE -ne 0) { Fail 'Failed to install rebar3 via scoop' }
-    Success 'Installed rebar3'
-}
-
 function Install-Gleam {
     Info 'Installing Gleam...'
     if ($script:Dry) { Success 'Would install gleam via scoop (dry run)'; return }
     # scoop's gleam manifest depends on erlang, so the runtime comes along.
-    # rebar3 is still needed to build hex deps that use it.
-    Install-Rebar3
+    # rebar3 is only needed by some hex deps — left for on-demand install.
     scoop bucket add main *> $null
     scoop install main/gleam
     if ($LASTEXITCODE -ne 0) { Fail 'Failed to install gleam via scoop' }

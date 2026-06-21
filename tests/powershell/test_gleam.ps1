@@ -9,29 +9,6 @@ function TestTeardown {
 }
 
 # ---------------------------------------------------------------------------
-# Install-Rebar3
-# ---------------------------------------------------------------------------
-
-function test_install_rebar3_dry_run_does_not_call_scoop {
-    $script:Dry = $true
-    $called = $false
-    Set-CommandMock 'scoop' { $script:called = $true }
-
-    $origPath = $env:PATH
-    $env:PATH = $script:_TestTmp.FullName
-
-    try {
-        $output = Install-Rebar3 6>&1 | Out-String
-    } finally {
-        $env:PATH = $origPath
-        Clear-CommandMock 'scoop'
-    }
-
-    Assert-Contains $output 'rebar3 not found'
-    Assert-False $called 'scoop should not be invoked in dry run'
-}
-
-# ---------------------------------------------------------------------------
 # Install-Gleam (now a thin scoop wrapper)
 # ---------------------------------------------------------------------------
 

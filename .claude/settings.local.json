@@ -260,7 +260,9 @@
       "Bash(GIT_EDITOR=true git rebase --continue)",
       "Bash(echo \"=== push exit: $? ===\")",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 test_aliases.ps1)",
-      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern '=== Results|FAIL')"
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern '=== Results|FAIL')",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 test_gleam.ps1 2>&1 | Select-String -Pattern '=== Results|FAIL')",
+      "PowerShell($j = Get-Command jq -ErrorAction SilentlyContinue; if \\($j\\) { \"jq present: $\\($j.Source\\)\" } else { scoop install jq 2>&1 | Select-Object -Last 3 })"
     ]
   }
 }
