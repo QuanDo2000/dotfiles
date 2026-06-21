@@ -202,7 +202,8 @@
       "PowerShell(git pull *)",
       "PowerShell(Measure-Command *)",
       "PowerShell($noprofile = \\(Measure-Command { pwsh -NoLogo -NoProfile -Command \"exit\" }\\).TotalMilliseconds; $withprofile = \\(Measure-Command { pwsh -NoLogo -Command \"exit\" }\\).TotalMilliseconds; Write-Output \"NoProfile: $noprofile ms\"; Write-Output \"WithProfile: $withprofile ms\"; Write-Output \"ProfileCost: $\\($withprofile - $noprofile\\) ms\")",
-      "PowerShell($t = \\(Measure-Command { pwsh -NoLogo -Command \"exit\" }\\).TotalMilliseconds; Write-Output \"WithProfile now: $\\([math]::Round\\($t\\)\\) ms \\(was ~704 ms\\)\")"
+      "PowerShell($t = \\(Measure-Command { pwsh -NoLogo -Command \"exit\" }\\).TotalMilliseconds; Write-Output \"WithProfile now: $\\([math]::Round\\($t\\)\\) ms \\(was ~704 ms\\)\")",
+      "PowerShell(git *)"
     ]
   }
 }
