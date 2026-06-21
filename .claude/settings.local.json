@@ -225,7 +225,10 @@
       "Bash(DRY=false QUIET=false bash -c 'source scripts/utils.sh; source scripts/platform.sh; source scripts/extras.sh; install_opencode_plugins')",
       "Bash(python3 -c \"import json;json.load\\(open\\('config/shared/ai/opencode/opencode.json'\\)\\);print\\('ok'\\)\")",
       "Bash(node --input-type=module -e 'await import\\(\"/home/quando/.local/share/ponytail/.opencode/plugins/ponytail.mjs\"\\).then\\(m=>console.log\\(\"loaded exports:\",Object.keys\\(m\\)\\)\\).catch\\(e=>{console.error\\(\"LOAD FAIL:\",e.message\\);process.exit\\(1\\)}\\)')",
-      "Bash(cd *)"
+      "Bash(cd *)",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 test_symlinks.ps1)",
+      "PowerShell(pwsh -NoProfile tests/powershell/runner.ps1)",
+      "PowerShell(git stash *)"
     ]
   }
 }
