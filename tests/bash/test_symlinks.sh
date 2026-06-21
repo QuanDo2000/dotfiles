@@ -447,12 +447,25 @@ test_setup_symlinks_ai_dry_run() {
 
 test_setup_symlinks_links_starship_config() {
   create_dotfiles_dirs
-  echo 'format = "$character"' > "$DOTFILES_DIR/config/shared/starship.toml"
+  mkdir -p "$DOTFILES_DIR/config/shared/starship"
+  echo 'format = "$character"' > "$DOTFILES_DIR/config/shared/starship/starship.toml"
 
   setup_symlinks
 
   assert_symlink "$HOME/.config/starship.toml" \
-    "$DOTFILES_DIR/config/shared/starship.toml"
+    "$DOTFILES_DIR/config/shared/starship/starship.toml"
+}
+
+test_setup_symlinks_no_stray_starship_in_home() {
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/starship"
+  echo 'format = "$character"' > "$DOTFILES_DIR/config/shared/starship/starship.toml"
+
+  setup_symlinks
+
+  if [ -e "$HOME/starship.toml" ] || [ -L "$HOME/starship.toml" ]; then
+    echo "  FAILED: ~/starship.toml stray link should not be created" >> "$ERROR_FILE"
+  fi
 }
 
 test_setup_symlinks_links_caf_on_mac() {

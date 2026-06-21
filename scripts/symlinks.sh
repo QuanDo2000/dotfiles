@@ -170,9 +170,11 @@ function setup_symlinks {
   fi
 
   # starship prompt config — shared across zsh and PowerShell. Lives at
-  # config/shared/starship.toml but must land at ~/.config/starship.toml
-  # (setup_symlinks_folder only links directories under config/, not loose files).
-  local starship_src="$DOTFILES_DIR/config/shared/starship.toml"
+  # config/shared/starship/starship.toml but must land at ~/.config/starship.toml
+  # (setup_symlinks_folder only links directories under config/, not loose files,
+  # and placing the file in a subdir prevents a stray ~/starship.toml from being
+  # created by the top-level file scanner).
+  local starship_src="$DOTFILES_DIR/config/shared/starship/starship.toml"
   if [[ -f "$starship_src" ]]; then
     if [[ "$DRY" != "true" ]]; then
       mkdir -p "$HOME/.config" || fail "Failed to create $HOME/.config"
