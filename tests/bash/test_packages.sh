@@ -418,3 +418,50 @@ test_setup_codex_update_does_not_skip() {
     echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# setup_starship + package lists
+# ---------------------------------------------------------------------------
+
+test_setup_starship_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_starship 2>&1)
+
+  assert_contains "$output" "starship"
+  assert_contains "$output" "Finished starship"
+}
+
+test_setup_starship_already_installed() {
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/starship"
+  chmod +x "$HOME/.local/bin/starship"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_starship 2>&1)
+
+  assert_contains "$output" "Already installed starship"
+}
+
+test_setup_starship_update_does_not_skip() {
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/starship"
+  chmod +x "$HOME/.local/bin/starship"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_starship --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}
+
+test_arch_packages_include_starship() {
+  assert_contains "${ARCH_PACKAGES[*]}" "starship"
+}
+
+test_mac_packages_include_starship() {
+  assert_contains "${MAC_BREW_PACKAGES[*]}" "starship"
+}

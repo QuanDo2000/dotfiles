@@ -306,6 +306,29 @@ function setup_lazygit {
   success "Finished lazygit"
 }
 
+# Install or update the starship prompt. Arch installs it via pacman and macOS
+# via brew (see ARCH_PACKAGES / MAC_BREW_PACKAGES); Debian apt does not reliably
+# ship starship, so install it via the official script into ~/.local/bin.
+# Idempotent: in install mode, no-op if `starship` is already on PATH; --update
+# always reinstalls the latest. Usage: setup_starship [--update]
+function setup_starship {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "$(_action_verb "$update") starship..."
+  if [[ "$DRY" == "false" ]]; then
+    if [[ "$update" == "false" ]] && command -v starship >/dev/null 2>&1; then
+      info "Already installed starship"
+      success "Finished starship"
+      return
+    fi
+    mkdir -p "$HOME/.local/bin"
+    curl -sS https://starship.rs/install.sh \
+      | sh -s -- -y -b "$HOME/.local/bin" \
+      || fail "Failed to install starship"
+  fi
+  success "Finished starship"
+}
+
 # Map `uname -m` to the arch slug used by jj (jujutsu) release assets.
 _jj_arch() {
   case "$(uname -m)" in
@@ -434,6 +457,7 @@ function update_debian {
     setup_neovim --update
     setup_lazygit --update
     setup_jj --update
+    setup_starship --update
     setup_opencode --update
     setup_codex --update
   fi
@@ -452,6 +476,7 @@ function install_debian {
     setup_fdfind
     setup_lazygit
     setup_jj
+    setup_starship
     setup_opencode
     setup_codex
   fi
@@ -462,7 +487,7 @@ ARCH_PACKAGES=(
   base-devel curl git unzip zsh tmux fontconfig
   fzf fd ripgrep lazygit ttf-firacode-nerd zoxide
   gnupg wl-clipboard openssh lua51 luarocks nvm
-  tree-sitter-cli jujutsu
+  tree-sitter-cli jujutsu starship
 )
 
 function update_arch {
@@ -493,7 +518,7 @@ function install_arch {
 
 MAC_BREW_PACKAGES=(
   bash tmux git neovim fzf fd ripgrep font-fira-code-nerd-font
-  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide jj
+  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide jj starship
 )
 MAC_BREW_CASKS=(ghostty)
 
