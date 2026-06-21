@@ -121,24 +121,8 @@ zig_latest_stable() {
   echo "$version"
 }
 
-# Install minisign via the platform package manager if missing. Required for
-# tarball signature verification.
-ensure_minisign() {
-  if command -v minisign >/dev/null 2>&1; then
-    return 0
-  fi
-  info "minisign not found; installing..."
-  if [[ "$DRY" == "true" ]]; then
-    return 0
-  fi
-  case "$(detect_platform)" in
-    debian) sudo apt install -y minisign || fail "Failed to install minisign" ;;
-    arch)   sudo pacman -S --needed --noconfirm minisign || fail "Failed to install minisign" ;;
-    mac)    brew install minisign || fail "Failed to install minisign" ;;
-    *)      fail "Cannot install minisign on this platform" ;;
-  esac
-  success "Installed minisign"
-}
+# Install minisign if missing. Required for tarball signature verification.
+ensure_minisign() { ensure_pkg minisign; }
 
 zig_current_installed_version() { _local_installed_version zig; }
 
@@ -340,24 +324,8 @@ gleam_latest_release() {
 
 gleam_current_installed_version() { _local_installed_version gleam; }
 
-# Install Erlang/OTP via the platform package manager if missing. Required
-# for Gleam runtime (gleam compiles to BEAM bytecode).
-ensure_erlang() {
-  if command -v erl >/dev/null 2>&1; then
-    return 0
-  fi
-  info "Erlang/OTP not found; installing..."
-  if [[ "$DRY" == "true" ]]; then
-    return 0
-  fi
-  case "$(detect_platform)" in
-    debian) sudo apt install -y erlang || fail "Failed to install erlang" ;;
-    arch)   sudo pacman -S --needed --noconfirm erlang || fail "Failed to install erlang" ;;
-    mac)    brew install erlang || fail "Failed to install erlang" ;;
-    *)      fail "Cannot install Erlang on this platform" ;;
-  esac
-  success "Installed Erlang/OTP"
-}
+# Install Erlang/OTP if missing. Required for the Gleam runtime (BEAM bytecode).
+ensure_erlang() { ensure_pkg erl erlang "Erlang/OTP"; }
 
 # Ensure clang is available. Required at runtime by Odin to assemble/link
 # generated C code (see https://odin-lang.org/docs/install/).
@@ -379,15 +347,7 @@ ensure_clang() {
       fail "clang not found. Run \`xcode-select --install\` to install Apple Command Line Tools, then re-run."
       ;;
     *)
-      command -v clang >/dev/null 2>&1 && return 0
-      info "clang not found; installing..."
-      [[ "$DRY" == "true" ]] && return 0
-      case "$platform" in
-        debian) sudo apt install -y clang || fail "Failed to install clang" ;;
-        arch)   sudo pacman -S --needed --noconfirm clang || fail "Failed to install clang" ;;
-        *)      fail "Cannot install clang on this platform" ;;
-      esac
-      success "Installed clang"
+      ensure_pkg clang
       ;;
   esac
 }

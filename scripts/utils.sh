@@ -22,14 +22,14 @@ success() {
   printf '\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n' "$1"
 }
 
-fail() {
-  printf '\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n' "$1"
-  echo ''
-  exit 1
-}
-
 fail_soft() {
   printf '\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n' "$1"
+}
+
+fail() {
+  fail_soft "$1"
+  echo ''
+  exit 1
 }
 
 # Fetch a URL with retry + exponential backoff. Useful for GitHub API calls

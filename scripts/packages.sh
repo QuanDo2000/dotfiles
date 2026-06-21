@@ -154,24 +154,26 @@ _install_from_github_release() {
   success "Installed $display_name $tag"
 }
 
-# Install jq via the platform package manager if missing. Required to parse
-# GitHub release metadata (and the Zig index.json).
-ensure_jq() {
-  if command -v jq >/dev/null 2>&1; then
-    return 0
-  fi
-  info "jq not found; installing..."
-  if [[ "$DRY" == "true" ]]; then
-    return 0
-  fi
+# Ensure <cmd> is on PATH; if missing, install <pkg> (defaults to <cmd>) via the
+# platform package manager. <display> (defaults to <cmd>) names the tool in log
+# messages. No-op in DRY mode after logging. Shared by ensure_jq/minisign/erlang
+# and the Linux branch of ensure_clang.
+ensure_pkg() {
+  local cmd="$1" pkg="${2:-$1}" display="${3:-$1}"
+  command -v "$cmd" >/dev/null 2>&1 && return 0
+  info "$display not found; installing..."
+  [[ "$DRY" == "true" ]] && return 0
   case "$(detect_platform)" in
-    debian) sudo apt install -y jq || fail "Failed to install jq" ;;
-    arch)   sudo pacman -S --needed --noconfirm jq || fail "Failed to install jq" ;;
-    mac)    brew install jq || fail "Failed to install jq" ;;
-    *)      fail "Cannot install jq on this platform" ;;
+    debian) sudo apt install -y "$pkg" || fail "Failed to install $pkg" ;;
+    arch)   sudo pacman -S --needed --noconfirm "$pkg" || fail "Failed to install $pkg" ;;
+    mac)    brew install "$pkg" || fail "Failed to install $pkg" ;;
+    *)      fail "Cannot install $pkg on this platform" ;;
   esac
-  success "Installed jq"
+  success "Installed $display"
 }
+
+# Install jq if missing. Required to parse GitHub release metadata (and Zig index.json).
+ensure_jq() { ensure_pkg jq; }
 
 function install_font_debian {
   # https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
@@ -278,33 +280,39 @@ _lazygit_arch() {
   esac
 }
 
-# Install or update lazygit from its GitHub releases into ~/.local/bin.
-# Debian only — Arch installs it via pacman, macOS via brew. Idempotent: in
-# install mode, no-op if `lazygit` is already on PATH; --update always fetches
-# the latest. Reuses _install_from_github_release (sha256-verified) and
-# ensure_jq from languages.sh. Usage: setup_lazygit [--update]
-function setup_lazygit {
+# Install or update a flat-binary tool from its GitHub releases into ~/.local/bin.
+# Debian only — Arch/macOS use their package managers. Idempotent: in install
+# mode, no-op if <cmd> is already on PATH; --update always fetches the latest.
+# <asset_fn> echoes the release asset filename given the tag (it varies per tool).
+# Usage: setup_gh_binary <cmd> <owner/repo> <asset_fn> [--update]
+function setup_gh_binary {
+  local cmd="$1" repo="$2" asset_fn="$3"
   local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") lazygit..."
+  [[ "${4:-}" == "--update" ]] && update=true
+  info "$(_action_verb "$update") $cmd..."
   if [[ "$DRY" == "false" ]]; then
-    if [[ "$update" == "false" ]] && command -v lazygit >/dev/null 2>&1; then
-      info "Already installed lazygit"
-      success "Finished lazygit"
+    if [[ "$update" == "false" ]] && command -v "$cmd" >/dev/null 2>&1; then
+      info "Already installed $cmd"
+      success "Finished $cmd"
       return
     fi
     ensure_jq
     local release_json tag
-    release_json="$(http_get_retry https://api.github.com/repos/jesseduffield/lazygit/releases/latest)" \
-      || fail "Failed to fetch lazygit releases/latest"
+    release_json="$(http_get_retry "https://api.github.com/repos/$repo/releases/latest")" \
+      || fail "Failed to fetch $cmd releases/latest"
     tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
-    [[ -n "$tag" ]] || fail "Could not read tag_name from lazygit releases/latest"
-    # lazygit asset drops the leading 'v' from the tag (e.g. lazygit_0.44.2_Linux_x86_64.tar.gz).
-    local asset="lazygit_${tag#v}_Linux_$(_lazygit_arch).tar.gz"
-    _install_from_github_release "lazygit" "lazygit" "$release_json" "$tag" "$asset" "flat-binary" "lazygit"
+    [[ -n "$tag" ]] || fail "Could not read tag_name from $cmd releases/latest"
+    local asset
+    asset="$("$asset_fn" "$tag")"
+    _install_from_github_release "$cmd" "$cmd" "$release_json" "$tag" "$asset" "flat-binary" "$cmd"
   fi
-  success "Finished lazygit"
+  success "Finished $cmd"
 }
+
+# lazygit asset drops the leading 'v' from the tag (e.g. lazygit_0.44.2_Linux_x86_64.tar.gz).
+_lazygit_asset() { echo "lazygit_${1#v}_Linux_$(_lazygit_arch).tar.gz"; }
+# Install or update lazygit (Debian only — Arch uses pacman, macOS brew).
+function setup_lazygit { setup_gh_binary lazygit jesseduffield/lazygit _lazygit_asset "${1:-}"; }
 
 # Install or update the starship prompt. Arch installs it via pacman and macOS
 # via brew (see ARCH_PACKAGES / MAC_BREW_PACKAGES); Debian apt does not reliably
@@ -338,32 +346,10 @@ _jj_arch() {
   esac
 }
 
-# Install or update jj (jujutsu) from its GitHub releases into ~/.local/bin.
-# Debian only — Arch installs it via pacman (jujutsu), macOS via brew (jj).
-# Idempotent: in install mode, no-op if `jj` is already on PATH; --update
-# always fetches the latest. Usage: setup_jj [--update]
-function setup_jj {
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") jj..."
-  if [[ "$DRY" == "false" ]]; then
-    if [[ "$update" == "false" ]] && command -v jj >/dev/null 2>&1; then
-      info "Already installed jj"
-      success "Finished jj"
-      return
-    fi
-    ensure_jq
-    local release_json tag
-    release_json="$(http_get_retry https://api.github.com/repos/jj-vcs/jj/releases/latest)" \
-      || fail "Failed to fetch jj releases/latest"
-    tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
-    [[ -n "$tag" ]] || fail "Could not read tag_name from jj releases/latest"
-    # jj asset keeps the leading 'v' (e.g. jj-v0.42.0-x86_64-unknown-linux-musl.tar.gz).
-    local asset="jj-${tag}-$(_jj_arch)-unknown-linux-musl.tar.gz"
-    _install_from_github_release "jj" "jj" "$release_json" "$tag" "$asset" "flat-binary" "jj"
-  fi
-  success "Finished jj"
-}
+# jj asset keeps the leading 'v' (e.g. jj-v0.42.0-x86_64-unknown-linux-musl.tar.gz).
+_jj_asset() { echo "jj-${1}-$(_jj_arch)-unknown-linux-musl.tar.gz"; }
+# Install or update jj/jujutsu (Debian only — Arch uses pacman, macOS brew).
+function setup_jj { setup_gh_binary jj jj-vcs/jj _jj_asset "${1:-}"; }
 
 # Install or update OpenCode via the official install script. Self-updates
 # via `opencode upgrade`. Idempotent: no-op if `opencode` is on PATH (unless
