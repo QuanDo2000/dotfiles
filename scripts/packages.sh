@@ -220,13 +220,9 @@ function setup_fdfind {
   info "Ensuring 'fd' is available in '.local/bin'..."
   if [[ "$DRY" == "false" ]]; then
     mkdir -p "$HOME/.local/bin"
-    # Preferred executable is 'fd'; on Debian-based systems it's 'fdfind'
+    # 'fd' is already callable as-is; we only normalize Debian's 'fdfind' name.
     if command -v fd >/dev/null 2>&1; then
       info "'fd' already available on PATH"
-      # create a user-local symlink to ensure consistent path
-      if [ ! -L "$HOME/.local/bin/fd" ]; then
-        ln -s "$(command -v fd)" "$HOME/.local/bin/fd" || true
-      fi
     elif command -v fdfind >/dev/null 2>&1; then
       if [ ! -L "$HOME/.local/bin/fd" ]; then
         ln -s "$(command -v fdfind)" "$HOME/.local/bin/fd"

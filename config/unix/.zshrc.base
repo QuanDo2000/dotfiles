@@ -95,6 +95,15 @@ if [[ -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" \
   tmux attach -t main 2>/dev/null || tmux new -s main
 fi
 
+# Bare `tmux` attaches to (or creates) "main"; `tmux <args>` passes through.
+tmux() {
+  if [ $# -eq 0 ]; then
+    command tmux attach -t main 2>/dev/null || command tmux new -s main
+  else
+    command tmux "$@"
+  fi
+}
+
 # History (replaces omz lib/history.zsh). Without this, HISTFILE is unset and
 # SAVEHIST=0, so nothing persists and zsh-autosuggestions has nothing to suggest.
 HISTFILE="$HOME/.zsh_history"
