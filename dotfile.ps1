@@ -194,7 +194,7 @@ function InstallPackages {
 
     $wingetPkgs = @(
         "Microsoft.Powershell", "Git.Git", "Microsoft.WindowsTerminal",
-        "JanDeDobbeleer.OhMyPosh", "JesseDuffield.lazygit",
+        "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "JernejSimoncic.Wget",
         "junegunn.fzf", "Schniz.fnm", "jj-vcs.jj"
     )
@@ -618,6 +618,13 @@ function SetupSymlinks {
 
     # Jujutsu config (lives at %APPDATA%\jj\config.toml on Windows)
     LinkDir -source (Join-Path $sharedPath "config\jj") -destination "$env:APPDATA\jj"
+
+    # starship prompt config — shared with zsh, read from ~/.config/starship.toml.
+    $starshipConfigDir = "$userHome\.config"
+    if (-not (Test-Path $starshipConfigDir)) {
+        New-Item -ItemType Directory -Path $starshipConfigDir | Out-Null
+    }
+    LinkFile -source (Join-Path $sharedPath "starship\starship.toml") -destination (Join-Path $starshipConfigDir "starship.toml")
 
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
     $dotfileSource = Join-Path $script:DotfilesDir "dotfile.ps1"
