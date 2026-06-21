@@ -200,6 +200,11 @@ esac
 # zoxide — initialized last (after all other PATH/config) so its `cd` override and
 # chpwd hook aren't clobbered by anything sourced later, and to satisfy zoxide's
 # own "init at end of config" guidance. Replaces the omz zoxide plugin + ZOXIDE_CMD_OVERRIDE.
+# _ZO_DOCTOR=0: the doctor false-positives under agent harnesses that restore the
+# `cd` override but not the chpwd_functions array, nagging on every command. Config
+# is correct (zoxide is last; real shells register the hook fine), so the check only
+# ever fires as that artifact — silence it. ponytail: drop if zoxide changes the check.
+export _ZO_DOCTOR=0
 command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh --cmd cd)"
 
 # --- machine-local additions go in ~/.zshrc (not this tracked file) ---
