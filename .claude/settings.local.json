@@ -262,7 +262,17 @@
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 test_aliases.ps1)",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern '=== Results|FAIL')",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 test_gleam.ps1 2>&1 | Select-String -Pattern '=== Results|FAIL')",
-      "PowerShell($j = Get-Command jq -ErrorAction SilentlyContinue; if \\($j\\) { \"jq present: $\\($j.Source\\)\" } else { scoop install jq 2>&1 | Select-Object -Last 3 })"
+      "PowerShell($j = Get-Command jq -ErrorAction SilentlyContinue; if \\($j\\) { \"jq present: $\\($j.Source\\)\" } else { scoop install jq 2>&1 | Select-Object -Last 3 })",
+      "Bash(zoxide --version)",
+      "Bash(zsh -fc 'true')",
+      "Bash(zsh -ic 'cd /tmp')",
+      "Bash(zsh -ic 'echo \"chpwd_functions=$chpwd_functions\"; echo \"has hook: ${chpwd_functions[\\(r\\)__zoxide_hook]:-NO}\"')",
+      "Bash(zoxide init *)",
+      "Bash(zsh -ic 'print -r -- \"HOOKED=${chpwd_functions[\\(Ie\\)__zoxide_hook]:-0}\"')",
+      "Bash(ZDOTDIR=/home/quando zsh -ic 'print -r -- \"HOOKED=${chpwd_functions[\\(Ie\\)__zoxide_hook]}\"')",
+      "Bash(_ZO_DOCTOR=0 zsh -c 'eval \"$\\(zoxide init zsh --cmd cd\\)\"; chpwd_functions=\\(\\); cd /tmp')",
+      "Bash(zsh -c 'eval \"$\\(zoxide init zsh --cmd cd\\)\"; chpwd_functions=\\(\\); cd /tmp')",
+      "Bash(zsh -ic 'cd /tmp && cd - >/dev/null && echo \"cd works; zoxide tracks: $\\(zoxide query -l 2>/dev/null | head -1\\)\"')"
     ]
   }
 }
