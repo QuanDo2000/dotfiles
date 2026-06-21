@@ -102,7 +102,9 @@ function setup_symlinks_folder {
     done 3< <(find "$root/bin" -maxdepth 1 -type f -print0)
   fi
 
-  # Setup symlinks for config folders
+  # Setup symlinks for config files and folders. Both loose files (e.g.
+  # starship.toml) and directories (e.g. nvim/) under config/ are linked
+  # straight into ~/.config/, preserving their basename.
   if [[ ! -d "$root/config" ]]; then
     info "$root/config doesn't exist"
     return
@@ -112,7 +114,7 @@ function setup_symlinks_folder {
     local dst
     dst="$HOME/.config/$(basename "$src")"
     link_files "$src" "$dst"
-  done 3< <(find "$root/config" -mindepth 1 -maxdepth 1 -type d -print0)
+  done 3< <(find "$root/config" -mindepth 1 -maxdepth 1 \( -type f -o -type d \) -print0)
 
   success "Finished setting up symlinks for $root"
 }
@@ -167,19 +169,6 @@ function setup_symlinks {
   fi
   if [[ -f "$opencode_dir/AGENTS.md" ]]; then
     link_files "$opencode_dir/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
-  fi
-
-  # starship prompt config — shared across zsh and PowerShell. Lives at
-  # config/shared/starship/starship.toml but must land at ~/.config/starship.toml
-  # (setup_symlinks_folder only links directories under config/, not loose files,
-  # and placing the file in a subdir prevents a stray ~/starship.toml from being
-  # created by the top-level file scanner).
-  local starship_src="$DOTFILES_DIR/config/shared/starship/starship.toml"
-  if [[ -f "$starship_src" ]]; then
-    if [[ "$DRY" != "true" ]]; then
-      mkdir -p "$HOME/.config" || fail "Failed to create $HOME/.config"
-    fi
-    link_files "$starship_src" "$HOME/.config/starship.toml"
   fi
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users

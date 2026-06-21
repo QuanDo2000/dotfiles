@@ -172,7 +172,11 @@
       "Bash(ZDOTDIR=/home/quando zsh -lic 'echo SHELL_STARTED_CLEAN')",
       "Bash(zsh -lic 'true')",
       "Bash(zsh -ic 'true')",
-      "Bash(starship print-config *)"
+      "Bash(starship print-config *)",
+      "Bash(ls -la config/shared/starship/)",
+      "Bash(rmdir config/shared/starship)",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-Object -Last 5)",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern \"starship|FAIL|Results\" | Select-Object -Last 15)"
     ]
   }
 }

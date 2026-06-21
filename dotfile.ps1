@@ -624,7 +624,7 @@ function SetupSymlinks {
     if (-not (Test-Path $starshipConfigDir)) {
         New-Item -ItemType Directory -Path $starshipConfigDir | Out-Null
     }
-    LinkFile -source (Join-Path $sharedPath "starship\starship.toml") -destination (Join-Path $starshipConfigDir "starship.toml")
+    LinkFile -source (Join-Path $sharedPath "config\starship.toml") -destination (Join-Path $starshipConfigDir "starship.toml")
 
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
     $dotfileSource = Join-Path $script:DotfilesDir "dotfile.ps1"
@@ -683,6 +683,7 @@ function Verify {
         @{ Source = (Join-Path $sharedPath ".gitconfig"); Dest = "$userHome\.gitconfig" }
         @{ Source = (Join-Path $sharedPath ".vimrc"); Dest = "$userHome\_vimrc" }
         @{ Source = (Join-Path $configPath "_gvimrc"); Dest = "$userHome\_gvimrc" }
+        @{ Source = (Join-Path $sharedPath "config\starship.toml"); Dest = "$userHome\.config\starship.toml" }
     )
     foreach ($file in $filesToCheck) {
         if (Test-Path $file.Dest) {

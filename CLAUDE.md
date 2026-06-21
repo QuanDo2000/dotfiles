@@ -42,7 +42,9 @@ Platform config lives under `config/`. Symlinks are created in priority order by
 
 Files in `config/` subdirectories of each platform layer are symlinked into `~/.config/`. Top-level dotfiles are symlinked directly to `$HOME`.
 
-Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` → `~/.ssh/config`, `config/shared/ai/claude/settings.json` → `~/.claude/settings.json`, `config/shared/ai/opencode/opencode.json` → `~/.config/opencode/opencode.json`, and `config/shared/starship/starship.toml` → `~/.config/starship.toml`. Only the listed files are linked — caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
+Both loose files and directories under a layer's `config/` are linked into `~/.config/` by their basename (e.g. `config/shared/config/starship.toml` → `~/.config/starship.toml`, `config/shared/config/nvim/` → `~/.config/nvim/`).
+
+Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` → `~/.ssh/config`, `config/shared/ai/claude/settings.json` → `~/.claude/settings.json`, and `config/shared/ai/opencode/opencode.json` → `~/.config/opencode/opencode.json`. Only the listed files are linked — caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
 
 ## Global Variables
 

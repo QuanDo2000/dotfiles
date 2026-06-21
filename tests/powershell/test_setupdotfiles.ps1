@@ -9,6 +9,7 @@ function TestSetup {
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\Terminal') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\.ssh') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\config\nvim') -Force | Out-Null
+    'starship' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\config\starship.toml')
     'profile' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\Powershell\Microsoft.PowerShell_profile.ps1')
     '{}' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\Terminal\settings.json')
     'gvim' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\_gvimrc')
@@ -48,4 +49,17 @@ function test_setupsymlinks_dry_run_creates_no_symlinks {
 
     $psProfileDest = Join-Path $env:USERPROFILE 'documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1'
     Assert-False (Test-Path $psProfileDest) 'no symlink should be created in dry run'
+}
+
+function test_setupsymlinks_links_starship_config {
+    # The shared starship.toml should be wired to ~/.config/starship.toml, where
+    # `starship init` reads it by default. Assert on the dry-run link intent so
+    # the test needs no symlink privilege and mutates no real user state.
+    $script:Quiet = $false
+    $out = SetupSymlinks 6>&1 | Out-String
+
+    $expectedSrc = Join-Path $script:DotfilesDir 'config\shared\config\starship.toml'
+    $expectedDst = Join-Path $env:USERPROFILE '.config\starship.toml'
+    Assert-Contains $out $expectedSrc
+    Assert-Contains $out $expectedDst
 }

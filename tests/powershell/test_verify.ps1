@@ -13,6 +13,8 @@ function TestSetup {
     'g' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
     'v' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.vimrc')
     'gv' | Set-Content (Join-Path $script:DotfilesDir 'config\windows\_gvimrc')
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\config') -Force | Out-Null
+    's' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\config\starship.toml')
     # Verify's informational output flows through Info/Success, which are
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.
@@ -36,6 +38,17 @@ function test_verify_emits_each_verification_phase {
     Assert-Contains $output 'Verifying PowerShell modules'
     Assert-Contains $output 'Verifying copied files'
     Assert-Contains $output 'Verifying neovim config'
+}
+
+function test_verify_checks_starship_config {
+    Set-CommandMock 'Get-Command' { return $null }
+    Set-CommandMock 'Get-Module' { return $null }
+
+    $output = Verify 6>&1 | Out-String
+
+    # The starship config is among the copied files Verify checks; with the dest
+    # absent in the temp home it reports the ~/.config/starship.toml path missing.
+    Assert-Contains $output 'starship.toml'
 }
 
 function test_verify_reports_issues_when_tools_absent {
