@@ -16,7 +16,7 @@ truncation_length = 3
 truncate_to_repo = true
 
 [git_branch]
-symbol = " "
+symbol = ""
 style = "mauve"
 
 [git_status]
