@@ -8,3 +8,9 @@ source = "https://github.com/DietrichGebert/ponytail.git"
 
 [plugins."ponytail@ponytail"]
 enabled = true
+
+# superpowers ships in the built-in openai-curated marketplace, so no
+# [marketplaces.*] entry is needed — only the plugin cache (populated by
+# `codex plugin add` in extras.sh).
+[plugins."superpowers@openai-curated"]
+enabled = true

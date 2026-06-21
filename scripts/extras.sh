@@ -64,16 +64,19 @@ function install_codex_plugins {
   info "Installing codex plugins..."
   # Codex keeps its marketplace/plugin state and plugin cache in the
   # machine-local ~/.codex/config.toml (never tracked). dotfiles.config.toml
-  # declares the ponytail marketplace+plugin for `codex -p dotfiles`, but the
-  # plugin CACHE must be populated locally or runtime activation silently
-  # no-ops. These two commands do that and are idempotent. `codex plugin*`
-  # rejects -p, but the `codex -p dotfiles` alias isn't active in this
-  # non-interactive shell, so plain `codex` resolves to the real binary.
+  # declares the plugins for `codex -p dotfiles`, but the plugin CACHE must be
+  # populated locally or runtime activation silently no-ops. These commands do
+  # that and are idempotent. `codex plugin*` rejects -p, but the
+  # `codex -p dotfiles` alias isn't active in this non-interactive shell, so
+  # plain `codex` resolves to the real binary. ponytail needs its marketplace
+  # added first; superpowers ships in the built-in openai-curated marketplace.
   if [[ "$DRY" == "false" ]] && command -v codex >/dev/null 2>&1; then
     codex plugin marketplace add DietrichGebert/ponytail \
       || fail "Failed to add ponytail marketplace for codex"
     codex plugin add ponytail@ponytail \
       || fail "Failed to install ponytail plugin for codex"
+    codex plugin add superpowers@openai-curated \
+      || fail "Failed to install superpowers plugin for codex"
   fi
   success "Finished installing codex plugins"
 }

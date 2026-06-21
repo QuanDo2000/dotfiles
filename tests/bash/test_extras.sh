@@ -203,6 +203,7 @@ test_install_codex_plugins_runs_install_commands() {
   local log; log=$(cat "$HOME/codex-calls.log" 2>/dev/null)
   assert_contains "$log" "plugin marketplace add DietrichGebert/ponytail"
   assert_contains "$log" "plugin add ponytail@ponytail"
+  assert_contains "$log" "plugin add superpowers@openai-curated"
 }
 
 test_install_codex_plugins_propagates_failure() {
