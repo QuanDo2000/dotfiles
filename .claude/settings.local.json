@@ -164,7 +164,15 @@
       "Bash(command -v luajit)",
       "Bash(luajit -bl config/shared/config/nvim/lua/config/options.lua)",
       "Bash(python3 -c \"import json; json.load\\(open\\('config/shared/config/nvim/lazy-lock.json'\\)\\); print\\('JSON OK'\\)\")",
-      "Bash(gpg --batch --no-tty --clearsign)"
+      "Bash(gpg --batch --no-tty --clearsign)",
+      "Bash(zsh -n config/unix/.zshrc)",
+      "Bash(zsh -n config/mac/.zshrc.mac)",
+      "Bash(echo \"PARSE_OK exit=$?\")",
+      "Bash(starship prompt *)",
+      "Bash(ZDOTDIR=/home/quando zsh -lic 'echo SHELL_STARTED_CLEAN')",
+      "Bash(zsh -lic 'true')",
+      "Bash(zsh -ic 'true')",
+      "Bash(starship print-config *)"
     ]
   }
 }
