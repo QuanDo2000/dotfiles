@@ -178,6 +178,65 @@ function UpdateRepo {
     Success "Finished updating repo"
 }
 
+# Clone $repo into $dest if $dest doesn't already exist. Mirrors the unix
+# clone_if_missing in scripts/extras.sh.
+function CloneIfMissing($name, $repo, $dest, [string[]]$GitArgs = @()) {
+    Info "Installing $name..."
+    # dest without a .git inside is a leftover partial clone — wipe it.
+    if ((Test-Path $dest) -and -not (Test-Path (Join-Path $dest '.git'))) {
+        Info "Found partial $name install at $dest; removing"
+        Remove-Item -Recurse -Force $dest
+    }
+    if (-not (Test-Path $dest)) {
+        if ($script:Dry) {
+            Info "Would clone $repo into $dest"
+        } else {
+            git clone @GitArgs $repo $dest
+            if ($LASTEXITCODE -ne 0) {
+                Remove-Item -Recurse -Force $dest -ErrorAction SilentlyContinue
+                Fail "Failed to clone $name"
+            }
+        }
+    }
+    Success "Finished installing $name"
+}
+
+# Populate the machine-local codex plugin cache. dotfiles.config.toml only
+# *declares* the ponytail marketplace/plugin for `codex -p dotfiles`; without
+# the cache, runtime activation silently no-ops. Idempotent. Mirrors the unix
+# install_codex_plugins.
+function InstallCodexPlugins {
+    Info "Installing codex plugins..."
+    if (-not $script:Dry -and (Get-Command codex -ErrorAction SilentlyContinue)) {
+        codex plugin marketplace add DietrichGebert/ponytail
+        if ($LASTEXITCODE -ne 0) { Fail "Failed to add ponytail marketplace for codex" }
+        codex plugin add ponytail@ponytail
+        if ($LASTEXITCODE -ne 0) { Fail "Failed to install ponytail plugin for codex" }
+    }
+    Success "Finished installing codex plugins"
+}
+
+# OpenCode has no marketplace for ponytail, and its plugin loads sibling
+# hooks/skills relative to its own file, so it needs a full checkout.
+# opencode.json points at ~/.local/share/ponytail/.opencode/plugins/ponytail.mjs.
+# Mirrors the unix install_opencode_plugins.
+function InstallOpencodePlugins {
+    Info "Installing opencode plugins..."
+    if (-not $script:Dry) {
+        $userHome = $env:USERPROFILE
+        $ponytailDir = "$userHome\.local\share\ponytail"
+        CloneIfMissing "ponytail (opencode)" "https://github.com/DietrichGebert/ponytail.git" $ponytailDir
+        # The /ponytail commands are plain markdown OpenCode only discovers from
+        # a command dir; link them into the global one.
+        $cmdDst = "$userHome\.config\opencode\command"
+        if (-not (Test-Path $cmdDst)) { New-Item -ItemType Directory -Path $cmdDst -Force | Out-Null }
+        Get-ChildItem (Join-Path $ponytailDir '.opencode\command') -Filter '*.md' -ErrorAction SilentlyContinue | ForEach-Object {
+            LinkFile -source $_.FullName -destination (Join-Path $cmdDst $_.Name)
+        }
+    }
+    Success "Finished installing opencode plugins"
+}
+
 function WingetHas($id) {
     $null = winget list --id $id --exact --accept-source-agreements 2>$null | Out-String
     return ($LASTEXITCODE -eq 0)
@@ -337,6 +396,12 @@ function InstallAi {
     }
 
     Success "Finished installing AI CLIs"
+
+    # Install the ponytail plugins now that the CLIs are on PATH. Unix runs
+    # these from install_extras, but on Windows InstallExtras precedes InstallAi
+    # in the `all` flow, so codex wouldn't exist yet — install here instead.
+    InstallCodexPlugins
+    InstallOpencodePlugins
 }
 
 function InstallNeovimNightly {
@@ -542,25 +607,6 @@ function SetupSymlinks {
             New-Item -ItemType Directory -Path $parent -Force | Out-Null
         }
         LinkFile -source $src -destination $link.Dst
-    }
-
-    # Shared AI skills: one folder per skill, linked into each tool's user
-    # skills dir so a single copy serves Claude, Codex, and OpenCode.
-    $skillsRoot = Join-Path $aiPath "skills"
-    if (Test-Path $skillsRoot) {
-        $skillDstDirs = @(
-            "$userHome\.claude\skills"
-            "$userHome\.codex\skills"
-            "$starshipConfigDir\opencode\skills"
-        )
-        foreach ($dstDir in $skillDstDirs) {
-            if (-not $script:Dry -and -not (Test-Path $dstDir)) {
-                New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
-            }
-            Get-ChildItem $skillsRoot -Directory | ForEach-Object {
-                LinkDir -source $_.FullName -destination (Join-Path $dstDir $_.Name)
-            }
-        }
     }
 
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.

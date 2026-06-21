@@ -247,7 +247,17 @@
       "Bash(python3 -c \"import json;json.load\\(open\\('config/shared/ai/claude/settings.json'\\)\\);print\\('settings.json valid'\\)\")",
       "Bash(python3 -c \"import tomllib;tomllib.load\\(open\\('config/shared/ai/codex/dotfiles.config.toml','rb'\\)\\);print\\('toml valid'\\)\")",
       "Bash(bash tests/bash/runner.sh --no-docker test_extras.sh)",
-      "Bash(DRY=true QUIET=false bash -c 'source scripts/utils.sh; source scripts/platform.sh; source scripts/symlinks.sh; setup_symlinks')"
+      "Bash(DRY=true QUIET=false bash -c 'source scripts/utils.sh; source scripts/platform.sh; source scripts/symlinks.sh; setup_symlinks')",
+      "PowerShell(pwsh tests/powershell/runner.ps1 test_plugins.ps1)",
+      "PowerShell(pwsh tests/powershell/runner.ps1 2>$null | Select-String -Pattern 'Results|FAIL')",
+      "PowerShell(Out-Null *)",
+      "PowerShell(gh run *)",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-Object -Last 40)",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern 'FAIL|Results:')",
+      "PowerShell(if \\(Get-Module -ListAvailable PSScriptAnalyzer\\) { $r = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning,Error; $errs = @\\($r | Where-Object { $_.Severity -eq 'Error' }\\); if \\($r\\) { $r | Format-Table -AutoSize | Out-String | Write-Host }; \"ERROR count: $\\($errs.Count\\)\" } else { \"PSScriptAnalyzer not installed locally\" })",
+      "Bash(echo \"jq present: $\\(jq --version\\)\")",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass -File tests/powershell/runner.ps1 2>&1 | Select-String -Pattern 'test_plugins|test_install_codex|test_install_opencode|Results:')",
+      "Bash(GIT_EDITOR=true git rebase --continue)"
     ]
   }
 }
