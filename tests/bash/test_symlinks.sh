@@ -445,6 +445,16 @@ test_setup_symlinks_ai_dry_run() {
   fi
 }
 
+test_setup_symlinks_links_starship_config() {
+  create_dotfiles_dirs
+  echo 'format = "$character"' > "$DOTFILES_DIR/config/shared/starship.toml"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.config/starship.toml" \
+    "$DOTFILES_DIR/config/shared/starship.toml"
+}
+
 test_setup_symlinks_links_caf_on_mac() {
   local overwrite_all=false backup_all=false skip_all=false
   mock_uname Darwin

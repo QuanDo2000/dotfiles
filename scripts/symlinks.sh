@@ -169,6 +169,17 @@ function setup_symlinks {
     link_files "$opencode_dir/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
   fi
 
+  # starship prompt config — shared across zsh and PowerShell. Lives at
+  # config/shared/starship.toml but must land at ~/.config/starship.toml
+  # (setup_symlinks_folder only links directories under config/, not loose files).
+  local starship_src="$DOTFILES_DIR/config/shared/starship.toml"
+  if [[ -f "$starship_src" ]]; then
+    if [[ "$DRY" != "true" ]]; then
+      mkdir -p "$HOME/.config" || fail "Failed to create $HOME/.config"
+    fi
+    link_files "$starship_src" "$HOME/.config/starship.toml"
+  fi
+
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
   # can run `dotfile` from any shell.
   if [[ -f "$DOTFILES_DIR/dotfile" ]]; then
