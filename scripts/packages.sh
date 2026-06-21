@@ -156,8 +156,8 @@ _install_from_github_release() {
 
 # Ensure <cmd> is on PATH; if missing, install <pkg> (defaults to <cmd>) via the
 # platform package manager. <display> (defaults to <cmd>) names the tool in log
-# messages. No-op in DRY mode after logging. Shared by ensure_jq/minisign/erlang
-# and the Linux branch of ensure_clang.
+# messages. No-op in DRY mode after logging. Shared by ensure_jq, the inline
+# minisign/Erlang calls in languages.sh, and the Linux branch of ensure_clang.
 ensure_pkg() {
   local cmd="$1" pkg="${2:-$1}" display="${3:-$1}"
   command -v "$cmd" >/dev/null 2>&1 && return 0
@@ -400,6 +400,14 @@ function setup_bun {
 # has no first-party curl installer, so we install the npm package globally
 # via bun. Ensures bun is present first. Idempotent: no-op if `codex` is on
 # PATH (unless --update is passed). Usage: setup_codex [--update]
+#
+# `bun add -g <pkg>` is used for both install and update because it is the
+# idempotent path: installs if missing, upgrades to latest if present. `bun
+# update -g <pkg>` is unreliable here — when the package isn't installed yet
+# (e.g. `dotfile` on a fresh Mac runs `update_packages` before
+# `install_packages`), some bun versions fall through to the bare `bun
+# update` codepath and print "No package.json, so nothing to update" with
+# exit 0, silently skipping the install.
 function setup_codex {
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
@@ -408,12 +416,8 @@ function setup_codex {
     if command -v codex >/dev/null 2>&1 && [[ "$update" == "false" ]]; then
       info "Already installed Codex"
     else
-      setup_bun
-      if [[ "$update" == "true" ]]; then
-        bun update -g @openai/codex || fail "Failed to update Codex"
-      else
-        bun install -g @openai/codex || fail "Failed to install Codex"
-      fi
+      if [[ "$update" == "true" ]]; then setup_bun --update; else setup_bun; fi
+      bun add -g @openai/codex || fail "$(_action_verb "$update") Codex failed"
     fi
   fi
   success "Finished Codex"
