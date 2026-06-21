@@ -195,7 +195,7 @@ function InstallPackages {
     $wingetPkgs = @(
         "Microsoft.Powershell", "Git.Git", "Microsoft.WindowsTerminal",
         "Starship.Starship", "JesseDuffield.lazygit",
-        "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "JernejSimoncic.Wget",
+        "BurntSushi.ripgrep.MSVC", "sharkdp.fd",
         "junegunn.fzf", "Schniz.fnm", "jj-vcs.jj"
     )
     Info "Checking winget packages ($($wingetPkgs.Count) total)..."
@@ -245,7 +245,7 @@ Update-Module
         Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
     }
 
-    $scoopPkgs = @("mingw", "gcc", "extras/vcredist2022", "zig", "main/ast-grep")
+    $scoopPkgs = @("mingw", "extras/vcredist2022", "zig", "main/ast-grep")
     scoop bucket add extras *> $null
     Info "Checking scoop packages..."
     $missingScoop = @($scoopPkgs | Where-Object { -not (ScoopHas $_) })
