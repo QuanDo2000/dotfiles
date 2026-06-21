@@ -196,7 +196,7 @@ function InstallPackages {
         "Microsoft.Powershell", "Git.Git", "Microsoft.WindowsTerminal",
         "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd",
-        "junegunn.fzf", "Schniz.fnm", "jj-vcs.jj"
+        "junegunn.fzf", "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide"
     )
     Info "Checking winget packages ($($wingetPkgs.Count) total)..."
     $missing = @()
@@ -317,6 +317,28 @@ function InstallExtras {
     InstallTreeSitter
 }
 
+# Install (or update) the AI coding CLIs. Unix uses opencode's curl installer
+# and bun for codex; on Windows we lean on the npm packages, since node/npm is
+# already present from InstallExtras. Mirrors unix `install_ai`.
+function InstallAi {
+    param([switch]$Update)
+    Info "Installing AI CLIs (opencode, codex)..."
+    if ($script:Dry) { return }
+
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        FailSoft "npm not found on PATH. Skipping AI CLI install — run 'dotfile.ps1 extras' first, then 'dotfile.ps1 ai'."
+        return
+    }
+
+    $verb = if ($Update) { "update" } else { "install" }
+    foreach ($pkg in @("opencode-ai", "@openai/codex")) {
+        npm $verb -g $pkg
+        if ($LASTEXITCODE -ne 0) { FailSoft "npm $verb -g $pkg failed with exit code $LASTEXITCODE" }
+    }
+
+    Success "Finished installing AI CLIs"
+}
+
 function InstallNeovimNightly {
     Info "Checking Neovim nightly..."
     if ($script:Dry) { return }
@@ -395,6 +417,7 @@ function Update-Packages {
     Info "Updating packages..."
     if ($script:Dry) { Success "Would run: scoop update *"; return }
     scoop update *
+    InstallAi -Update
     Success "Finished updating packages"
 }
 
@@ -501,6 +524,46 @@ function SetupSymlinks {
     }
     LinkFile -source (Join-Path $sharedPath "config\starship.toml") -destination (Join-Path $starshipConfigDir "starship.toml")
 
+    # AI tool configs live in their own dotfolders (not ~/.config) alongside
+    # runtime state we don't track, so link only the tracked files. Mirrors the
+    # unix setup_symlinks. Codex's config.toml is rewritten at runtime, so we
+    # link only the profile overlay (codex -p dotfiles layers it on top).
+    $aiPath = Join-Path $sharedPath "ai"
+    $aiLinks = @(
+        @{ Src = "claude\settings.json";        Dst = "$userHome\.claude\settings.json" }
+        @{ Src = "opencode\opencode.json";      Dst = "$starshipConfigDir\opencode\opencode.json" }
+        @{ Src = "opencode\AGENTS.md";          Dst = "$starshipConfigDir\opencode\AGENTS.md" }
+        @{ Src = "codex\dotfiles.config.toml";  Dst = "$userHome\.codex\dotfiles.config.toml" }
+    )
+    foreach ($link in $aiLinks) {
+        $src = Join-Path $aiPath $link.Src
+        if (-not (Test-Path $src)) { continue }
+        $parent = Split-Path $link.Dst -Parent
+        if (-not $script:Dry -and -not (Test-Path $parent)) {
+            New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        }
+        LinkFile -source $src -destination $link.Dst
+    }
+
+    # Shared AI skills: one folder per skill, linked into each tool's user
+    # skills dir so a single copy serves Claude, Codex, and OpenCode.
+    $skillsRoot = Join-Path $aiPath "skills"
+    if (Test-Path $skillsRoot) {
+        $skillDstDirs = @(
+            "$userHome\.claude\skills"
+            "$userHome\.codex\skills"
+            "$starshipConfigDir\opencode\skills"
+        )
+        foreach ($dstDir in $skillDstDirs) {
+            if (-not $script:Dry -and -not (Test-Path $dstDir)) {
+                New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
+            }
+            Get-ChildItem $skillsRoot -Directory | ForEach-Object {
+                LinkDir -source $_.FullName -destination (Join-Path $dstDir $_.Name)
+            }
+        }
+    }
+
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
     $dotfileSource = Join-Path $script:DotfilesDir "dotfile.ps1"
     if (Test-Path $dotfileSource) {
@@ -519,7 +582,7 @@ function Verify {
     $errors = 0
 
     Info "Verifying installed tools..."
-    foreach ($cmd in @("git", "nvim", "fzf", "fd", "rg", "lazygit")) {
+    foreach ($cmd in @("git", "nvim", "fzf", "fd", "rg", "lazygit", "zoxide")) {
         $found = Get-Command $cmd -ErrorAction SilentlyContinue
         if ($found) {
             Success "$cmd found: $($found.Source)"
@@ -593,6 +656,7 @@ function SetupDotfiles {
     InstallPackages
     UpdateRepo
     InstallExtras
+    InstallAi
     SetupSymlinks
     Success "Done!"
 }
@@ -606,6 +670,7 @@ Commands:
   update      Update system packages and language toolchains
   packages    Install system packages only
   extras      Install FiraCode font, Node.js LTS (fnm), and tree-sitter CLI
+  ai          Install AI CLIs (opencode, codex)
   symlinks    Create symlinks only
   languages [LANG]  Install language toolchains. LANG selects one (Windows: gleam only).
   verify      Verify installation
@@ -655,6 +720,7 @@ if (-not $NoMain) {
         "update"    { Update-Packages }
         "packages"  { InstallPackages }
         "extras"    { InstallExtras }
+        "ai"        { InstallAi }
         "symlinks"  { SetupSymlinks }
         "languages" { Install-Languages -Target $script:CommandArg }
         "verify"    { Verify }

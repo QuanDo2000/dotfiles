@@ -39,6 +39,17 @@ function test_installtreesitter_dry_run_does_not_call_npm {
     Assert-False $called 'npm should not be invoked in dry run'
 }
 
+function test_installai_dry_run_does_not_call_npm {
+    $called = $false
+    Set-CommandMock 'npm' { $script:called = $true }
+
+    $output = InstallAi 6>&1 | Out-String
+
+    Clear-CommandMock 'npm'
+    Assert-Contains $output 'Installing AI CLIs'
+    Assert-False $called 'npm should not be invoked in dry run'
+}
+
 function test_installpackages_dry_run_does_not_call_winget {
     $called = $false
     Set-CommandMock 'winget' { $script:called = $true }
