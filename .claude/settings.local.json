@@ -203,7 +203,25 @@
       "PowerShell(Measure-Command *)",
       "PowerShell($noprofile = \\(Measure-Command { pwsh -NoLogo -NoProfile -Command \"exit\" }\\).TotalMilliseconds; $withprofile = \\(Measure-Command { pwsh -NoLogo -Command \"exit\" }\\).TotalMilliseconds; Write-Output \"NoProfile: $noprofile ms\"; Write-Output \"WithProfile: $withprofile ms\"; Write-Output \"ProfileCost: $\\($withprofile - $noprofile\\) ms\")",
       "PowerShell($t = \\(Measure-Command { pwsh -NoLogo -Command \"exit\" }\\).TotalMilliseconds; Write-Output \"WithProfile now: $\\([math]::Round\\($t\\)\\) ms \\(was ~704 ms\\)\")",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "Bash(codex --version)",
+      "Bash(codex --help)",
+      "Bash(codex config *)",
+      "Bash(codex -c 'x=1' --help)",
+      "Bash(codex doctor *)",
+      "Bash(env)",
+      "Bash(rm -f config/shared/ai/codex/config.toml)",
+      "Bash(printf 'model = \"gpt-5.5\"\\\\nmodel_reasoning_effort = \"medium\"\\\\n')",
+      "Bash(ln -sf __TRACKED_VAR__/config/shared/ai/codex/dotfiles.config.toml ~/.codex/dotfiles.config.toml)",
+      "Bash(codex -p dotfiles -c 'x=1' doctor)",
+      "Bash(codex --profile dotfiles exec --help)",
+      "Bash(codex debug *)",
+      "Bash(codex -p dotfiles debug config)",
+      "Bash(codex plugin *)",
+      "Bash(curl -fsSL \"https://api.github.com/repos/cursor/plugins/contents/cursor-team-kit/skills/thermo-nuclear-code-quality-review?ref=main\")",
+      "Bash(curl -fsSL \"https://raw.githubusercontent.com/cursor/plugins/main/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md\" -o /home/quando/dotfiles/config/shared/ai/skills/thermo-nuclear-code-quality-review/SKILL.md)",
+      "Bash(DOTFILES_DIR=/home/quando/dotfiles bash -c 'source scripts/utils.sh; source scripts/platform.sh; source scripts/symlinks.sh; setup_symlinks')",
+      "Bash(python3 -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\); print\\('valid JSON'\\)\")"
     ]
   }
 }

@@ -412,6 +412,33 @@ test_setup_symlinks_links_opencode_agents() {
     "$DOTFILES_DIR/config/shared/ai/opencode/AGENTS.md"
 }
 
+test_setup_symlinks_links_codex_overlay() {
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/codex"
+  echo 'model = "gpt-5.5"' \
+    > "$DOTFILES_DIR/config/shared/ai/codex/dotfiles.config.toml"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.codex/dotfiles.config.toml" \
+    "$DOTFILES_DIR/config/shared/ai/codex/dotfiles.config.toml"
+}
+
+test_setup_symlinks_links_ai_skills() {
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/skills/demo-skill"
+  echo '# demo' > "$DOTFILES_DIR/config/shared/ai/skills/demo-skill/SKILL.md"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.claude/skills/demo-skill" \
+    "$DOTFILES_DIR/config/shared/ai/skills/demo-skill"
+  assert_symlink "$HOME/.codex/skills/demo-skill" \
+    "$DOTFILES_DIR/config/shared/ai/skills/demo-skill"
+  assert_symlink "$HOME/.config/opencode/skills/demo-skill" \
+    "$DOTFILES_DIR/config/shared/ai/skills/demo-skill"
+}
+
 test_setup_symlinks_skips_ai_when_missing() {
   # When the source files don't exist in the repo, setup_symlinks must not
   # create $HOME/.claude or $HOME/.config/opencode parent dirs.

@@ -1,0 +1,10 @@
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+
+# ponytail: last_updated omitted — codex stamps it on `marketplace upgrade`
+[marketplaces.ponytail]
+source_type = "git"
+source = "https://github.com/DietrichGebert/ponytail.git"
+
+[plugins."ponytail@ponytail"]
+enabled = true

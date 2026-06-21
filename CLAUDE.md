@@ -44,7 +44,9 @@ Files in `config/` subdirectories of each platform layer are symlinked into `~/.
 
 Both loose files and directories under a layer's `config/` are linked into `~/.config/` by their basename (e.g. `config/shared/config/starship.toml` → `~/.config/starship.toml`, `config/shared/config/nvim/` → `~/.config/nvim/`).
 
-Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` → `~/.ssh/config`, `config/shared/ai/claude/settings.json` → `~/.claude/settings.json`, and `config/shared/ai/opencode/opencode.json` → `~/.config/opencode/opencode.json`. Only the listed files are linked — caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
+Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` → `~/.ssh/config`, `config/shared/ai/claude/settings.json` → `~/.claude/settings.json`, `config/shared/ai/opencode/opencode.json` → `~/.config/opencode/opencode.json`, and `config/shared/ai/codex/dotfiles.config.toml` → `~/.codex/dotfiles.config.toml`. Codex rewrites its own `~/.codex/config.toml` at runtime (trust levels, TUI state), so that base file is left machine-local; the tracked overlay is layered on top via `alias codex='codex -p dotfiles'`. Only the listed files are linked — caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
+
+Shared AI skills live under `config/shared/ai/skills/<skill>/`. Each skill folder is symlinked into every tool's user skills dir — `~/.claude/skills/`, `~/.codex/skills/`, and `~/.config/opencode/skills/` — so one copy serves Claude, Codex, and OpenCode. Skills are linked individually so tool-managed siblings (e.g. Codex's `skills/.system`) stay untouched.
 
 ## Global Variables
 

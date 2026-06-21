@@ -8,6 +8,10 @@ export GPG_TTY=$(tty)
 # vim is no longer installed locally (neovim is the editor); keep muscle memory.
 alias vim=nvim
 
+# Load tracked codex settings from the dotfiles profile overlay; the base
+# ~/.codex/config.toml stays machine-local (trust levels, runtime state).
+alias codex='codex -p dotfiles'
+
 # Hyprshot
 [ ! -d "$HOME/hyprshot" ] && mkdir -p "$HOME/hyprshot"
 export HYPRSHOT_DIR="$HOME/hyprshot"
