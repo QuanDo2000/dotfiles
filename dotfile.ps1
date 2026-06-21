@@ -415,8 +415,7 @@ function Install-Gleam {
 
 function Update-Packages {
     Info "Updating packages..."
-    if ($script:Dry) { Success "Would run: scoop update *"; return }
-    scoop update *
+    if ($script:Dry) { Success "Would run: scoop update *" } else { scoop update * }
     InstallAi -Update
     Success "Finished updating packages"
 }

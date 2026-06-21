@@ -14,7 +14,7 @@ fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
 
 # zoxide — bind it to `cd` (mirrors the unix .zshrc)
 if (Get-Command zoxide -ErrorAction SilentlyContinue) {
-    Invoke-Expression (& { (zoxide init powershell --cmd cd | Out-String) })
+    zoxide init powershell --cmd cd | Out-String | Invoke-Expression
 }
 
 # jj (jujutsu) completion — dynamic mode
