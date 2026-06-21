@@ -243,7 +243,8 @@
       "Bash(git add *)",
       "Bash(git rebase *)",
       "Bash(git push *)",
-      "PowerShell(pwsh -NoProfile tests/powershell/runner.ps1 2>&1 | Select-String -Pattern \"Results:\")"
+      "PowerShell(pwsh -NoProfile tests/powershell/runner.ps1 2>&1 | Select-String -Pattern \"Results:\")",
+      "Bash(python3 -c \"import json;json.load\\(open\\('config/shared/ai/claude/settings.json'\\)\\);print\\('settings.json valid'\\)\")"
     ]
   }
 }

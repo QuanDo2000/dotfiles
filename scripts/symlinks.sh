@@ -183,29 +183,6 @@ function setup_symlinks {
     link_files "$codex_src" "$HOME/.codex/dotfiles.config.toml"
   fi
 
-  # Shared AI skills: one folder per skill under config/shared/ai/skills/,
-  # linked into each tool's user skills dir. Claude/Codex read ~/.claude/skills
-  # and ~/.codex/skills; OpenCode reads ~/.config/opencode/skills. We link each
-  # skill folder individually so tool-managed siblings (e.g. codex's .system)
-  # stay untouched.
-  local skills_root="$DOTFILES_DIR/config/shared/ai/skills"
-  if [[ -d "$skills_root" ]]; then
-    local skill_dst_dirs=(
-      "$HOME/.claude/skills"
-      "$HOME/.codex/skills"
-      "$HOME/.config/opencode/skills"
-    )
-    local dst_dir skill
-    for dst_dir in "${skill_dst_dirs[@]}"; do
-      if [[ "$DRY" != "true" ]]; then
-        mkdir -p "$dst_dir" || fail "Failed to create $dst_dir"
-      fi
-      while IFS= read -r -d '' skill <&3; do
-        link_files "$skill" "$dst_dir/$(basename "$skill")"
-      done 3< <(find "$skills_root" -mindepth 1 -maxdepth 1 -type d -print0)
-    done
-  fi
-
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
   # can run `dotfile` from any shell.
   if [[ -f "$DOTFILES_DIR/dotfile" ]]; then
