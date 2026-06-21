@@ -76,6 +76,18 @@ function link_files {
   fi
 }
 
+# Link a single tracked file into place, creating its parent dir, but only if
+# the source exists. Used for carveouts where we link individual files rather
+# than whole dirs (SSH, AI tool configs).
+function _link_optional {
+  local src=$1 dst=$2
+  [[ -f "$src" ]] || return 0
+  if [[ "$DRY" != "true" ]]; then
+    mkdir -p "$(dirname "$dst")" || fail "Failed to create $(dirname "$dst")"
+  fi
+  link_files "$src" "$dst"
+}
+
 function setup_symlinks_folder {
   local root=$1
   info "Setting up symlinks for $root..."
@@ -132,56 +144,19 @@ function setup_symlinks {
     setup_symlinks_folder "$DOTFILES_DIR/config/mac"
   fi
 
-  # SSH config lives in shared/.ssh/config but must land at ~/.ssh/config
-  # (not ~/.config/.ssh), so link only the config file to preserve any
-  # existing keys in ~/.ssh.
-  local ssh_src="$DOTFILES_DIR/config/shared/.ssh/config"
-  if [[ -f "$ssh_src" ]]; then
-    if [[ "$DRY" != "true" ]]; then
-      mkdir -p "$HOME/.ssh" || fail "Failed to create $HOME/.ssh"
-    fi
-    link_files "$ssh_src" "$HOME/.ssh/config"
-  fi
-
-  # AI tool configs live in their own dotfolders under $HOME (not ~/.config),
-  # alongside runtime state we don't want to track. Link only the tracked
-  # config files to leave caches, sessions, credentials, etc. untouched.
-  local claude_src="$DOTFILES_DIR/config/shared/ai/claude/settings.json"
-  if [[ -f "$claude_src" ]]; then
-    if [[ "$DRY" != "true" ]]; then
-      mkdir -p "$HOME/.claude" || fail "Failed to create $HOME/.claude"
-    fi
-    link_files "$claude_src" "$HOME/.claude/settings.json"
-  fi
-
-  # OpenCode keeps its user config under XDG ~/.config/opencode/ alongside
-  # plugin runtime artifacts (node_modules, package.json, bun.lock). Upstream
-  # explicitly excludes those from tracking via the dir's own .gitignore, so
-  # we link only the hand-edited config file.
-  local opencode_dir="$DOTFILES_DIR/config/shared/ai/opencode"
-  if [[ -f "$opencode_dir/opencode.json" || -f "$opencode_dir/AGENTS.md" ]]; then
-    if [[ "$DRY" != "true" ]]; then
-      mkdir -p "$HOME/.config/opencode" || fail "Failed to create $HOME/.config/opencode"
-    fi
-  fi
-  if [[ -f "$opencode_dir/opencode.json" ]]; then
-    link_files "$opencode_dir/opencode.json" "$HOME/.config/opencode/opencode.json"
-  fi
-  if [[ -f "$opencode_dir/AGENTS.md" ]]; then
-    link_files "$opencode_dir/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
-  fi
-
-  # Codex rewrites ~/.codex/config.toml at runtime (trust levels, TUI state,
-  # marketplace timestamps), so we never symlink it. Instead we link a profile
-  # overlay Codex never touches; `alias codex='codex -p dotfiles'` (.zshrc.base)
-  # layers it on top of the machine-local base config.
-  local codex_src="$DOTFILES_DIR/config/shared/ai/codex/dotfiles.config.toml"
-  if [[ -f "$codex_src" ]]; then
-    if [[ "$DRY" != "true" ]]; then
-      mkdir -p "$HOME/.codex" || fail "Failed to create $HOME/.codex"
-    fi
-    link_files "$codex_src" "$HOME/.codex/dotfiles.config.toml"
-  fi
+  # These configs live in dotfolders alongside runtime state we don't want to
+  # track (caches, sessions, credentials, ~/.ssh keys, OpenCode node_modules),
+  # so we link only the individual tracked files rather than whole dirs.
+  # _link_optional creates each file's parent dir and skips when the source is
+  # absent. Notably ~/.codex/config.toml is NOT linked — Codex rewrites it at
+  # runtime; we link only the dotfiles.config.toml profile overlay it never
+  # touches (`alias codex='codex -p dotfiles'` in .zshrc.base layers it on top).
+  local ai="$DOTFILES_DIR/config/shared/ai"
+  _link_optional "$DOTFILES_DIR/config/shared/.ssh/config" "$HOME/.ssh/config"
+  _link_optional "$ai/claude/settings.json" "$HOME/.claude/settings.json"
+  _link_optional "$ai/opencode/opencode.json" "$HOME/.config/opencode/opencode.json"
+  _link_optional "$ai/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
+  _link_optional "$ai/codex/dotfiles.config.toml" "$HOME/.codex/dotfiles.config.toml"
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
   # can run `dotfile` from any shell.

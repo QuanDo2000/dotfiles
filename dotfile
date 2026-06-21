@@ -20,12 +20,6 @@ REPO_URL="https://github.com/QuanDo2000/dotfiles.git"
 
 SCRIPTS_DIR="$DOTFILES_DIR/scripts"
 
-# Ensure the repo is cloned so we can source modules
-if [[ ! -d "$DOTFILES_DIR" ]]; then
-  echo "Cloning dotfiles repo..."
-  git clone "$REPO_URL" "$DOTFILES_DIR" || { echo "Failed to clone dotfiles repo"; exit 1; }
-fi
-
 # Validate that DOTFILES_DIR actually contains the repo we need. We only
 # check for the scripts/ directory — a git check would break valid installs
 # where the repo is owned by a different UID (e.g. read-only bind mount in

@@ -246,7 +246,8 @@
       "PowerShell(pwsh -NoProfile tests/powershell/runner.ps1 2>&1 | Select-String -Pattern \"Results:\")",
       "Bash(python3 -c \"import json;json.load\\(open\\('config/shared/ai/claude/settings.json'\\)\\);print\\('settings.json valid'\\)\")",
       "Bash(python3 -c \"import tomllib;tomllib.load\\(open\\('config/shared/ai/codex/dotfiles.config.toml','rb'\\)\\);print\\('toml valid'\\)\")",
-      "Bash(bash tests/bash/runner.sh --no-docker test_extras.sh)"
+      "Bash(bash tests/bash/runner.sh --no-docker test_extras.sh)",
+      "Bash(DRY=true QUIET=false bash -c 'source scripts/utils.sh; source scripts/platform.sh; source scripts/symlinks.sh; setup_symlinks')"
     ]
   }
 }
