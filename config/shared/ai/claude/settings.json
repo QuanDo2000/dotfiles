@@ -1,7 +1,12 @@
 {
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"/home/quando/.claude/plugins/cache/ponytail/ponytail/4.7.0/hooks/ponytail-statusline.sh\""
+  },
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
-    "ponytail@ponytail": true
+    "ponytail@ponytail": true,
+    "gopls-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "ponytail": {
@@ -10,10 +15,6 @@
         "repo": "DietrichGebert/ponytail"
       }
     }
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "bash \"/home/quando/.claude/plugins/cache/ponytail/ponytail/4.7.0/hooks/ponytail-statusline.sh\""
   },
   "voice": {
     "enabled": false,

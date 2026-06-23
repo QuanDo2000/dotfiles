@@ -1,7 +1,7 @@
 # Base config (tracked in dotfiles repo). Sourced first by ~/.zshrc.
 
 # Environment variables
-export SHELL=$(which zsh)
+export SHELL=$(command -v zsh)
 export EDITOR=nvim
 export GPG_TTY=$(tty)
 
@@ -122,6 +122,11 @@ if [[ ! -f "$_zcompdump" || -n "$_zcompdump"(#qN.mh+24) ]]; then
 else
   compinit -C -d "$_zcompdump"
 fi
+
+# Case-insensitive + substring completion: 'm:...' folds case; 'l:|=* r:|=*'
+# lets the typed text match anywhere in a candidate, not just the prefix
+# (so `log` completes `catalog`). fzf-tab shows whatever this generates.
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'l:|=* r:|=*'
 
 # vi mode (replaces the omz vi-mode plugin + VI_MODE_SET_CURSOR=true)
 bindkey -v
