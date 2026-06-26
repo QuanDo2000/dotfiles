@@ -8,22 +8,6 @@ export GPG_TTY=$(tty)
 # vim is no longer installed locally (neovim is the editor); keep muscle memory.
 alias vim=nvim
 
-# Load tracked codex settings from the dotfiles profile overlay; the base
-# ~/.codex/config.toml stays machine-local (trust levels, runtime state).
-# `-p/--profile` only applies to runtime commands and `codex mcp`; the
-# management subcommands below reject it (you'll see "--profile only applies
-# to runtime commands..."), so this function drops `-p` for those.
-codex() {
-  case "${1:-}" in
-    login|logout|plugin|mcp-server|app-server|remote-control|app|completion|update|doctor|apply|cloud|exec-server|features|help|--help|-h|--version|-V)
-      command codex "$@"
-      ;;
-    *)
-      command codex -p dotfiles "$@"
-      ;;
-  esac
-}
-
 # ls aliases (replaces omz lib/directories.zsh + theme-and-appearance color).
 # Listing aliases re-expand `ls`, so color propagates from the base alias.
 if [[ "$OSTYPE" == darwin* ]]; then

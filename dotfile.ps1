@@ -201,21 +201,6 @@ function CloneIfMissing($name, $repo, $dest, [string[]]$GitArgs = @()) {
     Success "Finished installing $name"
 }
 
-# Populate the machine-local codex plugin cache. dotfiles.config.toml only
-# *declares* the ponytail marketplace/plugin for `codex -p dotfiles`; without
-# the cache, runtime activation silently no-ops. Idempotent. Mirrors the unix
-# install_codex_plugins.
-function InstallCodexPlugins {
-    Info "Installing codex plugins..."
-    if (-not $script:Dry -and (Get-Command codex -ErrorAction SilentlyContinue)) {
-        codex plugin marketplace add DietrichGebert/ponytail
-        if ($LASTEXITCODE -ne 0) { Fail "Failed to add ponytail marketplace for codex" }
-        codex plugin add ponytail@ponytail
-        if ($LASTEXITCODE -ne 0) { Fail "Failed to install ponytail plugin for codex" }
-    }
-    Success "Finished installing codex plugins"
-}
-
 # OpenCode has no marketplace for ponytail, and its plugin loads sibling
 # hooks/skills relative to its own file, so it needs a full checkout.
 # opencode.json points at ~/.local/share/ponytail/.opencode/plugins/ponytail.mjs.
@@ -376,12 +361,12 @@ function InstallExtras {
     InstallTreeSitter
 }
 
-# Install (or update) the AI coding CLIs. Unix uses opencode's curl installer
-# and bun for codex; on Windows we lean on the npm packages, since node/npm is
-# already present from InstallExtras. Mirrors unix `install_ai`.
+# Install (or update) the AI coding CLI. Unix uses opencode's curl installer;
+# on Windows we lean on the npm package, since node/npm is already present
+# from InstallExtras. Mirrors unix `install_ai`.
 function InstallAi {
     param([switch]$Update)
-    Info "Installing AI CLIs (opencode, codex)..."
+    Info "Installing AI CLIs (opencode)..."
     if ($script:Dry) { return }
 
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
@@ -390,17 +375,16 @@ function InstallAi {
     }
 
     $verb = if ($Update) { "update" } else { "install" }
-    foreach ($pkg in @("opencode-ai", "@openai/codex")) {
+    foreach ($pkg in @("opencode-ai")) {
         npm $verb -g $pkg
         if ($LASTEXITCODE -ne 0) { FailSoft "npm $verb -g $pkg failed with exit code $LASTEXITCODE" }
     }
 
     Success "Finished installing AI CLIs"
 
-    # Install the ponytail plugins now that the CLIs are on PATH. Unix runs
-    # these from install_extras, but on Windows InstallExtras precedes InstallAi
-    # in the `all` flow, so codex wouldn't exist yet — install here instead.
-    InstallCodexPlugins
+    # Install the ponytail plugin now that the CLI is on PATH. Unix runs this
+    # from install_extras, but on Windows InstallExtras precedes InstallAi in
+    # the `all` flow, so opencode wouldn't exist yet — install here instead.
     InstallOpencodePlugins
 }
 
@@ -579,14 +563,12 @@ function SetupSymlinks {
 
     # AI tool configs live in their own dotfolders (not ~/.config) alongside
     # runtime state we don't track, so link only the tracked files. Mirrors the
-    # unix setup_symlinks. Codex's config.toml is rewritten at runtime, so we
-    # link only the profile overlay (codex -p dotfiles layers it on top).
+    # unix setup_symlinks.
     $aiPath = Join-Path $sharedPath "ai"
     $aiLinks = @(
         @{ Src = "claude\settings.json";        Dst = "$userHome\.claude\settings.json" }
         @{ Src = "opencode\opencode.json";      Dst = "$starshipConfigDir\opencode\opencode.json" }
         @{ Src = "opencode\AGENTS.md";          Dst = "$starshipConfigDir\opencode\AGENTS.md" }
-        @{ Src = "codex\dotfiles.config.toml";  Dst = "$userHome\.codex\dotfiles.config.toml" }
     )
     foreach ($link in $aiLinks) {
         $src = Join-Path $aiPath $link.Src
@@ -704,7 +686,7 @@ Commands:
   update      Update system packages and language toolchains
   packages    Install system packages only
   extras      Install FiraCode font, Node.js LTS (fnm), and tree-sitter CLI
-  ai          Install AI CLIs (opencode, codex)
+  ai          Install AI CLIs (opencode)
   symlinks    Create symlinks only
   languages [LANG]  Install language toolchains. LANG selects one (Windows: gleam only).
   verify      Verify installation

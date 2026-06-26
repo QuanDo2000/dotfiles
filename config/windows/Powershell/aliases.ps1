@@ -9,10 +9,6 @@ Remove-Item Alias:gc, Alias:gp, Alias:gl, Alias:gm, Alias:gcm -Force -ErrorActio
 # vim is no longer installed (neovim is the editor); keep muscle memory.
 Set-Alias vim nvim
 
-# Load tracked codex settings from the dotfiles profile overlay. Call the
-# executable explicitly — a function named `codex` calling `codex` recurses.
-function codex { & (Get-Command codex -CommandType Application) -p dotfiles @args }
-
 # ls aliases. Get-ChildItem is already long-format; -Force shows hidden entries.
 function l    { Get-ChildItem -Force @args }
 function la   { Get-ChildItem -Force @args }

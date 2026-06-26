@@ -172,15 +172,12 @@ function setup_symlinks {
   # track (caches, sessions, credentials, ~/.ssh keys, OpenCode node_modules),
   # so we link only the individual tracked files rather than whole dirs.
   # _link_optional creates each file's parent dir and skips when the source is
-  # absent. Notably ~/.codex/config.toml is NOT linked — Codex rewrites it at
-  # runtime; we link only the dotfiles.config.toml profile overlay it never
-  # touches (`alias codex='codex -p dotfiles'` in .zshrc.base layers it on top).
+  # absent.
   local ai="$DOTFILES_DIR/config/shared/ai"
   _link_optional "$DOTFILES_DIR/config/shared/.ssh/config" "$HOME/.ssh/config"
   _link_optional "$ai/claude/settings.json" "$HOME/.claude/settings.json"
   _link_optional "$ai/opencode/opencode.json" "$HOME/.config/opencode/opencode.json"
   _link_optional "$ai/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
-  _link_optional "$ai/codex/dotfiles.config.toml" "$HOME/.codex/dotfiles.config.toml"
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
   # can run `dotfile` from any shell.

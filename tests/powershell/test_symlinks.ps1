@@ -70,7 +70,6 @@ function test_ai_config_sources_exist {
         'claude\settings.json'
         'opencode\opencode.json'
         'opencode\AGENTS.md'
-        'codex\dotfiles.config.toml'
     )) {
         Assert-FileExists (Join-Path $ai $rel)
     }

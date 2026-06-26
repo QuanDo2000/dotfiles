@@ -392,38 +392,10 @@ function setup_bun {
   success "Finished bun"
 }
 
-# Install or update OpenAI Codex CLI via bun's global package manager. Codex
-# has no first-party curl installer, so we install the npm package globally
-# via bun. Ensures bun is present first. Idempotent: no-op if `codex` is on
-# PATH (unless --update is passed). Usage: setup_codex [--update]
-#
-# `bun add -g <pkg>` is used for both install and update because it is the
-# idempotent path: installs if missing, upgrades to latest if present. `bun
-# update -g <pkg>` is unreliable here — when the package isn't installed yet
-# (e.g. `dotfile` on a fresh Mac runs `update_packages` before
-# `install_packages`), some bun versions fall through to the bare `bun
-# update` codepath and print "No package.json, so nothing to update" with
-# exit 0, silently skipping the install.
-function setup_codex {
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") Codex..."
-  if [[ "$DRY" == "false" ]]; then
-    if command -v codex >/dev/null 2>&1 && [[ "$update" == "false" ]]; then
-      info "Already installed Codex"
-    else
-      if [[ "$update" == "true" ]]; then setup_bun --update; else setup_bun; fi
-      bun add -g @openai/codex || fail "$(_action_verb "$update") Codex failed"
-    fi
-  fi
-  success "Finished Codex"
-}
-
-# Install the AI coding assistants (OpenCode + Codex). Shared by the full
+# Install the AI coding assistant (OpenCode). Shared by the full
 # `dotfile all` run and the standalone `dotfile ai` subcommand.
 function install_ai {
   setup_opencode
-  setup_codex
 }
 
 # build-essential: nvim-treesitter compiles parsers with cc.
@@ -445,7 +417,6 @@ function update_debian {
     setup_jj --update
     setup_starship --update
     setup_opencode --update
-    setup_codex --update
   fi
   success "Finished update for Debian"
 }
@@ -464,7 +435,6 @@ function install_debian {
     setup_jj
     setup_starship
     setup_opencode
-    setup_codex
   fi
   success "Finished install for Debian"
 }
@@ -483,7 +453,6 @@ function update_arch {
 
     setup_neovim --update
     setup_opencode --update
-    setup_codex --update
   fi
   success "Finished update for Arch Linux"
 }
@@ -497,7 +466,6 @@ function install_arch {
     setup_neovim
     setup_fdfind
     setup_opencode
-    setup_codex
   fi
   success "Finished install for Arch Linux"
 }
@@ -514,7 +482,6 @@ function update_mac {
     brew update || fail "Failed to update brew"
     brew upgrade || fail "Failed to upgrade brew packages"
     setup_opencode --update
-    setup_codex --update
   fi
   success "Finished update for Mac"
 }
@@ -528,7 +495,6 @@ function install_mac {
     brew install "${MAC_BREW_PACKAGES[@]}"
     brew install --cask "${MAC_BREW_CASKS[@]}"
     setup_opencode
-    setup_codex
   fi
   success "Finished install for Mac"
 }

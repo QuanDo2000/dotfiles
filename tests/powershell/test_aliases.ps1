@@ -21,11 +21,3 @@ function test_collisions_removed_and_functions_win {
     Assert-Contains $out 'gl=Function'
     Assert-Contains $out 'ga=Function'
 }
-
-function test_codex_calls_executable_not_itself {
-    # The body must call the application explicitly, or `codex` recurses forever.
-    $probe = ". '$script:AliasesFile'; (Get-Command codex).Definition"
-    $out = pwsh -NoProfile -Command $probe | Out-String
-    Assert-Contains $out '-p dotfiles'
-    Assert-Contains $out 'Get-Command codex -CommandType Application'
-}

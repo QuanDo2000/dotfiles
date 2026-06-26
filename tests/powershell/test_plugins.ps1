@@ -1,6 +1,5 @@
-# Tests for the codex/opencode ponytail plugin installers in dotfile.ps1.
-# Mirrors tests/bash/test_extras.sh's install_codex_plugins /
-# install_opencode_plugins coverage.
+# Tests for the opencode ponytail plugin installer in dotfile.ps1.
+# Mirrors tests/bash/test_extras.sh's install_opencode_plugins coverage.
 
 function TestSetup {
     Initialize-TestEnv | Out-Null
@@ -8,34 +7,8 @@ function TestSetup {
 }
 
 function TestTeardown {
-    Clear-CommandMock 'codex'
     Clear-CommandMock 'git'
     Clear-TestEnv
-}
-
-# --- codex ------------------------------------------------------------------
-
-function test_install_codex_plugins_dry_run_does_not_call_codex {
-    $script:Dry = $true
-    $called = $false
-    Set-CommandMock 'codex' { $script:called = $true; $global:LASTEXITCODE = 0 }
-
-    $output = InstallCodexPlugins 6>&1 | Out-String
-
-    Assert-Contains $output 'Installing codex plugins'
-    Assert-False $called 'codex should not be invoked in dry run'
-}
-
-function test_install_codex_plugins_runs_install_commands {
-    $global:CodexLog = Join-Path $env:USERPROFILE 'codex-calls.log'
-    Set-CommandMock 'codex' { $args -join ' ' | Add-Content -LiteralPath $global:CodexLog; $global:LASTEXITCODE = 0 }
-
-    InstallCodexPlugins 6>&1 | Out-Null
-
-    $contents = Get-Content -Raw -LiteralPath $global:CodexLog
-    Remove-Variable -Name CodexLog -Scope Global -ErrorAction SilentlyContinue
-    Assert-Contains $contents 'plugin marketplace add DietrichGebert/ponytail'
-    Assert-Contains $contents 'plugin add ponytail@ponytail'
 }
 
 # --- opencode ---------------------------------------------------------------
