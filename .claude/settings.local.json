@@ -306,7 +306,10 @@
       "Bash(awk '/^function [a-zA-Z_]+ \\\\{$|^[a-zA-Z_]+\\\\\\(\\\\\\) \\\\{$/{name=$0; getline body; getline maybe; if \\(maybe == \"}\"\\) print FILENAME\":\"NR-1\": \"name\" — \"body; else if \\(body ~ /^[[:space:]]*[a-zA-Z_]+.*\\\\{ }$/\\) print FILENAME\":\"NR\": \"name\" \"body }' /Users/quando/dotfiles/scripts/*.sh)",
       "Bash(rm -f ~/.codex/dotfiles.config.toml)",
       "Bash(./dotfile symlinks *)",
-      "Bash(./dotfile -f symlinks)"
+      "Bash(./dotfile -f symlinks)",
+      "Bash(xargs file)",
+      "Bash(codex -c tui.keymap=vim doctor)",
+      "Bash(codex -c 'model=\"gpt-5.5\"' doctor)"
     ]
   }
 }
