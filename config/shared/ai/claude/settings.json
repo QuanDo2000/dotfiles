@@ -22,5 +22,6 @@
   },
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
-  "voiceEnabled": false
+  "voiceEnabled": false,
+  "tui": "fullscreen"
 }
