@@ -1,0 +1,15 @@
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+
+# ponytail: baseline only — codex rewrites this file at runtime (hooks.state
+# hashes, projects trust, tui nux, marketplace timestamps). Those churned-in
+# lines are noise; the values that matter to keep are model/reasoning/plugins.
+[marketplaces.ponytail]
+source_type = "git"
+source = "https://github.com/DietrichGebert/ponytail.git"
+
+[plugins."ponytail@ponytail"]
+enabled = true
+
+[plugins."superpowers@openai-curated"]
+enabled = true

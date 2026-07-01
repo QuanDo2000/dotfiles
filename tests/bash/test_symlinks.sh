@@ -388,6 +388,17 @@ test_setup_symlinks_links_claude_settings() {
     "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
 }
 
+test_setup_symlinks_links_codex_config() {
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/codex"
+  echo 'model = "gpt-5.5"' > "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.codex/config.toml" \
+    "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
+}
+
 test_setup_symlinks_links_opencode_config() {
   create_dotfiles_dirs
   mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"

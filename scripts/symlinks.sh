@@ -176,6 +176,7 @@ function setup_symlinks {
   local ai="$DOTFILES_DIR/config/shared/ai"
   _link_optional "$DOTFILES_DIR/config/shared/.ssh/config" "$HOME/.ssh/config"
   _link_optional "$ai/claude/settings.json" "$HOME/.claude/settings.json"
+  _link_optional "$ai/codex/config.toml" "$HOME/.codex/config.toml"
   _link_optional "$ai/opencode/opencode.json" "$HOME/.config/opencode/opencode.json"
   _link_optional "$ai/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
 
