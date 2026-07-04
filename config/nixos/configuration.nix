@@ -105,6 +105,7 @@ in
       zsh
       tmux
       neovim
+      gcc
       fzf
       fd
       ripgrep

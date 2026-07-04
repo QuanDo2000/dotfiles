@@ -11,3 +11,5 @@ keybind = ctrl+v=paste_from_clipboard
 
 quit-after-last-window-closed = true
 quit-after-last-window-closed-delay = 5m
+
+mouse-scroll-multiplier = discrete:1,precision:0.5

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false,
+  "plugin": [
+    "superpowers@git+https://github.com/obra/superpowers.git",
+    "~/.local/share/ponytail/.opencode/plugins/ponytail.mjs"
+  ]
+}

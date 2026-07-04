@@ -4,6 +4,9 @@ model_reasoning_effort = "medium"
 [tui]
 vim_mode_default = true
 
+[tui.keymap.global]
+clear_terminal = []
+
 [tui.model_availability_nux]
 "gpt-5.5" = 4
 

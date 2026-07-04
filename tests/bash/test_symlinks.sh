@@ -374,11 +374,20 @@ test_setup_symlinks_folder_dotted_config_subdir() {
 }
 
 # ---------------------------------------------------------------------------
-# AI tool carveouts: ~/.claude/settings.json and ~/.opencode/package.json
+# AI tool carveouts: tool configs are linked only when the tool is installed.
 # ---------------------------------------------------------------------------
+
+create_fake_command() {
+  local name="$1"
+  mkdir -p "$HOME/.local/bin"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/$name"
+  chmod +x "$HOME/.local/bin/$name"
+  PATH="$HOME/.local/bin:$PATH"
+}
 
 test_setup_symlinks_links_claude_settings() {
   create_dotfiles_dirs
+  create_fake_command claude
   mkdir -p "$DOTFILES_DIR/config/shared/ai/claude"
   echo '{"enabledPlugins":{}}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
 
@@ -390,6 +399,7 @@ test_setup_symlinks_links_claude_settings() {
 
 test_setup_symlinks_links_codex_config() {
   create_dotfiles_dirs
+  create_fake_command codex
   mkdir -p "$DOTFILES_DIR/config/shared/ai/codex"
   echo 'model = "gpt-5.5"' > "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
 
@@ -401,6 +411,7 @@ test_setup_symlinks_links_codex_config() {
 
 test_setup_symlinks_links_opencode_config() {
   create_dotfiles_dirs
+  create_fake_command opencode
   mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
   echo '{}' \
     > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
@@ -411,8 +422,24 @@ test_setup_symlinks_links_opencode_config() {
     "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
 }
 
+test_setup_symlinks_links_nixos_opencode_config_on_nixos() {
+  create_dotfiles_dirs
+  create_fake_command opencode
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode" "$DOTFILES_DIR/config/nixos/ai/opencode"
+  echo '{}' > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
+  echo '{"autoupdate":false}' > "$DOTFILES_DIR/config/nixos/ai/opencode/opencode.json"
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+
+  OS_RELEASE="$osrel" setup_symlinks
+
+  assert_symlink "$HOME/.config/opencode/opencode.json" \
+    "$DOTFILES_DIR/config/nixos/ai/opencode/opencode.json"
+}
+
 test_setup_symlinks_links_opencode_agents() {
   create_dotfiles_dirs
+  create_fake_command opencode
   mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
   echo '# AGENTS.md' \
     > "$DOTFILES_DIR/config/shared/ai/opencode/AGENTS.md"
@@ -421,6 +448,59 @@ test_setup_symlinks_links_opencode_agents() {
 
   assert_symlink "$HOME/.config/opencode/AGENTS.md" \
     "$DOTFILES_DIR/config/shared/ai/opencode/AGENTS.md"
+}
+
+test_setup_symlinks_links_opencode_state_when_opencode_installed() {
+  create_dotfiles_dirs
+  create_fake_command opencode
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
+  echo '{"theme":"catppuccin-macchiato"}' \
+    > "$DOTFILES_DIR/config/shared/ai/opencode/kv.json"
+
+  setup_symlinks
+
+  assert_symlink "$HOME/.local/state/opencode/kv.json" \
+    "$DOTFILES_DIR/config/shared/ai/opencode/kv.json"
+}
+
+test_setup_symlinks_skips_ai_tools_when_commands_missing() {
+  create_dotfiles_dirs
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        claude|codex|opencode) return 1 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/claude" \
+    "$DOTFILES_DIR/config/shared/ai/codex" \
+    "$DOTFILES_DIR/config/shared/ai/opencode"
+  echo '{}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
+  echo 'model = "gpt-5.5"' > "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
+  echo '{}' > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
+  echo '# AGENTS.md' > "$DOTFILES_DIR/config/shared/ai/opencode/AGENTS.md"
+  echo '{"theme":"catppuccin-macchiato"}' > "$DOTFILES_DIR/config/shared/ai/opencode/kv.json"
+
+  setup_symlinks
+
+  unset -f command
+
+  if [ -e "$HOME/.claude/settings.json" ] || [ -L "$HOME/.claude/settings.json" ]; then
+    echo "  FAILED: claude settings should not be linked when claude is missing" >> "$ERROR_FILE"
+  fi
+  if [ -e "$HOME/.codex/config.toml" ] || [ -L "$HOME/.codex/config.toml" ]; then
+    echo "  FAILED: codex config should not be linked when codex is missing" >> "$ERROR_FILE"
+  fi
+  if [ -e "$HOME/.config/opencode/opencode.json" ] || [ -L "$HOME/.config/opencode/opencode.json" ]; then
+    echo "  FAILED: opencode config should not be linked when opencode is missing" >> "$ERROR_FILE"
+  fi
+  if [ -e "$HOME/.config/opencode/AGENTS.md" ] || [ -L "$HOME/.config/opencode/AGENTS.md" ]; then
+    echo "  FAILED: opencode AGENTS.md should not be linked when opencode is missing" >> "$ERROR_FILE"
+  fi
+  if [ -e "$HOME/.local/state/opencode/kv.json" ] || [ -L "$HOME/.local/state/opencode/kv.json" ]; then
+    echo "  FAILED: opencode kv.json should not be linked when opencode is missing" >> "$ERROR_FILE"
+  fi
 }
 
 test_setup_symlinks_skips_ai_when_missing() {
@@ -442,6 +522,8 @@ test_setup_symlinks_skips_ai_when_missing() {
 test_setup_symlinks_ai_dry_run() {
   DRY=true
   create_dotfiles_dirs
+  create_fake_command claude
+  create_fake_command opencode
   mkdir -p "$DOTFILES_DIR/config/shared/ai/claude" "$DOTFILES_DIR/config/shared/ai/opencode"
   echo '{}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
   echo '{}' > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
