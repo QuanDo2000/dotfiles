@@ -5,7 +5,7 @@ model_reasoning_effort = "medium"
 vim_mode_default = true
 
 [tui.model_availability_nux]
-"gpt-5.5" = 1
+"gpt-5.5" = 4
 
 [marketplaces.ponytail]
 last_updated = "2026-07-04T07:02:35Z"

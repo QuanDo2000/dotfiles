@@ -49,6 +49,10 @@ in
 
   # --- User ----------------------------------------------------------------
   programs.zsh.enable = true;
+  programs.gnupg.agent = {
+    enable = true;
+    pinentryPackage = pkgs.pinentry-curses;
+  };
   users.users.${machine.username} = {
     isNormalUser = true;
     extraGroups = [ "wheel" "networkmanager" "video" ];
@@ -114,6 +118,7 @@ in
       unzip
       fontconfig
       tree-sitter
+      nodejs
       lua5_1
       luarocks
       waybar
