@@ -87,9 +87,12 @@ _strip_sha256_prefix() {
 #   $5 asset         asset filename inside the release (e.g. "odin-...-v1.2.3.tar.gz")
 #   $6 layout        "single-dir" (one top-level dir) or "flat-binary" (binary at root)
 #   $7 bin_name      binary name to symlink (e.g. "odin")
+#   $8 asset_bin     (flat-binary only) name of the binary inside the tarball if
+#                    it differs from bin_name (e.g. codex ships "codex-<triple>");
+#                    defaults to bin_name.
 _install_from_github_release() {
   local display_name="$1" lc_name="$2" release_json="$3" tag="$4"
-  local asset="$5" layout="$6" bin_name="$7"
+  local asset="$5" layout="$6" bin_name="$7" asset_bin="${8:-$7}"
 
   local digest
   digest="$(echo "$release_json" | jq -r --arg a "$asset" \
@@ -136,12 +139,13 @@ _install_from_github_release() {
       extracted="$(_assert_single_top_dir "$extract_dir" "$display_name")"
       ;;
     flat-binary)
-      if [[ ! -f "$extract_dir/$bin_name" ]]; then
+      if [[ ! -f "$extract_dir/$asset_bin" ]]; then
         fail "$display_name binary not found at top level of tarball"
       fi
-      # Wrap the bare binary in a directory so _install_into_local can mv it.
+      # Wrap the bare binary in a directory so _install_into_local can mv it,
+      # renaming to bin_name when the tarball ships it under a different name.
       mkdir -p "$tmpdir/wrapped"
-      mv "$extract_dir/$bin_name" "$tmpdir/wrapped/$bin_name"
+      mv "$extract_dir/$asset_bin" "$tmpdir/wrapped/$bin_name"
       extracted="$tmpdir/wrapped"
       ;;
     *)
@@ -369,6 +373,48 @@ function setup_opencode {
   success "Finished OpenCode"
 }
 
+# Echo codex's release triple (<arch>-<os>) for the current machine.
+_codex_triple() {
+  local arch os
+  case "$(uname -m)" in
+    x86_64)        arch=x86_64 ;;
+    aarch64|arm64) arch=aarch64 ;;
+    *) fail "Unsupported arch for codex: $(uname -m)" ;;
+  esac
+  if is_mac; then os=apple-darwin; else os=unknown-linux-musl; fi
+  echo "${arch}-${os}"
+}
+
+# Install or update the OpenAI Codex CLI from GitHub releases into ~/.local/bin.
+# Cross-platform (Linux + macOS): codex is not in apt/pacman/brew, so the static
+# release binary is fetched with sha256 verification. The tarball ships the
+# binary as codex-<triple>; it's renamed to `codex` on install. Idempotent:
+# install mode no-ops if `codex` is on PATH; --update always fetches the latest.
+# Usage: setup_codex [--update]
+function setup_codex {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "$(_action_verb "$update") codex..."
+  if [[ "$DRY" == "false" ]]; then
+    if [[ "$update" == "false" ]] && command -v codex >/dev/null 2>&1; then
+      info "Already installed codex"
+      success "Finished codex"
+      return
+    fi
+    ensure_jq
+    local triple asset release_json tag
+    triple="$(_codex_triple)"
+    asset="codex-${triple}.tar.gz"
+    release_json="$(http_get_retry "https://api.github.com/repos/openai/codex/releases/latest")" \
+      || fail "Failed to fetch codex releases/latest"
+    tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
+    [[ -n "$tag" ]] || fail "Could not read tag_name from codex releases/latest"
+    _install_from_github_release codex codex "$release_json" "$tag" \
+      "$asset" "flat-binary" "codex" "codex-${triple}"
+  fi
+  success "Finished codex"
+}
+
 # Install or update bun via the official install script. Self-updates via
 # `bun upgrade`. Idempotent: no-op if `bun` is on PATH (unless --update is
 # passed). Usage: setup_bun [--update]
@@ -392,10 +438,11 @@ function setup_bun {
   success "Finished bun"
 }
 
-# Install the AI coding assistant (OpenCode). Shared by the full
+# Install the AI coding assistants (OpenCode + Codex). Shared by the full
 # `dotfile all` run and the standalone `dotfile ai` subcommand.
 function install_ai {
   setup_opencode
+  setup_codex
 }
 
 # build-essential: nvim-treesitter compiles parsers with cc.
@@ -417,6 +464,7 @@ function update_debian {
     setup_jj --update
     setup_starship --update
     setup_opencode --update
+    setup_codex --update
   fi
   success "Finished update for Debian"
 }
@@ -435,6 +483,7 @@ function install_debian {
     setup_jj
     setup_starship
     setup_opencode
+    setup_codex
   fi
   success "Finished install for Debian"
 }
@@ -453,6 +502,7 @@ function update_arch {
 
     setup_neovim --update
     setup_opencode --update
+    setup_codex --update
   fi
   success "Finished update for Arch Linux"
 }
@@ -466,6 +516,7 @@ function install_arch {
     setup_neovim
     setup_fdfind
     setup_opencode
+    setup_codex
   fi
   success "Finished install for Arch Linux"
 }
@@ -482,6 +533,7 @@ function update_mac {
     brew update || fail "Failed to update brew"
     brew upgrade || fail "Failed to upgrade brew packages"
     setup_opencode --update
+    setup_codex --update
   fi
   success "Finished update for Mac"
 }
@@ -495,6 +547,7 @@ function install_mac {
     brew install "${MAC_BREW_PACKAGES[@]}"
     brew install --cask "${MAC_BREW_CASKS[@]}"
     setup_opencode
+    setup_codex
   fi
   success "Finished install for Mac"
 }

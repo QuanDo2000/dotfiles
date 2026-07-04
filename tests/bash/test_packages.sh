@@ -333,6 +333,60 @@ test_setup_opencode_update_does_not_skip() {
 }
 
 # ---------------------------------------------------------------------------
+# setup_codex
+# ---------------------------------------------------------------------------
+
+test_setup_codex_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_codex 2>&1)
+
+  assert_contains "$output" "codex"
+  assert_contains "$output" "Finished codex"
+}
+
+test_setup_codex_already_installed() {
+  DRY=false
+  echo '#!/bin/bash' > "$HOME/.local/bin/codex"
+  chmod +x "$HOME/.local/bin/codex"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_codex 2>&1)
+
+  assert_contains "$output" "Already installed codex"
+}
+
+test_setup_codex_update_does_not_skip() {
+  DRY=true
+  echo '#!/bin/bash' > "$HOME/.local/bin/codex"
+  chmod +x "$HOME/.local/bin/codex"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_codex --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}
+
+test_codex_triple_linux() {
+  mock_uname Linux
+  local t
+  t=$(_codex_triple)
+  # arch varies by host; assert the OS half is the linux-musl target.
+  assert_contains "$t" "unknown-linux-musl"
+}
+
+test_codex_triple_mac() {
+  mock_uname Darwin
+  local t
+  t=$(_codex_triple)
+  assert_contains "$t" "apple-darwin"
+}
+
+# ---------------------------------------------------------------------------
 # setup_bun
 # ---------------------------------------------------------------------------
 

@@ -64,8 +64,8 @@ in
   # --- Packages ------------------------------------------------------------
   # Ported from ARCH_PACKAGES in scripts/packages.sh. App config files stay as
   # symlinked dotfiles (dotfile symlinks); NixOS only installs the binaries.
-  # ghostty/opencode are appended only if the running channel provides them, so
-  # this evaluates cleanly on stable channels that predate them.
+  # ghostty/opencode/codex are appended only if the running channel provides
+  # them, so this evaluates cleanly on stable channels that predate them.
   environment.systemPackages =
     (with pkgs; [
       git
@@ -90,5 +90,6 @@ in
       waybar
     ])
     ++ lib.optional (pkgs ? ghostty) pkgs.ghostty
-    ++ lib.optional (pkgs ? opencode) pkgs.opencode;
+    ++ lib.optional (pkgs ? opencode) pkgs.opencode
+    ++ lib.optional (pkgs ? codex) pkgs.codex;
 }
