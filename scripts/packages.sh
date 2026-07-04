@@ -555,26 +555,69 @@ _detect_nixos_machine_values() {
   printf '%s\n%s\n%s\n%s\n' "$u" "$h" "$t" "$v"
 }
 
-# Reprovision NixOS from the tracked configuration.nix. Symlinks the repo's
-# config into /etc/nixos (leaving the machine-generated
-# hardware-configuration.nix untouched) and runs nixos-rebuild switch. On
-# NixOS all imperative setup_* installers are skipped — packages come from the
-# rebuild. Usage: install_nixos
-function install_nixos {
-  info "Installing packages for NixOS..."
+# Prompt for a value showing a detected default; empty input keeps the default.
+# The prompt goes to stderr (via read -p) so stdout stays clean for capture.
+# Only ever called under an interactive TTY. Usage: _prompt_default <label> <default>
+_prompt_default() {
+  local label="$1" default="$2" answer
+  read -rp "  [ ?? ] $label [$default]: " answer
+  echo "${answer:-$default}"
+}
+
+# Ensure /etc/nixos/machine.nix exists and the repo configuration.nix is linked
+# into /etc/nixos. On first run (machine.nix missing, or FORCE), detect the
+# per-machine values, confirm them interactively when a TTY is attached, and
+# write the file. hardware-configuration.nix in /etc/nixos is left untouched.
+_nixos_ensure_linked() {
+  local mf="${NIXOS_MACHINE_FILE:-/etc/nixos/machine.nix}"
+  local cfg="$DOTFILES_DIR/config/nixos/configuration.nix"
+
+  if [[ ! -f "$mf" || "$FORCE" == "true" ]]; then
+    info "Detecting machine settings..."
+    local u h t v
+    { read -r u; read -r h; read -r t; read -r v; } < <(_detect_nixos_machine_values)
+    if [[ -t 0 && "$DRY" == "false" ]]; then
+      u="$(_prompt_default "Username" "$u")"
+      h="$(_prompt_default "Hostname" "$h")"
+      t="$(_prompt_default "Timezone" "$t")"
+      v="$(_prompt_default "NixOS stateVersion" "$v")"
+    fi
+    if [[ "$DRY" == "false" ]]; then
+      _nixos_machine_file_content "$u" "$h" "$t" "$v" | sudo tee "$mf" >/dev/null \
+        || fail "Failed to write $mf"
+      success "Wrote machine settings to $mf"
+    else
+      info "Would write $mf (username=$u hostName=$h timeZone=$t stateVersion=$v)"
+    fi
+  else
+    info "Using existing $mf"
+  fi
+
   if [[ "$DRY" == "false" ]]; then
-    local cfg="$DOTFILES_DIR/config/nixos/configuration.nix"
     [[ -f "$cfg" ]] || fail "NixOS config not found: $cfg"
     sudo ln -sfn "$cfg" /etc/nixos/configuration.nix \
       || fail "Failed to link configuration.nix into /etc/nixos"
+  fi
+}
+
+# Reprovision NixOS: ensure machine.nix + the /etc/nixos/configuration.nix
+# symlink (see _nixos_ensure_linked), then nixos-rebuild switch. On NixOS all
+# imperative setup_* installers are skipped — packages come from the rebuild.
+# Usage: install_nixos
+function install_nixos {
+  info "Installing packages for NixOS..."
+  _nixos_ensure_linked
+  if [[ "$DRY" == "false" ]]; then
     sudo nixos-rebuild switch || fail "nixos-rebuild switch failed"
   fi
   success "Finished install for NixOS"
 }
 
-# Update NixOS: pull channels and rebuild. Usage: update_nixos
+# Update NixOS: ensure the config is linked, then rebuild with channel upgrade.
+# Usage: update_nixos
 function update_nixos {
   info "Updating packages for NixOS..."
+  _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
     sudo nixos-rebuild switch --upgrade || fail "nixos-rebuild switch --upgrade failed"
   fi
