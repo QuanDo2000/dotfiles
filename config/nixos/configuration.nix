@@ -31,7 +31,17 @@ in
   i18n.defaultLocale = "en_US.UTF-8";
   networking.hostName = machine.hostName;
   networking.networkmanager.enable = true;
-  services.openssh.enable = true;
+  # Internet-facing box: lock SSH to key-only auth. Add a public key under
+  # users.users.<name>.openssh.authorizedKeys.keys below, or remote login is
+  # impossible (local console still works).
+  services.openssh = {
+    enable = true;
+    settings = {
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+      PermitRootLogin = "no";
+    };
+  };
 
   # --- Boot ----------------------------------------------------------------
   boot.loader.systemd-boot.enable = true;     # EDIT: use GRUB instead if needed
@@ -44,11 +54,12 @@ in
     isNormalUser = true;
     extraGroups = [ "wheel" "networkmanager" "video" ];
     shell = pkgs.zsh;
+    # EDIT: required for remote SSH — password auth is disabled above.
+    # openssh.authorizedKeys.keys = [ "ssh-ed25519 AAAA... you@host" ];
   };
 
   # --- Desktop: Hyprland + greetd login ------------------------------------
-  # EDIT: GPU is machine-specific — add for your vendor, e.g.
-  #   hardware.graphics.enable = true;   # + nvidia/amd driver bits as needed
+  hardware.graphics.enable = true;   # GPU accel; EDIT: add vendor driver (e.g. nvidia)
   programs.hyprland.enable = true;
 
   # Audio (PipeWire) and screenshare/file-picker portals — hardware-independent.
