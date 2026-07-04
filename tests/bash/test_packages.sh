@@ -417,3 +417,51 @@ test_arch_packages_include_starship() {
 test_mac_packages_include_starship() {
   assert_contains "${MAC_BREW_PACKAGES[*]}" "starship"
 }
+
+# ---------------------------------------------------------------------------
+# NixOS package flow
+# ---------------------------------------------------------------------------
+
+test_install_nixos_dry_run() {
+  DRY=true
+  local output
+  output=$(install_nixos 2>&1)
+
+  assert_contains "$output" "NixOS"
+  # DRY must not touch the system or invoke the imperative installers.
+  assert_not_contains "$output" "nixos-rebuild"
+  assert_not_contains "$output" "neovim"
+}
+
+test_update_nixos_dry_run() {
+  DRY=true
+  local output
+  output=$(update_nixos 2>&1)
+
+  assert_contains "$output" "NixOS"
+  assert_not_contains "$output" "nixos-rebuild"
+}
+
+test_install_packages_dispatches_nixos() {
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  DRY=true
+
+  local output
+  output=$(OS_RELEASE="$osrel" install_packages 2>&1)
+
+  assert_contains "$output" "NixOS"
+}
+
+test_set_zsh_default_skips_on_nixos() {
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  DRY=false
+
+  local output
+  output=$(OS_RELEASE="$osrel" set_zsh_default 2>&1)
+
+  assert_contains "$output" "declaratively"
+}

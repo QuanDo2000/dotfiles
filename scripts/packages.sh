@@ -501,6 +501,11 @@ function install_mac {
 
 function set_zsh_default {
   info "Changing default shell to zsh..."
+  if [[ "$(detect_platform)" == "nixos" ]]; then
+    info "Shell is managed declaratively on NixOS; skipping chsh"
+    success "Finished changing zsh as default"
+    return
+  fi
   if [[ "$DRY" == "false" ]]; then
     local zsh_path
     zsh_path="$(command -v zsh || true)"
@@ -515,9 +520,36 @@ function set_zsh_default {
   success "Finished changing zsh as default"
 }
 
+# Reprovision NixOS from the tracked configuration.nix. Symlinks the repo's
+# config into /etc/nixos (leaving the machine-generated
+# hardware-configuration.nix untouched) and runs nixos-rebuild switch. On
+# NixOS all imperative setup_* installers are skipped — packages come from the
+# rebuild. Usage: install_nixos
+function install_nixos {
+  info "Installing packages for NixOS..."
+  if [[ "$DRY" == "false" ]]; then
+    local cfg="$DOTFILES_DIR/config/nixos/configuration.nix"
+    [[ -f "$cfg" ]] || fail "NixOS config not found: $cfg"
+    sudo ln -sfn "$cfg" /etc/nixos/configuration.nix \
+      || fail "Failed to link configuration.nix into /etc/nixos"
+    sudo nixos-rebuild switch || fail "nixos-rebuild switch failed"
+  fi
+  success "Finished install for NixOS"
+}
+
+# Update NixOS: pull channels and rebuild. Usage: update_nixos
+function update_nixos {
+  info "Updating packages for NixOS..."
+  if [[ "$DRY" == "false" ]]; then
+    sudo nixos-rebuild switch --upgrade || fail "nixos-rebuild switch --upgrade failed"
+  fi
+  success "Finished update for NixOS"
+}
+
 function update_packages {
   info "Updating packages..."
   case "$(detect_platform)" in
+    nixos)   update_nixos ;;
     debian)  update_debian ;;
     arch)    update_arch ;;
     mac)     update_mac ;;
@@ -529,6 +561,7 @@ function update_packages {
 function install_packages {
   info "Installing packages..."
   case "$(detect_platform)" in
+    nixos)   install_nixos ;;
     debian)  install_debian ;;
     arch)    install_arch ;;
     mac)     install_mac ;;

@@ -113,6 +113,20 @@ test_dry_run_languages_jank() {
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages jank
 }
 
+test_packages_nixos_dry() {
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+
+  local output
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry packages 2>&1)
+  assert_contains "$output" "NixOS"
+
+  # Don't leak the uname mock into later tests in this file.
+  unset -f uname 2>/dev/null || true
+  unset __MOCK_UNAME
+}
+
 test_help_no_oh_my_zsh() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)

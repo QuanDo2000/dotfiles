@@ -80,6 +80,13 @@ assert_contains() {
     fi
 }
 
+assert_not_contains() {
+    local haystack="$1" needle="$2"
+    if [[ "$haystack" == *"$needle"* ]]; then
+        echo "  assert_not_contains FAILED: '$haystack' unexpectedly contains '$needle'" >> "$ERROR_FILE"
+    fi
+}
+
 assert_file_exists() {
     local path="$1"
     if [ ! -f "$path" ]; then
