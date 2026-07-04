@@ -14,6 +14,9 @@
   ];
 
   # --- System core ---------------------------------------------------------
+  # NOTE: ghostty and opencode (in systemPackages below) are NOT in the 24.11
+  # stable channel — they need nixos-unstable or 25.05+. If you track 24.11
+  # stable, bump the channel or drop those two, or the rebuild will eval-fail.
   system.stateVersion = "24.11";              # EDIT: match the install's NixOS release
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   time.timeZone = "Asia/Ho_Chi_Minh";         # EDIT: your timezone
@@ -35,6 +38,10 @@
   };
 
   # --- Desktop: Hyprland + greetd login ------------------------------------
+  # EDIT: a real Hyprland box usually also wants audio, GPU, and screenshare:
+  #   hardware.graphics.enable = true;
+  #   services.pipewire = { enable = true; pulse.enable = true; };
+  #   xdg.portal = { enable = true; extraPortals = [ pkgs.xdg-desktop-portal-hyprland ]; };
   programs.hyprland.enable = true;
   services.greetd = {
     enable = true;

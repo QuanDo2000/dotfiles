@@ -215,7 +215,7 @@ test_detect_platform_nixos_precedes_arch() {
   source_scripts packages.sh
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"
-  printf 'ID=nixos\nID_LIKE=""\n' > "$osrel"
+  printf 'ID=nixos\nID_LIKE="arch"\n' > "$osrel"
 
   local result
   result="$(OS_RELEASE="$osrel" detect_platform)"
