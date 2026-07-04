@@ -39,6 +39,12 @@ Platform config lives under `config/`. Symlinks are created in priority order by
 2. **config/unix/** — Linux/macOS-specific (`.zshrc.base`, `.tmux.conf`, ghostty, hyprland, waybar, lazygit, fcitx5).
 3. **config/mac/** — macOS-only (`.zshrc.mac`), applied only when `uname == Darwin`.
 4. **config/windows/** — Windows-specific (PowerShell profile, Windows Terminal settings). Used by `dotfile.ps1`.
+5. **config/nixos/** — NixOS-only. `configuration.nix` is a tracked full-desktop
+   system config; `dotfile packages` symlinks it to `/etc/nixos/configuration.nix`
+   and runs `nixos-rebuild switch`. `hardware-configuration.nix` is machine-generated
+   and git-ignored. App config files (hyprland, waybar, etc.) are NOT ported into
+   Nix — they stay symlinked dotfiles via `dotfile symlinks`. On NixOS the imperative
+   `setup_*` installers are skipped; packages come from the rebuild.
 
 Files in `config/` subdirectories of each platform layer are symlinked into `~/.config/`. Top-level dotfiles are symlinked directly to `$HOME`.
 
