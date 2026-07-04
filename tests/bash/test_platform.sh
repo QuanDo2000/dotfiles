@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
@@ -84,7 +84,7 @@ test_mac_folder_bin() {
 
   local mac_dir="$TEST_TMPDIR/mac"
   mkdir -p "$mac_dir/bin"
-  echo "#!/bin/bash" > "$mac_dir/bin/mac-tool"
+  echo "#!/usr/bin/env bash" > "$mac_dir/bin/mac-tool"
 
   setup_symlinks_folder "$mac_dir"
 

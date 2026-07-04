@@ -32,8 +32,15 @@ in
   i18n.defaultLocale = "en_US.UTF-8";
   networking.hostName = machine.hostName;
   networking.networkmanager.enable = true;
-  # No sshd: nothing connects into this box. The openssh package (systemPackages)
-  # still provides the `ssh` client for reaching other LAN machines.
+  networking.firewall.allowedTCPPorts = [ 22 ];
+
+  services.openssh = {
+    enable = true;
+    openFirewall = true;
+    settings = {
+      PermitRootLogin = "no";
+    };
+  };
 
   # --- Boot ----------------------------------------------------------------
   boot.loader.systemd-boot.enable = true;     # EDIT: use GRUB instead if needed
@@ -90,6 +97,7 @@ in
   environment.systemPackages =
     (with pkgs; [
       git
+      jq
       zsh
       tmux
       neovim

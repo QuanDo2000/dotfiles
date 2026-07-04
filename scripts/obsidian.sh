@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -eo pipefail
 
 OBSIDIAN_SERVICE_NAME="obsidian-sync.service"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Tests for scripts/languages.sh
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
@@ -21,7 +21,7 @@ teardown() {
 mock_cmd() {
   local name="$1" body="$2"
   cat > "$FAKE_BIN/$name" <<EOF
-#!/bin/bash
+#!/usr/bin/env bash
 $body
 EOF
   chmod +x "$FAKE_BIN/$name"
@@ -198,7 +198,7 @@ test_zig_current_installed_version_foreign_returns_empty() {
 # ---------------------------------------------------------------------------
 
 test_ensure_pkg_already_present_noop() {
-  echo '#!/bin/bash' > "$HOME/.local/bin/minisign"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/minisign"
   chmod +x "$HOME/.local/bin/minisign"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -699,7 +699,7 @@ test_gleam_current_installed_version_foreign_returns_empty() {
 # ---------------------------------------------------------------------------
 
 test_ensure_clang_already_present_noop() {
-  echo '#!/bin/bash' > "$HOME/.local/bin/clang"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/clang"
   chmod +x "$HOME/.local/bin/clang"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -918,7 +918,7 @@ test_jank_current_installed_version_none() {
 
 test_jank_current_installed_version_present() {
   # Drop a fake jank on PATH.
-  echo '#!/bin/bash' > "$HOME/.local/bin/jank"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/jank"
   chmod +x "$HOME/.local/bin/jank"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -966,7 +966,7 @@ test_install_jank_dry_run_arch() {
 test_install_jank_already_installed_short_circuits() {
   detect_platform() { echo "arch"; }
   export -f detect_platform
-  echo '#!/bin/bash' > "$HOME/.local/bin/jank"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/jank"
   chmod +x "$HOME/.local/bin/jank"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -1009,7 +1009,7 @@ test_update_jank_dry_run_when_installed() {
   DRY=true
   detect_platform() { echo "arch"; }
   export -f detect_platform
-  echo '#!/bin/bash' > "$HOME/.local/bin/jank"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/jank"
   chmod +x "$HOME/.local/bin/jank"
   export PATH="$HOME/.local/bin:$PATH"
 

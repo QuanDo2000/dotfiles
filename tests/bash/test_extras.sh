@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Tests for scripts/extras.sh (zsh plugins, tmux plugins).
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
@@ -22,7 +22,7 @@ teardown() {
 mock_cmd() {
   local name="$1" body="$2"
   cat > "$FAKE_BIN/$name" <<EOF
-#!/bin/bash
+#!/usr/bin/env bash
 $body
 EOF
   chmod +x "$FAKE_BIN/$name"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
@@ -9,7 +9,7 @@ REQUIRED_TOOLS=(git zsh nvim tmux fzf fd rg lazygit zoxide starship)
 
 # Symlinked dotfiles under $HOME (resolved to $DOTFILES_DIR/...).
 # Keep in sync with scripts/symlinks.sh and the config/{shared,unix} layout.
-REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
+REQUIRED_SYMLINKS=(.zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
 
 # Helper: check that a command exists on PATH.
 # Increments $errors on failure.
@@ -57,6 +57,22 @@ _check_symlink() {
   fi
 }
 
+_check_local_zshrc() {
+  local target="$HOME/.zshrc"
+  if [ ! -f "$target" ]; then
+    fail_soft ".zshrc not found"
+    errors=$((errors + 1))
+  elif [ -L "$target" ]; then
+    fail_soft ".zshrc is a symlink (expected machine-local file)"
+    errors=$((errors + 1))
+  elif grep -F 'source "$HOME/.zshrc.base"' "$target" >/dev/null 2>&1; then
+    success ".zshrc sources ~/.zshrc.base"
+  else
+    fail_soft ".zshrc does not source ~/.zshrc.base"
+    errors=$((errors + 1))
+  fi
+}
+
 function verify {
   local errors=0
 
@@ -80,6 +96,7 @@ function verify {
   for f in "${REQUIRED_SYMLINKS[@]}"; do
     _check_symlink "$f"
   done
+  _check_local_zshrc
 
   echo ""
   if [ "$errors" -eq 0 ]; then

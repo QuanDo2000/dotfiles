@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Language toolchain installers (Linux + macOS only).
 # Sourced by `dotfile`. Requires utils.sh, platform.sh, packages.sh already
 # sourced — the generic GitHub-release helpers (_install_from_github_release,

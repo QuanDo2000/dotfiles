@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Platform detection helpers. Source after utils.sh.
 set -eo pipefail
 

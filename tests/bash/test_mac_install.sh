@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Tests for the Mac installation path.
 # All tests mock uname to return "Darwin" via setup() so they exercise
 # Mac-specific branches regardless of the host OS.

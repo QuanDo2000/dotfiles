@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -eo pipefail
 
 # Echo the log verb for a setup_* installer: "Updating" when $1 is "true"

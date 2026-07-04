@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Tests for individual package installation functions.
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
@@ -55,7 +55,7 @@ test_setup_neovim_already_installed() {
   DRY=false
   # nvim already on PATH (use the real one if available, otherwise fake it)
   if ! command -v nvim >/dev/null 2>&1; then
-    echo '#!/bin/bash' > "$HOME/.local/bin/nvim"
+    echo '#!/usr/bin/env bash' > "$HOME/.local/bin/nvim"
     chmod +x "$HOME/.local/bin/nvim"
     export PATH="$HOME/.local/bin:$PATH"
   fi
@@ -94,7 +94,7 @@ test_setup_neovim_update_does_not_skip() {
   mock_uname Linux
   DRY=true
   if ! command -v nvim >/dev/null 2>&1; then
-    echo '#!/bin/bash' > "$HOME/.local/bin/nvim"
+    echo '#!/usr/bin/env bash' > "$HOME/.local/bin/nvim"
     chmod +x "$HOME/.local/bin/nvim"
     export PATH="$HOME/.local/bin:$PATH"
   fi
@@ -133,7 +133,7 @@ test_setup_fdfind_fd_on_path() {
   DRY=false
   # fd is available on macOS (installed via brew in this repo)
   if ! command -v fd >/dev/null 2>&1; then
-    echo '#!/bin/bash' > "$HOME/.local/bin/fd"
+    echo '#!/usr/bin/env bash' > "$HOME/.local/bin/fd"
     chmod +x "$HOME/.local/bin/fd"
     export PATH="$HOME/.local/bin:$PATH"
   fi
@@ -178,7 +178,7 @@ test_setup_yay_dry_run() {
 
 test_setup_yay_already_installed() {
   DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/yay"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/yay"
   chmod +x "$HOME/.local/bin/yay"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -203,7 +203,7 @@ test_setup_lazygit_dry_run() {
 
 test_setup_lazygit_already_installed() {
   DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/lazygit"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/lazygit"
   chmod +x "$HOME/.local/bin/lazygit"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -224,7 +224,7 @@ test_setup_lazygit_update_dry_run() {
 
 test_setup_lazygit_update_does_not_skip() {
   DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/lazygit"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/lazygit"
   chmod +x "$HOME/.local/bin/lazygit"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -251,7 +251,7 @@ test_setup_jj_dry_run() {
 
 test_setup_jj_already_installed() {
   DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/jj"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/jj"
   chmod +x "$HOME/.local/bin/jj"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -272,7 +272,7 @@ test_setup_jj_update_dry_run() {
 
 test_setup_jj_update_does_not_skip() {
   DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/jj"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/jj"
   chmod +x "$HOME/.local/bin/jj"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -299,7 +299,7 @@ test_setup_opencode_dry_run() {
 
 test_setup_opencode_already_installed() {
   DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/opencode"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/opencode"
   chmod +x "$HOME/.local/bin/opencode"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -320,7 +320,7 @@ test_setup_opencode_update_dry_run() {
 
 test_setup_opencode_update_does_not_skip() {
   DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/opencode"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/opencode"
   chmod +x "$HOME/.local/bin/opencode"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -347,7 +347,7 @@ test_setup_codex_dry_run() {
 
 test_setup_codex_already_installed() {
   DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/codex"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codex"
   chmod +x "$HOME/.local/bin/codex"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -359,7 +359,7 @@ test_setup_codex_already_installed() {
 
 test_setup_codex_update_does_not_skip() {
   DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/codex"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codex"
   chmod +x "$HOME/.local/bin/codex"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -401,7 +401,7 @@ test_setup_bun_dry_run() {
 
 test_setup_bun_already_installed() {
   DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/bun"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/bun"
   chmod +x "$HOME/.local/bin/bun"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -413,7 +413,7 @@ test_setup_bun_already_installed() {
 
 test_setup_bun_update_does_not_skip() {
   DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/bun"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/bun"
   chmod +x "$HOME/.local/bin/bun"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -440,7 +440,7 @@ test_setup_starship_dry_run() {
 
 test_setup_starship_already_installed() {
   DRY=false
-  echo '#!/bin/bash' > "$HOME/.local/bin/starship"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/starship"
   chmod +x "$HOME/.local/bin/starship"
   export PATH="$HOME/.local/bin:$PATH"
 
@@ -452,7 +452,7 @@ test_setup_starship_already_installed() {
 
 test_setup_starship_update_does_not_skip() {
   DRY=true
-  echo '#!/bin/bash' > "$HOME/.local/bin/starship"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/starship"
   chmod +x "$HOME/.local/bin/starship"
   export PATH="$HOME/.local/bin:$PATH"
 

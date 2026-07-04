@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
@@ -124,9 +124,16 @@ function setup_symlinks_folder {
   mkdir -p "$HOME/.config" || fail "Failed to create $HOME/.config"
   while IFS= read -r -d '' src <&3; do
     local dst
+    if [[ "$(basename "$src")" == "ghostty" && -f "$src/config" ]]; then
+      continue
+    fi
     dst="$HOME/.config/$(basename "$src")"
     link_files "$src" "$dst"
   done 3< <(find "$root/config" -mindepth 1 -maxdepth 1 \( -type f -o -type d \) -print0)
+
+  # Ghostty commonly creates ~/.config/ghostty as a real directory. Link the
+  # tracked config file inside it so provisioning works on existing machines.
+  _link_optional "$root/config/ghostty/config" "$HOME/.config/ghostty/config"
 
   success "Finished setting up symlinks for $root"
 }

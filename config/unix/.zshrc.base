@@ -72,7 +72,7 @@ export HYPRSHOT_DIR="$HOME/hyprshot"
 # (or create) the "main" session. Replaces the omz tmux plugin. Not exec'd, so
 # exiting tmux drops back to this shell (old ZSH_TMUX_AUTOQUIT=false). Guards
 # avoid nested tmux and embedded shells (VS Code, Emacs, Vim).
-if [[ -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" \
+if [[ -t 0 && -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" \
       && "$TERM_PROGRAM" != "vscode" && -z "$INSIDE_EMACS" && -z "$VIMRUNTIME" ]] \
    && command -v tmux >/dev/null 2>&1; then
   export ZSH_TMUX_STARTED=1
@@ -136,7 +136,9 @@ export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;32m'
 
 # fzf key bindings + fuzzy completion (replaces the omz fzf plugin; needs fzf >= 0.48)
-command -v fzf >/dev/null 2>&1 && source <(fzf --zsh)
+if [[ -t 0 && -o interactive ]] && command -v fzf >/dev/null 2>&1; then
+  source <(fzf --zsh)
+fi
 
 # Standalone plugins — sourced directly, order matters:
 # fzf-tab (after compinit) -> autosuggestions -> fast-syntax-highlighting (last).
@@ -149,7 +151,9 @@ _zsh_plugins="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
   && source "$_zsh_plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
 
 # Prompt (replaces the omz "ys" theme). Reads ~/.config/starship.toml.
-command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"
+if [[ -t 0 && -o interactive && -o zle ]] && command -v starship >/dev/null 2>&1; then
+  eval "$(starship init zsh)"
+fi
 
 # jj (jujutsu) completion — dynamic mode, requires compinit (set up above).
 command -v jj >/dev/null 2>&1 && source <(COMPLETE=zsh jj)
@@ -215,6 +219,8 @@ esac
 # is correct (zoxide is last; real shells register the hook fine), so the check only
 # ever fires as that artifact — silence it. ponytail: drop if zoxide changes the check.
 export _ZO_DOCTOR=0
-command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh --cmd cd)"
+if [[ -t 0 && -o interactive ]] && command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh --cmd cd)"
+fi
 
 # --- machine-local additions go in ~/.zshrc (not this tracked file) ---

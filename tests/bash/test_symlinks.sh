@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
@@ -66,7 +66,7 @@ test_setup_symlinks_folder_bin() {
   local overwrite_all=false backup_all=false skip_all=false
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/bin"
-  echo "#!/bin/bash" > "$root/bin/myscript"
+  echo "#!/usr/bin/env bash" > "$root/bin/myscript"
 
   setup_symlinks_folder "$root"
 
@@ -248,7 +248,7 @@ test_setup_symlinks_folder_creates_local_bin() {
   rm -rf "$HOME/.local/bin"
   local root="$TEST_TMPDIR/fakedir"
   mkdir -p "$root/bin"
-  echo "#!/bin/bash" > "$root/bin/mytool"
+  echo "#!/usr/bin/env bash" > "$root/bin/mytool"
 
   setup_symlinks_folder "$root"
 
