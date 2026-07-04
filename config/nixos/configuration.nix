@@ -20,6 +20,7 @@ in
   # --- System core ---------------------------------------------------------
   system.stateVersion = machine.stateVersion;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nixpkgs.config.allowUnfree = true;   # google-chrome, etc.
   # Keep /nix/store bounded: dedup identical files and prune old generations.
   nix.settings.auto-optimise-store = true;
   nix.gc = {
@@ -108,6 +109,7 @@ in
       lua5_1
       luarocks
       waybar
+      google-chrome    # Mod+B keybind + OAuth sign-in (opencode/codex)
     ])
     ++ lib.optional (pkgs ? ghostty) pkgs.ghostty
     ++ lib.optional (pkgs ? opencode) pkgs.opencode
