@@ -17,13 +17,13 @@ hl.monitor({
     output   = "DP-3",
     mode     = "3840x2160@120",
     position = "1440x0",
-    scale    = 1,
+    scale    = 1.50,
 })
 
 hl.monitor({
     output   = "DP-1",
     mode     = "1920x1080@180",
-    position = "5280x0",
+    position = "4000x0",
     scale    = 1,
 })
 
@@ -231,4 +231,17 @@ hl.workspace_rule({
     workspace = "1",
     monitor = "DP-3",
     default = true,
+    persistent = true,
+})
+
+hl.workspace_rule({
+    workspace = "2",
+    monitor = "DP-1",
+    persistent = true,
+})
+
+hl.workspace_rule({
+    workspace = "3",
+    monitor = "DP-2",
+    persistent = true,
 })
