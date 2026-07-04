@@ -31,17 +31,8 @@ in
   i18n.defaultLocale = "en_US.UTF-8";
   networking.hostName = machine.hostName;
   networking.networkmanager.enable = true;
-  # Internet-facing box: lock SSH to key-only auth. Add a public key under
-  # users.users.<name>.openssh.authorizedKeys.keys below, or remote login is
-  # impossible (local console still works).
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      KbdInteractiveAuthentication = false;
-      PermitRootLogin = "no";
-    };
-  };
+  # No sshd: nothing connects into this box. The openssh package (systemPackages)
+  # still provides the `ssh` client for reaching other LAN machines.
 
   # --- Boot ----------------------------------------------------------------
   boot.loader.systemd-boot.enable = true;     # EDIT: use GRUB instead if needed
@@ -54,8 +45,6 @@ in
     isNormalUser = true;
     extraGroups = [ "wheel" "networkmanager" "video" ];
     shell = pkgs.zsh;
-    # EDIT: required for remote SSH — password auth is disabled above.
-    # openssh.authorizedKeys.keys = [ "ssh-ed25519 AAAA... you@host" ];
   };
 
   # --- Desktop: Hyprland + greetd login ------------------------------------
