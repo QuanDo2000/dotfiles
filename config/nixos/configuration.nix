@@ -20,13 +20,22 @@ in
   # --- System core ---------------------------------------------------------
   system.stateVersion = machine.stateVersion;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  # Keep /nix/store bounded: dedup identical files and prune old generations.
+  nix.settings.auto-optimise-store = true;
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 30d";
+  };
   time.timeZone = machine.timeZone;
   i18n.defaultLocale = "en_US.UTF-8";
   networking.hostName = machine.hostName;
   networking.networkmanager.enable = true;
+  services.openssh.enable = true;
 
   # --- Boot ----------------------------------------------------------------
   boot.loader.systemd-boot.enable = true;     # EDIT: use GRUB instead if needed
+  boot.loader.systemd-boot.configurationLimit = 10;  # cap boot menu / ESP usage
   boot.loader.efi.canTouchEfiVariables = true;
 
   # --- User ----------------------------------------------------------------
@@ -38,11 +47,22 @@ in
   };
 
   # --- Desktop: Hyprland + greetd login ------------------------------------
-  # EDIT: a real Hyprland box usually also wants audio, GPU, and screenshare:
-  #   hardware.graphics.enable = true;
-  #   services.pipewire = { enable = true; pulse.enable = true; };
-  #   xdg.portal = { enable = true; extraPortals = [ pkgs.xdg-desktop-portal-hyprland ]; };
+  # EDIT: GPU is machine-specific — add for your vendor, e.g.
+  #   hardware.graphics.enable = true;   # + nvidia/amd driver bits as needed
   programs.hyprland.enable = true;
+
+  # Audio (PipeWire) and screenshare/file-picker portals — hardware-independent.
+  security.rtkit.enable = true;
+  services.pipewire = {
+    enable = true;
+    alsa.enable = true;
+    pulse.enable = true;
+  };
+  xdg.portal = {
+    enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-hyprland ];
+  };
+
   services.greetd = {
     enable = true;
     settings.default_session = {
