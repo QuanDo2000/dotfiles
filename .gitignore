@@ -9,3 +9,6 @@ package-lock.json
 .worktrees/
 
 test_output.log
+
+# NixOS hardware config is machine-generated and per-machine
+config/nixos/hardware-configuration.nix
