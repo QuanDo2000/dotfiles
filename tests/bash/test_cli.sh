@@ -121,6 +121,7 @@ test_packages_nixos_dry() {
   local output
   output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry packages 2>&1)
   assert_contains "$output" "NixOS"
+  assert_not_contains "$output" "Updating packages"
 
   # Don't leak the uname mock into later tests in this file.
   unset -f uname 2>/dev/null || true

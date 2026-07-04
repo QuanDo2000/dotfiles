@@ -76,7 +76,7 @@ test_mac_folder_config() {
 
   setup_symlinks_folder "$mac_dir"
 
-  assert_symlink "$HOME/.config/ghostty" "$mac_dir/config/ghostty"
+  assert_symlink "$HOME/.config/ghostty/config" "$mac_dir/config/ghostty/config"
 }
 
 test_mac_folder_bin() {

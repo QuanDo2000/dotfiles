@@ -117,7 +117,6 @@ update)
   update_languages
   ;;
 packages)
-  update_packages
   install_packages
   ;;
 extras) install_extras ;;
