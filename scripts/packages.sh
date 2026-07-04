@@ -520,6 +520,41 @@ function set_zsh_default {
   success "Finished changing zsh as default"
 }
 
+# Body of /etc/nixos/machine.nix — the per-machine values configuration.nix
+# reads. Pure (no I/O) so it is unit-testable.
+# Usage: _nixos_machine_file_content <username> <hostName> <timeZone> <stateVersion>
+_nixos_machine_file_content() {
+  cat <<EOF
+{
+  username = "$1";
+  hostName = "$2";
+  timeZone = "$3";
+  stateVersion = "$4";
+}
+EOF
+}
+
+# Raw \`nixos-version\` output (empty on failure). Wrapped in a function so tests
+# can override it — the command name contains a hyphen, so it can't be mocked
+# as cleanly as \`hostname\`.
+_nixos_version_string() { nixos-version 2>/dev/null || true; }
+
+# Detect per-machine values from the running system. Echoes four lines:
+# username, hostName, timeZone, stateVersion. Every field has a fallback so
+# detection never hard-fails.
+_detect_nixos_machine_values() {
+  local u h t v
+  u="${SUDO_USER:-$(whoami 2>/dev/null || true)}"
+  [[ -n "$u" ]] || u="nixos"
+  h="$(hostname 2>/dev/null || true)"
+  [[ -n "$h" ]] || h="nixos"
+  t="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
+  [[ -n "$t" ]] || t="UTC"
+  v="$(_nixos_version_string | cut -d' ' -f1 | cut -d. -f1,2)"
+  [[ -n "$v" ]] || v="24.11"
+  printf '%s\n%s\n%s\n%s\n' "$u" "$h" "$t" "$v"
+}
+
 # Reprovision NixOS from the tracked configuration.nix. Symlinks the repo's
 # config into /etc/nixos (leaving the machine-generated
 # hardware-configuration.nix untouched) and runs nixos-rebuild switch. On

@@ -465,3 +465,57 @@ test_set_zsh_default_skips_on_nixos() {
 
   assert_contains "$output" "declaratively"
 }
+
+# ---------------------------------------------------------------------------
+# NixOS machine.nix content + detection
+# ---------------------------------------------------------------------------
+
+test_nixos_machine_file_content() {
+  local out
+  out="$(_nixos_machine_file_content alice mybox Asia/Tokyo 24.11)"
+
+  assert_contains "$out" 'username = "alice";'
+  assert_contains "$out" 'hostName = "mybox";'
+  assert_contains "$out" 'timeZone = "Asia/Tokyo";'
+  assert_contains "$out" 'stateVersion = "24.11";'
+}
+
+test_detect_nixos_machine_values() {
+  export SUDO_USER=""              # force the whoami branch
+  whoami() { echo alice; }
+  hostname() { echo mybox; }
+  timedatectl() { echo "Asia/Tokyo"; }
+  _nixos_version_string() { echo "24.11.20240115.abcdef (Vicuna)"; }
+
+  local out u h t v
+  out="$(_detect_nixos_machine_values)"
+  { read -r u; read -r h; read -r t; read -r v; } <<< "$out"
+
+  assert_equals "alice" "$u"
+  assert_equals "mybox" "$h"
+  assert_equals "Asia/Tokyo" "$t"
+  assert_equals "24.11" "$v"
+
+  unset -f whoami hostname timedatectl _nixos_version_string
+  unset SUDO_USER
+}
+
+test_detect_nixos_machine_values_fallbacks() {
+  export SUDO_USER=""
+  whoami() { echo ""; }            # empty → username fallback
+  hostname() { return 1; }         # fail → hostName fallback
+  timedatectl() { return 1; }      # fail → timeZone fallback
+  _nixos_version_string() { echo ""; }   # empty → stateVersion fallback
+
+  local out u h t v
+  out="$(_detect_nixos_machine_values)"
+  { read -r u; read -r h; read -r t; read -r v; } <<< "$out"
+
+  assert_equals "nixos" "$u"
+  assert_equals "nixos" "$h"
+  assert_equals "UTC" "$t"
+  assert_equals "24.11" "$v"
+
+  unset -f whoami hostname timedatectl _nixos_version_string
+  unset SUDO_USER
+}
