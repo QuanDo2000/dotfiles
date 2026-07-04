@@ -534,9 +534,9 @@ _nixos_machine_file_content() {
 EOF
 }
 
-# Raw \`nixos-version\` output (empty on failure). Wrapped in a function so tests
+# Raw `nixos-version` output (empty on failure). Wrapped in a function so tests
 # can override it — the command name contains a hyphen, so it can't be mocked
-# as cleanly as \`hostname\`.
+# as cleanly as `hostname`.
 _nixos_version_string() { nixos-version 2>/dev/null || true; }
 
 # Detect per-machine values from the running system. Echoes four lines:

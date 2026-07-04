@@ -553,6 +553,27 @@ test_nixos_ensure_linked_skips_when_present() {
   unset NIXOS_MACHINE_FILE
 }
 
+test_nixos_ensure_linked_force_regenerates() {
+  DRY=true
+  FORCE=true
+  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
+  echo '{ username = "bob"; }' > "$NIXOS_MACHINE_FILE"   # already exists
+  _detect_nixos_machine_values() { printf 'alice\nmybox\nAsia/Tokyo\n24.11\n'; }
+
+  local out
+  out="$(_nixos_ensure_linked 2>&1)"
+
+  # FORCE re-detects even though the file is present.
+  assert_contains "$out" "Would write"
+  assert_contains "$out" "alice"
+  if [[ "$out" == *"Using existing"* ]]; then
+    echo "  FAILED: FORCE did not regenerate existing machine.nix" >> "$ERROR_FILE"
+  fi
+
+  unset -f _detect_nixos_machine_values
+  unset NIXOS_MACHINE_FILE
+}
+
 test_detect_nixos_machine_values_fallbacks() {
   export SUDO_USER=""
   whoami() { echo ""; }            # empty → username fallback
