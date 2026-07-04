@@ -193,3 +193,32 @@ test_dry_run_linux_creates_nothing() {
     echo "  FAILED: dry run should not create .gitconfig" >> "$ERROR_FILE"
   fi
 }
+
+# ---------------------------------------------------------------------------
+# detect_platform: NixOS
+# ---------------------------------------------------------------------------
+
+test_detect_platform_nixos() {
+  source_scripts packages.sh   # pulls in platform.sh
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+
+  local result
+  result="$(OS_RELEASE="$osrel" detect_platform)"
+
+  assert_equals "nixos" "$result"
+}
+
+test_detect_platform_nixos_precedes_arch() {
+  # A NixOS os-release must not be misread as arch even if ID_LIKE mentions it.
+  source_scripts packages.sh
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\nID_LIKE=""\n' > "$osrel"
+
+  local result
+  result="$(OS_RELEASE="$osrel" detect_platform)"
+
+  assert_equals "nixos" "$result"
+}

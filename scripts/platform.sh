@@ -5,17 +5,22 @@ set -eo pipefail
 is_mac() { [[ "$(uname)" == "Darwin" ]]; }
 is_linux() { [[ "$(uname)" == "Linux" ]]; }
 
-# Print one of: debian, arch, mac, unknown
+# Print one of: nixos, debian, arch, mac, unknown
 detect_platform() {
   if is_mac; then
     echo "mac"
     return
   fi
-  if is_linux && [[ -f /etc/os-release ]]; then
+  local os_release="${OS_RELEASE:-/etc/os-release}"
+  if is_linux && [[ -f "$os_release" ]]; then
     # shellcheck disable=SC1091
     local ID="" ID_LIKE=""
     # shellcheck disable=SC1091
-    . /etc/os-release
+    . "$os_release"
+    if [[ "${ID:-}" == "nixos" ]]; then
+      echo "nixos"
+      return
+    fi
     if [[ "${ID:-}" == "debian" || "${ID_LIKE:-}" == *debian* ]]; then
       echo "debian"
       return
