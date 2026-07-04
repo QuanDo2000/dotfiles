@@ -87,6 +87,11 @@ to `/etc/nixos/machine.nix`. `hardware-configuration.nix` is used in place. Late
 runs are silent. Then `sudo bash ./dotfile all` for the rest of the dotfiles
 (symlinks, zsh/tmux plugins).
 
+On a brand-new machine, run `sudo nixos-rebuild build` once before the first
+`switch` to confirm the config evaluates. If your channel is older than
+nixos-unstable / 25.05, `ghostty` and `opencode` are skipped automatically
+rather than failing the build.
+
 ## Testing
 
 Tests run in a Docker container to avoid touching your host filesystem. Requires Docker.
