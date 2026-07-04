@@ -6,9 +6,24 @@
 ------------------
 
 hl.monitor({
-    output   = "HDMI-A-1",
-    mode     = "1920x1080@60",
-    position = "0x0",
+    output    = "DP-2",
+    mode      = "2560x1440@143.91",
+    position  = "0x0",
+    scale     = 1,
+    transform = 1,
+})
+
+hl.monitor({
+    output   = "DP-3",
+    mode     = "3840x2160@120",
+    position = "1440x0",
+    scale    = 1,
+})
+
+hl.monitor({
+    output   = "DP-1",
+    mode     = "1920x1080@180",
+    position = "5280x0",
     scale    = 1,
 })
 
@@ -89,6 +104,10 @@ hl.config({
 
     xwayland = {
         force_zero_scaling = 0,
+    },
+
+    cursor = {
+        no_hardware_cursors = true,
     },
 
     input = {
@@ -210,6 +229,6 @@ hl.window_rule({
 
 hl.workspace_rule({
     workspace = "1",
-    monitor = "HDMI-A-1",
+    monitor = "DP-3",
     default = true,
 })
