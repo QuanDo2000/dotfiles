@@ -51,7 +51,7 @@ test_setup_fdfind_dry_run() {
 
 test_setup_fdfind_fd_on_path() {
   DRY=false
-  # fd is available on macOS (installed via brew in this repo)
+  # fd is available on macOS through the platform package config.
   if ! command -v fd >/dev/null 2>&1; then
     echo '#!/usr/bin/env bash' > "$HOME/.local/bin/fd"
     chmod +x "$HOME/.local/bin/fd"
@@ -467,14 +467,6 @@ test_debian_packages_include_neovim() {
 
 test_debian_packages_include_nodejs_for_codex_hooks() {
   assert_contains "${DEBIAN_PACKAGES[*]}" "nodejs"
-}
-
-test_mac_packages_include_starship() {
-  assert_contains "${MAC_BREW_PACKAGES[*]}" "starship"
-}
-
-test_mac_packages_include_node_for_codex_hooks() {
-  assert_contains "${MAC_BREW_PACKAGES[*]}" "node"
 }
 
 # ---------------------------------------------------------------------------

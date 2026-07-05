@@ -137,6 +137,7 @@ test_darwin_config_manages_core_packages() {
   assert_contains "$darwin_text" "lazygit"
   assert_contains "$darwin_text" "jujutsu"
   assert_contains "$darwin_text" "ast-grep"
+  assert_contains "$darwin_text" "nodejs"
   assert_contains "$darwin_text" "programs.zsh.enable = true"
   assert_contains "$darwin_text" "system.primaryUser = \"quando\""
 }

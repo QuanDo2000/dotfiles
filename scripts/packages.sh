@@ -291,7 +291,7 @@ function setup_gh_binary {
 
 # lazygit asset drops the leading 'v' from the tag (e.g. lazygit_0.44.2_Linux_x86_64.tar.gz).
 _lazygit_asset() { echo "lazygit_${1#v}_Linux_$(_lazygit_arch).tar.gz"; }
-# Install or update lazygit (Debian only — Arch uses pacman, macOS brew).
+# Install or update lazygit (Debian only — Arch uses pacman, macOS nix-darwin).
 function setup_lazygit { setup_gh_binary lazygit jesseduffield/lazygit _lazygit_asset "${1:-}"; }
 
 # Echo starship's Linux release asset arch for the current machine.
@@ -306,8 +306,8 @@ _starship_arch() {
 _starship_asset() { echo "starship-$(_starship_arch)-unknown-linux-gnu.tar.gz"; }
 
 # Install or update the starship prompt. Arch installs it via pacman and macOS
-# via brew (see ARCH_PACKAGES / MAC_BREW_PACKAGES); Debian apt does not reliably
-# ship starship, so install the checked GitHub release into ~/.local/bin.
+# via nix-darwin (see ARCH_PACKAGES / config/darwin.nix); Debian apt does not
+# reliably ship starship, so install the checked GitHub release into ~/.local/bin.
 # Idempotent: in install mode, no-op if `starship` is already on PATH; --update
 # always reinstalls the latest. Usage: setup_starship [--update]
 function setup_starship {
@@ -344,7 +344,7 @@ _jj_arch() {
 
 # jj asset keeps the leading 'v' (e.g. jj-v0.42.0-x86_64-unknown-linux-musl.tar.gz).
 _jj_asset() { echo "jj-${1}-$(_jj_arch)-unknown-linux-musl.tar.gz"; }
-# Install or update jj/jujutsu (Debian only — Arch uses pacman, macOS brew).
+# Install or update jj/jujutsu (Debian only — Arch uses pacman, macOS nix-darwin).
 function setup_jj { setup_gh_binary jj jj-vcs/jj _jj_asset "${1:-}"; }
 
 # Echo codex's release triple (<arch>-<os>) for the current machine.
@@ -482,12 +482,6 @@ function install_arch {
   fi
   success "Finished install for Arch Linux"
 }
-
-MAC_BREW_PACKAGES=(
-  bash tmux git neovim fzf fd ripgrep font-fira-code-nerd-font
-  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide jj starship node
-)
-MAC_BREW_CASKS=(ghostty)
 
 function _load_nix_profile {
   local profile status
