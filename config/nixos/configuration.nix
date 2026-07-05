@@ -96,8 +96,8 @@ in
   fonts.packages = with pkgs; [ nerd-fonts.fira-code ];
 
   # --- Packages ------------------------------------------------------------
-  # Ported from ARCH_PACKAGES in scripts/packages.sh. App config files stay as
-  # symlinked dotfiles (dotfile symlinks); NixOS only installs the binaries.
+  # System/session packages only. User CLI tools and app configs live in
+  # Home Manager (config/home.nix), matching the Arch bootstrap split.
   # ghostty/codex are appended only if the running channel provides
   # them, so this evaluates cleanly on stable channels that predate them.
   environment.systemPackages =
@@ -105,25 +105,7 @@ in
       git
       jq
       zsh
-      tmux
-      neovim
       gcc
-      fzf
-      fd
-      ripgrep
-      lazygit
-      jujutsu
-      starship
-      zoxide
-      gnupg
-      wl-clipboard
-      openssh
-      unzip
-      fontconfig
-      tree-sitter
-      nodejs
-      lua5_1
-      luarocks
       waybar
       google-chrome    # Mod+B keybind + OAuth sign-in (codex)
     ])

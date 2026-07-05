@@ -70,6 +70,22 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "ripgrep"
 }
 
+test_nixos_system_packages_leave_user_tools_to_home_manager() {
+  local packages_text
+  packages_text="$(sed -n '/environment.systemPackages =/,/++ lib.optional (pkgs ? codex)/p' "$REPO_DIR/config/nixos/configuration.nix")"
+
+  assert_contains "$packages_text" "git"
+  assert_contains "$packages_text" "jq"
+  assert_contains "$packages_text" "zsh"
+  assert_contains "$packages_text" "gcc"
+  assert_contains "$packages_text" "waybar"
+  assert_contains "$packages_text" "google-chrome"
+
+  for pkg in tmux neovim fzf fd ripgrep lazygit jujutsu starship zoxide gnupg wl-clipboard openssh unzip fontconfig tree-sitter nodejs lua5_1 luarocks; do
+    assert_not_contains "$packages_text" "      $pkg"
+  done
+}
+
 test_home_config_uses_tracked_host_username() {
   local home_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
