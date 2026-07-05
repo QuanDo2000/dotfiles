@@ -75,3 +75,22 @@ test_home_config_links_tmux_plugins_from_nix() {
   assert_contains "$home_text" "pkgs.tmuxPlugins.catppuccin"
   assert_contains "$home_text" "force = true"
 }
+
+test_home_config_owns_existing_xdg_configs() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home_text" "xdg.configFile.\"jj\""
+  assert_contains "$home_text" "./shared/config/jj"
+  assert_contains "$home_text" "xdg.configFile.\"nvim\""
+  assert_contains "$home_text" "./shared/config/nvim"
+  assert_contains "$home_text" "xdg.configFile.\"fcitx5\""
+  assert_contains "$home_text" "./unix/config/fcitx5"
+  assert_contains "$home_text" "xdg.configFile.\"ghostty/config\""
+  assert_contains "$home_text" "./unix/config/ghostty/config"
+  assert_contains "$home_text" "xdg.configFile.\"hypr\""
+  assert_contains "$home_text" "./unix/config/hypr"
+  assert_contains "$home_text" "xdg.configFile.\"waybar\""
+  assert_contains "$home_text" "./unix/config/waybar"
+  assert_contains "$home_text" "force = true"
+}

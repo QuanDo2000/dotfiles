@@ -33,6 +33,36 @@
     force = true;
   };
 
+  xdg.configFile."jj" = {
+    source = ./shared/config/jj;
+    force = true;
+  };
+
+  xdg.configFile."nvim" = {
+    source = ./shared/config/nvim;
+    force = true;
+  };
+
+  xdg.configFile."fcitx5" = {
+    source = ./unix/config/fcitx5;
+    force = true;
+  };
+
+  xdg.configFile."ghostty/config" = {
+    source = ./unix/config/ghostty/config;
+    force = true;
+  };
+
+  xdg.configFile."hypr" = {
+    source = ./unix/config/hypr;
+    force = true;
+  };
+
+  xdg.configFile."waybar" = {
+    source = ./unix/config/waybar;
+    force = true;
+  };
+
   xdg.dataFile."zsh/plugins/zsh-autosuggestions" = {
     source = "${pkgs.zsh-autosuggestions}/share/zsh/plugins/zsh-autosuggestions";
     force = true;
