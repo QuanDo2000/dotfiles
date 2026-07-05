@@ -397,7 +397,7 @@ test_setup_symlinks_links_claude_settings() {
     "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
 }
 
-test_setup_symlinks_does_not_link_codex_config() {
+test_setup_symlinks_links_codex_config() {
   create_dotfiles_dirs
   create_fake_command codex
   mkdir -p "$DOTFILES_DIR/config/shared/ai/codex"
@@ -405,9 +405,8 @@ test_setup_symlinks_does_not_link_codex_config() {
 
   setup_symlinks
 
-  if [ -e "$HOME/.codex/config.toml" ] || [ -L "$HOME/.codex/config.toml" ]; then
-    echo "  FAILED: codex config should stay machine-local" >> "$ERROR_FILE"
-  fi
+  assert_symlink "$HOME/.codex/config.toml" \
+    "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
 }
 
 test_setup_symlinks_skips_ai_tools_when_commands_missing() {

@@ -185,6 +185,9 @@ function setup_symlinks {
   if command -v claude >/dev/null 2>&1; then
     _link_optional "$ai/claude/settings.json" "$HOME/.claude/settings.json"
   fi
+  if command -v codex >/dev/null 2>&1; then
+    _link_optional "$ai/codex/config.toml" "$HOME/.codex/config.toml"
+  fi
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
   # can run `dotfile` from any shell.
