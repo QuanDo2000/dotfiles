@@ -2,11 +2,12 @@
 
 let
   machine = import ./host.nix;
+  homeDir =
+    if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
 in
 {
   home.username = machine.username;
-  home.homeDirectory =
-    if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
+  home.homeDirectory = homeDir;
   home.stateVersion = "24.11";
   home.packages = with pkgs; [
     neovim
@@ -30,7 +31,9 @@ in
     luarocks
     tree-sitter
     unzip
-  ];
+  ]
+  ++ lib.optional (pkgs.stdenv.isLinux && pkgs ? codex) pkgs.codex
+  ++ lib.optional (pkgs.stdenv.isLinux && pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
 
   home.file.".gitconfig" = {
     source = ./shared/.gitconfig;
@@ -69,12 +72,6 @@ in
 
   home.file.".codex/config.toml" = {
     source = ./shared/ai/codex/config.toml;
-    force = true;
-  };
-
-  home.file.".local/bin/dotfile" = {
-    source = ../dotfile;
-    executable = true;
     force = true;
   };
 

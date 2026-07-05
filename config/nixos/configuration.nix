@@ -98,8 +98,8 @@ in
   # --- Packages ------------------------------------------------------------
   # System/session packages only. User CLI tools and app configs live in
   # Home Manager (config/home.nix), matching the Arch bootstrap split.
-  # ghostty/codex are appended only if the running channel provides
-  # them, so this evaluates cleanly on stable channels that predate them.
+  # ghostty is appended only if the running channel provides it, so this
+  # evaluates cleanly on stable channels that predate it.
   environment.systemPackages =
     (with pkgs; [
       git
@@ -107,8 +107,7 @@ in
       zsh
       gcc
       waybar
-      google-chrome    # Mod+B keybind + OAuth sign-in (codex)
+      google-chrome    # Browser + OAuth sign-in
     ])
-    ++ lib.optional (pkgs ? ghostty) pkgs.ghostty
-    ++ lib.optional (pkgs ? codex) pkgs.codex;
+    ++ lib.optional (pkgs ? ghostty) pkgs.ghostty;
 }

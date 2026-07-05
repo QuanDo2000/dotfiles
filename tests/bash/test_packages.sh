@@ -399,6 +399,33 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   unset -f command sudo _install_lix _load_nix_profile nix setup_fdfind setup_codex setup_codebase_memory_mcp
 }
 
+test_install_arch_leaves_agent_tools_to_home_manager() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|home-manager) return 0 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  sudo() { :; }
+  _load_nix_profile() { :; }
+  home-manager() { :; }
+  setup_codex() { printf 'setup_codex %s\n' "$*" >> "$calls"; }
+  setup_codebase_memory_mcp() { printf 'setup_codebase_memory_mcp %s\n' "$*" >> "$calls"; }
+
+  install_arch >/dev/null 2>&1
+  update_arch >/dev/null 2>&1
+
+  if [[ -e "$calls" ]]; then
+    echo "  FAILED: Arch should leave codex/codebase-memory-mcp to Home Manager: $(cat "$calls")" >> "$ERROR_FILE"
+  fi
+
+  unset -f command sudo _load_nix_profile home-manager setup_codex setup_codebase_memory_mcp
+}
+
 test_install_arch_removes_old_repo_ghostty_dir_symlink_before_home_manager() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"
@@ -432,6 +459,47 @@ test_install_arch_removes_old_repo_ghostty_dir_symlink_before_home_manager() {
   assert_file_exists "$DOTFILES_DIR/config/unix/config/ghostty/config"
 
   unset -f command sudo _load_nix_profile home-manager setup_codex setup_codebase_memory_mcp
+}
+
+test_install_arch_removes_old_agent_tool_installs_before_home_manager() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/codex-v1" \
+    "$HOME/.bun/bin" "$HOME/.bun/install/global/node_modules/@openai/codex"
+  touch "$HOME/.local/codex-v1/codex" \
+    "$HOME/.local/bin/codebase-memory-mcp" \
+    "$HOME/.bun/install/global/node_modules/@openai/codex/package.json"
+  ln -s "$HOME/.local/codex-v1/codex" "$HOME/.local/bin/codex"
+  ln -s "../install/global/node_modules/@openai/codex/bin/codex.js" "$HOME/.bun/bin/codex"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|home-manager) return 0 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  sudo() { :; }
+  _load_nix_profile() { :; }
+  home-manager() {
+    for path in \
+      "$HOME/.local/bin/codebase-memory-mcp" \
+      "$HOME/.local/bin/codex" \
+      "$HOME/.local/codex-v1" \
+      "$HOME/.bun/bin/codex" \
+      "$HOME/.bun/install/global/node_modules/@openai/codex"; do
+      if [[ -e "$path" || -L "$path" ]]; then
+        echo "old agent tool install still present before home-manager: $path" >> "$ERROR_FILE"
+      fi
+    done
+    printf 'home-manager %s\n' "$*" >> "$calls"
+  }
+
+  install_arch >/dev/null 2>&1
+
+  assert_contains "$(<"$calls")" "home-manager switch --flake $DOTFILES_DIR#quando@arch"
+
+  unset -f command sudo _load_nix_profile home-manager
 }
 
 test_update_arch_uses_existing_home_manager() {
@@ -508,6 +576,22 @@ test_install_nixos_uses_flake_switch() {
 
   unset -f sudo
   unset -f setup_codebase_memory_mcp
+}
+
+test_nixos_leaves_codebase_memory_to_home_manager() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  sudo() { :; }
+  setup_codebase_memory_mcp() { printf 'setup_codebase_memory_mcp %s\n' "$*" >> "$calls"; }
+
+  install_nixos >/dev/null 2>&1
+  update_nixos >/dev/null 2>&1
+
+  if [[ -e "$calls" ]]; then
+    echo "  FAILED: NixOS should leave codebase-memory-mcp to Home Manager: $(cat "$calls")" >> "$ERROR_FILE"
+  fi
+
+  unset -f sudo setup_codebase_memory_mcp
 }
 
 test_install_nixos_cleans_old_plugin_dirs_before_switch() {

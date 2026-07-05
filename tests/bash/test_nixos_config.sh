@@ -83,6 +83,8 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "nodejs"
   assert_contains "$home_text" "jujutsu"
   assert_contains "$home_text" "ripgrep"
+  assert_contains "$home_text" "lib.optional (pkgs.stdenv.isLinux && pkgs ? codex) pkgs.codex"
+  assert_contains "$home_text" "lib.optional (pkgs.stdenv.isLinux && pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp"
 }
 
 test_home_config_puts_shared_user_tools_in_common_packages() {
@@ -96,7 +98,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
 
 test_nixos_system_packages_leave_user_tools_to_home_manager() {
   local packages_text
-  packages_text="$(sed -n '/environment.systemPackages =/,/++ lib.optional (pkgs ? codex)/p' "$REPO_DIR/config/nixos/configuration.nix")"
+  packages_text="$(sed -n '/environment.systemPackages =/,/pkgs.ghostty;/p' "$REPO_DIR/config/nixos/configuration.nix")"
 
   assert_contains "$packages_text" "git"
   assert_contains "$packages_text" "jq"
@@ -108,6 +110,7 @@ test_nixos_system_packages_leave_user_tools_to_home_manager() {
   for pkg in tmux neovim fzf fd ripgrep lazygit jujutsu starship zoxide gnupg wl-clipboard openssh unzip fontconfig tree-sitter nodejs lua5_1 luarocks; do
     assert_not_contains "$packages_text" "      $pkg"
   done
+  assert_not_contains "$packages_text" "codex"
 }
 
 test_home_config_uses_tracked_host_username() {
@@ -150,9 +153,7 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "source = ./shared/ai/claude/settings.json"
   assert_contains "$home_text" "home.file.\".codex/config.toml\""
   assert_contains "$home_text" "source = ./shared/ai/codex/config.toml"
-  assert_contains "$home_text" "home.file.\".local/bin/dotfile\""
-  assert_contains "$home_text" "source = ../dotfile"
-  assert_contains "$home_text" "executable = true"
+  assert_not_contains "$home_text" "home.file.\".local/bin/dotfile\""
   assert_contains "$home_text" "home.file.\".zshrc.mac\""
   assert_contains "$home_text" "source = ./mac/.zshrc.mac"
   assert_contains "$home_text" "home.file.\".local/bin/caf\""

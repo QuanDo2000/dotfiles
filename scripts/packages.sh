@@ -464,8 +464,6 @@ function update_arch {
     sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
 
     _home_manager_switch
-    setup_codex --update
-    setup_codebase_memory_mcp --update
   fi
   success "Finished update for Arch Linux"
 }
@@ -477,8 +475,6 @@ function install_arch {
       || fail "Failed to install Arch packages"
 
     _home_manager_switch
-    setup_codex
-    setup_codebase_memory_mcp
   fi
   success "Finished install for Arch Linux"
 }
@@ -550,10 +546,32 @@ _cleanup_home_manager_dotfile_migration() {
   fi
 }
 
+_cleanup_home_manager_agent_tool_migration() {
+  local path
+  for path in \
+    "$HOME/.local/bin/codex" \
+    "$HOME/.local/bin/codebase-memory-mcp" \
+    "$HOME/.bun/bin/codex" \
+    "$HOME/.bun/install/global/node_modules/@openai/codex" \
+    "$HOME/.bun/install/global/node_modules/@openai/codex-linux-arm64" \
+    "$HOME/.bun/install/global/node_modules/@openai/codex-linux-x64"; do
+    if [[ -e "$path" || -L "$path" ]]; then
+      info "Removing old imperative agent tool install: $path"
+      rm -rf "$path" || fail "Failed to remove $path"
+    fi
+  done
+  for path in "$HOME"/.local/codex-*; do
+    [[ -e "$path" || -L "$path" ]] || continue
+    info "Removing old imperative agent tool install: $path"
+    rm -rf "$path" || fail "Failed to remove $path"
+  done
+}
+
 function _home_manager_switch {
   _ensure_nix
   _cleanup_home_manager_plugin_migration
   _cleanup_home_manager_dotfile_migration
+  _cleanup_home_manager_agent_tool_migration
   if command -v home-manager >/dev/null 2>&1; then
     home-manager switch --flake "$DOTFILES_DIR#quando@arch" \
       || fail "home-manager switch failed"
@@ -632,7 +650,6 @@ function install_nixos {
     _cleanup_home_manager_plugin_migration
     sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos" \
       || fail "nixos-rebuild switch failed"
-    setup_codebase_memory_mcp
   fi
   success "Finished install for NixOS"
 }
@@ -646,7 +663,6 @@ function update_nixos {
     _cleanup_home_manager_plugin_migration
     sudo nixos-rebuild switch --upgrade --flake "$DOTFILES_DIR#nixos" \
       || fail "nixos-rebuild switch --upgrade failed"
-    setup_codebase_memory_mcp --update
   fi
   success "Finished update for NixOS"
 }
