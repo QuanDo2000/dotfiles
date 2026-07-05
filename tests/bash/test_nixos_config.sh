@@ -64,3 +64,14 @@ test_home_config_links_zsh_plugins_from_nix() {
   assert_contains "$home_text" "pkgs.zsh-fzf-tab"
   assert_contains "$home_text" "force = true"
 }
+
+test_home_config_links_tmux_plugins_from_nix() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home_text" "home.file.\".tmux/plugins/tmux-yank\""
+  assert_contains "$home_text" "pkgs.tmuxPlugins.yank"
+  assert_contains "$home_text" "home.file.\".tmux/plugins/catppuccin/tmux\""
+  assert_contains "$home_text" "pkgs.tmuxPlugins.catppuccin"
+  assert_contains "$home_text" "force = true"
+}

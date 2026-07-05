@@ -16,6 +16,16 @@
     force = true;
   };
 
+  home.file.".tmux/plugins/tmux-yank" = {
+    source = "${pkgs.tmuxPlugins.yank}/share/tmux-plugins/yank";
+    force = true;
+  };
+
+  home.file.".tmux/plugins/catppuccin/tmux" = {
+    source = "${pkgs.tmuxPlugins.catppuccin}/share/tmux-plugins/catppuccin";
+    force = true;
+  };
+
   programs.home-manager.enable = true;
 
   xdg.configFile."starship.toml" = {
