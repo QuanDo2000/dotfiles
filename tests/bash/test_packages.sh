@@ -284,55 +284,84 @@ test_setup_jj_update_does_not_skip() {
   fi
 }
 
-# ---------------------------------------------------------------------------
-# setup_opencode
+# setup_pi
 # ---------------------------------------------------------------------------
 
-test_setup_opencode_dry_run() {
+test_setup_pi_dry_run() {
   DRY=true
   local output
-  output=$(setup_opencode 2>&1)
+  output=$(setup_pi 2>&1)
 
-  assert_contains "$output" "OpenCode"
-  assert_contains "$output" "Finished OpenCode"
+  assert_contains "$output" "pi"
+  assert_contains "$output" "Finished pi"
 }
 
-test_setup_opencode_already_installed() {
+test_setup_pi_already_installed() {
   DRY=false
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/opencode"
-  chmod +x "$HOME/.local/bin/opencode"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/pi"
+  chmod +x "$HOME/.local/bin/pi"
   export PATH="$HOME/.local/bin:$PATH"
 
   local output
-  output=$(setup_opencode 2>&1)
+  output=$(setup_pi 2>&1)
 
-  assert_contains "$output" "Already installed OpenCode"
+  assert_contains "$output" "Already installed pi"
 }
 
-test_setup_opencode_update_dry_run() {
+test_setup_pi_update_does_not_skip() {
   DRY=true
-  local output
-  output=$(setup_opencode --update 2>&1)
-
-  assert_contains "$output" "OpenCode"
-  assert_contains "$output" "Finished OpenCode"
-}
-
-test_setup_opencode_update_does_not_skip() {
-  DRY=true
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/opencode"
-  chmod +x "$HOME/.local/bin/opencode"
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/pi"
+  chmod +x "$HOME/.local/bin/pi"
   export PATH="$HOME/.local/bin:$PATH"
 
   local output
-  output=$(setup_opencode --update 2>&1)
+  output=$(setup_pi --update 2>&1)
 
   if [[ "$output" == *"Already installed"* ]]; then
     echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
   fi
 }
 
-# ---------------------------------------------------------------------------
+test_pi_packages_list_matches_expected() {
+  assert_equals \
+    "npm:context-mode npm:pi-subagents npm:pi-cbm npm:@juicesharp/rpiv-ask-user-question npm:@juicesharp/rpiv-todo git:github.com/obra/superpowers git:github.com/DietrichGebert/ponytail" \
+    "${PI_PACKAGES[*]}"
+}
+
+test_install_pi_packages_dry_run() {
+  DRY=true
+  local output
+  output=$(install_pi_packages 2>&1)
+
+  assert_contains "$output" "Installing pi packages"
+  assert_contains "$output" "Finished installing pi packages"
+}
+
+test_install_pi_packages_installs_each_package() {
+  DRY=false
+  export PATH="$HOME/.local/bin:$PATH"
+  cat > "$HOME/.local/bin/pi" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$PI_CALLS"
+EOF
+  chmod +x "$HOME/.local/bin/pi"
+  export PI_CALLS="$TEST_TMPDIR/pi-calls"
+
+  install_pi_packages >/dev/null 2>&1
+
+  local calls
+  calls="$(cat "$PI_CALLS")"
+  assert_contains "$calls" "install npm:context-mode"
+  assert_contains "$calls" "install npm:pi-subagents"
+  assert_contains "$calls" "install npm:pi-cbm"
+  assert_contains "$calls" "install npm:@juicesharp/rpiv-ask-user-question"
+  assert_contains "$calls" "install npm:@juicesharp/rpiv-todo"
+  assert_contains "$calls" "install git:github.com/obra/superpowers"
+  assert_contains "$calls" "install git:github.com/DietrichGebert/ponytail"
+
+  unset PI_CALLS
+}
+
 # setup_codex
 # ---------------------------------------------------------------------------
 
@@ -365,6 +394,45 @@ test_setup_codex_update_does_not_skip() {
 
   local output
   output=$(setup_codex --update 2>&1)
+
+  if [[ "$output" == *"Already installed"* ]]; then
+    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# setup_codebase_memory_mcp
+# ---------------------------------------------------------------------------
+
+test_setup_codebase_memory_mcp_dry_run() {
+  DRY=true
+  local output
+  output=$(setup_codebase_memory_mcp 2>&1)
+
+  assert_contains "$output" "codebase-memory-mcp"
+  assert_contains "$output" "Finished codebase-memory-mcp"
+}
+
+test_setup_codebase_memory_mcp_already_installed() {
+  DRY=false
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codebase-memory-mcp"
+  chmod +x "$HOME/.local/bin/codebase-memory-mcp"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_codebase_memory_mcp 2>&1)
+
+  assert_contains "$output" "Already installed codebase-memory-mcp"
+}
+
+test_setup_codebase_memory_mcp_update_does_not_skip() {
+  DRY=true
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codebase-memory-mcp"
+  chmod +x "$HOME/.local/bin/codebase-memory-mcp"
+  export PATH="$HOME/.local/bin:$PATH"
+
+  local output
+  output=$(setup_codebase_memory_mcp --update 2>&1)
 
   if [[ "$output" == *"Already installed"* ]]; then
     echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"

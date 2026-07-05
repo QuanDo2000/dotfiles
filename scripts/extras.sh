@@ -60,37 +60,9 @@ function install_tmux_plugins {
   success "Finished installing tmux plugins"
 }
 
-function install_opencode_plugins {
-  info "Installing opencode plugins..."
-  # Claude installs ponytail via its own plugin marketplace, but
-  # OpenCode has no marketplace for it. Its plugin loads sibling hooks/ and
-  # skills/ relative to its own file, so it needs a full checkout. We own a
-  # stable clone here (the tool caches are version-pinned) and point
-  # opencode.json at ~/.local/share/ponytail/.opencode/plugins/ponytail.mjs.
-  # Hardcode ~/.local/share (not $XDG_DATA_HOME) so this path matches the
-  # ~-relative one in opencode.json, which can't expand an env var.
-  if [[ "$DRY" == "false" ]]; then
-    local ponytail_dir="$HOME/.local/share/ponytail"
-    clone_if_missing "ponytail (opencode)" \
-      "https://github.com/DietrichGebert/ponytail.git" \
-      "$ponytail_dir"
-    # The /ponytail commands are plain markdown OpenCode only discovers from a
-    # command dir; link them into the global one so they work outside a checkout.
-    local cmd_dst="$HOME/.config/opencode/command"
-    mkdir -p "$cmd_dst" || fail "Failed to create $cmd_dst"
-    local cmd
-    for cmd in "$ponytail_dir"/.opencode/command/*.md; do
-      [[ -e "$cmd" ]] || continue
-      ln -sf "$cmd" "$cmd_dst/$(basename "$cmd")"
-    done
-  fi
-  success "Finished installing opencode plugins"
-}
-
 function install_extras {
   info "Installing extras"
   install_zsh_plugins
   install_tmux_plugins
-  install_opencode_plugins
   success "Finished installing extras"
 }

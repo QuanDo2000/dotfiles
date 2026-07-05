@@ -68,8 +68,7 @@ function test_ai_config_sources_exist {
     $ai = Join-Path $script:DotfilesDir 'config\shared\ai'
     foreach ($rel in @(
         'claude\settings.json'
-        'opencode\opencode.json'
-        'opencode\AGENTS.md'
+        'pi\settings.json'
     )) {
         Assert-FileExists (Join-Path $ai $rel)
     }

@@ -176,15 +176,11 @@ function setup_symlinks {
   _ensure_local_zshrc
 
   # These configs live in dotfolders alongside runtime state we don't want to
-  # track (caches, sessions, credentials, ~/.ssh keys, OpenCode node_modules),
+  # track (caches, sessions, credentials, ~/.ssh keys),
   # so we link only the individual tracked files rather than whole dirs.
   # _link_optional creates each file's parent dir and skips when the source is
   # absent.
   local ai="$DOTFILES_DIR/config/shared/ai"
-  local opencode_config="$ai/opencode/opencode.json"
-  if [[ "$(detect_platform)" == "nixos" && -f "$DOTFILES_DIR/config/nixos/ai/opencode/opencode.json" ]]; then
-    opencode_config="$DOTFILES_DIR/config/nixos/ai/opencode/opencode.json"
-  fi
   _link_optional "$DOTFILES_DIR/config/shared/.ssh/config" "$HOME/.ssh/config"
   if command -v claude >/dev/null 2>&1; then
     _link_optional "$ai/claude/settings.json" "$HOME/.claude/settings.json"
@@ -192,10 +188,8 @@ function setup_symlinks {
   if command -v codex >/dev/null 2>&1; then
     _link_optional "$ai/codex/config.toml" "$HOME/.codex/config.toml"
   fi
-  if command -v opencode >/dev/null 2>&1; then
-    _link_optional "$opencode_config" "$HOME/.config/opencode/opencode.json"
-    _link_optional "$ai/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
-    _link_optional "$ai/opencode/kv.json" "$HOME/.local/state/opencode/kv.json"
+  if command -v pi >/dev/null 2>&1; then
+    _link_optional "$ai/pi/settings.json" "$HOME/.pi/agent/settings.json"
   fi
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users

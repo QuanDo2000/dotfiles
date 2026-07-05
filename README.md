@@ -89,7 +89,7 @@ runs are silent. Then `sudo bash ./dotfile all` for the rest of the dotfiles
 
 On a brand-new machine, run `sudo nixos-rebuild build` once before the first
 `switch` to confirm the config evaluates. If your channel is older than
-nixos-unstable / 25.05, `ghostty` and `opencode` are skipped automatically
+nixos-unstable / 25.05, `ghostty` and `pi-coding-agent` are skipped automatically
 rather than failing the build.
 
 ## Testing

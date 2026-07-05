@@ -201,27 +201,6 @@ function CloneIfMissing($name, $repo, $dest, [string[]]$GitArgs = @()) {
     Success "Finished installing $name"
 }
 
-# OpenCode has no marketplace for ponytail, and its plugin loads sibling
-# hooks/skills relative to its own file, so it needs a full checkout.
-# opencode.json points at ~/.local/share/ponytail/.opencode/plugins/ponytail.mjs.
-# Mirrors the unix install_opencode_plugins.
-function InstallOpencodePlugins {
-    Info "Installing opencode plugins..."
-    if (-not $script:Dry) {
-        $userHome = $env:USERPROFILE
-        $ponytailDir = "$userHome\.local\share\ponytail"
-        CloneIfMissing "ponytail (opencode)" "https://github.com/DietrichGebert/ponytail.git" $ponytailDir
-        # The /ponytail commands are plain markdown OpenCode only discovers from
-        # a command dir; link them into the global one.
-        $cmdDst = "$userHome\.config\opencode\command"
-        if (-not (Test-Path $cmdDst)) { New-Item -ItemType Directory -Path $cmdDst -Force | Out-Null }
-        Get-ChildItem (Join-Path $ponytailDir '.opencode\command') -Filter '*.md' -ErrorAction SilentlyContinue | ForEach-Object {
-            LinkFile -source $_.FullName -destination (Join-Path $cmdDst $_.Name)
-        }
-    }
-    Success "Finished installing opencode plugins"
-}
-
 function WingetHas($id) {
     $null = winget list --id $id --exact --accept-source-agreements 2>$null | Out-String
     return ($LASTEXITCODE -eq 0)
@@ -361,31 +340,56 @@ function InstallExtras {
     InstallTreeSitter
 }
 
-# Install (or update) the AI coding CLI. Unix uses opencode's curl installer;
-# on Windows we lean on the npm package, since node/npm is already present
-# from InstallExtras. Mirrors unix `install_ai`.
+# Install (or update) AI coding CLIs. Mirrors unix `install_ai`.
 function InstallAi {
     param([switch]$Update)
-    Info "Installing AI CLIs (opencode)..."
+    Info "Installing AI CLIs..."
     if ($script:Dry) { return }
 
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        FailSoft "npm not found on PATH. Skipping AI CLI install — run 'dotfile.ps1 extras' first, then 'dotfile.ps1 ai'."
+        FailSoft "npm not found on PATH. Skipping Pi install — run 'dotfile.ps1 extras' first, then 'dotfile.ps1 ai'."
         return
     }
 
-    $verb = if ($Update) { "update" } else { "install" }
-    foreach ($pkg in @("opencode-ai")) {
-        npm $verb -g $pkg
-        if ($LASTEXITCODE -ne 0) { FailSoft "npm $verb -g $pkg failed with exit code $LASTEXITCODE" }
+    if ($Update -and (Get-Command pi -ErrorAction SilentlyContinue)) {
+        pi update --self
+        if ($LASTEXITCODE -ne 0) { FailSoft "pi update --self failed with exit code $LASTEXITCODE" }
+    } else {
+        npm install -g --ignore-scripts '@earendil-works/pi-coding-agent'
+        if ($LASTEXITCODE -ne 0) { FailSoft "npm install -g --ignore-scripts @earendil-works/pi-coding-agent failed with exit code $LASTEXITCODE" }
+    }
+
+    $piSettingsSource = Join-Path $script:DotfilesDir 'config\shared\ai\pi\settings.json'
+    $piSettingsDest = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
+    if ((Test-Path $piSettingsSource) -and -not (Test-Path $piSettingsDest)) {
+        $parent = Split-Path $piSettingsDest -Parent
+        if (-not (Test-Path $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+        LinkFile -source $piSettingsSource -destination $piSettingsDest
+    }
+
+    foreach ($pkg in @(
+        'npm:context-mode',
+        'npm:pi-subagents',
+        'npm:pi-cbm',
+        'npm:@juicesharp/rpiv-ask-user-question',
+        'npm:@juicesharp/rpiv-todo',
+        'git:github.com/obra/superpowers',
+        'git:github.com/DietrichGebert/ponytail'
+    )) {
+        pi install $pkg
+        if ($LASTEXITCODE -ne 0) { FailSoft "pi install $pkg failed with exit code $LASTEXITCODE" }
+    }
+
+    if ($Update -and (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
+        codebase-memory-mcp update
+        if ($LASTEXITCODE -ne 0) { FailSoft "codebase-memory-mcp update failed with exit code $LASTEXITCODE" }
+    } elseif (-not (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
+        irm https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 | iex
+    } else {
+        Info "Already installed codebase-memory-mcp"
     }
 
     Success "Finished installing AI CLIs"
-
-    # Install the ponytail plugin now that the CLI is on PATH. Unix runs this
-    # from install_extras, but on Windows InstallExtras precedes InstallAi in
-    # the `all` flow, so opencode wouldn't exist yet — install here instead.
-    InstallOpencodePlugins
 }
 
 function InstallNeovimNightly {
@@ -567,8 +571,7 @@ function SetupSymlinks {
     $aiPath = Join-Path $sharedPath "ai"
     $aiLinks = @(
         @{ Src = "claude\settings.json";        Dst = "$userHome\.claude\settings.json" }
-        @{ Src = "opencode\opencode.json";      Dst = "$starshipConfigDir\opencode\opencode.json" }
-        @{ Src = "opencode\AGENTS.md";          Dst = "$starshipConfigDir\opencode\AGENTS.md" }
+        @{ Src = "pi\settings.json";            Dst = "$userHome\.pi\agent\settings.json" }
     )
     foreach ($link in $aiLinks) {
         $src = Join-Path $aiPath $link.Src
@@ -686,7 +689,7 @@ Commands:
   update      Update system packages and language toolchains
   packages    Install system packages only
   extras      Install FiraCode font, Node.js LTS (fnm), and tree-sitter CLI
-  ai          Install AI CLIs (opencode)
+  ai          Install AI coding CLIs
   symlinks    Create symlinks only
   languages [LANG]  Install language toolchains. LANG selects one (Windows: gleam only).
   verify      Verify installation

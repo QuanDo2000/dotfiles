@@ -1,27 +1,79 @@
 {
-  "statusLine": {
-    "type": "command",
-    "command": "bash \"/home/quando/.claude/plugins/cache/ponytail/ponytail/4.7.0/hooks/ponytail-statusline.sh\""
-  },
-  "enabledPlugins": {
-    "superpowers@claude-plugins-official": true,
-    "ponytail@ponytail": true,
-    "gopls-lsp@claude-plugins-official": true
-  },
-  "extraKnownMarketplaces": {
-    "ponytail": {
-      "source": {
-        "source": "github",
-        "repo": "DietrichGebert/ponytail"
-      }
+    "statusLine": {
+        "type": "command",
+        "command": "bash \"/home/quando/.claude/plugins/cache/ponytail/ponytail/4.7.0/hooks/ponytail-statusline.sh\""
+    },
+    "enabledPlugins": {
+        "superpowers@claude-plugins-official": true,
+        "ponytail@ponytail": true,
+        "gopls-lsp@claude-plugins-official": true
+    },
+    "extraKnownMarketplaces": {
+        "ponytail": {
+            "source": {
+                "source": "github",
+                "repo": "DietrichGebert/ponytail"
+            }
+        }
+    },
+    "voice": {
+        "enabled": false,
+        "mode": "hold"
+    },
+    "agentPushNotifEnabled": true,
+    "skipAutoPermissionPrompt": true,
+    "voiceEnabled": false,
+    "tui": "fullscreen",
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Grep|Glob",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/.claude/hooks/cbm-code-discovery-gate",
+                        "timeout": 5
+                    }
+                ]
+            }
+        ],
+        "SessionStart": [
+            {
+                "matcher": "startup",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/.claude/hooks/cbm-session-reminder"
+                    }
+                ]
+            },
+            {
+                "matcher": "resume",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/.claude/hooks/cbm-session-reminder"
+                    }
+                ]
+            },
+            {
+                "matcher": "clear",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/.claude/hooks/cbm-session-reminder"
+                    }
+                ]
+            },
+            {
+                "matcher": "compact",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/.claude/hooks/cbm-session-reminder"
+                    }
+                ]
+            }
+        ]
     }
-  },
-  "voice": {
-    "enabled": false,
-    "mode": "hold"
-  },
-  "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
-  "voiceEnabled": false,
-  "tui": "fullscreen"
 }

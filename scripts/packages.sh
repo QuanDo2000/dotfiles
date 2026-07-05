@@ -351,26 +351,56 @@ _jj_asset() { echo "jj-${1}-$(_jj_arch)-unknown-linux-musl.tar.gz"; }
 # Install or update jj/jujutsu (Debian only — Arch uses pacman, macOS brew).
 function setup_jj { setup_gh_binary jj jj-vcs/jj _jj_asset "${1:-}"; }
 
-# Install or update OpenCode via the official install script. Self-updates
-# via `opencode upgrade`. Idempotent: no-op if `opencode` is on PATH (unless
-# --update is passed). Usage: setup_opencode [--update]
-function setup_opencode {
+# Install or update Pi coding agent. Usage: setup_pi [--update]
+function setup_pi {
   local update=false
   [[ "${1:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") OpenCode..."
+  info "$(_action_verb "$update") pi..."
   if [[ "$DRY" == "false" ]]; then
-    if command -v opencode >/dev/null 2>&1; then
+    if command -v pi >/dev/null 2>&1; then
       if [[ "$update" == "true" ]]; then
-        opencode upgrade || fail "Failed to update OpenCode"
+        pi update --self || fail "Failed to update pi"
       else
-        info "Already installed OpenCode"
+        info "Already installed pi"
       fi
     else
-      curl -fsSL https://opencode.ai/install | bash \
-        || fail "Failed to install OpenCode"
+      curl -fsSL https://pi.dev/install.sh | sh \
+        || fail "Failed to install pi"
     fi
   fi
-  success "Finished OpenCode"
+  success "Finished pi"
+}
+
+PI_PACKAGES=(
+  npm:context-mode
+  npm:pi-subagents
+  npm:pi-cbm
+  npm:@juicesharp/rpiv-ask-user-question
+  npm:@juicesharp/rpiv-todo
+  git:github.com/obra/superpowers
+  git:github.com/DietrichGebert/ponytail
+)
+
+function _ensure_pi_settings_link {
+  local src="$DOTFILES_DIR/config/shared/ai/pi/settings.json"
+  local dst="$HOME/.pi/agent/settings.json"
+  [[ -f "$src" ]] || return 0
+  [[ -e "$dst" || -L "$dst" ]] && return 0
+  mkdir -p "$(dirname "$dst")" || fail "Failed to create ~/.pi/agent"
+  ln -s "$src" "$dst" || fail "Failed to link pi settings"
+}
+
+function install_pi_packages {
+  info "Installing pi packages..."
+  if [[ "$DRY" == "false" ]]; then
+    command -v pi >/dev/null 2>&1 || fail "pi is required to install pi packages"
+    _ensure_pi_settings_link
+    local pkg
+    for pkg in "${PI_PACKAGES[@]}"; do
+      pi install "$pkg" || fail "Failed to install pi package: $pkg"
+    done
+  fi
+  success "Finished installing pi packages"
 }
 
 # Echo codex's release triple (<arch>-<os>) for the current machine.
@@ -415,6 +445,26 @@ function setup_codex {
   success "Finished codex"
 }
 
+# Install or update codebase-memory-mcp. Usage: setup_codebase_memory_mcp [--update]
+function setup_codebase_memory_mcp {
+  local update=false
+  [[ "${1:-}" == "--update" ]] && update=true
+  info "$(_action_verb "$update") codebase-memory-mcp..."
+  if [[ "$DRY" == "false" ]]; then
+    if command -v codebase-memory-mcp >/dev/null 2>&1; then
+      if [[ "$update" == "true" ]]; then
+        codebase-memory-mcp update || fail "Failed to update codebase-memory-mcp"
+      else
+        info "Already installed codebase-memory-mcp"
+      fi
+    else
+      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash \
+        || fail "Failed to install codebase-memory-mcp"
+    fi
+  fi
+  success "Finished codebase-memory-mcp"
+}
+
 # Install or update bun via the official install script. Self-updates via
 # `bun upgrade`. Idempotent: no-op if `bun` is on PATH (unless --update is
 # passed). Usage: setup_bun [--update]
@@ -438,11 +488,13 @@ function setup_bun {
   success "Finished bun"
 }
 
-# Install the AI coding assistants (OpenCode + Codex). Shared by the full
+# Install the AI coding assistant. Shared by the full
 # `dotfile all` run and the standalone `dotfile ai` subcommand.
 function install_ai {
-  setup_opencode
+  setup_pi
+  install_pi_packages
   setup_codex
+  setup_codebase_memory_mcp
 }
 
 # build-essential: nvim-treesitter compiles parsers with cc.
@@ -463,8 +515,10 @@ function update_debian {
     setup_lazygit --update
     setup_jj --update
     setup_starship --update
-    setup_opencode --update
+    setup_pi --update
+    install_pi_packages
     setup_codex --update
+    setup_codebase_memory_mcp --update
   fi
   success "Finished update for Debian"
 }
@@ -482,8 +536,10 @@ function install_debian {
     setup_lazygit
     setup_jj
     setup_starship
-    setup_opencode
+    setup_pi
+    install_pi_packages
     setup_codex
+    setup_codebase_memory_mcp
   fi
   success "Finished install for Debian"
 }
@@ -501,8 +557,10 @@ function update_arch {
     sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
 
     setup_neovim --update
-    setup_opencode --update
+    setup_pi --update
+    install_pi_packages
     setup_codex --update
+    setup_codebase_memory_mcp --update
   fi
   success "Finished update for Arch Linux"
 }
@@ -515,8 +573,10 @@ function install_arch {
 
     setup_neovim
     setup_fdfind
-    setup_opencode
+    setup_pi
+    install_pi_packages
     setup_codex
+    setup_codebase_memory_mcp
   fi
   success "Finished install for Arch Linux"
 }
@@ -532,8 +592,10 @@ function update_mac {
   if [[ "$DRY" == "false" ]]; then
     brew update || fail "Failed to update brew"
     brew upgrade || fail "Failed to upgrade brew packages"
-    setup_opencode --update
+    setup_pi --update
+    install_pi_packages
     setup_codex --update
+    setup_codebase_memory_mcp --update
   fi
   success "Finished update for Mac"
 }
@@ -546,8 +608,10 @@ function install_mac {
     fi
     brew install "${MAC_BREW_PACKAGES[@]}"
     brew install --cask "${MAC_BREW_CASKS[@]}"
-    setup_opencode
+    setup_pi
+    install_pi_packages
     setup_codex
+    setup_codebase_memory_mcp
   fi
   success "Finished install for Mac"
 }
@@ -654,14 +718,16 @@ _nixos_ensure_linked() {
 }
 
 # Reprovision NixOS: ensure machine.nix + the /etc/nixos/configuration.nix
-# symlink (see _nixos_ensure_linked), then nixos-rebuild switch. On NixOS all
-# imperative setup_* installers are skipped — packages come from the rebuild.
+# symlink (see _nixos_ensure_linked), then nixos-rebuild switch. System
+# packages come from the rebuild; agent extensions install after it.
 # Usage: install_nixos
 function install_nixos {
   info "Installing packages for NixOS..."
   _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
     sudo nixos-rebuild switch || fail "nixos-rebuild switch failed"
+    install_pi_packages
+    setup_codebase_memory_mcp
   fi
   success "Finished install for NixOS"
 }
@@ -673,6 +739,8 @@ function update_nixos {
   _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
     sudo nixos-rebuild switch --upgrade || fail "nixos-rebuild switch --upgrade failed"
+    install_pi_packages
+    setup_codebase_memory_mcp --update
   fi
   success "Finished update for NixOS"
 }

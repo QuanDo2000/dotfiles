@@ -409,58 +409,16 @@ test_setup_symlinks_links_codex_config() {
     "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
 }
 
-test_setup_symlinks_links_opencode_config() {
+test_setup_symlinks_links_pi_settings() {
   create_dotfiles_dirs
-  create_fake_command opencode
-  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
-  echo '{}' \
-    > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
+  create_fake_command pi
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/pi"
+  echo '{"theme":"dark"}' > "$DOTFILES_DIR/config/shared/ai/pi/settings.json"
 
   setup_symlinks
 
-  assert_symlink "$HOME/.config/opencode/opencode.json" \
-    "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
-}
-
-test_setup_symlinks_links_nixos_opencode_config_on_nixos() {
-  create_dotfiles_dirs
-  create_fake_command opencode
-  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode" "$DOTFILES_DIR/config/nixos/ai/opencode"
-  echo '{}' > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
-  echo '{"autoupdate":false}' > "$DOTFILES_DIR/config/nixos/ai/opencode/opencode.json"
-  local osrel="$TEST_TMPDIR/os-release"
-  printf 'ID=nixos\n' > "$osrel"
-
-  OS_RELEASE="$osrel" setup_symlinks
-
-  assert_symlink "$HOME/.config/opencode/opencode.json" \
-    "$DOTFILES_DIR/config/nixos/ai/opencode/opencode.json"
-}
-
-test_setup_symlinks_links_opencode_agents() {
-  create_dotfiles_dirs
-  create_fake_command opencode
-  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
-  echo '# AGENTS.md' \
-    > "$DOTFILES_DIR/config/shared/ai/opencode/AGENTS.md"
-
-  setup_symlinks
-
-  assert_symlink "$HOME/.config/opencode/AGENTS.md" \
-    "$DOTFILES_DIR/config/shared/ai/opencode/AGENTS.md"
-}
-
-test_setup_symlinks_links_opencode_state_when_opencode_installed() {
-  create_dotfiles_dirs
-  create_fake_command opencode
-  mkdir -p "$DOTFILES_DIR/config/shared/ai/opencode"
-  echo '{"theme":"catppuccin-macchiato"}' \
-    > "$DOTFILES_DIR/config/shared/ai/opencode/kv.json"
-
-  setup_symlinks
-
-  assert_symlink "$HOME/.local/state/opencode/kv.json" \
-    "$DOTFILES_DIR/config/shared/ai/opencode/kv.json"
+  assert_symlink "$HOME/.pi/agent/settings.json" \
+    "$DOTFILES_DIR/config/shared/ai/pi/settings.json"
 }
 
 test_setup_symlinks_skips_ai_tools_when_commands_missing() {
@@ -468,19 +426,17 @@ test_setup_symlinks_skips_ai_tools_when_commands_missing() {
   command() {
     if [[ "${1:-}" == "-v" ]]; then
       case "${2:-}" in
-        claude|codex|opencode) return 1 ;;
+        claude|codex|pi) return 1 ;;
       esac
     fi
     builtin command "$@"
   }
   mkdir -p "$DOTFILES_DIR/config/shared/ai/claude" \
     "$DOTFILES_DIR/config/shared/ai/codex" \
-    "$DOTFILES_DIR/config/shared/ai/opencode"
+    "$DOTFILES_DIR/config/shared/ai/pi"
   echo '{}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
   echo 'model = "gpt-5.5"' > "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
-  echo '{}' > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
-  echo '# AGENTS.md' > "$DOTFILES_DIR/config/shared/ai/opencode/AGENTS.md"
-  echo '{"theme":"catppuccin-macchiato"}' > "$DOTFILES_DIR/config/shared/ai/opencode/kv.json"
+  echo '{"theme":"dark"}' > "$DOTFILES_DIR/config/shared/ai/pi/settings.json"
 
   setup_symlinks
 
@@ -492,30 +448,20 @@ test_setup_symlinks_skips_ai_tools_when_commands_missing() {
   if [ -e "$HOME/.codex/config.toml" ] || [ -L "$HOME/.codex/config.toml" ]; then
     echo "  FAILED: codex config should not be linked when codex is missing" >> "$ERROR_FILE"
   fi
-  if [ -e "$HOME/.config/opencode/opencode.json" ] || [ -L "$HOME/.config/opencode/opencode.json" ]; then
-    echo "  FAILED: opencode config should not be linked when opencode is missing" >> "$ERROR_FILE"
-  fi
-  if [ -e "$HOME/.config/opencode/AGENTS.md" ] || [ -L "$HOME/.config/opencode/AGENTS.md" ]; then
-    echo "  FAILED: opencode AGENTS.md should not be linked when opencode is missing" >> "$ERROR_FILE"
-  fi
-  if [ -e "$HOME/.local/state/opencode/kv.json" ] || [ -L "$HOME/.local/state/opencode/kv.json" ]; then
-    echo "  FAILED: opencode kv.json should not be linked when opencode is missing" >> "$ERROR_FILE"
+  if [ -e "$HOME/.pi/agent/settings.json" ] || [ -L "$HOME/.pi/agent/settings.json" ]; then
+    echo "  FAILED: pi settings should not be linked when pi is missing" >> "$ERROR_FILE"
   fi
 }
 
 test_setup_symlinks_skips_ai_when_missing() {
   # When the source files don't exist in the repo, setup_symlinks must not
-  # create $HOME/.claude or $HOME/.config/opencode parent dirs.
+  # create $HOME/.claude parent dirs.
   create_dotfiles_dirs
-  rm -rf "$HOME/.config/opencode"
 
   setup_symlinks
 
   if [ -d "$HOME/.claude" ]; then
     echo "  FAILED: $HOME/.claude should not be created without source" >> "$ERROR_FILE"
-  fi
-  if [ -d "$HOME/.config/opencode" ]; then
-    echo "  FAILED: $HOME/.config/opencode should not be created without source" >> "$ERROR_FILE"
   fi
 }
 
@@ -523,18 +469,18 @@ test_setup_symlinks_ai_dry_run() {
   DRY=true
   create_dotfiles_dirs
   create_fake_command claude
-  create_fake_command opencode
-  mkdir -p "$DOTFILES_DIR/config/shared/ai/claude" "$DOTFILES_DIR/config/shared/ai/opencode"
+  create_fake_command pi
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/claude" "$DOTFILES_DIR/config/shared/ai/pi"
   echo '{}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
-  echo '{}' > "$DOTFILES_DIR/config/shared/ai/opencode/opencode.json"
+  echo '{"theme":"dark"}' > "$DOTFILES_DIR/config/shared/ai/pi/settings.json"
 
   setup_symlinks
 
   if [ -e "$HOME/.claude/settings.json" ] || [ -L "$HOME/.claude/settings.json" ]; then
     echo "  FAILED: claude settings should not be linked in dry run" >> "$ERROR_FILE"
   fi
-  if [ -e "$HOME/.config/opencode/opencode.json" ] || [ -L "$HOME/.config/opencode/opencode.json" ]; then
-    echo "  FAILED: opencode.json should not be linked in dry run" >> "$ERROR_FILE"
+  if [ -e "$HOME/.pi/agent/settings.json" ] || [ -L "$HOME/.pi/agent/settings.json" ]; then
+    echo "  FAILED: pi settings should not be linked in dry run" >> "$ERROR_FILE"
   fi
 }
 

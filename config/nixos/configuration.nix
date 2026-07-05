@@ -78,7 +78,7 @@ in
   services.greetd = {
     enable = true;
     settings.default_session = {
-      command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd Hyprland";
+      command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd start-hyprland";
       user = "greeter";
     };
   };
@@ -96,7 +96,7 @@ in
   # --- Packages ------------------------------------------------------------
   # Ported from ARCH_PACKAGES in scripts/packages.sh. App config files stay as
   # symlinked dotfiles (dotfile symlinks); NixOS only installs the binaries.
-  # ghostty/opencode/codex are appended only if the running channel provides
+  # ghostty/pi/codex are appended only if the running channel provides
   # them, so this evaluates cleanly on stable channels that predate them.
   environment.systemPackages =
     (with pkgs; [
@@ -123,9 +123,9 @@ in
       lua5_1
       luarocks
       waybar
-      google-chrome    # Mod+B keybind + OAuth sign-in (opencode/codex)
+      google-chrome    # Mod+B keybind + OAuth sign-in (codex)
     ])
     ++ lib.optional (pkgs ? ghostty) pkgs.ghostty
-    ++ lib.optional (pkgs ? opencode) pkgs.opencode
+    ++ lib.optional (pkgs ? pi-coding-agent) pkgs.pi-coding-agent
     ++ lib.optional (pkgs ? codex) pkgs.codex;
 }
