@@ -477,6 +477,7 @@ test_setup_symlinks_skips_home_manager_files_on_nixos() {
   echo "ssh" > "$DOTFILES_DIR/config/shared/.ssh/config"
   echo '{}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
   echo 'model = "gpt-5.5"' > "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
+  echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
 
   OS_RELEASE="$osrel" setup_symlinks
 
@@ -486,7 +487,8 @@ test_setup_symlinks_skips_home_manager_files_on_nixos() {
     "$HOME/.tmux.conf" \
     "$HOME/.ssh/config" \
     "$HOME/.claude/settings.json" \
-    "$HOME/.codex/config.toml"; do
+    "$HOME/.codex/config.toml" \
+    "$HOME/.local/bin/dotfile"; do
     if [ -e "$path" ] || [ -L "$path" ]; then
       echo "  FAILED: $path should be left for Home Manager on NixOS" >> "$ERROR_FILE"
     fi
@@ -524,10 +526,11 @@ test_setup_symlinks_skips_home_manager_files_on_mac() {
   echo "git" > "$DOTFILES_DIR/config/shared/.gitconfig"
   echo "mac" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
   echo "#!/usr/bin/env bash" > "$DOTFILES_DIR/config/mac/bin/caf"
+  echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
 
   setup_symlinks
 
-  for path in "$HOME/.gitconfig" "$HOME/.zshrc.mac" "$HOME/.local/bin/caf"; do
+  for path in "$HOME/.gitconfig" "$HOME/.zshrc.mac" "$HOME/.local/bin/caf" "$HOME/.local/bin/dotfile"; do
     if [ -e "$path" ] || [ -L "$path" ]; then
       echo "  FAILED: $path should be left for Home Manager on macOS" >> "$ERROR_FILE"
     fi

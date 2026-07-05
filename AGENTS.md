@@ -26,13 +26,13 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 
 ## Architecture
 
-- **dotfile** - Unix entry point at the repo root. Sources all scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by `setup_symlinks`.
+- **dotfile** - Unix entry point at the repo root. Sources all scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by `setup_symlinks` on non-Nix Unix systems and by Home Manager on NixOS/macOS.
 - **dotfile.ps1** - Windows equivalent (PowerShell) at the repo root. Same subcommand structure; symlinked into `$HOME\.local\bin\` by `SetupSymlinks`.
 - **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` - OS-specific package installation (apt/pacman on non-Nix Linux, NixOS flakes, nix-darwin bootstrap on macOS).
   - `extras.sh` - zsh plugins (cloned to `~/.local/share/zsh/plugins`) and the directly-cloned tmux plugins (tmux-yank, catppuccin) for non-Home-Manager paths; no tmux plugin manager (sensible/pain-control are inlined in `.tmux.conf`). On NixOS these plugin paths are managed by Home Manager from `config/home.nix`.
-  - `symlinks.sh` - Links dotfiles to `$HOME`. Files in `bin/` directories under each platform layer are symlinked into `$HOME/.local/bin/`.
+  - `symlinks.sh` - Links dotfiles to `$HOME` on non-Nix Unix systems. Files in `bin/` directories under each platform layer are symlinked into `$HOME/.local/bin/`; NixOS/macOS leave Home Manager-owned links alone.
   - `verify.sh` - Post-install checks.
 
 ## Dotfile Layers

@@ -191,14 +191,14 @@ function setup_symlinks {
     if command -v codex >/dev/null 2>&1; then
       _link_optional "$ai/codex/config.toml" "$HOME/.codex/config.toml"
     fi
+
+    # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
+    # can run `dotfile` from any shell. NixOS/macOS get this from Home Manager.
+    if [[ -f "$DOTFILES_DIR/dotfile" ]]; then
+      mkdir -p "$HOME/.local/bin" || fail "Failed to create $HOME/.local/bin"
+      link_files "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
+    fi
   fi
 
   _ensure_local_zshrc
-
-  # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
-  # can run `dotfile` from any shell.
-  if [[ -f "$DOTFILES_DIR/dotfile" ]]; then
-    mkdir -p "$HOME/.local/bin" || fail "Failed to create $HOME/.local/bin"
-    link_files "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-  fi
 }

@@ -321,5 +321,5 @@ test_dotfile_symlinks_command_mac() {
   output=$(bash "$DOTFILE_CMD" --dry symlinks 2>&1)
 
   assert_contains "$output" "Home Manager manages dotfile links"
-  assert_contains "$output" ".local/bin/dotfile"
+  assert_not_contains "$output" ".local/bin/dotfile"
 }

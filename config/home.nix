@@ -71,6 +71,12 @@ in
     force = true;
   };
 
+  home.file.".local/bin/dotfile" = {
+    source = ../dotfile;
+    executable = true;
+    force = true;
+  };
+
   home.file.".tmux/plugins/tmux-yank" = {
     source = "${pkgs.tmuxPlugins.yank}/share/tmux-plugins/yank";
     force = true;
