@@ -16,12 +16,29 @@ test_flake_uses_flat_nix_config_files() {
   flake_text="$(<"$REPO_DIR/flake.nix")"
 
   assert_file_exists "$REPO_DIR/config/home.nix"
+  assert_file_exists "$REPO_DIR/config/host.nix"
   assert_file_exists "$REPO_DIR/config/nixos.nix"
   assert_file_exists "$REPO_DIR/config/darwin.nix"
   assert_contains "$flake_text" "./config/home.nix"
   assert_contains "$flake_text" "./config/nixos.nix"
   assert_contains "$flake_text" "./config/darwin.nix"
   assert_not_contains "$flake_text" "config/nix/"
+}
+
+test_nixos_uses_tracked_host_config() {
+  local host_text nixos_text configuration_text
+  host_text="$(<"$REPO_DIR/config/host.nix")"
+  nixos_text="$(<"$REPO_DIR/config/nixos.nix")"
+  configuration_text="$(<"$REPO_DIR/config/nixos/configuration.nix")"
+
+  assert_contains "$host_text" 'username = "quando"'
+  assert_contains "$host_text" 'hostName = "nixos"'
+  assert_contains "$host_text" 'timeZone = "America/Los_Angeles"'
+  assert_contains "$host_text" 'stateVersion = "26.05"'
+  assert_contains "$nixos_text" "import ./host.nix"
+  assert_contains "$configuration_text" "import ../host.nix"
+  assert_not_contains "$nixos_text" "/etc/nixos/machine.nix"
+  assert_not_contains "$configuration_text" "/etc/nixos/machine.nix"
 }
 
 test_home_config_installs_home_manager_cli() {

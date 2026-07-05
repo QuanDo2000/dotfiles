@@ -1,7 +1,7 @@
 { ... }:
 
 let
-  machine = import /etc/nixos/machine.nix;
+  machine = import ./host.nix;
 in
 {
   imports = [
