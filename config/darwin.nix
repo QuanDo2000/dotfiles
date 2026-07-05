@@ -10,7 +10,10 @@ in
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nixpkgs.config.allowUnfree = true;
 
-  users.users.${machine.username}.home = "/Users/${machine.username}";
+  users.users.${machine.username} = {
+    home = "/Users/${machine.username}";
+    shell = pkgs.zsh;
+  };
   programs.zsh.enable = true;
 
   environment.systemPackages = with pkgs; [

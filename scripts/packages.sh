@@ -599,11 +599,15 @@ function install_mac {
 
 function set_zsh_default {
   info "Changing default shell to zsh..."
-  if [[ "$(detect_platform)" == "nixos" ]]; then
-    info "Shell is managed declaratively on NixOS; skipping chsh"
-    success "Finished changing zsh as default"
-    return
-  fi
+  local platform
+  platform="$(detect_platform)"
+  case "$platform" in
+    nixos|mac)
+      info "Shell is managed declaratively on $platform; skipping chsh"
+      success "Finished changing zsh as default"
+      return
+      ;;
+  esac
   if [[ "$DRY" == "false" ]]; then
     local zsh_path
     zsh_path="$(command -v zsh || true)"

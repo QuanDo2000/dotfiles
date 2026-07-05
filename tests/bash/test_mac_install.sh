@@ -168,45 +168,23 @@ test_load_nix_profile_tolerates_unset_zsh_version() {
 # install_packages on Darwin
 # ---------------------------------------------------------------------------
 
-test_install_packages_mac_calls_set_zsh_default() {
+test_install_packages_mac_skips_chsh() {
   local output
   output=$(install_packages 2>&1)
 
-  assert_contains "$output" "Changing default shell to zsh"
+  assert_contains "$output" "Shell is managed declaratively on mac; skipping chsh"
 }
 
 # ---------------------------------------------------------------------------
 # set_zsh_default
 # ---------------------------------------------------------------------------
 
-test_set_zsh_default_dry_run() {
+test_set_zsh_default_skips_on_mac() {
   local output
   output=$(set_zsh_default 2>&1)
 
-  assert_contains "$output" "Changing default shell to zsh"
+  assert_contains "$output" "Shell is managed declaratively on mac; skipping chsh"
   assert_contains "$output" "Finished changing zsh as default"
-}
-
-test_set_zsh_default_already_zsh() {
-  # chsh is not available on Git Bash; set_zsh_default relies on it.
-  is_windows_bash && return 0
-  DRY=false
-  # Provide a fake zsh on PATH so `command -v zsh` resolves in environments
-  # (e.g. minimal CI containers) where zsh isn't installed.
-  local fake_bin="$TEST_TMPDIR/fakebin"
-  mkdir -p "$fake_bin"
-  printf '#!/bin/sh\n' > "$fake_bin/zsh"
-  chmod +x "$fake_bin/zsh"
-  local ORIG_PATH="$PATH"
-  export PATH="$fake_bin:$PATH"
-  SHELL="$fake_bin/zsh"
-  export SHELL
-
-  local output
-  output=$(set_zsh_default 2>&1)
-  export PATH="$ORIG_PATH"
-
-  assert_contains "$output" "Already has zsh as default shell"
 }
 
 # ---------------------------------------------------------------------------

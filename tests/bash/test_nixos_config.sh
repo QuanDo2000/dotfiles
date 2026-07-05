@@ -51,7 +51,9 @@ test_darwin_uses_tracked_host_username() {
 
   assert_contains "$darwin_text" "machine = import ./host.nix"
   assert_contains "$darwin_text" "system.primaryUser = machine.username"
-  assert_contains "$darwin_text" "users.users.\${machine.username}.home"
+  assert_contains "$darwin_text" "users.users.\${machine.username} = {"
+  assert_contains "$darwin_text" "home = \"/Users/\${machine.username}\""
+  assert_contains "$darwin_text" "shell = pkgs.zsh"
   assert_contains "$darwin_text" "home-manager.users.\${machine.username}"
   assert_not_contains "$darwin_text" 'system.primaryUser = "quando"'
   assert_not_contains "$darwin_text" "users.users.quando"
