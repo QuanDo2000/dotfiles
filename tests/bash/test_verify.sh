@@ -83,6 +83,41 @@ test_verify_symlink_wrong_target() {
   assert_contains "$output" "expected"
 }
 
+test_verify_requires_dotfile_command_link() {
+  mkdir -p "$DOTFILES_DIR"
+  local f
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    echo "content" > "$DOTFILES_DIR/$f"
+    mkdir -p "$(dirname "$HOME/$f")"
+    ln -s "$DOTFILES_DIR/$f" "$HOME/$f"
+  done
+  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+  rm -f "$HOME/.local/bin/dotfile"
+
+  local output
+  output=$(verify 2>&1) || true
+
+  assert_contains "$output" ".local/bin/dotfile not found"
+}
+
+test_verify_accepts_repo_dotfile_command_link() {
+  mkdir -p "$DOTFILES_DIR"
+  local f
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    echo "content" > "$DOTFILES_DIR/$f"
+    mkdir -p "$(dirname "$HOME/$f")"
+    ln -s "$DOTFILES_DIR/$f" "$HOME/$f"
+  done
+  echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
+  ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
+  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+
+  local output
+  output=$(verify 2>&1) || true
+
+  assert_contains "$output" "All checks passed"
+}
+
 test_verify_accepts_home_manager_store_targets_on_nixos() {
   local osrel="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$osrel"
@@ -91,6 +126,7 @@ test_verify_accepts_home_manager_store_targets_on_nixos() {
   for f in "${REQUIRED_SYMLINKS[@]}"; do
     ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
   done
+  ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
   printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
 
   local output
@@ -106,6 +142,7 @@ test_verify_accepts_home_manager_store_targets_on_mac() {
   for f in "${REQUIRED_SYMLINKS[@]}"; do
     ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
   done
+  ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
   printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
 
   local output

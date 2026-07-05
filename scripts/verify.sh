@@ -46,6 +46,28 @@ _check_local_zshrc() {
   fi
 }
 
+_check_dotfile_command() {
+  local target="$HOME/.local/bin/dotfile"
+  if [ -L "$target" ]; then
+    local link_target platform
+    link_target="$(resolve_symlink "$target")"
+    platform="$(detect_platform)"
+    if [[ "$link_target" == "$DOTFILES_DIR/dotfile" ]] \
+      || [[ "$platform" =~ ^(nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
+      success ".local/bin/dotfile -> $link_target"
+    else
+      fail_soft ".local/bin/dotfile points to $link_target (expected $DOTFILES_DIR/dotfile or Home Manager store target)"
+      errors=$((errors + 1))
+    fi
+  elif [ -e "$target" ]; then
+    fail_soft ".local/bin/dotfile exists but is not a symlink"
+    errors=$((errors + 1))
+  else
+    fail_soft ".local/bin/dotfile not found"
+    errors=$((errors + 1))
+  fi
+}
+
 function verify {
   local errors=0
 
@@ -54,6 +76,7 @@ function verify {
     _check_symlink "$f"
   done
   _check_local_zshrc
+  _check_dotfile_command
 
   echo ""
   if [ "$errors" -eq 0 ]; then
