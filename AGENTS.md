@@ -20,6 +20,10 @@ dotfile -d <command>         # Dry run
 dotfile -f <command>         # Force overwrite existing files
 ```
 
+## Git Signing
+
+If `git commit` hangs or fails because signing needs a passphrase, do not bypass signing by default. Tell the user to run `printf test | gpg --clearsign >/dev/null` to unlock/cache the GPG passphrase, then retry the commit after they confirm it is done.
+
 ## Architecture
 
 - **dotfile** - Unix entry point at the repo root. Sources all scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by `setup_symlinks`.
