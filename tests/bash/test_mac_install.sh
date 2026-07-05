@@ -36,6 +36,60 @@ test_install_mac_dry_run_does_not_install_ghostty() {
   fi
 }
 
+test_install_mac_bootstraps_nix_darwin_without_brew() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|darwin-rebuild|brew) return 1 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  _install_lix_mac() { printf '%s\n' "install-lix" >> "$calls"; }
+  _load_nix_profile() { :; }
+  sudo() { printf '%s\n' "$*" >> "$calls"; }
+  setup_codex() { :; }
+  setup_codebase_memory_mcp() { :; }
+
+  install_mac >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "install-lix"
+  assert_contains "$output" "nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
+  assert_not_contains "$output" "brew"
+
+  unset -f command _install_lix_mac _load_nix_profile sudo setup_codex setup_codebase_memory_mcp
+}
+
+test_update_mac_switches_existing_darwin_rebuild() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|darwin-rebuild) return 0 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  _load_nix_profile() { :; }
+  sudo() { printf '%s\n' "$*" >> "$calls"; }
+  setup_codex() { :; }
+  setup_codebase_memory_mcp() { :; }
+
+  update_mac >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "darwin-rebuild switch --flake $DOTFILES_DIR#mac"
+  assert_not_contains "$output" "brew"
+
+  unset -f command _load_nix_profile sudo setup_codex setup_codebase_memory_mcp
+}
+
 # ---------------------------------------------------------------------------
 # install_packages on Darwin
 # ---------------------------------------------------------------------------

@@ -491,11 +491,45 @@ MAC_BREW_PACKAGES=(
 )
 MAC_BREW_CASKS=(ghostty)
 
+function _load_nix_profile {
+  local profile
+  for profile in \
+    /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh \
+    /nix/var/nix/profiles/default/etc/profile.d/nix.sh \
+    "$HOME/.nix-profile/etc/profile.d/nix.sh"; do
+    # shellcheck disable=SC1090
+    [[ -f "$profile" ]] && source "$profile"
+  done
+}
+
+function _install_lix_mac {
+  info "Installing Lix/Nix..."
+  curl -sSf -L https://install.lix.systems/lix | sh -s -- install \
+    || fail "Failed to install Lix/Nix"
+}
+
+function _ensure_nix_mac {
+  if ! command -v nix >/dev/null 2>&1; then
+    _install_lix_mac
+    _load_nix_profile
+  fi
+}
+
+function _darwin_rebuild_switch {
+  _ensure_nix_mac
+  if command -v darwin-rebuild >/dev/null 2>&1; then
+    sudo darwin-rebuild switch --flake "$DOTFILES_DIR#mac" \
+      || fail "darwin-rebuild switch failed"
+  else
+    sudo nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$DOTFILES_DIR#mac" \
+      || fail "nix-darwin bootstrap switch failed"
+  fi
+}
+
 function update_mac {
   info "Updating packages for Mac..."
   if [[ "$DRY" == "false" ]]; then
-    brew update || fail "Failed to update brew"
-    brew upgrade || fail "Failed to upgrade brew packages"
+    _darwin_rebuild_switch
     setup_codex --update
     setup_codebase_memory_mcp --update
   fi
@@ -505,11 +539,7 @@ function update_mac {
 function install_mac {
   info "Installing packages and programs for Mac..."
   if [[ "$DRY" == "false" ]]; then
-    if ! command -v brew >/dev/null 2>&1; then
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    fi
-    brew install "${MAC_BREW_PACKAGES[@]}"
-    brew install --cask "${MAC_BREW_CASKS[@]}"
+    _darwin_rebuild_switch
     setup_codex
     setup_codebase_memory_mcp
   fi
