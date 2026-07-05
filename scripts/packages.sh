@@ -455,7 +455,7 @@ function install_debian {
 }
 
 ARCH_PACKAGES=(
-  base-devel curl git unzip zsh tmux neovim fontconfig
+  base-devel curl git unzip zsh tmux fontconfig
   fzf fd ripgrep lazygit ttf-firacode-nerd zoxide
   gnupg wl-clipboard openssh nodejs lua51 luarocks nvm
   tree-sitter-cli jujutsu starship

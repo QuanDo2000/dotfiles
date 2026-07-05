@@ -360,8 +360,10 @@ test_arch_packages_include_starship() {
   assert_contains "${ARCH_PACKAGES[*]}" "starship"
 }
 
-test_arch_packages_include_neovim() {
-  assert_contains "${ARCH_PACKAGES[*]}" "neovim"
+test_arch_packages_do_not_install_neovim() {
+  if [[ " ${ARCH_PACKAGES[*]} " == *" neovim "* ]]; then
+    echo "  FAILED: Arch pacman packages should not install neovim; Home Manager owns it to avoid neovim-git conflicts" >> "$ERROR_FILE"
+  fi
 }
 
 test_arch_packages_include_nodejs_for_codex_hooks() {

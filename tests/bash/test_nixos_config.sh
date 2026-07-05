@@ -59,6 +59,7 @@ test_home_config_installs_home_manager_cli() {
 
   assert_contains "$home_text" "home.packages"
   assert_contains "$home_text" "home-manager"
+  assert_contains "$home_text" "neovim"
 }
 
 test_home_config_manages_git_and_starship() {

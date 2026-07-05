@@ -8,6 +8,7 @@
   home.packages = with pkgs; [
     git
     home-manager
+    neovim
     starship
   ];
 
