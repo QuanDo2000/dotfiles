@@ -83,8 +83,8 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "nodejs"
   assert_contains "$home_text" "jujutsu"
   assert_contains "$home_text" "ripgrep"
-  assert_contains "$home_text" "lib.optional (pkgs.stdenv.isLinux && pkgs ? codex) pkgs.codex"
-  assert_contains "$home_text" "lib.optional (pkgs.stdenv.isLinux && pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp"
+  assert_contains "$home_text" "lib.optional (pkgs ? codex) pkgs.codex"
+  assert_contains "$home_text" "lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp"
 }
 
 test_home_config_puts_shared_user_tools_in_common_packages() {

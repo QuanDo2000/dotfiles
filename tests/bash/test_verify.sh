@@ -167,3 +167,49 @@ test_verify_accepts_home_manager_store_targets_on_arch() {
   output=$(OS_RELEASE="$os_release" verify 2>&1) || true
   assert_contains "$output" "All checks passed"
 }
+
+test_verify_requires_nix_agent_tools_on_arch() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=arch\n' > "$os_release"
+
+  local hm_dir="/nix/store/test-home-manager-files"
+  local f
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    ln -s "$hm_dir/$f" "$HOME/$f"
+  done
+  ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
+  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+
+  local bin_dir="$TEST_TMPDIR/bin"
+  mkdir -p "$bin_dir"
+  printf '#!/usr/bin/env bash\n' > "$bin_dir/codex"
+  printf '#!/usr/bin/env bash\n' > "$bin_dir/codebase-memory-mcp"
+  chmod +x "$bin_dir/codex" "$bin_dir/codebase-memory-mcp"
+
+  local output
+  output=$(PATH="$bin_dir:$PATH" OS_RELEASE="$os_release" verify 2>&1) || true
+  assert_contains "$output" "codex points to"
+  assert_contains "$output" "codebase-memory-mcp points to"
+  assert_contains "$output" "expected /nix/store"
+}
+
+test_verify_accepts_nix_agent_tools_on_mac() {
+  mock_uname Darwin
+  local hm_dir="/nix/store/test-home-manager-files"
+  local f
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    ln -s "$hm_dir/$f" "$HOME/$f"
+  done
+  ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
+  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+
+  local bin_dir="$TEST_TMPDIR/bin"
+  mkdir -p "$bin_dir"
+  ln -s "/nix/store/test-codex/bin/codex" "$bin_dir/codex"
+  ln -s "/nix/store/test-codebase-memory-mcp/bin/codebase-memory-mcp" "$bin_dir/codebase-memory-mcp"
+
+  local output
+  output=$(PATH="$bin_dir:$PATH" verify 2>&1) || true
+  assert_contains "$output" "All checks passed"
+}

@@ -36,8 +36,8 @@ in
     tree-sitter
     unzip
   ]
-  ++ lib.optional (pkgs.stdenv.isLinux && pkgs ? codex) pkgs.codex
-  ++ lib.optional (pkgs.stdenv.isLinux && pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
+  ++ lib.optional (pkgs ? codex) pkgs.codex
+  ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
 
   home.file.".gitconfig" = {
     source = ./shared/.gitconfig;

@@ -59,8 +59,8 @@ test_install_mac_bootstraps_nix_darwin_without_brew() {
   _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
   _load_nix_profile() { :; }
   sudo() { printf '%s\n' "$*" >> "$calls"; }
-  setup_codex() { :; }
-  setup_codebase_memory_mcp() { :; }
+  setup_codex() { printf '%s\n' "setup_codex $*" >> "$calls"; }
+  setup_codebase_memory_mcp() { printf '%s\n' "setup_codebase_memory_mcp $*" >> "$calls"; }
 
   install_mac >/dev/null 2>&1
 
@@ -69,6 +69,8 @@ test_install_mac_bootstraps_nix_darwin_without_brew() {
   assert_contains "$output" "install-lix"
   assert_contains "$output" "HOME=/var/root nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
   assert_not_contains "$output" "brew"
+  assert_not_contains "$output" "setup_codex"
+  assert_not_contains "$output" "setup_codebase_memory_mcp"
 
   unset -f command _install_lix _load_nix_profile sudo setup_codex setup_codebase_memory_mcp
 }
@@ -86,8 +88,8 @@ test_update_mac_switches_existing_darwin_rebuild() {
   }
   _load_nix_profile() { :; }
   sudo() { printf '%s\n' "$*" >> "$calls"; }
-  setup_codex() { :; }
-  setup_codebase_memory_mcp() { :; }
+  setup_codex() { printf '%s\n' "setup_codex $*" >> "$calls"; }
+  setup_codebase_memory_mcp() { printf '%s\n' "setup_codebase_memory_mcp $*" >> "$calls"; }
 
   update_mac >/dev/null 2>&1
 
@@ -95,8 +97,46 @@ test_update_mac_switches_existing_darwin_rebuild() {
   output="$(<"$calls")"
   assert_contains "$output" "HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
   assert_not_contains "$output" "brew"
+  assert_not_contains "$output" "setup_codex"
+  assert_not_contains "$output" "setup_codebase_memory_mcp"
 
   unset -f command _load_nix_profile sudo setup_codex setup_codebase_memory_mcp
+}
+
+test_darwin_rebuild_cleans_old_agent_tools_before_switch() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  mkdir -p "$HOME/.local/bin" "$HOME/.bun/bin" "$HOME/.bun/install/global/node_modules/@openai"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/codex"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/codebase-memory-mcp"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.bun/bin/codex"
+  mkdir -p "$HOME/.bun/install/global/node_modules/@openai/codex" "$HOME/.local/codex-old"
+
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|darwin-rebuild) return 0 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  _load_nix_profile() { :; }
+  sudo() { printf '%s\n' "$*" >> "$calls"; }
+
+  _darwin_rebuild_switch >/dev/null 2>&1
+
+  for path in \
+    "$HOME/.local/bin/codex" \
+    "$HOME/.local/bin/codebase-memory-mcp" \
+    "$HOME/.bun/bin/codex" \
+    "$HOME/.bun/install/global/node_modules/@openai/codex" \
+    "$HOME/.local/codex-old"; do
+    if [ -e "$path" ] || [ -L "$path" ]; then
+      echo "  FAILED: old agent tool install should be removed before darwin-rebuild: $path" >> "$ERROR_FILE"
+    fi
+  done
+
+  unset -f command _load_nix_profile sudo
 }
 
 test_darwin_rebuild_cleans_old_plugin_dirs_before_switch() {

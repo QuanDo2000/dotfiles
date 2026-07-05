@@ -584,6 +584,7 @@ function _home_manager_switch {
 function _darwin_rebuild_switch {
   _ensure_nix
   _cleanup_home_manager_plugin_migration
+  _cleanup_home_manager_agent_tool_migration
   if command -v darwin-rebuild >/dev/null 2>&1; then
     sudo HOME=/var/root darwin-rebuild switch --flake "$DOTFILES_DIR#mac" \
       || fail "darwin-rebuild switch failed"
@@ -598,8 +599,6 @@ function update_mac {
   [[ "$DRY" == "true" ]] && info "Would run: sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
   if [[ "$DRY" == "false" ]]; then
     _darwin_rebuild_switch
-    setup_codex --update
-    setup_codebase_memory_mcp --update
   fi
   success "Finished update for Mac"
 }
@@ -609,8 +608,6 @@ function install_mac {
   [[ "$DRY" == "true" ]] && info "Would run: sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
   if [[ "$DRY" == "false" ]]; then
     _darwin_rebuild_switch
-    setup_codex
-    setup_codebase_memory_mcp
   fi
   success "Finished install for Mac"
 }

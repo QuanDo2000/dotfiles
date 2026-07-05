@@ -68,6 +68,31 @@ _check_dotfile_command() {
   fi
 }
 
+_check_nix_tool() {
+  local name="$1"
+  local platform="${2:-$(detect_platform)}"
+  [[ "$platform" =~ ^(arch|nixos|mac)$ ]] || return
+
+  local target
+  if ! target="$(command -v "$name" 2>/dev/null)"; then
+    fail_soft "$name not found (expected /nix/store/...)"
+    errors=$((errors + 1))
+    return
+  fi
+
+  local link_target="$target"
+  if [ -L "$target" ]; then
+    link_target="$(resolve_symlink "$target")"
+  fi
+
+  if [[ "$link_target" == /nix/store/* ]]; then
+    success "$name -> $link_target"
+  else
+    fail_soft "$name points to $link_target (expected /nix/store/...)"
+    errors=$((errors + 1))
+  fi
+}
+
 function verify {
   local errors=0
 
@@ -79,6 +104,8 @@ function verify {
   done
   _check_local_zshrc
   _check_dotfile_command
+  _check_nix_tool codex "$platform"
+  _check_nix_tool codebase-memory-mcp "$platform"
 
   echo ""
   if [ "$errors" -eq 0 ]; then
