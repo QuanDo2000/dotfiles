@@ -54,7 +54,11 @@ function setup_dotfiles {
   install_packages
   update_repo
   install_extras
-  setup_symlinks
+  if [[ "$(detect_platform)" == "arch" ]]; then
+    info "Skipping symlink setup: Home Manager manages Arch dotfiles"
+  else
+    setup_symlinks
+  fi
   setup_obsidian_if_supported
   success "Done!"
 }

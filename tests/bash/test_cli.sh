@@ -93,6 +93,21 @@ test_all_runs_obsidian_on_arch_with_prereqs() {
   unset __MOCK_UNAME
 }
 
+test_all_skips_symlink_step_on_arch() {
+  is_windows_bash && return 0
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=arch\n' > "$osrel"
+
+  local output
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry all 2>&1)
+  assert_contains "$output" "Skipping symlink setup: Home Manager manages Arch dotfiles"
+  assert_not_contains "$output" "Home Manager manages dotfile links"
+
+  unset -f uname 2>/dev/null || true
+  unset __MOCK_UNAME
+}
+
 test_update_command_in_help() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)
