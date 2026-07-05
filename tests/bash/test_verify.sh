@@ -82,3 +82,34 @@ test_verify_symlink_wrong_target() {
   output=$(verify 2>&1) || true
   assert_contains "$output" "expected"
 }
+
+test_verify_accepts_home_manager_store_targets_on_nixos() {
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  mkdir -p "$DOTFILES_DIR"
+  local f
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
+  done
+  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+
+  local output
+  output=$(OS_RELEASE="$osrel" verify 2>&1) || true
+
+  assert_contains "$output" "All checks passed"
+}
+
+test_verify_accepts_home_manager_store_targets_on_mac() {
+  mock_uname Darwin
+  mkdir -p "$DOTFILES_DIR"
+  local f
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
+  done
+  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+
+  local output
+  output=$(verify 2>&1) || true
+
+  assert_contains "$output" "All checks passed"
+}

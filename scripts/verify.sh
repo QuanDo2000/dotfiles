@@ -11,12 +11,14 @@ _check_symlink() {
   local name="$1"
   local target="$HOME/$name"
   if [ -L "$target" ]; then
-    local link_target
+    local link_target platform
     link_target="$(resolve_symlink "$target")"
-    if [[ "$link_target" == "$DOTFILES_DIR"* ]]; then
+    platform="$(detect_platform)"
+    if [[ "$link_target" == "$DOTFILES_DIR"* ]] \
+      || [[ "$platform" =~ ^(nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
       success "$name -> $link_target"
     else
-      fail_soft "$name points to $link_target (expected $DOTFILES_DIR/...)"
+      fail_soft "$name points to $link_target (expected $DOTFILES_DIR/... or Home Manager store target)"
       errors=$((errors + 1))
     fi
   elif [ -f "$target" ]; then
