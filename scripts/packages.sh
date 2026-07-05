@@ -466,6 +466,7 @@ function update_arch {
   if [[ "$DRY" == "false" ]]; then
     sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
 
+    _home_manager_switch
     setup_codex --update
     setup_codebase_memory_mcp --update
   fi
@@ -479,6 +480,7 @@ function install_arch {
       || fail "Failed to install Arch packages"
 
     setup_fdfind
+    _home_manager_switch
     setup_codex
     setup_codebase_memory_mcp
   fi
@@ -515,16 +517,16 @@ function _load_nix_profile {
   done
 }
 
-function _install_lix_mac {
+function _install_lix {
   info "Installing Lix/Nix..."
   curl -sSf -L https://install.lix.systems/lix | sh -s -- install \
     || fail "Failed to install Lix/Nix"
 }
 
-function _ensure_nix_mac {
+function _ensure_nix {
   _load_nix_profile
   if ! command -v nix >/dev/null 2>&1; then
-    _install_lix_mac
+    _install_lix
     _load_nix_profile
   fi
 }
@@ -549,8 +551,20 @@ _cleanup_home_manager_plugin_migration() {
   done
 }
 
+function _home_manager_switch {
+  _ensure_nix
+  _cleanup_home_manager_plugin_migration
+  if command -v home-manager >/dev/null 2>&1; then
+    home-manager switch --flake "$DOTFILES_DIR#quando@arch" \
+      || fail "home-manager switch failed"
+  else
+    nix run home-manager/master -- switch --flake "$DOTFILES_DIR#quando@arch" \
+      || fail "home-manager bootstrap switch failed"
+  fi
+}
+
 function _darwin_rebuild_switch {
-  _ensure_nix_mac
+  _ensure_nix
   _cleanup_home_manager_plugin_migration
   if command -v darwin-rebuild >/dev/null 2>&1; then
     sudo HOME=/var/root darwin-rebuild switch --flake "$DOTFILES_DIR#mac" \

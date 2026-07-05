@@ -368,6 +368,63 @@ test_arch_packages_include_nodejs_for_codex_hooks() {
   assert_contains "${ARCH_PACKAGES[*]}" "nodejs"
 }
 
+test_install_arch_bootstraps_nix_and_switches_home_manager() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|home-manager) return 1 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
+  _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
+  _load_nix_profile() { :; }
+  nix() { printf 'nix %s\n' "$*" >> "$calls"; }
+  setup_fdfind() { :; }
+  setup_codex() { :; }
+  setup_codebase_memory_mcp() { :; }
+
+  install_arch >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "sudo pacman -S --needed --noconfirm"
+  assert_contains "$output" "install-lix"
+  assert_contains "$output" "nix run home-manager/master -- switch --flake $DOTFILES_DIR#quando@arch"
+
+  unset -f command sudo _install_lix _load_nix_profile nix setup_fdfind setup_codex setup_codebase_memory_mcp
+}
+
+test_update_arch_uses_existing_home_manager() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|home-manager) return 0 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
+  _load_nix_profile() { :; }
+  home-manager() { printf 'home-manager %s\n' "$*" >> "$calls"; }
+  setup_codex() { :; }
+  setup_codebase_memory_mcp() { :; }
+
+  update_arch >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "sudo pacman -Syu --noconfirm"
+  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#quando@arch"
+
+  unset -f command sudo _load_nix_profile home-manager setup_codex setup_codebase_memory_mcp
+}
+
 test_debian_packages_include_neovim() {
   assert_contains "${DEBIAN_PACKAGES[*]}" "neovim"
 }
