@@ -407,6 +407,42 @@ test_update_nixos_dry_run() {
   unset NIXOS_MACHINE_FILE
 }
 
+test_install_nixos_uses_flake_switch() {
+  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
+  printf '{ username = "alice"; hostName = "mybox"; timeZone = "UTC"; stateVersion = "24.11"; }\n' > "$NIXOS_MACHINE_FILE"
+  local calls="$TEST_TMPDIR/sudo.log"
+  sudo() { printf '%s\n' "$*" >> "$calls"; }
+  setup_codebase_memory_mcp() { :; }
+
+  install_nixos >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "nixos-rebuild switch --flake $DOTFILES_DIR#nixos --impure"
+
+  unset -f sudo
+  unset -f setup_codebase_memory_mcp
+  unset NIXOS_MACHINE_FILE
+}
+
+test_update_nixos_uses_flake_switch_upgrade() {
+  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
+  printf '{ username = "alice"; hostName = "mybox"; timeZone = "UTC"; stateVersion = "24.11"; }\n' > "$NIXOS_MACHINE_FILE"
+  local calls="$TEST_TMPDIR/sudo.log"
+  sudo() { printf '%s\n' "$*" >> "$calls"; }
+  setup_codebase_memory_mcp() { :; }
+
+  update_nixos >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#nixos --impure"
+
+  unset -f sudo
+  unset -f setup_codebase_memory_mcp
+  unset NIXOS_MACHINE_FILE
+}
+
 test_install_packages_dispatches_nixos() {
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"

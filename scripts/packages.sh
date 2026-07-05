@@ -581,13 +581,13 @@ _prompt_default() {
   echo "${answer:-$default}"
 }
 
-# Ensure /etc/nixos/machine.nix exists and the repo configuration.nix is linked
-# into /etc/nixos. On first run (machine.nix missing, or FORCE), detect the
-# per-machine values, confirm them interactively when a TTY is attached, and
-# write the file. hardware-configuration.nix in /etc/nixos is left untouched.
+# Ensure /etc/nixos/machine.nix exists. On first run (machine.nix missing, or
+# FORCE), detect the per-machine values, confirm them interactively when a TTY
+# is attached, and write the file. The flake imports machine.nix and the
+# hardware configuration directly; no /etc/nixos/configuration.nix symlink is
+# needed for rebuilds.
 _nixos_ensure_linked() {
   local mf="${NIXOS_MACHINE_FILE:-/etc/nixos/machine.nix}"
-  local cfg="$DOTFILES_DIR/config/nixos/configuration.nix"
 
   if [[ ! -f "$mf" || "$FORCE" == "true" ]]; then
     info "Detecting machine settings..."
@@ -609,35 +609,32 @@ _nixos_ensure_linked() {
   else
     info "Using existing $mf"
   fi
-
-  if [[ "$DRY" == "false" ]]; then
-    [[ -f "$cfg" ]] || fail "NixOS config not found: $cfg"
-    sudo ln -sfn "$cfg" /etc/nixos/configuration.nix \
-      || fail "Failed to link configuration.nix into /etc/nixos"
-  fi
 }
 
-# Reprovision NixOS: ensure machine.nix + the /etc/nixos/configuration.nix
-# symlink (see _nixos_ensure_linked), then nixos-rebuild switch. System
-# packages come from the rebuild; agent extensions install after it.
+# Reprovision NixOS: ensure machine.nix, then nixos-rebuild switch against this
+# repo's flake. System packages come from the rebuild; agent extensions install
+# after it.
 # Usage: install_nixos
 function install_nixos {
   info "Installing packages for NixOS..."
   _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
-    sudo nixos-rebuild switch || fail "nixos-rebuild switch failed"
+    sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos" --impure \
+      || fail "nixos-rebuild switch failed"
     setup_codebase_memory_mcp
   fi
   success "Finished install for NixOS"
 }
 
-# Update NixOS: ensure the config is linked, then rebuild with channel upgrade.
+# Update NixOS: ensure machine settings exist, then rebuild the flake with
+# channel upgrade.
 # Usage: update_nixos
 function update_nixos {
   info "Updating packages for NixOS..."
   _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
-    sudo nixos-rebuild switch --upgrade || fail "nixos-rebuild switch --upgrade failed"
+    sudo nixos-rebuild switch --upgrade --flake "$DOTFILES_DIR#nixos" --impure \
+      || fail "nixos-rebuild switch --upgrade failed"
     setup_codebase_memory_mcp --update
   fi
   success "Finished update for NixOS"
