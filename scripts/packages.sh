@@ -602,87 +602,11 @@ function set_zsh_default {
   success "Finished changing zsh as default"
 }
 
-# Body of /etc/nixos/machine.nix — the per-machine values configuration.nix
-# reads. Pure (no I/O) so it is unit-testable.
-# Usage: _nixos_machine_file_content <username> <hostName> <timeZone> <stateVersion>
-_nixos_machine_file_content() {
-  cat <<EOF
-{
-  username = "$1";
-  hostName = "$2";
-  timeZone = "$3";
-  stateVersion = "$4";
-}
-EOF
-}
-
-# Raw `nixos-version` output (empty on failure). Wrapped in a function so tests
-# can override it — the command name contains a hyphen, so it can't be mocked
-# as cleanly as `hostname`.
-_nixos_version_string() { nixos-version 2>/dev/null || true; }
-
-# Detect per-machine values from the running system. Echoes four lines:
-# username, hostName, timeZone, stateVersion. Every field has a fallback so
-# detection never hard-fails.
-_detect_nixos_machine_values() {
-  local u h t v
-  u="${SUDO_USER:-$(whoami 2>/dev/null || true)}"
-  [[ -n "$u" ]] || u="nixos"
-  h="$(hostname 2>/dev/null || true)"
-  [[ -n "$h" ]] || h="nixos"
-  t="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
-  [[ -n "$t" ]] || t="UTC"
-  v="$(_nixos_version_string | cut -d' ' -f1 | cut -d. -f1,2)"
-  [[ -n "$v" ]] || v="24.11"
-  printf '%s\n%s\n%s\n%s\n' "$u" "$h" "$t" "$v"
-}
-
-# Prompt for a value showing a detected default; empty input keeps the default.
-# The prompt goes to stderr (via read -p) so stdout stays clean for capture.
-# Only ever called under an interactive TTY. Usage: _prompt_default <label> <default>
-_prompt_default() {
-  local label="$1" default="$2" answer
-  read -rp "  [ ?? ] $label [$default]: " answer
-  echo "${answer:-$default}"
-}
-
-# Ensure /etc/nixos/machine.nix exists. On first run (machine.nix missing, or
-# FORCE), detect the per-machine values, confirm them interactively when a TTY
-# is attached, and write the file. The flake imports machine.nix and the
-# hardware configuration directly; no /etc/nixos/configuration.nix symlink is
-# needed for rebuilds.
-_nixos_ensure_linked() {
-  local mf="${NIXOS_MACHINE_FILE:-/etc/nixos/machine.nix}"
-
-  if [[ ! -f "$mf" || "$FORCE" == "true" ]]; then
-    info "Detecting machine settings..."
-    local u h t v
-    { read -r u; read -r h; read -r t; read -r v; } < <(_detect_nixos_machine_values)
-    if [[ -t 0 && "$DRY" == "false" ]]; then
-      u="$(_prompt_default "Username" "$u")"
-      h="$(_prompt_default "Hostname" "$h")"
-      t="$(_prompt_default "Timezone" "$t")"
-      v="$(_prompt_default "NixOS stateVersion" "$v")"
-    fi
-    if [[ "$DRY" == "false" ]]; then
-      _nixos_machine_file_content "$u" "$h" "$t" "$v" | sudo tee "$mf" >/dev/null \
-        || fail "Failed to write $mf"
-      success "Wrote machine settings to $mf"
-    else
-      info "Would write $mf (username=$u hostName=$h timeZone=$t stateVersion=$v)"
-    fi
-  else
-    info "Using existing $mf"
-  fi
-}
-
-# Reprovision NixOS: ensure machine.nix, then nixos-rebuild switch against this
-# repo's flake. System packages come from the rebuild; agent extensions install
-# after it.
+# Reprovision NixOS from this repo's flake. System packages come from the
+# rebuild; agent extensions install after it.
 # Usage: install_nixos
 function install_nixos {
   info "Installing packages for NixOS..."
-  _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
     _cleanup_home_manager_plugin_migration
     sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos" \
@@ -692,12 +616,10 @@ function install_nixos {
   success "Finished install for NixOS"
 }
 
-# Update NixOS: ensure machine settings exist, then rebuild the flake with
-# channel upgrade.
+# Update NixOS by rebuilding this repo's flake with channel upgrade.
 # Usage: update_nixos
 function update_nixos {
   info "Updating packages for NixOS..."
-  _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
     _cleanup_home_manager_plugin_migration
     sudo nixos-rebuild switch --upgrade --flake "$DOTFILES_DIR#nixos" \

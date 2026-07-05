@@ -390,8 +390,6 @@ test_mac_packages_include_node_for_codex_hooks() {
 
 test_install_nixos_dry_run() {
   DRY=true
-  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
-  _detect_nixos_machine_values() { printf 'alice\nmybox\nAsia/Tokyo\n24.11\n'; }
 
   local output
   output=$(install_nixos 2>&1)
@@ -399,29 +397,19 @@ test_install_nixos_dry_run() {
   assert_contains "$output" "NixOS"
   assert_not_contains "$output" "nixos-rebuild"
   assert_not_contains "$output" "neovim"
-
-  unset -f _detect_nixos_machine_values
-  unset NIXOS_MACHINE_FILE
 }
 
 test_update_nixos_dry_run() {
   DRY=true
-  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
-  _detect_nixos_machine_values() { printf 'alice\nmybox\nAsia/Tokyo\n24.11\n'; }
 
   local output
   output=$(update_nixos 2>&1)
 
   assert_contains "$output" "NixOS"
   assert_not_contains "$output" "nixos-rebuild"
-
-  unset -f _detect_nixos_machine_values
-  unset NIXOS_MACHINE_FILE
 }
 
 test_install_nixos_uses_flake_switch() {
-  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
-  printf '{ username = "alice"; hostName = "mybox"; timeZone = "UTC"; stateVersion = "24.11"; }\n' > "$NIXOS_MACHINE_FILE"
   local calls="$TEST_TMPDIR/sudo.log"
   sudo() { printf '%s\n' "$*" >> "$calls"; }
   setup_codebase_memory_mcp() { :; }
@@ -435,12 +423,9 @@ test_install_nixos_uses_flake_switch() {
 
   unset -f sudo
   unset -f setup_codebase_memory_mcp
-  unset NIXOS_MACHINE_FILE
 }
 
 test_install_nixos_cleans_old_plugin_dirs_before_switch() {
-  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
-  printf '{ username = "alice"; hostName = "mybox"; timeZone = "UTC"; stateVersion = "24.11"; }\n' > "$NIXOS_MACHINE_FILE"
   local zsh_plugin="$HOME/.local/share/zsh/plugins/zsh-autosuggestions"
   local tmux_plugin="$HOME/.tmux/plugins/tmux-yank"
   mkdir -p "$zsh_plugin/.git" "$zsh_plugin.before-home-manager/zsh-autosuggestions" \
@@ -458,12 +443,9 @@ test_install_nixos_cleans_old_plugin_dirs_before_switch() {
   fi
 
   unset -f sudo setup_codebase_memory_mcp
-  unset NIXOS_MACHINE_FILE
 }
 
 test_update_nixos_uses_flake_switch_upgrade() {
-  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
-  printf '{ username = "alice"; hostName = "mybox"; timeZone = "UTC"; stateVersion = "24.11"; }\n' > "$NIXOS_MACHINE_FILE"
   local calls="$TEST_TMPDIR/sudo.log"
   sudo() { printf '%s\n' "$*" >> "$calls"; }
   setup_codebase_memory_mcp() { :; }
@@ -477,7 +459,6 @@ test_update_nixos_uses_flake_switch_upgrade() {
 
   unset -f sudo
   unset -f setup_codebase_memory_mcp
-  unset NIXOS_MACHINE_FILE
 }
 
 test_install_packages_dispatches_nixos() {
@@ -504,119 +485,34 @@ test_set_zsh_default_skips_on_nixos() {
   assert_contains "$output" "declaratively"
 }
 
-# ---------------------------------------------------------------------------
-# NixOS machine.nix content + detection
-# ---------------------------------------------------------------------------
-
-test_nixos_machine_file_content() {
-  local out
-  out="$(_nixos_machine_file_content alice mybox Asia/Tokyo 24.11)"
-
-  assert_contains "$out" 'username = "alice";'
-  assert_contains "$out" 'hostName = "mybox";'
-  assert_contains "$out" 'timeZone = "Asia/Tokyo";'
-  assert_contains "$out" 'stateVersion = "24.11";'
-}
-
-test_detect_nixos_machine_values() {
-  export SUDO_USER=""              # force the whoami branch
-  whoami() { echo alice; }
-  hostname() { echo mybox; }
-  timedatectl() { echo "Asia/Tokyo"; }
-  _nixos_version_string() { echo "24.11.20240115.abcdef (Vicuna)"; }
-
-  local out u h t v
-  out="$(_detect_nixos_machine_values)"
-  { read -r u; read -r h; read -r t; read -r v; } <<< "$out"
-
-  assert_equals "alice" "$u"
-  assert_equals "mybox" "$h"
-  assert_equals "Asia/Tokyo" "$t"
-  assert_equals "24.11" "$v"
-
-  unset -f whoami hostname timedatectl _nixos_version_string
-  unset SUDO_USER
-}
-
-# ---------------------------------------------------------------------------
-# _nixos_ensure_linked
-# ---------------------------------------------------------------------------
-
-test_nixos_ensure_linked_dry_would_write() {
-  DRY=true
-  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"   # does not exist yet
-  _detect_nixos_machine_values() { printf 'alice\nmybox\nAsia/Tokyo\n24.11\n'; }
-
-  local out
-  out="$(_nixos_ensure_linked 2>&1)"
-
-  assert_contains "$out" "Would write"
-  assert_contains "$out" "alice"
-  assert_contains "$out" "mybox"
-  # DRY must not create the file.
-  if [ -f "$NIXOS_MACHINE_FILE" ]; then
-    echo "  FAILED: DRY run wrote $NIXOS_MACHINE_FILE" >> "$ERROR_FILE"
-  fi
-
-  unset -f _detect_nixos_machine_values
-  unset NIXOS_MACHINE_FILE
-}
-
-test_nixos_ensure_linked_skips_when_present() {
-  DRY=true
+test_install_nixos_does_not_write_machine_file() {
+  DRY=false
   export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
-  echo '{ username = "bob"; }' > "$NIXOS_MACHINE_FILE"
-  _detect_nixos_machine_values() { printf 'alice\nmybox\nAsia/Tokyo\n24.11\n'; }
+  sudo() { :; }
+  setup_codebase_memory_mcp() { :; }
 
-  local out
-  out="$(_nixos_ensure_linked 2>&1)"
+  install_nixos >/dev/null 2>&1
 
-  assert_contains "$out" "Using existing"
-  if [[ "$out" == *"Would write"* ]]; then
-    echo "  FAILED: regenerated an existing machine.nix" >> "$ERROR_FILE"
+  if [ -e "$NIXOS_MACHINE_FILE" ]; then
+    echo "  FAILED: install_nixos should not write $NIXOS_MACHINE_FILE" >> "$ERROR_FILE"
   fi
 
-  unset -f _detect_nixos_machine_values
+  unset -f sudo setup_codebase_memory_mcp
   unset NIXOS_MACHINE_FILE
 }
 
-test_nixos_ensure_linked_force_regenerates() {
-  DRY=true
-  FORCE=true
+test_update_nixos_does_not_write_machine_file() {
+  DRY=false
   export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
-  echo '{ username = "bob"; }' > "$NIXOS_MACHINE_FILE"   # already exists
-  _detect_nixos_machine_values() { printf 'alice\nmybox\nAsia/Tokyo\n24.11\n'; }
+  sudo() { :; }
+  setup_codebase_memory_mcp() { :; }
 
-  local out
-  out="$(_nixos_ensure_linked 2>&1)"
+  update_nixos >/dev/null 2>&1
 
-  # FORCE re-detects even though the file is present.
-  assert_contains "$out" "Would write"
-  assert_contains "$out" "alice"
-  if [[ "$out" == *"Using existing"* ]]; then
-    echo "  FAILED: FORCE did not regenerate existing machine.nix" >> "$ERROR_FILE"
+  if [ -e "$NIXOS_MACHINE_FILE" ]; then
+    echo "  FAILED: update_nixos should not write $NIXOS_MACHINE_FILE" >> "$ERROR_FILE"
   fi
 
-  unset -f _detect_nixos_machine_values
+  unset -f sudo setup_codebase_memory_mcp
   unset NIXOS_MACHINE_FILE
-}
-
-test_detect_nixos_machine_values_fallbacks() {
-  export SUDO_USER=""
-  whoami() { echo ""; }            # empty → username fallback
-  hostname() { return 1; }         # fail → hostName fallback
-  timedatectl() { return 1; }      # fail → timeZone fallback
-  _nixos_version_string() { echo ""; }   # empty → stateVersion fallback
-
-  local out u h t v
-  out="$(_detect_nixos_machine_values)"
-  { read -r u; read -r h; read -r t; read -r v; } <<< "$out"
-
-  assert_equals "nixos" "$u"
-  assert_equals "nixos" "$h"
-  assert_equals "UTC" "$t"
-  assert_equals "24.11" "$v"
-
-  unset -f whoami hostname timedatectl _nixos_version_string
-  unset SUDO_USER
 }

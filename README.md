@@ -82,11 +82,10 @@ already exists):
 nix-shell -p git --run 'git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles && cd ~/dotfiles && sudo bash ./dotfile packages'
 ```
 
-On the first run, per-machine values (username, hostname, timezone, NixOS
-stateVersion) are auto-detected and you confirm or override each; they're saved
-to `/etc/nixos/machine.nix`. `hardware-configuration.nix` is used in place. Later
-runs are silent. Then `sudo bash ./dotfile all` for the rest of the dotfiles
-(symlinks, plugins).
+Per-machine values live in tracked `config/host.nix`; edit that file before the
+first rebuild if the username, hostname, timezone, or NixOS stateVersion differ.
+`hardware-configuration.nix` is used in place. Then `sudo bash ./dotfile all`
+for the rest of the dotfiles.
 
 On a brand-new machine, run `sudo nixos-rebuild build` once before the first
 `switch` to confirm the config evaluates. If your channel is older than
