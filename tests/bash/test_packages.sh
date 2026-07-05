@@ -488,7 +488,7 @@ test_install_nixos_dry_run() {
   output=$(install_nixos 2>&1)
 
   assert_contains "$output" "NixOS"
-  assert_not_contains "$output" "nixos-rebuild"
+  assert_contains "$output" "sudo nixos-rebuild switch --flake $DOTFILES_DIR#nixos"
   assert_not_contains "$output" "neovim"
 }
 
@@ -499,7 +499,7 @@ test_update_nixos_dry_run() {
   output=$(update_nixos 2>&1)
 
   assert_contains "$output" "NixOS"
-  assert_not_contains "$output" "nixos-rebuild"
+  assert_contains "$output" "sudo nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#nixos"
 }
 
 test_install_nixos_uses_flake_switch() {

@@ -107,6 +107,12 @@ settings differ. Then `sudo bash ./dotfile all` for the rest of the dotfiles.
 On a brand-new machine, run `sudo nixos-rebuild build --flake ~/dotfiles#nixos`
 once before the first `switch` to confirm the config evaluates.
 
+After provisioning, use `dotfile update` as the normal Nix-managed update
+command. On NixOS it wraps
+`sudo nixos-rebuild switch --upgrade --flake ~/dotfiles#nixos`; on macOS it
+wraps `sudo HOME=/var/root darwin-rebuild switch --flake ~/dotfiles#mac`. Both
+paths then update the repo-managed agent tools.
+
 ## Testing
 
 Tests run in a Docker container to avoid touching your host filesystem. Requires Docker.

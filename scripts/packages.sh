@@ -583,6 +583,7 @@ function _darwin_rebuild_switch {
 
 function update_mac {
   info "Updating packages for Mac..."
+  [[ "$DRY" == "true" ]] && info "Would run: sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
   if [[ "$DRY" == "false" ]]; then
     _darwin_rebuild_switch
     setup_codex --update
@@ -593,6 +594,7 @@ function update_mac {
 
 function install_mac {
   info "Installing packages and programs for Mac..."
+  [[ "$DRY" == "true" ]] && info "Would run: sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
   if [[ "$DRY" == "false" ]]; then
     _darwin_rebuild_switch
     setup_codex
@@ -627,6 +629,7 @@ function set_zsh_default {
 # Usage: install_nixos
 function install_nixos {
   info "Installing packages for NixOS..."
+  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --flake $DOTFILES_DIR#nixos"
   if [[ "$DRY" == "false" ]]; then
     _cleanup_home_manager_plugin_migration
     sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos" \
@@ -640,6 +643,7 @@ function install_nixos {
 # Usage: update_nixos
 function update_nixos {
   info "Updating packages for NixOS..."
+  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#nixos"
   if [[ "$DRY" == "false" ]]; then
     _cleanup_home_manager_plugin_migration
     sudo nixos-rebuild switch --upgrade --flake "$DOTFILES_DIR#nixos" \

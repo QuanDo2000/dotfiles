@@ -24,7 +24,16 @@ test_install_mac_dry_run_no_brew_calls() {
   output=$(install_mac 2>&1)
 
   assert_contains "$output" "Installing packages and programs for Mac"
+  assert_contains "$output" "sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
   assert_contains "$output" "Finished install for Mac"
+}
+
+test_update_mac_dry_run_shows_darwin_rebuild() {
+  local output
+  output=$(update_mac 2>&1)
+
+  assert_contains "$output" "Updating packages for Mac"
+  assert_contains "$output" "sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
 }
 
 test_install_mac_dry_run_does_not_install_ghostty() {
