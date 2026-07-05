@@ -48,6 +48,7 @@ _install_into_local() {
   local lc_name="$1" version="$2" bin_name="$3" extracted_path="$4"
   local target_dir="$HOME/.local/${lc_name}-${version}"
 
+  mkdir -p "$HOME/.local"
   rm -rf "$target_dir"
   mv "$extracted_path" "$target_dir" || fail "Failed to move $lc_name into place"
 
@@ -62,6 +63,8 @@ _install_into_local() {
   for old in "$HOME"/.local/"${lc_name}"-*; do
     [[ -d "$old" && "$old" != "$target_dir" ]] && rm -rf "$old"
   done
+
+  return 0
 }
 
 # Strip the "sha256:" prefix from a GitHub release digest string.
@@ -392,6 +395,11 @@ function setup_codex {
   if [[ "$DRY" == "false" ]]; then
     if [[ "$update" == "false" ]] && command -v codex >/dev/null 2>&1; then
       info "Already installed codex"
+      success "Finished codex"
+      return
+    fi
+    if [[ "$update" == "true" ]] && command -v bun >/dev/null 2>&1; then
+      bun add -g @openai/codex@latest || fail "Failed to update codex with bun"
       success "Finished codex"
       return
     fi

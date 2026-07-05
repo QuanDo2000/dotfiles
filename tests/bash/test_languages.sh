@@ -1077,6 +1077,30 @@ test_install_into_local_creates_target_and_symlink() {
   assert_symlink "$HOME/.local/bin/foo" "$HOME/.local/foo-v1.0/foo"
 }
 
+test_install_into_local_creates_local_dir() {
+  rm -rf "$HOME/.local"
+  local extracted="$TEST_TMPDIR/extracted"
+  mkdir -p "$extracted"
+  echo "fake binary" > "$extracted/foo"
+  chmod +x "$extracted/foo"
+
+  _install_into_local "foo" "v1.0" "foo" "$extracted"
+
+  assert_file_exists "$HOME/.local/foo-v1.0/foo"
+  assert_symlink "$HOME/.local/bin/foo" "$HOME/.local/foo-v1.0/foo"
+}
+
+test_install_into_local_returns_success_without_old_versions() {
+  local extracted="$TEST_TMPDIR/extracted"
+  mkdir -p "$extracted"
+  echo "fake binary" > "$extracted/foo"
+
+  local exit_code=0
+  _install_into_local "foo" "v1.0" "foo" "$extracted" || exit_code=$?
+
+  assert_equals "0" "$exit_code"
+}
+
 test_install_into_local_cleans_old_versions() {
   # Pre-create a prior version that should be removed by the cleanup loop.
   mkdir -p "$HOME/.local/foo-v0.9"

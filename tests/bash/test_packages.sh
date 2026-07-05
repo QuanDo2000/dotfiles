@@ -322,6 +322,27 @@ test_setup_codex_update_does_not_skip() {
   fi
 }
 
+test_setup_codex_update_uses_bun_when_available() {
+  DRY=false
+  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codex"
+  chmod +x "$HOME/.local/bin/codex"
+  cat > "$HOME/.local/bin/bun" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "$HOME/bun-args"
+EOF
+  chmod +x "$HOME/.local/bin/bun"
+  export PATH="$HOME/.local/bin:$PATH"
+  http_get_retry() { return 1; }
+
+  local output exit_code=0
+  output=$(setup_codex --update 2>&1) || exit_code=$?
+
+  assert_equals "0" "$exit_code"
+  assert_file_exists "$HOME/bun-args"
+  assert_equals "add -g @openai/codex@latest" "$(cat "$HOME/bun-args")"
+  assert_contains "$output" "Finished codex"
+}
+
 # ---------------------------------------------------------------------------
 # setup_codebase_memory_mcp
 # ---------------------------------------------------------------------------
