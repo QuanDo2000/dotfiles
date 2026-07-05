@@ -44,8 +44,10 @@ test_setup_symlinks_excludes_mac_on_linux() {
   create_dotfiles_dirs
   echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
   echo "mac zsh" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=debian\n' > "$osrel"
 
-  setup_symlinks
+  OS_RELEASE="$osrel" setup_symlinks
 
   if [ -L "$HOME/.zshrc.mac" ] || [ -f "$HOME/.zshrc.mac" ]; then
     echo "  FAILED: .zshrc.mac should not exist on Linux" >> "$ERROR_FILE"
