@@ -74,11 +74,6 @@ in
     force = true;
   };
 
-  home.file.".codex/config.toml" = {
-    source = ./shared/ai/codex/config.toml;
-    force = true;
-  };
-
   home.file.".tmux/plugins/tmux-yank" = {
     source = "${pkgs.tmuxPlugins.yank}/share/tmux-plugins/yank";
     force = true;
@@ -90,6 +85,27 @@ in
   };
 
   programs.home-manager.enable = true;
+
+  home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    target="$HOME/.codex/config.toml"
+    source="${./shared/ai/codex/config.toml}"
+    replace=false
+
+    if [ ! -e "$target" ]; then
+      replace=true
+    elif [ -L "$target" ]; then
+      case "$(readlink "$target")" in
+        /nix/store/*) replace=true ;;
+      esac
+    fi
+
+    if [ "$replace" = true ]; then
+      mkdir -p "$(dirname "$target")"
+      rm -f "$target"
+      cp "$source" "$target"
+      chmod u+w "$target"
+    fi
+  '';
 
   xdg.configFile."starship.toml" = {
     source = ./shared/config/starship.toml;
