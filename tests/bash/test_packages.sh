@@ -356,18 +356,16 @@ test_setup_starship_update_does_not_skip() {
   fi
 }
 
-test_arch_packages_include_starship() {
-  assert_contains "${ARCH_PACKAGES[*]}" "starship"
-}
-
-test_arch_packages_do_not_install_neovim() {
-  if [[ " ${ARCH_PACKAGES[*]} " == *" neovim "* ]]; then
-    echo "  FAILED: Arch pacman packages should not install neovim; Home Manager owns it to avoid neovim-git conflicts" >> "$ERROR_FILE"
-  fi
-}
-
-test_arch_packages_include_nodejs_for_codex_hooks() {
-  assert_contains "${ARCH_PACKAGES[*]}" "nodejs"
+test_arch_packages_are_bootstrap_only() {
+  assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
+  assert_contains "${ARCH_PACKAGES[*]}" "curl"
+  assert_contains "${ARCH_PACKAGES[*]}" "git"
+  assert_contains "${ARCH_PACKAGES[*]}" "zsh"
+  for pkg in neovim starship nodejs tmux lazygit jujutsu ripgrep fd fzf; do
+    if [[ " ${ARCH_PACKAGES[*]} " == *" $pkg "* ]]; then
+      echo "  FAILED: Arch pacman packages should not install $pkg; Home Manager owns user tools" >> "$ERROR_FILE"
+    fi
+  done
 }
 
 test_install_arch_bootstraps_nix_and_switches_home_manager() {
@@ -399,6 +397,41 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   assert_not_contains "$output" "home-manager/master"
 
   unset -f command sudo _install_lix _load_nix_profile nix setup_fdfind setup_codex setup_codebase_memory_mcp
+}
+
+test_install_arch_removes_old_repo_ghostty_dir_symlink_before_home_manager() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  mkdir -p "$DOTFILES_DIR/config/unix/config/ghostty" "$HOME/.config"
+  echo "ghostty" > "$DOTFILES_DIR/config/unix/config/ghostty/config"
+  ln -s "$DOTFILES_DIR/config/unix/config/ghostty" "$HOME/.config/ghostty"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|home-manager) return 0 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
+  _load_nix_profile() { :; }
+  home-manager() {
+    if [ -L "$HOME/.config/ghostty" ]; then
+      echo "ghostty symlink still present before home-manager" >> "$ERROR_FILE"
+    fi
+    printf 'home-manager %s\n' "$*" >> "$calls"
+  }
+  setup_codex() { :; }
+  setup_codebase_memory_mcp() { :; }
+
+  install_arch >/dev/null 2>&1
+
+  if [ -L "$HOME/.config/ghostty" ]; then
+    echo "  FAILED: old repo-linked ~/.config/ghostty should be removed before Home Manager" >> "$ERROR_FILE"
+  fi
+  assert_file_exists "$DOTFILES_DIR/config/unix/config/ghostty/config"
+
+  unset -f command sudo _load_nix_profile home-manager setup_codex setup_codebase_memory_mcp
 }
 
 test_update_arch_uses_existing_home_manager() {

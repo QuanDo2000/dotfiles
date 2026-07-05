@@ -10,6 +10,25 @@ in
   home.stateVersion = "24.11";
   home.packages = with pkgs; [
     neovim
+  ] ++ lib.optionals pkgs.stdenv.isLinux [
+    tmux
+    fontconfig
+    fzf
+    fd
+    ripgrep
+    lazygit
+    nerd-fonts.fira-code
+    zoxide
+    gnupg
+    wl-clipboard
+    openssh
+    nodejs
+    lua5_1
+    luarocks
+    tree-sitter
+    jujutsu
+    starship
+    unzip
   ];
 
   home.file.".gitconfig" = {

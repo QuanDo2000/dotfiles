@@ -64,8 +64,10 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "programs.home-manager.enable = true"
   assert_not_contains "$home_text" "    home-manager"
   assert_contains "$home_text" "neovim"
-  assert_not_contains "$home_text" "    git"
-  assert_not_contains "$home_text" "    starship"
+  assert_contains "$home_text" "starship"
+  assert_contains "$home_text" "nodejs"
+  assert_contains "$home_text" "jujutsu"
+  assert_contains "$home_text" "ripgrep"
 }
 
 test_home_config_uses_tracked_host_username() {

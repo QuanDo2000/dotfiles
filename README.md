@@ -42,8 +42,8 @@ dotfile
 
 ### Arch Linux with Nix/Home Manager
 
-Arch still uses `pacman` for bootstrap/system packages, then uses this repo's
-pinned flake to install Home Manager user config:
+Arch uses `pacman` only for bootstrap packages, then uses this repo's pinned
+flake to install Home Manager user tools and config:
 
 ```bash
 git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles

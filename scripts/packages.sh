@@ -455,10 +455,7 @@ function install_debian {
 }
 
 ARCH_PACKAGES=(
-  base-devel curl git unzip zsh tmux fontconfig
-  fzf fd ripgrep lazygit ttf-firacode-nerd zoxide
-  gnupg wl-clipboard openssh nodejs lua51 luarocks nvm
-  tree-sitter-cli jujutsu starship
+  base-devel curl git zsh
 )
 
 function update_arch {
@@ -479,7 +476,6 @@ function install_arch {
     sudo pacman -S --needed --noconfirm "${ARCH_PACKAGES[@]}" \
       || fail "Failed to install Arch packages"
 
-    setup_fdfind
     _home_manager_switch
     setup_codex
     setup_codebase_memory_mcp
@@ -551,9 +547,19 @@ _cleanup_home_manager_plugin_migration() {
   done
 }
 
+_cleanup_home_manager_dotfile_migration() {
+  local ghostty="$HOME/.config/ghostty"
+  local target="$DOTFILES_DIR/config/unix/config/ghostty"
+  if [[ -L "$ghostty" && "$(resolve_symlink "$ghostty")" == "$target" ]]; then
+    info "Removing old repo-linked Ghostty config dir: $ghostty"
+    rm -f "$ghostty" || fail "Failed to remove $ghostty"
+  fi
+}
+
 function _home_manager_switch {
   _ensure_nix
   _cleanup_home_manager_plugin_migration
+  _cleanup_home_manager_dotfile_migration
   if command -v home-manager >/dev/null 2>&1; then
     home-manager switch --flake "$DOTFILES_DIR#quando@arch" \
       || fail "home-manager switch failed"
