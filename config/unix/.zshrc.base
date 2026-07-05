@@ -147,8 +147,21 @@ fi
 # Standalone plugins — sourced directly, order matters:
 # fzf-tab (after compinit) -> autosuggestions -> fast-syntax-highlighting (last).
 _zsh_plugins="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
-[ -f "$_zsh_plugins/fzf-tab/fzf-tab.plugin.zsh" ] \
-  && source "$_zsh_plugins/fzf-tab/fzf-tab.plugin.zsh"
+if [[ -t 0 && -o interactive && -f "$_zsh_plugins/fzf-tab/fzf-tab.plugin.zsh" ]]; then
+  _fzf_tab_orig_widget="${${$(builtin bindkey '^I')##* }:-expand-or-complete}"
+  _lazy_fzf_tab() {
+    bindkey -M emacs '^I' "$_fzf_tab_orig_widget"
+    bindkey -M viins '^I' "$_fzf_tab_orig_widget"
+    if source "$_zsh_plugins/fzf-tab/fzf-tab.plugin.zsh"; then
+      zle fzf-tab-complete
+    else
+      zle "$_fzf_tab_orig_widget"
+    fi
+  }
+  zle -N _lazy_fzf_tab
+  bindkey -M emacs '^I' _lazy_fzf_tab
+  bindkey -M viins '^I' _lazy_fzf_tab
+fi
 [ -f "$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ] \
   && source "$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
 [ -f "$_zsh_plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ] \
