@@ -31,7 +31,7 @@ dotfile update              # update both, only acting on installs we own
 
 - **Modified:** `scripts/languages.sh` — append `odin_target_triple`, `odin_latest_release`, `odin_current_installed_version`, `install_odin`, `update_odin`. Extend `install_languages` and `update_languages`.
 - **Modified:** `tests/bash/test_languages.sh` — add per-function tests for the new code, extend the umbrella tests.
-- **Modified:** `CLAUDE.md` — add `languages` line to the `Key Commands` block (which previously omitted it).
+- **Modified:** `AGENTS.md` — add `languages` line to the `Key Commands` block (which previously omitted it).
 
 ## Install layout
 
@@ -192,7 +192,7 @@ Mirror Plan Task 13 from the Zig branch, scoped to Odin and the running host (Ar
 - `fail` for unrecoverable errors (download failure, SHA mismatch, missing asset in JSON).
 - `trap … RETURN` for tmpdir cleanup, matching `install_zig` (best-effort — `fail`/`exit` short-circuits don't fire RETURN, same caveat).
 
-## CLAUDE.md update
+## AGENTS.md update
 
 Add a single line to the `Key Commands` block:
 

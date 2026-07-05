@@ -34,7 +34,7 @@ Help text in `dotfile`'s `usage` updated to list `languages`.
 - **New:** `tests/bash/test_languages.sh` — unit tests for every new function.
 - **Changed:** `tests/bash/helpers.sh` — add `mock_uname_m` (mirrors `mock_uname`) plus matching `cleanup_test_env` reset.
 - **Changed:** `tests/bash/test_cli.sh` — add dispatch tests for `languages` and `languages zig`.
-- **Changed:** `CLAUDE.md` — already updated in this commit to document the test framework so future work covers it.
+- **Changed:** `AGENTS.md` — already updated in this commit to document the test framework so future work covers it.
 
 ## Install layout
 

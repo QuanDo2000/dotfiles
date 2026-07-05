@@ -179,7 +179,7 @@ is silent.
 
 ## Docs to update
 
-- `CLAUDE.md` NixOS layer entry: values now come from auto-detected
+- `AGENTS.md` NixOS layer entry: values now come from auto-detected
   `/etc/nixos/machine.nix`; `hardware-configuration.nix` used in place; no
   hand-editing on first run.
 - `README.md`: the new provisioning section.

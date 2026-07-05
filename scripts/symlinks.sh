@@ -188,9 +188,6 @@ function setup_symlinks {
   if command -v codex >/dev/null 2>&1; then
     _link_optional "$ai/codex/config.toml" "$HOME/.codex/config.toml"
   fi
-  if command -v pi >/dev/null 2>&1; then
-    _link_optional "$ai/pi/settings.json" "$HOME/.pi/agent/settings.json"
-  fi
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
   # can run `dotfile` from any shell.

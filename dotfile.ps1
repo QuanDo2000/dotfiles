@@ -346,40 +346,6 @@ function InstallAi {
     Info "Installing AI CLIs..."
     if ($script:Dry) { return }
 
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        FailSoft "npm not found on PATH. Skipping Pi install — run 'dotfile.ps1 extras' first, then 'dotfile.ps1 ai'."
-        return
-    }
-
-    if ($Update -and (Get-Command pi -ErrorAction SilentlyContinue)) {
-        pi update --self
-        if ($LASTEXITCODE -ne 0) { FailSoft "pi update --self failed with exit code $LASTEXITCODE" }
-    } else {
-        npm install -g --ignore-scripts '@earendil-works/pi-coding-agent'
-        if ($LASTEXITCODE -ne 0) { FailSoft "npm install -g --ignore-scripts @earendil-works/pi-coding-agent failed with exit code $LASTEXITCODE" }
-    }
-
-    $piSettingsSource = Join-Path $script:DotfilesDir 'config\shared\ai\pi\settings.json'
-    $piSettingsDest = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
-    if ((Test-Path $piSettingsSource) -and -not (Test-Path $piSettingsDest)) {
-        $parent = Split-Path $piSettingsDest -Parent
-        if (-not (Test-Path $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-        LinkFile -source $piSettingsSource -destination $piSettingsDest
-    }
-
-    foreach ($pkg in @(
-        'npm:context-mode',
-        'npm:pi-subagents',
-        'npm:pi-cbm',
-        'npm:@juicesharp/rpiv-ask-user-question',
-        'npm:@juicesharp/rpiv-todo',
-        'git:github.com/obra/superpowers',
-        'git:github.com/DietrichGebert/ponytail'
-    )) {
-        pi install $pkg
-        if ($LASTEXITCODE -ne 0) { FailSoft "pi install $pkg failed with exit code $LASTEXITCODE" }
-    }
-
     if ($Update -and (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
         codebase-memory-mcp update
         if ($LASTEXITCODE -ne 0) { FailSoft "codebase-memory-mcp update failed with exit code $LASTEXITCODE" }
@@ -571,7 +537,6 @@ function SetupSymlinks {
     $aiPath = Join-Path $sharedPath "ai"
     $aiLinks = @(
         @{ Src = "claude\settings.json";        Dst = "$userHome\.claude\settings.json" }
-        @{ Src = "pi\settings.json";            Dst = "$userHome\.pi\agent\settings.json" }
     )
     foreach ($link in $aiLinks) {
         $src = Join-Path $aiPath $link.Src

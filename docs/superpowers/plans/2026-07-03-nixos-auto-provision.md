@@ -485,16 +485,16 @@ git commit -m "packages: auto-detect + confirm machine.nix on first NixOS provis
 
 ---
 
-### Task 4: Docs (CLAUDE.md + README) + full suite
+### Task 4: Docs (AGENTS.md + README) + full suite
 
 **Files:**
-- Modify: `CLAUDE.md` (NixOS layer entry)
+- Modify: `AGENTS.md` (NixOS layer entry)
 - Modify: `README.md` (new provisioning section)
 
 **Interfaces:**
 - Consumes: everything from Tasks 1–3.
 
-- [ ] **Step 1: Update the NixOS layer entry in CLAUDE.md**
+- [ ] **Step 1: Update the NixOS layer entry in AGENTS.md**
 
 Read the current `config/nixos/` bullet in the "Dotfile Layers" section (item 5) and replace it with:
 
@@ -540,7 +540,7 @@ Expected: all suites PASS. If anything fails, determine whether it's from this b
 - [ ] **Step 4: Commit**
 
 ```bash
-git add CLAUDE.md README.md
+git add AGENTS.md README.md
 git commit -m "docs: document NixOS auto-detection and fresh-machine provisioning"
 ```
 
@@ -554,7 +554,7 @@ git commit -m "docs: document NixOS auto-detection and fresh-machine provisionin
 - `_nixos_ensure_linked` flow (detect → confirm-if-TTY → write first-run-only → symlink), rewired install/update → Task 3. ✓
 - `NIXOS_MACHINE_FILE` override, DRY safety, non-TTY behavior, FORCE regen → Tasks 2–3 (constraints + tests). ✓
 - Testability split (`_nixos_machine_file_content` pure, detection mocked, ensure DRY-tested) → Tasks 2–3. ✓
-- README provisioning section + CLAUDE.md layer update → Task 4. ✓
+- README provisioning section + AGENTS.md layer update → Task 4. ✓
 - `.gitignore` hardware-config entry removed → Task 1. ✓
 
 **Placeholder scan:** No TBD/TODO. Remaining `# EDIT:` markers (boot loader, Hyprland services, fcitx5 addons) are deliberate hardware/taste knobs the spec keeps out of scope for auto-detection — not plan placeholders.

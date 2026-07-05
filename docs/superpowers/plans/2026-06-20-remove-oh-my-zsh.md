@@ -775,7 +775,7 @@ git commit -S -m "Windows: replace oh-my-posh with starship"
 ### Task 8: Docs sweep + full test run + migration note
 
 **Files:**
-- Modify: `CLAUDE.md` (the `extras.sh` description and any oh-my-zsh mentions), `README*` if present
+- Modify: `AGENTS.md` (the `extras.sh` description and any oh-my-zsh mentions), `README*` if present
 - Reference: the spec's migration note
 
 - [ ] **Step 1: Find every remaining oh-my-zsh / oh-my-posh reference**
@@ -783,13 +783,13 @@ git commit -S -m "Windows: replace oh-my-posh with starship"
 Run: `grep -rni "oh-my-zsh\|oh-my-posh\|ZSH_CUSTOM\|\.oh-my-zsh" --include='*.md' --include='*.sh' --include='*.ps1' --include='*.zsh*' . | grep -v docs/superpowers`
 Expected: only documentation hits remain (all code hits were handled in Tasks 1-7). If any code hit remains, fix it in the owning task's file.
 
-- [ ] **Step 2: Update `CLAUDE.md`**
+- [ ] **Step 2: Update `AGENTS.md`**
 
-In `CLAUDE.md`, update the `extras.sh` bullet under "Architecture" to drop oh-my-zsh, e.g. change "oh-my-zsh, zsh plugins, and the directly-cloned tmux plugins" to "zsh plugins (cloned to `~/.local/share/zsh/plugins`) and the directly-cloned tmux plugins; the prompt is starship (config at `config/shared/starship.toml`)". Update the `dotfile extras` / Key Commands descriptions that mention oh-my-zsh. Add a one-line note that the shared `starship.toml` is symlinked to `~/.config/starship.toml` on all platforms.
+In `AGENTS.md`, update the `extras.sh` bullet under "Architecture" to drop oh-my-zsh, e.g. change "oh-my-zsh, zsh plugins, and the directly-cloned tmux plugins" to "zsh plugins (cloned to `~/.local/share/zsh/plugins`) and the directly-cloned tmux plugins; the prompt is starship (config at `config/shared/starship.toml`)". Update the `dotfile extras` / Key Commands descriptions that mention oh-my-zsh. Add a one-line note that the shared `starship.toml` is symlinked to `~/.config/starship.toml` on all platforms.
 
 - [ ] **Step 3: Add the migration note for existing machines**
 
-Append a short "Migrating off oh-my-zsh" subsection to `CLAUDE.md` (or `README` if that's where install docs live):
+Append a short "Migrating off oh-my-zsh" subsection to `AGENTS.md` (or `README` if that's where install docs live):
 
 ```markdown
 ### Migrating an existing machine off oh-my-zsh
@@ -817,7 +817,7 @@ Expected: all suites PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add CLAUDE.md
+git add AGENTS.md
 git commit -S -m "Docs: remove oh-my-zsh, document starship + migration"
 ```
 

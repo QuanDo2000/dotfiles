@@ -28,7 +28,7 @@
 | `tests/bash/test_languages.sh` | Modify | ~15 new/changed tests. |
 | `tests/bash/test_cli.sh` | Modify | 1 new test for `dotfile --dry languages jank`. |
 | `dotfile` | Modify | Update `usage` text: `(zig, odin, gleam)` → `(zig, odin, gleam, jank)`. |
-| `CLAUDE.md` | Modify | Update existing `dotfile languages [LANG]` line to include `jank`. |
+| `AGENTS.md` | Modify | Update existing `dotfile languages [LANG]` line to include `jank`. |
 
 No changes to: `dotfile.ps1`, `tests/powershell/*`, `tests/bash/runner.sh`, `tests/bash/helpers.sh`, `scripts/packages.sh`, `scripts/platform.sh`.
 
@@ -698,11 +698,11 @@ git commit -m "Add CLI dispatch test for languages jank"
 
 ---
 
-## Task 7: Update `dotfile` usage text + `CLAUDE.md`
+## Task 7: Update `dotfile` usage text + `AGENTS.md`
 
 **Files:**
 - Modify: `dotfile`
-- Modify: `CLAUDE.md`
+- Modify: `AGENTS.md`
 
 Two one-line documentation edits.
 
@@ -720,7 +720,7 @@ Replace with:
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank). LANG selects one.
 ```
 
-- [ ] **Step 2: Update `CLAUDE.md`**
+- [ ] **Step 2: Update `AGENTS.md`**
 
 Find:
 
@@ -737,15 +737,15 @@ dotfile languages [LANG]     # Install language toolchains (zig, odin, gleam, ja
 - [ ] **Step 3: Verify**
 
 ```bash
-grep -n 'languages \[LANG\]' dotfile CLAUDE.md
+grep -n 'languages \[LANG\]' dotfile AGENTS.md
 ```
 Expected: both updated lines mention `jank`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add dotfile CLAUDE.md
-git commit -m "Document Jank in usage text and CLAUDE.md"
+git add dotfile AGENTS.md
+git commit -m "Document Jank in usage text and AGENTS.md"
 ```
 
 ---
@@ -847,7 +847,7 @@ Once steps 1–4 pass, the bash side is done.
 
 ## Self-review notes
 
-- **Spec coverage:** Every function in the spec maps to a task. Bash inventory (`jank_check_platform`, `jank_current_installed_version`, `_install_jank_ppa`, `install_jank`, `update_jank`) → Tasks 1, 2, 3, 4. Bash umbrellas → Task 5. CLI test → Task 6. `dotfile` usage + CLAUDE.md → Task 7. Bash sweep → Task 8. Smoke → Task 9.
+- **Spec coverage:** Every function in the spec maps to a task. Bash inventory (`jank_check_platform`, `jank_current_installed_version`, `_install_jank_ppa`, `install_jank`, `update_jank`) → Tasks 1, 2, 3, 4. Bash umbrellas → Task 5. CLI test → Task 6. `dotfile` usage + AGENTS.md → Task 7. Bash sweep → Task 8. Smoke → Task 9.
 - **Placeholder scan:** No "TBD" / "implement later" / "appropriate error handling". Every step has runnable code, exact commands, or concrete edits.
 - **Type / name consistency:** `jank_check_platform`, `jank_current_installed_version`, `_install_jank_ppa`, `install_jank`, `update_jank` consistent across tasks. The sentinel string `"installed"` is used identically in `jank_current_installed_version`'s implementation and its test. The `id_override` parameter name is used identically in `jank_check_platform`'s spec, implementation, and tests.
 - **One thing worth flagging during execution:** Task 5 changes existing tests (`_install_languages_all_arg`, `_install_languages_dry_run`). On a host where Jank IS installable (Arch in our case), the new "Installing Jank" assertion will pass. On a host where Jank is NOT installable (e.g., the CI Docker container which is Ubuntu 24.04 — that's actually supported), `install_jank` would attempt the PPA setup. **But these tests run with `DRY=true`**, which short-circuits before any PM call, so the assertion holds regardless of platform. Confirmed safe.

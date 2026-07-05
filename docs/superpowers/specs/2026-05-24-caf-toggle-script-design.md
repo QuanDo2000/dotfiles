@@ -76,7 +76,7 @@ echo "caf: ON (pid $!)"
 
 Add to `tests/bash/test_symlinks.sh` a case verifying that under `mock_uname Darwin`, running `setup_symlinks` produces `~/.local/bin/caf` as a symlink pointing at `config/mac/bin/caf`. Mirror the existing `test_setup_symlinks_folder_bin` pattern but exercise the Mac-branch end-to-end.
 
-Behavioral tests for the toggle itself are out of scope — they would require either a real `caffeinate` binary (Mac-only, not available in the Linux CI/Docker test env) or mocking the binary, which adds more machinery than the script warrants. Consistent with this repo's existing test philosophy ("dry-run smoke + branch coverage", per `CLAUDE.md`).
+Behavioral tests for the toggle itself are out of scope — they would require either a real `caffeinate` binary (Mac-only, not available in the Linux CI/Docker test env) or mocking the binary, which adds more machinery than the script warrants. Consistent with this repo's existing test philosophy ("dry-run smoke + branch coverage", per `AGENTS.md`).
 
 No CLI dispatch test is needed because `caf` is a standalone script, not a `dotfile` subcommand.
 

@@ -96,7 +96,7 @@ in
   # --- Packages ------------------------------------------------------------
   # Ported from ARCH_PACKAGES in scripts/packages.sh. App config files stay as
   # symlinked dotfiles (dotfile symlinks); NixOS only installs the binaries.
-  # ghostty/pi/codex are appended only if the running channel provides
+  # ghostty/codex are appended only if the running channel provides
   # them, so this evaluates cleanly on stable channels that predate them.
   environment.systemPackages =
     (with pkgs; [
@@ -126,6 +126,5 @@ in
       google-chrome    # Mod+B keybind + OAuth sign-in (codex)
     ])
     ++ lib.optional (pkgs ? ghostty) pkgs.ghostty
-    ++ lib.optional (pkgs ? pi-coding-agent) pkgs.pi-coding-agent
     ++ lib.optional (pkgs ? codex) pkgs.codex;
 }

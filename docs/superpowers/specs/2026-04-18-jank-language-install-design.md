@@ -42,7 +42,7 @@ dotfile update              # update all four, only acting on installs we own
 | `tests/bash/test_languages.sh` | Modify | ~13 new/changed tests. |
 | `tests/bash/test_cli.sh` | Modify | Add `test_dry_run_languages_jank`. |
 | `dotfile` | Modify | Update `usage` text: `(zig, odin, gleam)` → `(zig, odin, gleam, jank)`. |
-| `CLAUDE.md` | Modify | Same one-line update in Key Commands. |
+| `AGENTS.md` | Modify | Same one-line update in Key Commands. |
 
 ## Function inventory
 
@@ -269,7 +269,7 @@ test_dry_run_languages_jank() {
 - `install_jank` on unsupported platforms exits 0 with a visible "Skipping Jank" message + a docs URL.
 - `update_jank` on unsupported platforms exits 0 silently (no message — matches the other update_* functions).
 
-## CLAUDE.md update
+## AGENTS.md update
 
 ```
 dotfile languages [LANG]     # Install language toolchains (zig, odin, gleam, jank)

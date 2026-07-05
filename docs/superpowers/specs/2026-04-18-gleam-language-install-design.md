@@ -47,7 +47,7 @@ dotfile.ps1 languages gleam    # same
 | `tests/bash/test_languages.sh` | Modify | ~17 new/changed tests covering all the new bash functions and umbrella extensions. |
 | `tests/powershell/test_gleam.ps1` | Create | PowerShell tests covering Get-* helpers, Install-Gleam dry-run, Install-Languages dispatch. |
 | `tests/powershell/test_args.ps1` | Modify | Add a CLI dispatch test for `dotfile.ps1 languages` (parses, exits 0 in dry-equivalent if such a flag exists; otherwise just confirms it's a recognised verb). |
-| `CLAUDE.md` | Modify | Update existing `dotfile languages [LANG]` line to mention `gleam` alongside `zig, odin`. |
+| `AGENTS.md` | Modify | Update existing `dotfile languages [LANG]` line to mention `gleam` alongside `zig, odin`. |
 
 ## Asset name → triple mapping
 
@@ -334,7 +334,7 @@ Network-dependent download/SHA/extract paths not unit-tested — manual smoke co
 
 ### PowerShell (`tests/powershell/test_gleam.ps1`) — new file
 
-Existing test pattern (per `CLAUDE.md`): source `tests/powershell/helpers.ps1`, dot-source `dotfile.ps1 -NoMain` to load functions without main dispatch.
+Existing test pattern (per `AGENTS.md`): source `tests/powershell/helpers.ps1`, dot-source `dotfile.ps1 -NoMain` to load functions without main dispatch.
 
 | Test | Purpose |
 |---|---|

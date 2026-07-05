@@ -438,15 +438,15 @@ git commit -m "nixos: add full-desktop configuration.nix template"
 ### Task 4: Documentation
 
 **Files:**
-- Modify: `CLAUDE.md` (Dotfile Layers section), `README.md` if it lists platforms
+- Modify: `AGENTS.md` (Dotfile Layers section), `README.md` if it lists platforms
 
 **Interfaces:**
 - Consumes: everything from Tasks 1–3.
 - Produces: docs describing the `nixos` layer and the rebuild flow.
 
-- [ ] **Step 1: Document the NixOS layer in CLAUDE.md**
+- [ ] **Step 1: Document the NixOS layer in AGENTS.md**
 
-In `CLAUDE.md`, under the "Dotfile Layers" list, add an entry describing `config/nixos/`:
+In `AGENTS.md`, under the "Dotfile Layers" list, add an entry describing `config/nixos/`:
 
 ```markdown
 5. **config/nixos/** — NixOS-only. `configuration.nix` is a tracked full-desktop
@@ -467,7 +467,7 @@ Expected: all suites PASS.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add CLAUDE.md README.md
+git add AGENTS.md README.md
 git commit -m "docs: describe NixOS layer and rebuild flow"
 ```
 

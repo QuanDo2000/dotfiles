@@ -409,34 +409,20 @@ test_setup_symlinks_links_codex_config() {
     "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
 }
 
-test_setup_symlinks_links_pi_settings() {
-  create_dotfiles_dirs
-  create_fake_command pi
-  mkdir -p "$DOTFILES_DIR/config/shared/ai/pi"
-  echo '{"theme":"dark"}' > "$DOTFILES_DIR/config/shared/ai/pi/settings.json"
-
-  setup_symlinks
-
-  assert_symlink "$HOME/.pi/agent/settings.json" \
-    "$DOTFILES_DIR/config/shared/ai/pi/settings.json"
-}
-
 test_setup_symlinks_skips_ai_tools_when_commands_missing() {
   create_dotfiles_dirs
   command() {
     if [[ "${1:-}" == "-v" ]]; then
       case "${2:-}" in
-        claude|codex|pi) return 1 ;;
+        claude|codex) return 1 ;;
       esac
     fi
     builtin command "$@"
   }
   mkdir -p "$DOTFILES_DIR/config/shared/ai/claude" \
-    "$DOTFILES_DIR/config/shared/ai/codex" \
-    "$DOTFILES_DIR/config/shared/ai/pi"
+    "$DOTFILES_DIR/config/shared/ai/codex"
   echo '{}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
   echo 'model = "gpt-5.5"' > "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
-  echo '{"theme":"dark"}' > "$DOTFILES_DIR/config/shared/ai/pi/settings.json"
 
   setup_symlinks
 
@@ -447,9 +433,6 @@ test_setup_symlinks_skips_ai_tools_when_commands_missing() {
   fi
   if [ -e "$HOME/.codex/config.toml" ] || [ -L "$HOME/.codex/config.toml" ]; then
     echo "  FAILED: codex config should not be linked when codex is missing" >> "$ERROR_FILE"
-  fi
-  if [ -e "$HOME/.pi/agent/settings.json" ] || [ -L "$HOME/.pi/agent/settings.json" ]; then
-    echo "  FAILED: pi settings should not be linked when pi is missing" >> "$ERROR_FILE"
   fi
 }
 
@@ -469,18 +452,13 @@ test_setup_symlinks_ai_dry_run() {
   DRY=true
   create_dotfiles_dirs
   create_fake_command claude
-  create_fake_command pi
-  mkdir -p "$DOTFILES_DIR/config/shared/ai/claude" "$DOTFILES_DIR/config/shared/ai/pi"
+  mkdir -p "$DOTFILES_DIR/config/shared/ai/claude"
   echo '{}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
-  echo '{"theme":"dark"}' > "$DOTFILES_DIR/config/shared/ai/pi/settings.json"
 
   setup_symlinks
 
   if [ -e "$HOME/.claude/settings.json" ] || [ -L "$HOME/.claude/settings.json" ]; then
     echo "  FAILED: claude settings should not be linked in dry run" >> "$ERROR_FILE"
-  fi
-  if [ -e "$HOME/.pi/agent/settings.json" ] || [ -L "$HOME/.pi/agent/settings.json" ]; then
-    echo "  FAILED: pi settings should not be linked in dry run" >> "$ERROR_FILE"
   fi
 }
 

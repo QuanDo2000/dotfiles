@@ -20,7 +20,7 @@
 |---|---|---|
 | `scripts/languages.sh` | Modify | Append `odin_target_triple`, `odin_latest_release`, `odin_current_installed_version`, `install_odin`, `update_odin`. Extend `install_languages` and `update_languages`. |
 | `tests/bash/test_languages.sh` | Modify | Per-function tests for the new code, extend the umbrella tests. |
-| `CLAUDE.md` | Modify | Add a single `dotfile languages [LANG]` entry to the `Key Commands` block. |
+| `AGENTS.md` | Modify | Add a single `dotfile languages [LANG]` entry to the `Key Commands` block. |
 
 No changes to `dotfile`, `dotfile.ps1`, `tests/bash/runner.sh`, `tests/bash/helpers.sh`, or `tests/bash/test_cli.sh`.
 
@@ -741,21 +741,21 @@ git commit -m "Add Odin to update_languages umbrella"
 
 ---
 
-## Task 8: Update `CLAUDE.md` Key Commands
+## Task 8: Update `AGENTS.md` Key Commands
 
 **Files:**
-- Modify: `CLAUDE.md`
+- Modify: `AGENTS.md`
 
 - [ ] **Step 1: Read the current Key Commands block**
 
 ```bash
-sed -n '/^## Key Commands/,/^## /p' CLAUDE.md | head -25
+sed -n '/^## Key Commands/,/^## /p' AGENTS.md | head -25
 ```
 Expected: a fenced bash block listing `dotfile`, `dotfile symlinks`, `dotfile packages`, `dotfile extras`, `dotfile verify`, `dotfile -d`, `dotfile -f`. The `languages` command is missing.
 
 - [ ] **Step 2: Add the languages line**
 
-Edit `CLAUDE.md`. In the `## Key Commands` block, between the existing `dotfile verify` line and the `dotfile -d <command>` line, add:
+Edit `AGENTS.md`. In the `## Key Commands` block, between the existing `dotfile verify` line and the `dotfile -d <command>` line, add:
 
 ```
 dotfile languages [LANG]     # Install language toolchains (zig, odin)
@@ -777,15 +777,15 @@ dotfile -f <command>         # Force overwrite existing files
 - [ ] **Step 3: Verify the change**
 
 ```bash
-grep -A 1 'languages \[LANG\]' CLAUDE.md
+grep -A 1 'languages \[LANG\]' AGENTS.md
 ```
 Expected: the new line shows up exactly once.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add CLAUDE.md
-git commit -m "Document languages subcommand in CLAUDE.md Key Commands"
+git add AGENTS.md
+git commit -m "Document languages subcommand in AGENTS.md Key Commands"
 ```
 
 ---
@@ -891,7 +891,7 @@ Once steps 1–5 pass, the feature is done and ready for the user to merge or PR
 
 ## Self-review notes
 
-- **Spec coverage:** All sections of the spec map to tasks. The function inventory's 5 functions → Tasks 1, 2, 3, 4, 5. The umbrella changes → Tasks 6, 7. CLAUDE.md → Task 8. Tests → woven into each function task. Manual smoke → Task 10.
+- **Spec coverage:** All sections of the spec map to tasks. The function inventory's 5 functions → Tasks 1, 2, 3, 4, 5. The umbrella changes → Tasks 6, 7. AGENTS.md → Task 8. Tests → woven into each function task. Manual smoke → Task 10.
 - **Placeholder scan:** No "TBD" / "TODO" / "implement later" / "appropriate error handling". Every step has either runnable code, an exact command, or a concrete edit instruction.
 - **Type / name consistency:** `odin_target_triple`, `odin_latest_release`, `odin_current_installed_version`, `install_odin`, `update_odin` consistent across tasks. Symlink layout `~/.local/odin-<tag>/odin` ↔ `~/.local/bin/odin` consistent. Asset name format `odin-${triple}-${tag}.tar.gz` consistent. `expected_sha` / `got_sha` naming consistent.
 - **One thing worth flagging during execution:** Task 6 modifies an existing test (`test_install_languages_all_arg` and `test_install_languages_dry_run`) to assert both languages run. If a future language is added, those tests need re-tightening too. A comment in the test code would help — but YAGNI for now.

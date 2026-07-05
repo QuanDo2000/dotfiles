@@ -28,7 +28,7 @@
 | `tests/bash/test_languages.sh` | Modify | ~24 new/changed tests for the bash side. |
 | `tests/powershell/test_gleam.ps1` | Create | New file with the PowerShell test suite. |
 | `tests/powershell/test_args.ps1` | Modify | One new test for `languages` command parsing. |
-| `CLAUDE.md` | Modify | Update existing `dotfile languages [LANG]` line: `(zig, odin)` → `(zig, odin, gleam)`. |
+| `AGENTS.md` | Modify | Update existing `dotfile languages [LANG]` line: `(zig, odin)` → `(zig, odin, gleam)`. |
 
 ---
 
@@ -1586,14 +1586,14 @@ git commit -m "Wire languages subcommand into dotfile.ps1"
 
 ---
 
-## Task 13: Update `CLAUDE.md`
+## Task 13: Update `AGENTS.md`
 
 **Files:**
-- Modify: `CLAUDE.md`
+- Modify: `AGENTS.md`
 
 - [ ] **Step 1: Edit the Key Commands line**
 
-In `CLAUDE.md`, find the line:
+In `AGENTS.md`, find the line:
 
 ```
 dotfile languages [LANG]     # Install language toolchains (zig, odin)
@@ -1608,15 +1608,15 @@ dotfile languages [LANG]     # Install language toolchains (zig, odin, gleam)
 - [ ] **Step 2: Verify**
 
 ```bash
-grep -n 'languages \[LANG\]' CLAUDE.md
+grep -n 'languages \[LANG\]' AGENTS.md
 ```
 Expected: shows the updated line with `(zig, odin, gleam)`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add CLAUDE.md
-git commit -m "Document Gleam in CLAUDE.md Key Commands"
+git add AGENTS.md
+git commit -m "Document Gleam in AGENTS.md Key Commands"
 ```
 
 ---
@@ -1753,7 +1753,7 @@ This task marker exists so the deferred Windows verification doesn't get forgott
 
 ## Self-review notes
 
-- **Spec coverage:** Every function in the spec maps to a task. Bash inventory (7 functions) → Tasks 1–7. Bash umbrellas → Task 8. PowerShell inventory (8 functions + dispatch + usage) → Tasks 9–12. CLAUDE.md → Task 13. Tests → woven into each function task. Bash smoke → Task 15. Windows smoke → Task 16 (deferred).
+- **Spec coverage:** Every function in the spec maps to a task. Bash inventory (7 functions) → Tasks 1–7. Bash umbrellas → Task 8. PowerShell inventory (8 functions + dispatch + usage) → Tasks 9–12. AGENTS.md → Task 13. Tests → woven into each function task. Bash smoke → Task 15. Windows smoke → Task 16 (deferred).
 - **Placeholder scan:** No "TBD" / "implement later" / "appropriate error handling". Every step has runnable code, exact commands, or concrete edits.
 - **Type / name consistency:** `gleam_target_triple`, `gleam_latest_release`, `gleam_current_installed_version`, `ensure_erlang`, `ensure_rebar3`, `install_gleam`, `update_gleam` consistent across bash. PascalCase counterparts (`Get-GleamTargetTriple`, `Install-Gleam`, etc.) consistent across PowerShell. Symlink layouts (`~/.local/gleam-<tag>/gleam` and `%LOCALAPPDATA%\Programs\gleam-<tag>\gleam.exe`) consistent. Asset names `gleam-<tag>-<triple>.tar.gz` (Linux/Mac) and `gleam-<tag>-<triple>.zip` (Windows) consistent.
 - **One thing to flag during execution:** Task 12 changes the public-ish surface of `ParseArgs` in `dotfile.ps1` by adding a `$script:CommandArg` side-effect. This is necessary for `languages [LANG]` to work; existing callers (which only read the return value) are unaffected. The new test in `test_args.ps1` locks this in.
