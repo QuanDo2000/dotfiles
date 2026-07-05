@@ -4,11 +4,22 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 setup() {
   init_test_env
+  unset -f command 2>/dev/null || true
   source_scripts utils.sh verify.sh
 }
 
 teardown() {
   cleanup_test_env
+}
+
+with_nix_agent_tools() {
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" =~ ^(codex|codebase-memory-mcp)$ ]]; then
+      printf '/nix/store/test-%s/bin/%s\n' "$2" "$2"
+      return 0
+    fi
+    builtin command "$@"
+  }
 }
 
 test_verify_tool_found() {
@@ -111,6 +122,7 @@ test_verify_accepts_repo_dotfile_command_link() {
   echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
   printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+  with_nix_agent_tools
 
   local output
   output=$(verify 2>&1) || true
@@ -128,6 +140,7 @@ test_verify_accepts_home_manager_store_targets_on_nixos() {
   done
   ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
   printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+  with_nix_agent_tools
 
   local output
   output=$(OS_RELEASE="$osrel" verify 2>&1) || true
@@ -144,6 +157,7 @@ test_verify_accepts_home_manager_store_targets_on_mac() {
   done
   ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
   printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+  with_nix_agent_tools
 
   local output
   output=$(verify 2>&1) || true
@@ -162,6 +176,7 @@ test_verify_accepts_home_manager_store_targets_on_arch() {
   done
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
   printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+  with_nix_agent_tools
 
   local output
   output=$(OS_RELEASE="$os_release" verify 2>&1) || true
@@ -203,13 +218,9 @@ test_verify_accepts_nix_agent_tools_on_mac() {
   done
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
   printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
-
-  local bin_dir="$TEST_TMPDIR/bin"
-  mkdir -p "$bin_dir"
-  ln -s "/nix/store/test-codex/bin/codex" "$bin_dir/codex"
-  ln -s "/nix/store/test-codebase-memory-mcp/bin/codebase-memory-mcp" "$bin_dir/codebase-memory-mcp"
+  with_nix_agent_tools
 
   local output
-  output=$(PATH="$bin_dir:$PATH" verify 2>&1) || true
+  output=$(verify 2>&1) || true
   assert_contains "$output" "All checks passed"
 }
