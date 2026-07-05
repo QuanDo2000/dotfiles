@@ -37,96 +37,6 @@ test_install_font_debian_already_installed() {
 }
 
 # ---------------------------------------------------------------------------
-# setup_neovim (install mode)
-# ---------------------------------------------------------------------------
-
-test_neovim_asset_linux_x86_64() {
-  mock_uname_m x86_64
-  assert_equals "nvim-linux-x86_64.tar.gz" "$(_neovim_asset)"
-}
-
-test_neovim_asset_linux_aarch64() {
-  mock_uname_m aarch64
-  assert_equals "nvim-linux-arm64.tar.gz" "$(_neovim_asset)"
-}
-
-test_setup_neovim_dry_run_linux() {
-  mock_uname Linux
-  DRY=true
-  local output
-  output=$(setup_neovim 2>&1)
-
-  assert_contains "$output" "neovim"
-  assert_contains "$output" "Finished neovim"
-}
-
-test_setup_neovim_already_installed() {
-  mock_uname Linux
-  DRY=false
-  # nvim already on PATH (use the real one if available, otherwise fake it)
-  if ! command -v nvim >/dev/null 2>&1; then
-    echo '#!/usr/bin/env bash' > "$HOME/.local/bin/nvim"
-    chmod +x "$HOME/.local/bin/nvim"
-    export PATH="$HOME/.local/bin:$PATH"
-  fi
-
-  local output
-  output=$(setup_neovim 2>&1)
-
-  assert_contains "$output" "Already installed neovim"
-}
-
-test_setup_neovim_skips_on_mac() {
-  mock_uname Darwin
-  DRY=false
-  local output
-  output=$(setup_neovim 2>&1)
-
-  # Should return immediately with no output on Mac
-  assert_equals "" "$output"
-}
-
-# ---------------------------------------------------------------------------
-# setup_neovim (update mode)
-# ---------------------------------------------------------------------------
-
-test_setup_neovim_update_dry_run_linux() {
-  mock_uname Linux
-  DRY=true
-  local output
-  output=$(setup_neovim --update 2>&1)
-
-  assert_contains "$output" "neovim"
-  assert_contains "$output" "Finished neovim"
-}
-
-test_setup_neovim_update_does_not_skip() {
-  mock_uname Linux
-  DRY=true
-  if ! command -v nvim >/dev/null 2>&1; then
-    echo '#!/usr/bin/env bash' > "$HOME/.local/bin/nvim"
-    chmod +x "$HOME/.local/bin/nvim"
-    export PATH="$HOME/.local/bin:$PATH"
-  fi
-
-  local output
-  output=$(setup_neovim --update 2>&1)
-
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
-}
-
-test_setup_neovim_update_skips_on_mac() {
-  mock_uname Darwin
-  DRY=false
-  local output
-  output=$(setup_neovim --update 2>&1)
-
-  assert_equals "" "$output"
-}
-
-# ---------------------------------------------------------------------------
 # setup_fdfind
 # ---------------------------------------------------------------------------
 
@@ -448,6 +358,14 @@ test_setup_starship_update_does_not_skip() {
 
 test_arch_packages_include_starship() {
   assert_contains "${ARCH_PACKAGES[*]}" "starship"
+}
+
+test_arch_packages_include_neovim() {
+  assert_contains "${ARCH_PACKAGES[*]}" "neovim"
+}
+
+test_debian_packages_include_neovim() {
+  assert_contains "${DEBIAN_PACKAGES[*]}" "neovim"
 }
 
 test_mac_packages_include_starship() {

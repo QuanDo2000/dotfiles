@@ -86,13 +86,13 @@ Usage: $(basename "$0") [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update system packages only
+  update      Update system packages and language toolchains
   packages    Install system packages only
   extras      Install zsh plugins, tmux plugins
   symlinks    Create symlinks only
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank). LANG selects one.
-  verify      Verify installation
+  verify      Verify core symlinks
 
 Options:
   -d, --dry     Dry run (no changes made)

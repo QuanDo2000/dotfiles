@@ -200,40 +200,6 @@ function install_font_debian {
   success "Finished installing Fira Code"
 }
 
-# Install or update neovim from GitHub releases (Linux only; Mac uses brew).
-# Usage: setup_neovim [--update]
-_neovim_asset() {
-  case "$(uname -m)" in
-    x86_64)        echo "nvim-linux-x86_64.tar.gz" ;;
-    aarch64|arm64) echo "nvim-linux-arm64.tar.gz" ;;
-    *) fail "Unsupported arch for neovim: $(uname -m)" ;;
-  esac
-}
-
-function setup_neovim {
-  if is_mac; then
-    return
-  fi
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") neovim..."
-  if [[ "$DRY" == "false" ]]; then
-    if [[ "$update" == "false" ]] && command -v nvim >/dev/null 2>&1; then
-      info "Already installed neovim"
-      return
-    fi
-    local asset dir
-    asset="$(_neovim_asset)"
-    dir="${asset%.tar.gz}"
-    curl -fLO "https://github.com/neovim/neovim/releases/latest/download/$asset" \
-      || fail "Failed to download Neovim"
-    sudo rm -rf "/opt/$dir"
-    sudo tar -C /opt -xzf "$asset" || fail "Failed to extract Neovim"
-    rm -f "$asset"
-  fi
-  success "Finished neovim"
-}
-
 function setup_fdfind {
   info "Ensuring 'fd' is available in '.local/bin'..."
   if [[ "$DRY" == "false" ]]; then
@@ -452,7 +418,7 @@ function setup_codebase_memory_mcp {
 # xz-utils: required to extract the Zig .tar.xz in `dotfile languages zig`.
 DEBIAN_PACKAGES=(
   build-essential curl git xz-utils
-  unzip zsh tmux fontconfig fzf fd-find ripgrep
+  unzip zsh tmux neovim fontconfig fzf fd-find ripgrep
   procps file zoxide
 )
 
@@ -462,7 +428,6 @@ function update_debian {
     sudo apt update -y || fail "Failed to update apt"
     sudo apt upgrade -y || fail "Failed to upgrade apt packages"
 
-    setup_neovim --update
     setup_lazygit --update
     setup_jj --update
     setup_starship --update
@@ -479,8 +444,6 @@ function install_debian {
       || fail "Failed to install Debian packages"
 
     install_font_debian
-    setup_neovim
-
     setup_fdfind
     setup_lazygit
     setup_jj
@@ -492,7 +455,7 @@ function install_debian {
 }
 
 ARCH_PACKAGES=(
-  base-devel curl git unzip zsh tmux fontconfig
+  base-devel curl git unzip zsh tmux neovim fontconfig
   fzf fd ripgrep lazygit ttf-firacode-nerd zoxide
   gnupg wl-clipboard openssh lua51 luarocks nvm
   tree-sitter-cli jujutsu starship
@@ -503,7 +466,6 @@ function update_arch {
   if [[ "$DRY" == "false" ]]; then
     sudo pacman -Syu --noconfirm || fail "Failed to update pacman"
 
-    setup_neovim --update
     setup_codex --update
     setup_codebase_memory_mcp --update
   fi
@@ -516,7 +478,6 @@ function install_arch {
     sudo pacman -S --needed --noconfirm "${ARCH_PACKAGES[@]}" \
       || fail "Failed to install Arch packages"
 
-    setup_neovim
     setup_fdfind
     setup_codex
     setup_codebase_memory_mcp

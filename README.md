@@ -60,9 +60,9 @@ Commands:
   packages    Install system packages only
   extras      Install zsh and tmux plugins
   symlinks    Create symlinks only
-  obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
+  obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank)
-  verify      Verify installation
+  verify      Verify core Unix symlinks
 
 Options:
   -d, --dry   Dry run (no changes made)

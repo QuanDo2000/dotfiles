@@ -97,6 +97,18 @@ test_update_command_in_help() {
   assert_contains "$output" "Update system packages"
 }
 
+test_help_describes_verify_as_core_symlink_check() {
+  local output
+  output=$(bash "$DOTFILE_CMD" --help 2>&1)
+  assert_contains "$output" "Verify core symlinks"
+}
+
+test_help_describes_obsidian_arch_autorun() {
+  local output
+  output=$(bash "$DOTFILE_CMD" --help 2>&1)
+  assert_contains "$output" "Arch auto-runs during 'all' when ready"
+}
+
 test_dry_run_update_command() {
   is_windows_bash && return 0
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry update

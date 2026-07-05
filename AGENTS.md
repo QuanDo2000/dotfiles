@@ -13,7 +13,7 @@ dotfile                      # Full setup (packages -> extras -> symlinks)
 dotfile symlinks             # Create symlinks only
 dotfile packages             # Install system packages only
 dotfile extras               # Install zsh plugins, tmux plugins, starship prompt
-dotfile verify               # Verify installation
+dotfile verify               # Verify core Unix symlinks
 dotfile update               # Update system packages and language toolchains
 dotfile languages [LANG]     # Install language toolchains (zig, odin, gleam, jank)
 dotfile -d <command>         # Dry run
