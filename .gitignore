@@ -12,5 +12,6 @@ test_output.log
 
 .claude/settings.local.json
 config/shared/ai/codex/tmp/
+config/unix/config/fcitx5/conf/cached_layouts
 
 result

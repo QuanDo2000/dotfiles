@@ -56,7 +56,28 @@ function setup_dotfiles {
   update_repo
   install_extras
   setup_symlinks
+  setup_obsidian_if_supported
   success "Done!"
+}
+
+function setup_obsidian_if_supported {
+  if [[ "$(detect_platform)" != "arch" ]]; then
+    info "Skipping Obsidian sync setup: not Arch Linux"
+    return
+  fi
+  if ! command -v npm >/dev/null 2>&1; then
+    info "Skipping Obsidian sync setup: npm not found"
+    return
+  fi
+  if ! command -v systemctl >/dev/null 2>&1; then
+    info "Skipping Obsidian sync setup: systemctl not found"
+    return
+  fi
+  if ! systemctl --user show-environment >/dev/null 2>&1; then
+    info "Skipping Obsidian sync setup: systemd user session unavailable"
+    return
+  fi
+  setup_obsidian
 }
 
 function usage {
@@ -69,7 +90,7 @@ Commands:
   packages    Install system packages only
   extras      Install zsh plugins, tmux plugins
   symlinks    Create symlinks only
-  obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
+  obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank). LANG selects one.
   verify      Verify installation
 

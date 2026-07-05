@@ -70,6 +70,26 @@ test_dry_run_default_command() {
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry all
 }
 
+test_all_runs_obsidian_on_arch_with_prereqs() {
+  is_windows_bash && return 0
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  local bindir="$TEST_HOME/bin"
+  mkdir -p "$bindir"
+  printf 'ID=arch\n' > "$osrel"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$bindir/npm"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$bindir/ob"
+  printf '#!/usr/bin/env bash\n[[ "$*" == "--user show-environment" ]] && exit 0\nexit 0\n' > "$bindir/systemctl"
+  chmod +x "$bindir/npm" "$bindir/ob" "$bindir/systemctl"
+
+  local output
+  output=$(OS_RELEASE="$osrel" PATH="$bindir:$PATH" bash "$DOTFILE_CMD" --dry all 2>&1)
+  assert_contains "$output" "Setting up Obsidian headless sync"
+
+  unset -f uname 2>/dev/null || true
+  unset __MOCK_UNAME
+}
+
 test_update_command_in_help() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)

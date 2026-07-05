@@ -51,7 +51,7 @@ in
   programs.zsh.enable = true;
   programs.gnupg.agent = {
     enable = true;
-    pinentryPackage = pkgs.pinentry-curses;
+    pinentryPackage = pkgs.pinentry-gnome3;
     settings = {
       default-cache-ttl = 28800; # 8 hours
       max-cache-ttl = 86400;     # 24 hours

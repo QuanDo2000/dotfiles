@@ -470,6 +470,12 @@ function AddToUserPath($dir) {
     }
 }
 
+function EnsureDir($dir) {
+    if (-not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
+}
+
 function SetupSymlinks {
     Info "Setting up symlinks..."
     $script:OverwriteAll = $script:Force
@@ -493,9 +499,7 @@ function SetupSymlinks {
         "$userHome\documents\PowerShell"
     )
     foreach ($target in $targets) {
-        if (-not (Test-Path $target)) {
-            New-Item -ItemType Directory -Path $target | Out-Null
-        }
+        EnsureDir $target
         Get-ChildItem $psSource -File | ForEach-Object {
             LinkFile -source $_.FullName -destination (Join-Path $target $_.Name)
         }
@@ -512,9 +516,7 @@ function SetupSymlinks {
 
     # SSH config
     $sshDest = "$userHome\.ssh"
-    if (-not (Test-Path $sshDest)) {
-        New-Item -ItemType Directory -Path $sshDest | Out-Null
-    }
+    EnsureDir $sshDest
     LinkFile -source (Join-Path $sharedPath ".ssh\config") -destination (Join-Path $sshDest "config")
 
     # Neovim settings (symlink the whole dir)
@@ -526,9 +528,7 @@ function SetupSymlinks {
 
     # starship prompt config — shared with zsh, read from ~/.config/starship.toml.
     $starshipConfigDir = "$userHome\.config"
-    if (-not (Test-Path $starshipConfigDir)) {
-        New-Item -ItemType Directory -Path $starshipConfigDir | Out-Null
-    }
+    EnsureDir $starshipConfigDir
     LinkFile -source (Join-Path $sharedPath "config\starship.toml") -destination (Join-Path $starshipConfigDir "starship.toml")
 
     # AI tool configs live in their own dotfolders (not ~/.config) alongside
@@ -542,9 +542,7 @@ function SetupSymlinks {
         $src = Join-Path $aiPath $link.Src
         if (-not (Test-Path $src)) { continue }
         $parent = Split-Path $link.Dst -Parent
-        if (-not $script:Dry -and -not (Test-Path $parent)) {
-            New-Item -ItemType Directory -Path $parent -Force | Out-Null
-        }
+        if (-not $script:Dry) { EnsureDir $parent }
         LinkFile -source $src -destination $link.Dst
     }
 
@@ -552,9 +550,7 @@ function SetupSymlinks {
     $dotfileSource = Join-Path $script:DotfilesDir "dotfile.ps1"
     if (Test-Path $dotfileSource) {
         $binDest = "$userHome\.local\bin"
-        if (-not (Test-Path $binDest)) {
-            New-Item -ItemType Directory -Path $binDest | Out-Null
-        }
+        EnsureDir $binDest
         AddToUserPath $binDest
         LinkFile -source $dotfileSource -destination (Join-Path $binDest "dotfile.ps1")
     }
