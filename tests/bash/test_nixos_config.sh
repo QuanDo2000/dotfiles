@@ -10,3 +10,57 @@ test_greetd_launches_hyprland_through_nixos_wrapper() {
   assert_contains "$config_text" "--cmd start-hyprland"
   assert_not_contains "$config_text" "--cmd Hyprland"
 }
+
+test_flake_uses_flat_nix_config_files() {
+  local flake_text
+  flake_text="$(<"$REPO_DIR/flake.nix")"
+
+  assert_file_exists "$REPO_DIR/config/home.nix"
+  assert_file_exists "$REPO_DIR/config/nixos.nix"
+  assert_file_exists "$REPO_DIR/config/darwin.nix"
+  assert_contains "$flake_text" "./config/home.nix"
+  assert_contains "$flake_text" "./config/nixos.nix"
+  assert_contains "$flake_text" "./config/darwin.nix"
+  assert_not_contains "$flake_text" "config/nix/"
+}
+
+test_home_config_installs_home_manager_cli() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home_text" "home.packages"
+  assert_contains "$home_text" "home-manager"
+}
+
+test_home_config_manages_git_and_starship() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home_text" "home.file.\".gitconfig\""
+  assert_contains "$home_text" "source = ./shared/.gitconfig"
+  assert_contains "$home_text" "force = true"
+  assert_contains "$home_text" "xdg.configFile.\"starship.toml\""
+  assert_contains "$home_text" "./shared/config/starship.toml"
+}
+
+test_home_manager_backs_up_existing_files() {
+  local nixos_text darwin_text
+  nixos_text="$(<"$REPO_DIR/config/nixos.nix")"
+  darwin_text="$(<"$REPO_DIR/config/darwin.nix")"
+
+  assert_contains "$nixos_text" "home-manager.backupFileExtension = \"before-home-manager\""
+  assert_contains "$darwin_text" "home-manager.backupFileExtension = \"before-home-manager\""
+}
+
+test_home_config_links_zsh_plugins_from_nix() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home_text" "xdg.dataFile.\"zsh/plugins/zsh-autosuggestions\""
+  assert_contains "$home_text" "pkgs.zsh-autosuggestions"
+  assert_contains "$home_text" "xdg.dataFile.\"zsh/plugins/fast-syntax-highlighting\""
+  assert_contains "$home_text" "pkgs.zsh-fast-syntax-highlighting"
+  assert_contains "$home_text" "xdg.dataFile.\"zsh/plugins/fzf-tab\""
+  assert_contains "$home_text" "pkgs.zsh-fzf-tab"
+  assert_contains "$home_text" "force = true"
+}
