@@ -202,6 +202,14 @@ function install_font_debian {
 
 # Install or update neovim from GitHub releases (Linux only; Mac uses brew).
 # Usage: setup_neovim [--update]
+_neovim_asset() {
+  case "$(uname -m)" in
+    x86_64)        echo "nvim-linux-x86_64.tar.gz" ;;
+    aarch64|arm64) echo "nvim-linux-arm64.tar.gz" ;;
+    *) fail "Unsupported arch for neovim: $(uname -m)" ;;
+  esac
+}
+
 function setup_neovim {
   if is_mac; then
     return
@@ -214,11 +222,14 @@ function setup_neovim {
       info "Already installed neovim"
       return
     fi
-    curl -fLO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz \
+    local asset dir
+    asset="$(_neovim_asset)"
+    dir="${asset%.tar.gz}"
+    curl -fLO "https://github.com/neovim/neovim/releases/latest/download/$asset" \
       || fail "Failed to download Neovim"
-    sudo rm -rf /opt/nvim-linux-x86_64
-    sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz || fail "Failed to extract Neovim"
-    rm -f nvim-linux-x86_64.tar.gz
+    sudo rm -rf "/opt/$dir"
+    sudo tar -C /opt -xzf "$asset" || fail "Failed to extract Neovim"
+    rm -f "$asset"
   fi
   success "Finished neovim"
 }
@@ -435,36 +446,6 @@ function setup_codebase_memory_mcp {
     fi
   fi
   success "Finished codebase-memory-mcp"
-}
-
-# Install or update bun via the official install script. Self-updates via
-# `bun upgrade`. Idempotent: no-op if `bun` is on PATH (unless --update is
-# passed). Usage: setup_bun [--update]
-function setup_bun {
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") bun..."
-  if [[ "$DRY" == "false" ]]; then
-    if command -v bun >/dev/null 2>&1; then
-      if [[ "$update" == "true" ]]; then
-        bun upgrade || fail "Failed to update bun"
-      else
-        info "Already installed bun"
-      fi
-    else
-      curl -fsSL https://bun.sh/install | bash \
-        || fail "Failed to install bun"
-      export PATH="$HOME/.bun/bin:$PATH"
-    fi
-  fi
-  success "Finished bun"
-}
-
-# Install the AI coding assistant. Shared by the full
-# `dotfile all` run and the standalone `dotfile ai` subcommand.
-function install_ai {
-  setup_codex
-  setup_codebase_memory_mcp
 }
 
 # build-essential: nvim-treesitter compiles parsers with cc.

@@ -128,24 +128,16 @@ test_packages_nixos_dry() {
   unset __MOCK_UNAME
 }
 
-test_help_no_oh_my_zsh() {
-  local output
-  output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  if [[ "$output" == *"oh-my-zsh"* ]]; then
-    echo "  FAILED: help text should no longer mention oh-my-zsh" >> "$ERROR_FILE"
-  fi
-  assert_contains "$output" "zsh plugins"
-}
-
 test_help_has_no_direct_zsh_or_tmux_commands() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  if [[ "$output" == *$'\n  zsh '* || "$output" == *$'\n  tmux '* ]]; then
-    echo "  FAILED: help text should not expose direct zsh/tmux commands" >> "$ERROR_FILE"
+  if [[ "$output" == *$'\n  zsh '* || "$output" == *$'\n  tmux '* || "$output" == *$'\n  ai '* ]]; then
+    echo "  FAILED: help text should not expose direct zsh/tmux/ai commands" >> "$ERROR_FILE"
   fi
 }
 
-test_direct_zsh_and_tmux_commands_fail() {
+test_direct_zsh_tmux_and_ai_commands_fail() {
   assert_exit_code 1 bash "$DOTFILE_CMD" --dry zsh
   assert_exit_code 1 bash "$DOTFILE_CMD" --dry tmux
+  assert_exit_code 1 bash "$DOTFILE_CMD" --dry ai
 }

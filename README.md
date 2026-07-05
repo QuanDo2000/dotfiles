@@ -62,7 +62,6 @@ Commands:
   symlinks    Create symlinks only
   obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank)
-  ai          Install AI coding CLIs
   verify      Verify installation
 
 Options:

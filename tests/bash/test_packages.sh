@@ -40,6 +40,16 @@ test_install_font_debian_already_installed() {
 # setup_neovim (install mode)
 # ---------------------------------------------------------------------------
 
+test_neovim_asset_linux_x86_64() {
+  mock_uname_m x86_64
+  assert_equals "nvim-linux-x86_64.tar.gz" "$(_neovim_asset)"
+}
+
+test_neovim_asset_linux_aarch64() {
+  mock_uname_m aarch64
+  assert_equals "nvim-linux-arm64.tar.gz" "$(_neovim_asset)"
+}
+
 test_setup_neovim_dry_run_linux() {
   mock_uname Linux
   DRY=true
@@ -395,45 +405,6 @@ test_codex_triple_mac() {
   local t
   t=$(_codex_triple)
   assert_contains "$t" "apple-darwin"
-}
-
-# ---------------------------------------------------------------------------
-# setup_bun
-# ---------------------------------------------------------------------------
-
-test_setup_bun_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_bun 2>&1)
-
-  assert_contains "$output" "bun"
-  assert_contains "$output" "Finished bun"
-}
-
-test_setup_bun_already_installed() {
-  DRY=false
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/bun"
-  chmod +x "$HOME/.local/bin/bun"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_bun 2>&1)
-
-  assert_contains "$output" "Already installed bun"
-}
-
-test_setup_bun_update_does_not_skip() {
-  DRY=true
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/bun"
-  chmod +x "$HOME/.local/bin/bun"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_bun --update 2>&1)
-
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
 }
 
 # ---------------------------------------------------------------------------

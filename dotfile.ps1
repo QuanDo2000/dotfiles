@@ -340,7 +340,7 @@ function InstallExtras {
     InstallTreeSitter
 }
 
-# Install (or update) AI coding CLIs. Mirrors unix `install_ai`.
+# Install or update codebase-memory-mcp during package setup.
 function InstallAi {
     param([switch]$Update)
     Info "Installing AI CLIs..."
@@ -654,7 +654,6 @@ Commands:
   update      Update system packages and language toolchains
   packages    Install system packages only
   extras      Install FiraCode font, Node.js LTS (fnm), and tree-sitter CLI
-  ai          Install AI coding CLIs
   symlinks    Create symlinks only
   languages [LANG]  Install language toolchains. LANG selects one (Windows: gleam only).
   verify      Verify installation
@@ -704,7 +703,6 @@ if (-not $NoMain) {
         "update"    { Update-Packages }
         "packages"  { InstallPackages }
         "extras"    { InstallExtras }
-        "ai"        { InstallAi }
         "symlinks"  { SetupSymlinks }
         "languages" { Install-Languages -Target $script:CommandArg }
         "verify"    { Verify }
