@@ -63,6 +63,9 @@ approval_mode = "approve"
 [mcp_servers.codebase-memory-mcp.tools.query_graph]
 approval_mode = "approve"
 
+[features]
+memories = true
+
 # >>> codebase-memory-mcp SessionStart >>>
 [[hooks.SessionStart]]
 matcher = "startup|resume|clear|compact"
