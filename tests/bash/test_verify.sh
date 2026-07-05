@@ -150,3 +150,20 @@ test_verify_accepts_home_manager_store_targets_on_mac() {
 
   assert_contains "$output" "All checks passed"
 }
+
+test_verify_accepts_home_manager_store_targets_on_arch() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=arch\n' > "$os_release"
+
+  local hm_dir="/nix/store/test-home-manager-files"
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    ln -s "$hm_dir/$f" "$HOME/$f"
+  done
+  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
+  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+
+  local output
+  output=$(OS_RELEASE="$os_release" verify 2>&1) || true
+  assert_contains "$output" "All checks passed"
+}

@@ -10,12 +10,12 @@ REQUIRED_SYMLINKS=(.zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
 _check_symlink() {
   local name="$1"
   local target="$HOME/$name"
+  local platform="${2:-$(detect_platform)}"
   if [ -L "$target" ]; then
-    local link_target platform
+    local link_target
     link_target="$(resolve_symlink "$target")"
-    platform="$(detect_platform)"
     if [[ "$link_target" == "$DOTFILES_DIR"* ]] \
-      || [[ "$platform" =~ ^(nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
+      || [[ "$platform" =~ ^(arch|nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
       success "$name -> $link_target"
     else
       fail_soft "$name points to $link_target (expected $DOTFILES_DIR/... or Home Manager store target)"
@@ -53,7 +53,7 @@ _check_dotfile_command() {
     link_target="$(resolve_symlink "$target")"
     platform="$(detect_platform)"
     if [[ "$link_target" == "$DOTFILES_DIR/dotfile" ]] \
-      || [[ "$platform" =~ ^(nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
+      || [[ "$platform" =~ ^(arch|nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
       success ".local/bin/dotfile -> $link_target"
     else
       fail_soft ".local/bin/dotfile points to $link_target (expected $DOTFILES_DIR/dotfile or Home Manager store target)"
@@ -72,8 +72,10 @@ function verify {
   local errors=0
 
   info "Verifying symlinks..."
+  local platform
+  platform="$(detect_platform)"
   for f in "${REQUIRED_SYMLINKS[@]}"; do
-    _check_symlink "$f"
+    _check_symlink "$f" "$platform"
   done
   _check_local_zshrc
   _check_dotfile_command
