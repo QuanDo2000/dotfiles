@@ -87,7 +87,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   local common_packages
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in neovim tmux fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs; do
+  for pkg in neovim tmux fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs ast-grep; do
     assert_contains "$common_packages" "$pkg"
   done
 }
@@ -176,7 +176,6 @@ test_darwin_config_manages_core_packages() {
   assert_contains "$darwin_text" "environment.systemPackages"
   assert_contains "$darwin_text" "bash"
   assert_contains "$darwin_text" "git"
-  assert_contains "$darwin_text" "ast-grep"
   assert_contains "$darwin_text" "programs.zsh.enable = true"
   assert_contains "$darwin_text" "system.primaryUser = machine.username"
 }
@@ -187,9 +186,7 @@ test_darwin_system_packages_leave_user_tools_to_home_manager() {
 
   assert_contains "$packages_text" "bash"
   assert_contains "$packages_text" "git"
-  assert_contains "$packages_text" "ast-grep"
-
-  for pkg in tmux neovim fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs; do
+  for pkg in tmux neovim fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs ast-grep; do
     assert_not_contains "$packages_text" "    $pkg"
   done
 }

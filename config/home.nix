@@ -20,6 +20,7 @@ in
     nodejs
     jujutsu
     starship
+    ast-grep
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     fontconfig
     nerd-fonts.fira-code

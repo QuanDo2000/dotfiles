@@ -16,7 +16,6 @@ in
   environment.systemPackages = with pkgs; [
     bash
     git
-    ast-grep
   ];
 
   home-manager.useGlobalPkgs = true;
