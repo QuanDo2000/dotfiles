@@ -12,19 +12,8 @@
 
   environment.systemPackages = with pkgs; [
     bash
-    tmux
     git
-    neovim
-    fzf
-    fd
-    ripgrep
-    gnupg
-    lazygit
     ast-grep
-    zoxide
-    jujutsu
-    starship
-    nodejs
   ];
 
   home-manager.useGlobalPkgs = true;

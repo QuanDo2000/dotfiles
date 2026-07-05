@@ -70,6 +70,15 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "ripgrep"
 }
 
+test_home_config_puts_shared_user_tools_in_common_packages() {
+  local common_packages
+  common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
+
+  for pkg in neovim tmux fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs; do
+    assert_contains "$common_packages" "$pkg"
+  done
+}
+
 test_nixos_system_packages_leave_user_tools_to_home_manager() {
   local packages_text
   packages_text="$(sed -n '/environment.systemPackages =/,/++ lib.optional (pkgs ? codex)/p' "$REPO_DIR/config/nixos/configuration.nix")"
@@ -152,13 +161,24 @@ test_darwin_config_manages_core_packages() {
   assert_contains "$darwin_text" "nix.settings.experimental-features"
   assert_contains "$darwin_text" "nixpkgs.config.allowUnfree = true"
   assert_contains "$darwin_text" "environment.systemPackages"
-  assert_contains "$darwin_text" "neovim"
-  assert_contains "$darwin_text" "lazygit"
-  assert_contains "$darwin_text" "jujutsu"
+  assert_contains "$darwin_text" "bash"
+  assert_contains "$darwin_text" "git"
   assert_contains "$darwin_text" "ast-grep"
-  assert_contains "$darwin_text" "nodejs"
   assert_contains "$darwin_text" "programs.zsh.enable = true"
   assert_contains "$darwin_text" "system.primaryUser = \"quando\""
+}
+
+test_darwin_system_packages_leave_user_tools_to_home_manager() {
+  local packages_text
+  packages_text="$(sed -n '/environment.systemPackages =/,/\];/p' "$REPO_DIR/config/darwin.nix")"
+
+  assert_contains "$packages_text" "bash"
+  assert_contains "$packages_text" "git"
+  assert_contains "$packages_text" "ast-grep"
+
+  for pkg in tmux neovim fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs; do
+    assert_not_contains "$packages_text" "    $pkg"
+  done
 }
 
 test_home_config_links_zsh_plugins_from_nix() {
