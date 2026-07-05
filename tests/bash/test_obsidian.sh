@@ -226,6 +226,31 @@ test_setup_vault_skips_when_already_configured() {
   assert_contains "$output" "already configured"
 }
 
+test_setup_obsidian_skips_reconfiguring_existing_sync() {
+  local vault_path="$HOME/documents/obsidian/test-vault"
+  mkdir -p "$vault_path"
+  mock_cmd npm 'exit 0'
+  mock_cmd systemctl 'exit 0'
+  mock_cmd ob 'case "$1" in
+    sync-status) exit 0 ;;
+    sync-list-remote|login|sync-setup)
+      echo "unexpected ob $1 call" >&2
+      exit 99
+      ;;
+    sync) exit 0 ;;
+    *) exit 0 ;;
+  esac'
+
+  local output exit_code=0
+  output=$(setup_obsidian 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: setup_obsidian should skip reconfiguring existing sync ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "already configured"
+  assert_file_exists "$OBSIDIAN_SERVICE_PATH"
+}
+
 # ---------------------------------------------------------------------------
 # _obsidian_install_service
 # ---------------------------------------------------------------------------

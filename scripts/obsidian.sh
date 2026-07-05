@@ -87,6 +87,18 @@ function _obsidian_setup_vault {
   success "Vault ready at $vault_path"
 }
 
+function _obsidian_existing_vault_path {
+  local vault_path
+  for vault_path in "$OBSIDIAN_VAULT_BASE"/*; do
+    [[ -d "$vault_path" ]] || continue
+    if ob sync-status --path "$vault_path" >/dev/null 2>&1; then
+      echo "$vault_path"
+      return 0
+    fi
+  done
+  return 1
+}
+
 function _obsidian_install_service {
   local vault_path="$1"
   local ob_bin
@@ -135,6 +147,14 @@ function setup_obsidian {
   info "Setting up Obsidian headless sync..."
   _obsidian_check_prereqs
   _obsidian_install_cli
+
+  local existing_vault_path
+  if [[ "$FORCE" != "true" ]] && existing_vault_path="$(_obsidian_existing_vault_path)"; then
+    info "Vault at $existing_vault_path is already configured; skipping Obsidian Sync setup"
+    _obsidian_install_service "$existing_vault_path"
+    return
+  fi
+
   _obsidian_login
 
   local vault_name
