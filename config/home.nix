@@ -1,14 +1,15 @@
 { pkgs, lib, ... }:
 
+let
+  machine = import ./host.nix;
+in
 {
-  home.username = "quando";
+  home.username = machine.username;
   home.homeDirectory =
-    if pkgs.stdenv.isDarwin then "/Users/quando" else "/home/quando";
+    if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
   home.stateVersion = "24.11";
   home.packages = with pkgs; [
-    git
     neovim
-    starship
   ];
 
   home.file.".gitconfig" = {

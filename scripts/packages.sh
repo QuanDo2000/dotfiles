@@ -558,7 +558,7 @@ function _home_manager_switch {
     home-manager switch --flake "$DOTFILES_DIR#quando@arch" \
       || fail "home-manager switch failed"
   else
-    nix run home-manager/master -- switch --flake "$DOTFILES_DIR#quando@arch" \
+    nix run "$DOTFILES_DIR#home-manager" -- switch --flake "$DOTFILES_DIR#quando@arch" \
       || fail "home-manager bootstrap switch failed"
   fi
 }

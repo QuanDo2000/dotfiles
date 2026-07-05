@@ -23,6 +23,9 @@ test_flake_uses_flat_nix_config_files() {
   assert_contains "$flake_text" "./config/home.nix"
   assert_contains "$flake_text" "./config/nixos.nix"
   assert_contains "$flake_text" "./config/darwin.nix"
+  assert_contains "$flake_text" "machine = import ./config/host.nix"
+  assert_contains "$flake_text" "homeConfigurations.\"\${machine.username}@arch\""
+  assert_contains "$flake_text" "apps.x86_64-linux.home-manager"
   assert_not_contains "$flake_text" "config/nix/"
 }
 
@@ -61,9 +64,22 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "programs.home-manager.enable = true"
   assert_not_contains "$home_text" "    home-manager"
   assert_contains "$home_text" "neovim"
+  assert_not_contains "$home_text" "    git"
+  assert_not_contains "$home_text" "    starship"
 }
 
-test_home_config_manages_git_and_starship() {
+test_home_config_uses_tracked_host_username() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home_text" "machine = import ./host.nix"
+  assert_contains "$home_text" "home.username = machine.username"
+  assert_contains "$home_text" "\"/home/\${machine.username}\""
+  assert_not_contains "$home_text" 'home.username = "quando"'
+  assert_not_contains "$home_text" '"/home/quando"'
+}
+
+test_home_config_manages_gitconfig_and_starship_config() {
   local home_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
 
