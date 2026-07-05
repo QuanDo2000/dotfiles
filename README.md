@@ -73,6 +73,8 @@ Options:
 
 Note: `.zshrc` is machine-local (not symlinked) so local installer edits don't dirty the repo. It sources the tracked `~/.zshrc.base`.
 
+Note: `dotfile obsidian` reuses an existing configured vault under `~/documents/obsidian` and skips interactive Sync setup unless `-f` is passed.
+
 ## Provisioning a fresh NixOS machine
 
 On a freshly-installed NixOS box:

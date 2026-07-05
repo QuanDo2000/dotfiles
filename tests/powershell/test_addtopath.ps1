@@ -20,10 +20,14 @@ function test_addtouserpath_dry_mode_does_not_modify_process_path {
 
 function test_addtouserpath_already_present_does_not_duplicate_process_path {
     $script:Dry = $false
-    # Use the first existing entry in $env:Path so we hit the "already present"
+    # Use the first existing user PATH entry so we hit the "already present"
     # branch without having to write to the user registry.
-    $existing = ($env:Path -split ';' | Where-Object { $_ })[0]
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $existing = @($userPath -split ';' | Where-Object { $_ })[0]
     if (-not $existing) { return }
+    if (-not (($env:Path -split ';') -contains $existing)) {
+        $env:Path = "$env:Path;$existing"
+    }
 
     $before = ($env:Path -split ';') | Where-Object { $_ -eq $existing } | Measure-Object
     AddToUserPath $existing
