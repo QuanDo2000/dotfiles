@@ -112,6 +112,13 @@ test_help_describes_obsidian_arch_autorun() {
   assert_contains "$output" "Arch auto-runs during 'all' when ready"
 }
 
+test_readme_matches_key_help_text() {
+  local readme_text
+  readme_text="$(<"$REPO_DIR/README.md")"
+  assert_contains "$readme_text" "obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)"
+  assert_contains "$readme_text" "verify      Verify core Unix symlinks"
+}
+
 test_dry_run_update_command() {
   is_windows_bash && return 0
   assert_exit_code 0 bash "$DOTFILE_CMD" --dry update

@@ -107,7 +107,11 @@ function _obsidian_install_service {
 
   info "Installing systemd user unit $OBSIDIAN_SERVICE_NAME..."
   if [[ -f "$OBSIDIAN_SERVICE_PATH" && "$FORCE" != "true" ]]; then
-    info "Service file already exists at $OBSIDIAN_SERVICE_PATH (use -f to overwrite)"
+    if grep -Fq -- "--path $vault_path --continuous" "$OBSIDIAN_SERVICE_PATH"; then
+      info "Service file already exists at $OBSIDIAN_SERVICE_PATH (use -f to overwrite)"
+    else
+      fail "Service file already exists at $OBSIDIAN_SERVICE_PATH but points at a different vault; use -f to overwrite"
+    fi
   else
     if [[ "$DRY" == "true" ]]; then
       info "Would write $OBSIDIAN_SERVICE_PATH pointing at $vault_path"

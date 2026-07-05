@@ -297,9 +297,9 @@ test_install_service_skips_when_file_exists_without_force() {
   mock_cmd systemctl 'exit 0'
   FORCE=false
   mkdir -p "$(dirname "$OBSIDIAN_SERVICE_PATH")"
-  echo "SENTINEL_PRE_EXISTING_CONTENT" > "$OBSIDIAN_SERVICE_PATH"
 
   local vault_path="$HOME/documents/obsidian/test-vault"
+  printf '%s\n' "ExecStart=/tmp/ob sync --path $vault_path --continuous" > "$OBSIDIAN_SERVICE_PATH"
   local output exit_code=0
   output=$(_obsidian_install_service "$vault_path" 2>&1) || exit_code=$?
 
@@ -308,7 +308,25 @@ test_install_service_skips_when_file_exists_without_force() {
   fi
   local unit_content
   unit_content=$(cat "$OBSIDIAN_SERVICE_PATH")
-  assert_contains "$unit_content" "SENTINEL_PRE_EXISTING_CONTENT"
+  assert_contains "$unit_content" "ExecStart=/tmp/ob sync --path $vault_path --continuous"
+  assert_contains "$output" "use -f to overwrite"
+}
+
+test_install_service_fails_when_existing_unit_points_elsewhere() {
+  mock_cmd ob 'exit 0'
+  mock_cmd systemctl 'exit 0'
+  FORCE=false
+  mkdir -p "$(dirname "$OBSIDIAN_SERVICE_PATH")"
+  printf '%s\n' 'ExecStart=/tmp/ob sync --path /old-vault --continuous' > "$OBSIDIAN_SERVICE_PATH"
+
+  local vault_path="$HOME/documents/obsidian/test-vault"
+  local output exit_code=0
+  output=$(_obsidian_install_service "$vault_path" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: _obsidian_install_service should fail when unit points elsewhere" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "points at a different vault"
   assert_contains "$output" "use -f to overwrite"
 }
 
