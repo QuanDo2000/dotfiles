@@ -12,10 +12,10 @@ teardown() {
 }
 
 # ---------------------------------------------------------------------------
-# Mac: setup_symlinks includes mac/ folder on Darwin
+# Mac: Home Manager owns shared/unix/mac links
 # ---------------------------------------------------------------------------
 
-test_setup_symlinks_includes_mac_on_darwin() {
+test_setup_symlinks_skips_home_manager_files_on_darwin() {
   mock_uname Darwin
   local overwrite_all=false backup_all=false skip_all=false
 
@@ -25,8 +25,12 @@ test_setup_symlinks_includes_mac_on_darwin() {
 
   setup_symlinks
 
-  assert_symlink "$HOME/.zshrc.mac" "$DOTFILES_DIR/config/mac/.zshrc.mac"
-  assert_symlink "$HOME/.gitconfig" "$DOTFILES_DIR/config/shared/.gitconfig"
+  if [ -e "$HOME/.zshrc.mac" ] || [ -L "$HOME/.zshrc.mac" ]; then
+    echo "  FAILED: .zshrc.mac should be left for Home Manager on macOS" >> "$ERROR_FILE"
+  fi
+  if [ -e "$HOME/.gitconfig" ] || [ -L "$HOME/.gitconfig" ]; then
+    echo "  FAILED: .gitconfig should be left for Home Manager on macOS" >> "$ERROR_FILE"
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -92,10 +96,10 @@ test_mac_folder_bin() {
 }
 
 # ---------------------------------------------------------------------------
-# Mac: force flag overwrites across all platform folders
+# Mac: force flag still does not overwrite Home Manager links
 # ---------------------------------------------------------------------------
 
-test_force_overwrite_all_platforms_darwin() {
+test_force_does_not_overwrite_home_manager_files_darwin() {
   FORCE=true
   mock_uname Darwin
   local overwrite_all=false backup_all=false skip_all=false
@@ -109,8 +113,12 @@ test_force_overwrite_all_platforms_darwin() {
 
   setup_symlinks
 
-  assert_symlink "$HOME/.gitconfig" "$DOTFILES_DIR/config/shared/.gitconfig"
-  assert_symlink "$HOME/.zshrc.mac" "$DOTFILES_DIR/config/mac/.zshrc.mac"
+  if [ -L "$HOME/.gitconfig" ] || [ "$(cat "$HOME/.gitconfig")" != "old" ]; then
+    echo "  FAILED: force should not replace Home Manager-owned .gitconfig on macOS" >> "$ERROR_FILE"
+  fi
+  if [ -L "$HOME/.zshrc.mac" ] || [ "$(cat "$HOME/.zshrc.mac")" != "old mac" ]; then
+    echo "  FAILED: force should not replace Home Manager-owned .zshrc.mac on macOS" >> "$ERROR_FILE"
+  fi
 }
 
 # ---------------------------------------------------------------------------

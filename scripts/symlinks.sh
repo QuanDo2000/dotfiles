@@ -162,32 +162,38 @@ EOF
 
 function setup_symlinks {
   local overwrite_all=false backup_all=false skip_all=false
+  local platform
 
   if [[ "$FORCE" == "true" ]]; then
     overwrite_all=true
   fi
 
-  setup_symlinks_folder "$DOTFILES_DIR/config/shared"
-  setup_symlinks_folder "$DOTFILES_DIR/config/unix"
-  if is_mac; then
-    setup_symlinks_folder "$DOTFILES_DIR/config/mac"
+  platform="$(detect_platform)"
+  if [[ "$platform" == "nixos" || "$platform" == "mac" ]]; then
+    info "Home Manager manages dotfile links; skipping shared/unix/mac symlinks"
+  else
+    setup_symlinks_folder "$DOTFILES_DIR/config/shared"
+    setup_symlinks_folder "$DOTFILES_DIR/config/unix"
+    if is_mac; then
+      setup_symlinks_folder "$DOTFILES_DIR/config/mac"
+    fi
+
+    # These configs live in dotfolders alongside runtime state we don't want to
+    # track (caches, sessions, credentials, ~/.ssh keys),
+    # so we link only the individual tracked files rather than whole dirs.
+    # _link_optional creates each file's parent dir and skips when the source is
+    # absent.
+    local ai="$DOTFILES_DIR/config/shared/ai"
+    _link_optional "$DOTFILES_DIR/config/shared/.ssh/config" "$HOME/.ssh/config"
+    if command -v claude >/dev/null 2>&1; then
+      _link_optional "$ai/claude/settings.json" "$HOME/.claude/settings.json"
+    fi
+    if command -v codex >/dev/null 2>&1; then
+      _link_optional "$ai/codex/config.toml" "$HOME/.codex/config.toml"
+    fi
   fi
 
   _ensure_local_zshrc
-
-  # These configs live in dotfolders alongside runtime state we don't want to
-  # track (caches, sessions, credentials, ~/.ssh keys),
-  # so we link only the individual tracked files rather than whole dirs.
-  # _link_optional creates each file's parent dir and skips when the source is
-  # absent.
-  local ai="$DOTFILES_DIR/config/shared/ai"
-  _link_optional "$DOTFILES_DIR/config/shared/.ssh/config" "$HOME/.ssh/config"
-  if command -v claude >/dev/null 2>&1; then
-    _link_optional "$ai/claude/settings.json" "$HOME/.claude/settings.json"
-  fi
-  if command -v codex >/dev/null 2>&1; then
-    _link_optional "$ai/codex/config.toml" "$HOME/.codex/config.toml"
-  fi
 
   # Link the repo-root `dotfile` entry point into $HOME/.local/bin so users
   # can run `dotfile` from any shell.

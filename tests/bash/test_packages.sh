@@ -438,6 +438,29 @@ test_install_nixos_uses_flake_switch() {
   unset NIXOS_MACHINE_FILE
 }
 
+test_install_nixos_cleans_old_plugin_dirs_before_switch() {
+  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
+  printf '{ username = "alice"; hostName = "mybox"; timeZone = "UTC"; stateVersion = "24.11"; }\n' > "$NIXOS_MACHINE_FILE"
+  local zsh_plugin="$HOME/.local/share/zsh/plugins/zsh-autosuggestions"
+  local tmux_plugin="$HOME/.tmux/plugins/tmux-yank"
+  mkdir -p "$zsh_plugin/.git" "$zsh_plugin.before-home-manager/zsh-autosuggestions" \
+    "$tmux_plugin/.git" "$tmux_plugin.before-home-manager/tmux-yank"
+  sudo() { :; }
+  setup_codebase_memory_mcp() { :; }
+
+  install_nixos >/dev/null 2>&1
+
+  if [ -e "$zsh_plugin" ] || [ -e "$zsh_plugin.before-home-manager" ]; then
+    echo "  FAILED: old zsh plugin dirs should be removed before nixos-rebuild" >> "$ERROR_FILE"
+  fi
+  if [ -e "$tmux_plugin" ] || [ -e "$tmux_plugin.before-home-manager" ]; then
+    echo "  FAILED: old tmux plugin dirs should be removed before nixos-rebuild" >> "$ERROR_FILE"
+  fi
+
+  unset -f sudo setup_codebase_memory_mcp
+  unset NIXOS_MACHINE_FILE
+}
+
 test_update_nixos_uses_flake_switch_upgrade() {
   export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
   printf '{ username = "alice"; hostName = "mybox"; timeZone = "UTC"; stateVersion = "24.11"; }\n' > "$NIXOS_MACHINE_FILE"

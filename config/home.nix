@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 {
   home.username = "quando";
@@ -13,6 +13,41 @@
 
   home.file.".gitconfig" = {
     source = ./shared/.gitconfig;
+    force = true;
+  };
+
+  home.file.".vimrc" = {
+    source = ./shared/.vimrc;
+    force = true;
+  };
+
+  home.file.".tmux.conf" = {
+    source = ./unix/.tmux.conf;
+    force = true;
+  };
+
+  home.file.".zprofile" = {
+    source = ./unix/.zprofile;
+    force = true;
+  };
+
+  home.file.".zshrc.base" = {
+    source = ./unix/.zshrc.base;
+    force = true;
+  };
+
+  home.file.".ssh/config" = {
+    source = ./shared/.ssh/config;
+    force = true;
+  };
+
+  home.file.".claude/settings.json" = {
+    source = ./shared/ai/claude/settings.json;
+    force = true;
+  };
+
+  home.file.".codex/config.toml" = {
+    source = ./shared/ai/codex/config.toml;
     force = true;
   };
 
@@ -75,6 +110,17 @@
 
   xdg.dataFile."zsh/plugins/fzf-tab" = {
     source = "${pkgs.zsh-fzf-tab}/share/fzf-tab";
+    force = true;
+  };
+
+  home.file.".zshrc.mac" = lib.mkIf pkgs.stdenv.isDarwin {
+    source = ./mac/.zshrc.mac;
+    force = true;
+  };
+
+  home.file.".local/bin/caf" = lib.mkIf pkgs.stdenv.isDarwin {
+    source = ./mac/bin/caf;
+    executable = true;
     force = true;
   };
 }

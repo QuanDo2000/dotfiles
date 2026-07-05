@@ -72,6 +72,31 @@ test_home_config_manages_git_and_starship() {
   assert_contains "$home_text" "./shared/config/starship.toml"
 }
 
+test_home_config_owns_remaining_dotfiles() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home_text" "home.file.\".vimrc\""
+  assert_contains "$home_text" "source = ./shared/.vimrc"
+  assert_contains "$home_text" "home.file.\".tmux.conf\""
+  assert_contains "$home_text" "source = ./unix/.tmux.conf"
+  assert_contains "$home_text" "home.file.\".zprofile\""
+  assert_contains "$home_text" "source = ./unix/.zprofile"
+  assert_contains "$home_text" "home.file.\".zshrc.base\""
+  assert_contains "$home_text" "source = ./unix/.zshrc.base"
+  assert_contains "$home_text" "home.file.\".ssh/config\""
+  assert_contains "$home_text" "source = ./shared/.ssh/config"
+  assert_contains "$home_text" "home.file.\".claude/settings.json\""
+  assert_contains "$home_text" "source = ./shared/ai/claude/settings.json"
+  assert_contains "$home_text" "home.file.\".codex/config.toml\""
+  assert_contains "$home_text" "source = ./shared/ai/codex/config.toml"
+  assert_contains "$home_text" "home.file.\".zshrc.mac\""
+  assert_contains "$home_text" "source = ./mac/.zshrc.mac"
+  assert_contains "$home_text" "home.file.\".local/bin/caf\""
+  assert_contains "$home_text" "source = ./mac/bin/caf"
+  assert_contains "$home_text" "pkgs.stdenv.isDarwin"
+}
+
 test_home_manager_backs_up_existing_files() {
   local nixos_text darwin_text
   nixos_text="$(<"$REPO_DIR/config/nixos.nix")"

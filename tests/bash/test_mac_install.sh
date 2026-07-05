@@ -90,6 +90,36 @@ test_update_mac_switches_existing_darwin_rebuild() {
   unset -f command _load_nix_profile sudo setup_codex setup_codebase_memory_mcp
 }
 
+test_darwin_rebuild_cleans_old_plugin_dirs_before_switch() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  local zsh_plugin="$HOME/.local/share/zsh/plugins/zsh-autosuggestions"
+  local tmux_plugin="$HOME/.tmux/plugins/tmux-yank"
+  mkdir -p "$zsh_plugin/.git" "$zsh_plugin.before-home-manager/zsh-autosuggestions" \
+    "$tmux_plugin/.git" "$tmux_plugin.before-home-manager/tmux-yank"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|darwin-rebuild) return 0 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  _load_nix_profile() { :; }
+  sudo() { printf '%s\n' "$*" >> "$calls"; }
+
+  _darwin_rebuild_switch >/dev/null 2>&1
+
+  if [ -e "$zsh_plugin" ] || [ -e "$zsh_plugin.before-home-manager" ]; then
+    echo "  FAILED: old zsh plugin dirs should be removed before darwin-rebuild" >> "$ERROR_FILE"
+  fi
+  if [ -e "$tmux_plugin" ] || [ -e "$tmux_plugin.before-home-manager" ]; then
+    echo "  FAILED: old tmux plugin dirs should be removed before darwin-rebuild" >> "$ERROR_FILE"
+  fi
+
+  unset -f command _load_nix_profile sudo
+}
+
 test_ensure_nix_mac_loads_profile_before_installing() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"
@@ -219,8 +249,7 @@ test_install_extras_dry_run() {
   local output
   output=$(install_extras 2>&1)
 
-  assert_contains "$output" "Installing zsh plugins"
-  assert_contains "$output" "Installing tmux plugins"
+  assert_contains "$output" "managed by Nix"
   assert_contains "$output" "Finished installing extras"
 }
 
@@ -253,8 +282,8 @@ test_setup_dotfiles_dry_run_mac() {
 
   assert_contains "$output" "Setting up dotfiles"
   assert_contains "$output" "Installing packages and programs for Mac"
-  assert_contains "$output" "Installing zsh plugins"
-  assert_contains "$output" "Setting up symlinks"
+  assert_contains "$output" "managed by Nix"
+  assert_contains "$output" "Home Manager manages dotfile links"
   assert_contains "$output" "Done!"
 }
 
@@ -273,8 +302,7 @@ test_dotfile_extras_command_dry() {
   local output
   output=$(bash "$DOTFILE_CMD" --dry extras 2>&1)
 
-  assert_contains "$output" "Installing zsh plugins"
-  assert_contains "$output" "Installing tmux plugins"
+  assert_contains "$output" "managed by Nix"
 }
 
 test_dotfile_symlinks_command_mac() {
@@ -283,6 +311,6 @@ test_dotfile_symlinks_command_mac() {
   local output
   output=$(bash "$DOTFILE_CMD" --dry symlinks 2>&1)
 
-  assert_contains "$output" "Setting up symlinks"
-  assert_contains "$output" "dotfiles/config/mac"
+  assert_contains "$output" "Home Manager manages dotfile links"
+  assert_contains "$output" ".local/bin/dotfile"
 }

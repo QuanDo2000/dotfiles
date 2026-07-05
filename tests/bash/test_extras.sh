@@ -179,3 +179,35 @@ test_install_tmux_plugins_already_installed() {
   fi
   assert_contains "$output" "Finished installing tmux plugins"
 }
+
+# ---------------------------------------------------------------------------
+# install_extras
+# ---------------------------------------------------------------------------
+
+test_install_extras_skips_on_nixos() {
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  mock_uname Linux
+  mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
+
+  local output exit_code=0
+  output=$(OS_RELEASE="$osrel" install_extras 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: install_extras should skip on NixOS ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "managed by Nix"
+}
+
+test_install_extras_skips_on_mac() {
+  mock_uname Darwin
+  mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
+
+  local output exit_code=0
+  output=$(install_extras 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: install_extras should skip on macOS ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "managed by Nix"
+}

@@ -386,24 +386,30 @@ create_fake_command() {
 }
 
 test_setup_symlinks_links_claude_settings() {
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=arch\n' > "$osrel"
+  mock_uname Linux
   create_dotfiles_dirs
   create_fake_command claude
   mkdir -p "$DOTFILES_DIR/config/shared/ai/claude"
   echo '{"enabledPlugins":{}}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
 
-  setup_symlinks
+  OS_RELEASE="$osrel" setup_symlinks
 
   assert_symlink "$HOME/.claude/settings.json" \
     "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
 }
 
 test_setup_symlinks_links_codex_config() {
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=arch\n' > "$osrel"
+  mock_uname Linux
   create_dotfiles_dirs
   create_fake_command codex
   mkdir -p "$DOTFILES_DIR/config/shared/ai/codex"
   echo 'model = "gpt-5.5"' > "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
 
-  setup_symlinks
+  OS_RELEASE="$osrel" setup_symlinks
 
   assert_symlink "$HOME/.codex/config.toml" \
     "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
@@ -457,12 +463,64 @@ test_setup_symlinks_ai_dry_run() {
   fi
 }
 
+test_setup_symlinks_skips_home_manager_files_on_nixos() {
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  mock_uname Linux
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/.ssh" \
+    "$DOTFILES_DIR/config/shared/ai/claude" \
+    "$DOTFILES_DIR/config/shared/ai/codex"
+  echo "git" > "$DOTFILES_DIR/config/shared/.gitconfig"
+  echo "vim" > "$DOTFILES_DIR/config/shared/.vimrc"
+  echo "tmux" > "$DOTFILES_DIR/config/unix/.tmux.conf"
+  echo "ssh" > "$DOTFILES_DIR/config/shared/.ssh/config"
+  echo '{}' > "$DOTFILES_DIR/config/shared/ai/claude/settings.json"
+  echo 'model = "gpt-5.5"' > "$DOTFILES_DIR/config/shared/ai/codex/config.toml"
+
+  OS_RELEASE="$osrel" setup_symlinks
+
+  for path in \
+    "$HOME/.gitconfig" \
+    "$HOME/.vimrc" \
+    "$HOME/.tmux.conf" \
+    "$HOME/.ssh/config" \
+    "$HOME/.claude/settings.json" \
+    "$HOME/.codex/config.toml"; do
+    if [ -e "$path" ] || [ -L "$path" ]; then
+      echo "  FAILED: $path should be left for Home Manager on NixOS" >> "$ERROR_FILE"
+    fi
+  done
+  assert_file_exists "$HOME/.zshrc"
+}
+
+test_setup_symlinks_skips_home_manager_files_on_mac() {
+  mock_uname Darwin
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/mac/bin"
+  echo "git" > "$DOTFILES_DIR/config/shared/.gitconfig"
+  echo "mac" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
+  echo "#!/usr/bin/env bash" > "$DOTFILES_DIR/config/mac/bin/caf"
+
+  setup_symlinks
+
+  for path in "$HOME/.gitconfig" "$HOME/.zshrc.mac" "$HOME/.local/bin/caf"; do
+    if [ -e "$path" ] || [ -L "$path" ]; then
+      echo "  FAILED: $path should be left for Home Manager on macOS" >> "$ERROR_FILE"
+    fi
+  done
+  assert_file_exists "$HOME/.zshrc"
+}
+
 test_setup_symlinks_links_starship_config() {
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=arch\n' > "$osrel"
+  mock_uname Linux
   create_dotfiles_dirs
   mkdir -p "$DOTFILES_DIR/config/shared/config"
   echo 'format = "$character"' > "$DOTFILES_DIR/config/shared/config/starship.toml"
 
-  setup_symlinks
+  OS_RELEASE="$osrel" setup_symlinks
 
   assert_symlink "$HOME/.config/starship.toml" \
     "$DOTFILES_DIR/config/shared/config/starship.toml"
@@ -535,13 +593,12 @@ test_ensure_local_zshrc_dry_run_creates_nothing() {
 
 test_setup_symlinks_links_caf_on_mac() {
   local overwrite_all=false backup_all=false skip_all=false
-  mock_uname Darwin
 
   mkdir -p "$DOTFILES_DIR/config/mac/bin"
   cp "$REPO_DIR/config/mac/bin/caf" "$DOTFILES_DIR/config/mac/bin/caf"
   chmod +x "$DOTFILES_DIR/config/mac/bin/caf"
 
-  setup_symlinks
+  setup_symlinks_folder "$DOTFILES_DIR/config/mac"
 
   assert_symlink "$HOME/.local/bin/caf" "$DOTFILES_DIR/config/mac/bin/caf"
 }

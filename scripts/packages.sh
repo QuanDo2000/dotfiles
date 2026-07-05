@@ -529,8 +529,29 @@ function _ensure_nix_mac {
   fi
 }
 
+_cleanup_home_manager_plugin_migration() {
+  local base="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
+  local path
+  for path in \
+    "$base/zsh-autosuggestions" \
+    "$base/fast-syntax-highlighting" \
+    "$base/fzf-tab" \
+    "$HOME/.tmux/plugins/tmux-yank" \
+    "$HOME/.tmux/plugins/catppuccin/tmux"; do
+    if [[ -e "$path" || -L "$path" ]]; then
+      info "Removing old imperative plugin install: $path"
+      rm -rf "$path" || fail "Failed to remove $path"
+    fi
+    if [[ -e "$path.before-home-manager" || -L "$path.before-home-manager" ]]; then
+      info "Removing old Home Manager plugin backup: $path.before-home-manager"
+      rm -rf "$path.before-home-manager" || fail "Failed to remove $path.before-home-manager"
+    fi
+  done
+}
+
 function _darwin_rebuild_switch {
   _ensure_nix_mac
+  _cleanup_home_manager_plugin_migration
   if command -v darwin-rebuild >/dev/null 2>&1; then
     sudo HOME=/var/root darwin-rebuild switch --flake "$DOTFILES_DIR#mac" \
       || fail "darwin-rebuild switch failed"
@@ -663,6 +684,7 @@ function install_nixos {
   info "Installing packages for NixOS..."
   _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
+    _cleanup_home_manager_plugin_migration
     sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos" \
       || fail "nixos-rebuild switch failed"
     setup_codebase_memory_mcp
@@ -677,6 +699,7 @@ function update_nixos {
   info "Updating packages for NixOS..."
   _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
+    _cleanup_home_manager_plugin_migration
     sudo nixos-rebuild switch --upgrade --flake "$DOTFILES_DIR#nixos" \
       || fail "nixos-rebuild switch --upgrade failed"
     setup_codebase_memory_mcp --update
