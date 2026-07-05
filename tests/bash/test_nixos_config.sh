@@ -53,12 +53,13 @@ test_nixos_uses_tracked_hardware_config() {
   assert_not_contains "$configuration_text" "/etc/nixos/hardware-configuration.nix"
 }
 
-test_home_config_installs_home_manager_cli() {
+test_home_config_uses_program_home_manager_cli() {
   local home_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
 
   assert_contains "$home_text" "home.packages"
-  assert_contains "$home_text" "home-manager"
+  assert_contains "$home_text" "programs.home-manager.enable = true"
+  assert_not_contains "$home_text" "    home-manager"
   assert_contains "$home_text" "neovim"
 }
 
