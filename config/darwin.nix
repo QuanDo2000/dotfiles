@@ -24,6 +24,7 @@
     zoxide
     jujutsu
     starship
+    nodejs
   ];
 
   home-manager.useGlobalPkgs = true;

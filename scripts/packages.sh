@@ -417,7 +417,7 @@ function setup_codebase_memory_mcp {
 # build-essential: nvim-treesitter compiles parsers with cc.
 # xz-utils: required to extract the Zig .tar.xz in `dotfile languages zig`.
 DEBIAN_PACKAGES=(
-  build-essential curl git xz-utils
+  build-essential curl git xz-utils nodejs
   unzip zsh tmux neovim fontconfig fzf fd-find ripgrep
   procps file zoxide
 )
@@ -457,7 +457,7 @@ function install_debian {
 ARCH_PACKAGES=(
   base-devel curl git unzip zsh tmux neovim fontconfig
   fzf fd ripgrep lazygit ttf-firacode-nerd zoxide
-  gnupg wl-clipboard openssh lua51 luarocks nvm
+  gnupg wl-clipboard openssh nodejs lua51 luarocks nvm
   tree-sitter-cli jujutsu starship
 )
 
@@ -487,18 +487,31 @@ function install_arch {
 
 MAC_BREW_PACKAGES=(
   bash tmux git neovim fzf fd ripgrep font-fira-code-nerd-font
-  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide jj starship
+  gnupg pinentry-mac jesseduffield/lazygit/lazygit ast-grep zoxide jj starship node
 )
 MAC_BREW_CASKS=(ghostty)
 
 function _load_nix_profile {
-  local profile
+  local profile status
   for profile in \
     /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh \
     /nix/var/nix/profiles/default/etc/profile.d/nix.sh \
     "$HOME/.nix-profile/etc/profile.d/nix.sh"; do
     # shellcheck disable=SC1090
-    [[ -f "$profile" ]] && source "$profile"
+    if [[ -f "$profile" ]]; then
+      status=0
+      case $- in
+        *u*)
+          set +u
+          source "$profile" || status=$?
+          set -u
+          ;;
+        *)
+          source "$profile" || status=$?
+          ;;
+      esac
+      (( status == 0 )) || return "$status"
+    fi
   done
 }
 
@@ -509,6 +522,7 @@ function _install_lix_mac {
 }
 
 function _ensure_nix_mac {
+  _load_nix_profile
   if ! command -v nix >/dev/null 2>&1; then
     _install_lix_mac
     _load_nix_profile
@@ -518,10 +532,10 @@ function _ensure_nix_mac {
 function _darwin_rebuild_switch {
   _ensure_nix_mac
   if command -v darwin-rebuild >/dev/null 2>&1; then
-    sudo darwin-rebuild switch --flake "$DOTFILES_DIR#mac" \
+    sudo HOME=/var/root darwin-rebuild switch --flake "$DOTFILES_DIR#mac" \
       || fail "darwin-rebuild switch failed"
   else
-    sudo nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$DOTFILES_DIR#mac" \
+    sudo HOME=/var/root nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$DOTFILES_DIR#mac" \
       || fail "nix-darwin bootstrap switch failed"
   fi
 }

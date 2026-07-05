@@ -67,7 +67,10 @@ test_verify_command_runs() {
 test_dry_run_default_command() {
   # Unix installer does not target Windows (Windows has its own PowerShell setup).
   is_windows_bash && return 0
-  assert_exit_code 0 bash "$DOTFILE_CMD" --dry all
+  local output
+  output=$(bash "$DOTFILE_CMD" --dry all 2>&1)
+  assert_contains "$output" "Installing packages"
+  assert_not_contains "$output" "Updating packages"
 }
 
 test_all_runs_obsidian_on_arch_with_prereqs() {

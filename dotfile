@@ -51,7 +51,6 @@ function update_repo {
 
 function setup_dotfiles {
   info "Setting up dotfiles..."
-  update_packages
   install_packages
   update_repo
   install_extras

@@ -364,12 +364,24 @@ test_arch_packages_include_neovim() {
   assert_contains "${ARCH_PACKAGES[*]}" "neovim"
 }
 
+test_arch_packages_include_nodejs_for_codex_hooks() {
+  assert_contains "${ARCH_PACKAGES[*]}" "nodejs"
+}
+
 test_debian_packages_include_neovim() {
   assert_contains "${DEBIAN_PACKAGES[*]}" "neovim"
 }
 
+test_debian_packages_include_nodejs_for_codex_hooks() {
+  assert_contains "${DEBIAN_PACKAGES[*]}" "nodejs"
+}
+
 test_mac_packages_include_starship() {
   assert_contains "${MAC_BREW_PACKAGES[*]}" "starship"
+}
+
+test_mac_packages_include_node_for_codex_hooks() {
+  assert_contains "${MAC_BREW_PACKAGES[*]}" "node"
 }
 
 # ---------------------------------------------------------------------------

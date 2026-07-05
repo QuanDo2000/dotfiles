@@ -58,7 +58,7 @@ test_install_mac_bootstraps_nix_darwin_without_brew() {
   local output
   output="$(<"$calls")"
   assert_contains "$output" "install-lix"
-  assert_contains "$output" "nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
+  assert_contains "$output" "HOME=/var/root nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
   assert_not_contains "$output" "brew"
 
   unset -f command _install_lix_mac _load_nix_profile sudo setup_codex setup_codebase_memory_mcp
@@ -84,10 +84,45 @@ test_update_mac_switches_existing_darwin_rebuild() {
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "darwin-rebuild switch --flake $DOTFILES_DIR#mac"
+  assert_contains "$output" "HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
   assert_not_contains "$output" "brew"
 
   unset -f command _load_nix_profile sudo setup_codex setup_codebase_memory_mcp
+}
+
+test_ensure_nix_mac_loads_profile_before_installing() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  local nix_available=false
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "nix" ]]; then
+      [[ "$nix_available" == "true" ]]
+      return
+    fi
+    builtin command "$@"
+  }
+  _load_nix_profile() {
+    printf '%s\n' "load-profile" >> "$calls"
+    nix_available=true
+  }
+  _install_lix_mac() { printf '%s\n' "install-lix" >> "$calls"; }
+
+  _ensure_nix_mac
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "load-profile"
+  assert_not_contains "$output" "install-lix"
+
+  unset -f command _load_nix_profile _install_lix_mac
+}
+
+test_load_nix_profile_tolerates_unset_zsh_version() {
+  local profile_dir="$HOME/.nix-profile/etc/profile.d"
+  mkdir -p "$profile_dir"
+  printf 'if [[ -n "$ZSH_VERSION" ]]; then :; fi\n' > "$profile_dir/nix.sh"
+
+  assert_exit_code 0 _load_nix_profile
 }
 
 # ---------------------------------------------------------------------------
