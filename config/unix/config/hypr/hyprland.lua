@@ -33,7 +33,6 @@ hl.monitor({
 
 local terminal    = "ghostty"
 local fileManager = "dolphin"
-local menu        = "vicinae toggle"
 local musicPlayer = "kew"
 local anki        = "anki"
 local mainMod     = "SUPER"
@@ -44,10 +43,8 @@ local mainMod     = "SUPER"
 
 hl.on("hyprland.start", function()
     hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
-    hl.exec_cmd("waybar & dunst & hypridle")
+    hl.exec_cmd("waybar")
     hl.exec_cmd("systemctl --user start hyprpolkitagent")
-    hl.exec_cmd("copyq --start-server")
-    hl.exec_cmd("vicinae server")
     hl.exec_cmd("fcitx5 -d")
     hl.exec_cmd("[workspace 1 silent] " .. terminal .. " +new-window")
 end)
@@ -125,18 +122,6 @@ hl.config({
     },
 })
 
-hl.layer_rule({
-    name = "blur-vicinae",
-    match = { namespace = "vicinae" },
-    blur = true,
-})
-
-hl.layer_rule({
-    name = "ignorealpha-vicinae",
-    match = { namespace = "vicinae" },
-    ignore_alpha = 0,
-})
-
 ---------------
 ---- INPUT ----
 ---------------
@@ -164,11 +149,9 @@ hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(fileManager .. " /mnt/storage
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("google-chrome-stable"))
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(terminal .. " -e " .. musicPlayer .. " all"))
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(anki))
-hl.bind(mainMod .. " + Space", hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + O", hl.dsp.layout("togglesplit"))
-hl.bind("PRINT", hl.dsp.exec_cmd("hyprshot -m region"))
 
 hl.bind(mainMod .. " + H", hl.dsp.focus({ direction = "left" }))
 hl.bind(mainMod .. " + L", hl.dsp.focus({ direction = "right" }))
@@ -195,13 +178,6 @@ hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, repeating = true })
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"), { locked = true, repeating = true })
-
-hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })
-hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
 
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("pkill waybar && waybar &"))
 

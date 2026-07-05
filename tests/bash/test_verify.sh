@@ -64,30 +64,13 @@ test_verify_error_count() {
   assert_contains "$output" "issue(s) found"
 }
 
-test_verify_zsh_plugin_detected() {
-  mkdir -p "$DOTFILES_DIR"
-  mkdir -p "$HOME/.local/share/zsh/plugins/zsh-autosuggestions"
-  local output
-  output=$(verify 2>&1) || true
-  assert_contains "$output" "zsh plugin: zsh-autosuggestions"
-}
-
-test_verify_starship_checked() {
+test_verify_is_a_small_smoke_check() {
   mkdir -p "$DOTFILES_DIR"
   local output
   output=$(verify 2>&1) || true
-  # starship is in REQUIRED_TOOLS, so verify reports it either way.
-  if [[ "$output" != *"starship"* ]]; then
-    echo "  FAILED: verify should check for starship" >> "$ERROR_FILE"
+  if [[ "$output" == *"starship"* || "$output" == *"zsh plugin"* || "$output" == *"tmux plugin"* ]]; then
+    echo "  FAILED: verify should only smoke-check core symlinks and local zshrc" >> "$ERROR_FILE"
   fi
-}
-
-test_verify_tmux_plugin_detected() {
-  mkdir -p "$DOTFILES_DIR"
-  mkdir -p "$HOME/.tmux/plugins/tmux-yank"
-  local output
-  output=$(verify 2>&1) || true
-  assert_contains "$output" "tmux plugin: tmux-yank"
 }
 
 test_verify_symlink_wrong_target() {

@@ -68,8 +68,6 @@ Commands:
   update      Update system packages only
   packages    Install system packages only
   extras      Install zsh plugins, tmux plugins
-  zsh         Install zsh plugins
-  tmux        Install tmux plugins
   symlinks    Create symlinks only
   obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank). LANG selects one.
@@ -120,10 +118,6 @@ packages)
   install_packages
   ;;
 extras) install_extras ;;
-zsh)
-  install_zsh_plugins
-  ;;
-tmux) install_tmux_plugins ;;
 symlinks) setup_symlinks ;;
 obsidian) setup_obsidian ;;
 languages) install_languages "${2:-}" ;;

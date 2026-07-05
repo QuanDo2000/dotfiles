@@ -3,37 +3,8 @@ set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
 
-# Binaries expected on PATH after install_packages has run.
-# Keep in sync with scripts/packages.sh (DEBIAN_PACKAGES / ARCH_PACKAGES / MAC_BREW_PACKAGES).
-REQUIRED_TOOLS=(git zsh nvim tmux fzf fd rg lazygit zoxide starship)
-
-# Symlinked dotfiles under $HOME (resolved to $DOTFILES_DIR/...).
-# Keep in sync with scripts/symlinks.sh and the config/{shared,unix} layout.
+# Core symlinked dotfiles under $HOME. This is a smoke check, not a full package audit.
 REQUIRED_SYMLINKS=(.zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
-
-# Helper: check that a command exists on PATH.
-# Increments $errors on failure.
-_check_tool() {
-  local cmd="$1"
-  if command -v "$cmd" >/dev/null 2>&1; then
-    success "$cmd found: $(command -v "$cmd")"
-  else
-    fail_soft "$cmd not found"
-    errors=$((errors + 1))
-  fi
-}
-
-# Helper: check that a directory exists.
-# $1 = path, $2 = label shown on success, $3 = label shown on failure.
-_check_dir() {
-  local path="$1" ok_msg="$2" fail_msg="$3"
-  if [ -d "$path" ]; then
-    success "$ok_msg"
-  else
-    fail_soft "$fail_msg"
-    errors=$((errors + 1))
-  fi
-}
 
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {
@@ -75,22 +46,6 @@ _check_local_zshrc() {
 
 function verify {
   local errors=0
-
-  info "Verifying installed tools..."
-  for cmd in "${REQUIRED_TOOLS[@]}"; do
-    _check_tool "$cmd"
-  done
-
-  info "Verifying zsh plugins..."
-  local plugins_dir="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
-  for plugin in zsh-autosuggestions fast-syntax-highlighting fzf-tab; do
-    _check_dir "$plugins_dir/$plugin" "zsh plugin: $plugin" "zsh plugin missing: $plugin"
-  done
-
-  info "Verifying tmux plugins..."
-  for plugin_dir in "tmux-yank" "catppuccin/tmux"; do
-    _check_dir "$HOME/.tmux/plugins/$plugin_dir" "tmux plugin: $plugin_dir" "tmux plugin missing: $plugin_dir"
-  done
 
   info "Verifying symlinks..."
   for f in "${REQUIRED_SYMLINKS[@]}"; do

@@ -56,11 +56,13 @@ dotfile [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
+  update      Update system packages and language toolchains
   packages    Install system packages only
-  extras      Install zsh plugins, tmux plugins, starship prompt
-  zsh         Install zsh plugins
-  tmux        Install tmux plugins
+  extras      Install zsh and tmux plugins
   symlinks    Create symlinks only
+  obsidian    Set up Obsidian headless sync (Linux only; runs separately from 'all')
+  languages [LANG]  Install language toolchains (zig, odin, gleam, jank)
+  ai          Install AI coding CLIs
   verify      Verify installation
 
 Options:
@@ -70,7 +72,7 @@ Options:
   -h, --help  Show this help message
 ```
 
-Note: `.zshrc` is **copied** into `$HOME` (not symlinked) so local edits don't propagate back into the repo. All other dotfiles are symlinked.
+Note: `.zshrc` is machine-local (not symlinked) so local installer edits don't dirty the repo. It sources the tracked `~/.zshrc.base`.
 
 ## Provisioning a fresh NixOS machine
 
@@ -85,7 +87,7 @@ On the first run, per-machine values (username, hostname, timezone, NixOS
 stateVersion) are auto-detected and you confirm or override each; they're saved
 to `/etc/nixos/machine.nix`. `hardware-configuration.nix` is used in place. Later
 runs are silent. Then `sudo bash ./dotfile all` for the rest of the dotfiles
-(symlinks, zsh/tmux plugins).
+(symlinks, plugins).
 
 On a brand-new machine, run `sudo nixos-rebuild build` once before the first
 `switch` to confirm the config evaluates. If your channel is older than

@@ -49,7 +49,7 @@ Files in `config/` subdirectories of each platform layer are symlinked into `~/.
 
 Both loose files and directories under a layer's `config/` are linked into `~/.config/` by their basename (e.g. `config/shared/config/starship.toml` -> `~/.config/starship.toml`, `config/shared/config/nvim/` -> `~/.config/nvim/`).
 
-Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` -> `~/.ssh/config`, `config/shared/ai/claude/settings.json` -> `~/.claude/settings.json`, and `config/shared/ai/codex/config.toml` -> `~/.codex/config.toml`. Note codex rewrites its `config.toml` at runtime, so that symlink can periodically dirty the repo. Only the listed files are linked - caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
+Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` -> `~/.ssh/config` and `config/shared/ai/claude/settings.json` -> `~/.claude/settings.json`. Codex config stays machine-local because Codex rewrites runtime state into `~/.codex/config.toml`. Only the listed files are linked - caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
 
 `~/.zshrc` is the one shell file that is **machine-local, not symlinked**. All tracked zsh config lives in `config/unix/.zshrc.base` (symlinked to `~/.zshrc.base`). `setup_symlinks` calls `_ensure_local_zshrc`, which creates `~/.zshrc` if missing - a stub that just sources `~/.zshrc.base` - and replaces it if an older setup left it symlinked into the repo. This keeps the repo clean: tool installers (nvm, bun, pnpm, ...) append their lines to the real `~/.zshrc` below the source line, so per-machine edits never modify tracked files. Existing local `~/.zshrc` files are never overwritten.
 
@@ -91,7 +91,7 @@ Add a `tests/bash/test_<name>.sh` (and `tests/powershell/test_<name>.ps1` if Win
 oh-my-zsh is no longer used. On a machine provisioned before this change:
 
 1. `dotfile packages`  # installs starship
-2. `dotfile zsh`       # clones plugins to ~/.local/share/zsh/plugins
+2. `dotfile extras`    # clones plugins to ~/.local/share/zsh/plugins
 3. `dotfile symlinks`  # links ~/.config/starship.toml and the new .zshrc files
 4. `rm -rf ~/.oh-my-zsh`  # optional: remove the now-unused framework
 

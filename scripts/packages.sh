@@ -314,9 +314,20 @@ _lazygit_asset() { echo "lazygit_${1#v}_Linux_$(_lazygit_arch).tar.gz"; }
 # Install or update lazygit (Debian only — Arch uses pacman, macOS brew).
 function setup_lazygit { setup_gh_binary lazygit jesseduffield/lazygit _lazygit_asset "${1:-}"; }
 
+# Echo starship's Linux release asset arch for the current machine.
+_starship_arch() {
+  case "$(uname -m)" in
+    x86_64)        echo "x86_64" ;;
+    aarch64|arm64) echo "aarch64" ;;
+    *) fail "Unsupported arch for starship: $(uname -m)" ;;
+  esac
+}
+
+_starship_asset() { echo "starship-$(_starship_arch)-unknown-linux-gnu.tar.gz"; }
+
 # Install or update the starship prompt. Arch installs it via pacman and macOS
 # via brew (see ARCH_PACKAGES / MAC_BREW_PACKAGES); Debian apt does not reliably
-# ship starship, so install it via the official script into ~/.local/bin.
+# ship starship, so install the checked GitHub release into ~/.local/bin.
 # Idempotent: in install mode, no-op if `starship` is already on PATH; --update
 # always reinstalls the latest. Usage: setup_starship [--update]
 function setup_starship {
@@ -329,10 +340,15 @@ function setup_starship {
       success "Finished starship"
       return
     fi
-    mkdir -p "$HOME/.local/bin"
-    curl -sS https://starship.rs/install.sh \
-      | sh -s -- -y -b "$HOME/.local/bin" \
-      || fail "Failed to install starship"
+    ensure_jq
+    local release_json tag asset
+    release_json="$(http_get_retry "https://api.github.com/repos/starship/starship/releases/latest")" \
+      || fail "Failed to fetch starship releases/latest"
+    tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
+    [[ -n "$tag" ]] || fail "Could not read tag_name from starship releases/latest"
+    asset="$(_starship_asset)"
+    _install_from_github_release starship starship "$release_json" "$tag" \
+      "$asset" "flat-binary" "starship"
   fi
   success "Finished starship"
 }
