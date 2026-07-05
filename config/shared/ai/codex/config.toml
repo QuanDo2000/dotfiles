@@ -86,4 +86,7 @@ trusted_hash = "sha256:2a3c9015a1fe10f0809ffec8da3d67c326e27c38ebf720725099283b1
 
 [hooks.state."ponytail@ponytail:hooks/claude-codex-hooks.json:subagent_start:0:0"]
 trusted_hash = "sha256:4765354e31cc783c9cc7379f8beac7ac7ff68743c3cd7dad333d1f6a64e7a6f3"
+
+[hooks.state."/Users/quando/.codex/config.toml:session_start:0:0"]
+trusted_hash = "sha256:ed997f3f9766959ba56dc2243cd02468d6eadad80d92b7f5a650e6fc0fb0c050"
 # <<< codebase-memory-mcp SessionStart <<<
