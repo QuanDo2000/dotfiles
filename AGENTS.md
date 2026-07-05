@@ -4,7 +4,7 @@ This file provides guidance to coding agents when working with code in this repo
 
 ## Overview
 
-Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The installer clones this repo to `~/dotfiles` and runs shell scripts to install packages, set up extras (zsh plugins, tmux plugins, starship prompt), and create symlinks.
+Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The installer clones this repo to `~/dotfiles` and runs shell scripts to install packages, set up extras where still needed, and create symlinks.
 
 ## Key Commands
 
@@ -12,7 +12,7 @@ Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The in
 dotfile                      # Full setup (packages -> extras -> symlinks)
 dotfile symlinks             # Create symlinks only
 dotfile packages             # Install system packages only
-dotfile extras               # Install zsh plugins, tmux plugins, starship prompt
+dotfile extras               # Install zsh and tmux plugins where not Home Manager-managed
 dotfile verify               # Verify core Unix symlinks
 dotfile update               # Update system packages and language toolchains
 dotfile languages [LANG]     # Install language toolchains (zig, odin, gleam, jank)
@@ -30,8 +30,8 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 - **dotfile.ps1** - Windows equivalent (PowerShell) at the repo root. Same subcommand structure; symlinked into `$HOME\.local\bin\` by `SetupSymlinks`.
 - **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
-  - `packages.sh` - OS-specific package installation (apt/pacman/brew).
-  - `extras.sh` - zsh plugins (cloned to `~/.local/share/zsh/plugins`) and the directly-cloned tmux plugins (tmux-yank, catppuccin); no tmux plugin manager (sensible/pain-control are inlined in `.tmux.conf`). The prompt is starship (config at `config/shared/starship/starship.toml`, symlinked to `~/.config/starship.toml` on all platforms).
+  - `packages.sh` - OS-specific package installation (apt/pacman on non-Nix Linux, NixOS flakes, nix-darwin bootstrap on macOS).
+  - `extras.sh` - zsh plugins (cloned to `~/.local/share/zsh/plugins`) and the directly-cloned tmux plugins (tmux-yank, catppuccin) for non-Home-Manager paths; no tmux plugin manager (sensible/pain-control are inlined in `.tmux.conf`). On NixOS these plugin paths are managed by Home Manager from `config/home.nix`.
   - `symlinks.sh` - Links dotfiles to `$HOME`. Files in `bin/` directories under each platform layer are symlinked into `$HOME/.local/bin/`.
   - `verify.sh` - Post-install checks.
 
@@ -43,7 +43,7 @@ Platform config lives under `config/`. Symlinks are created in priority order by
 2. **config/unix/** - Linux/macOS-specific (`.zshrc.base`, `.tmux.conf`, ghostty, hyprland, waybar, lazygit, fcitx5).
 3. **config/mac/** - macOS-only (`.zshrc.mac`), applied only when `uname == Darwin`.
 4. **config/windows/** - Windows-specific (PowerShell profile, Windows Terminal settings). Used by `dotfile.ps1`.
-5. **config/nixos/** - NixOS-only. `configuration.nix` is a tracked full-desktop system config used through the repo flake. Per-machine values (username, hostname, timezone, stateVersion) live in tracked `config/host.nix`; edit that file when provisioning a different host. `hardware-configuration.nix` is used in place from `/etc/nixos` and is not tracked. App config files (hyprland, waybar, etc.) are managed by Home Manager from `config/home.nix`. On NixOS the imperative `setup_*` installers are skipped; packages come from the rebuild.
+5. **config/nixos/** - NixOS-only. `configuration.nix` is a tracked full-desktop system config used through the repo flake. Per-machine values (username, hostname, timezone, stateVersion) live in tracked `config/host.nix`; hardware settings live in tracked `config/hardware-configuration.nix`. Edit those files when provisioning a different host. App config files (hyprland, waybar, etc.) and shell/tmux plugin paths are managed by Home Manager from `config/home.nix`. On NixOS the imperative `setup_*` installers are skipped; packages come from the rebuild.
 
 Files in `config/` subdirectories of each platform layer are symlinked into `~/.config/`. Top-level dotfiles are symlinked directly to `$HOME`.
 

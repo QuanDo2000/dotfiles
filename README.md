@@ -75,22 +75,19 @@ Note: `.zshrc` is machine-local (not symlinked) so local installer edits don't d
 
 ## Provisioning a fresh NixOS machine
 
-On a freshly-installed NixOS box (so `/etc/nixos/hardware-configuration.nix`
-already exists):
+On a freshly-installed NixOS box:
 
 ```bash
 nix-shell -p git --run 'git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles && cd ~/dotfiles && sudo bash ./dotfile packages'
 ```
 
-Per-machine values live in tracked `config/host.nix`; edit that file before the
-first rebuild if the username, hostname, timezone, or NixOS stateVersion differ.
-`hardware-configuration.nix` is used in place. Then `sudo bash ./dotfile all`
-for the rest of the dotfiles.
+Per-machine values live in tracked `config/host.nix`; hardware settings live in
+tracked `config/hardware-configuration.nix`. Edit those files before the first
+rebuild if the username, hostname, timezone, NixOS stateVersion, disks, or CPU
+settings differ. Then `sudo bash ./dotfile all` for the rest of the dotfiles.
 
-On a brand-new machine, run `sudo nixos-rebuild build` once before the first
-`switch` to confirm the config evaluates. If your channel is older than
-nixos-unstable / 25.05, `ghostty` and `codex` are skipped automatically
-rather than failing the build.
+On a brand-new machine, run `sudo nixos-rebuild build --flake ~/dotfiles#nixos`
+once before the first `switch` to confirm the config evaluates.
 
 ## Testing
 
