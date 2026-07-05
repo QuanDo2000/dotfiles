@@ -418,7 +418,8 @@ test_install_nixos_uses_flake_switch() {
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "nixos-rebuild switch --flake $DOTFILES_DIR#nixos --impure"
+  assert_contains "$output" "nixos-rebuild switch --flake $DOTFILES_DIR#nixos"
+  assert_not_contains "$output" "--impure"
 
   unset -f sudo
   unset -f setup_codebase_memory_mcp
@@ -436,7 +437,8 @@ test_update_nixos_uses_flake_switch_upgrade() {
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#nixos --impure"
+  assert_contains "$output" "nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#nixos"
+  assert_not_contains "$output" "--impure"
 
   unset -f sudo
   unset -f setup_codebase_memory_mcp

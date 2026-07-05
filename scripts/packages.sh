@@ -619,7 +619,7 @@ function install_nixos {
   info "Installing packages for NixOS..."
   _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
-    sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos" --impure \
+    sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos" \
       || fail "nixos-rebuild switch failed"
     setup_codebase_memory_mcp
   fi
@@ -633,7 +633,7 @@ function update_nixos {
   info "Updating packages for NixOS..."
   _nixos_ensure_linked
   if [[ "$DRY" == "false" ]]; then
-    sudo nixos-rebuild switch --upgrade --flake "$DOTFILES_DIR#nixos" --impure \
+    sudo nixos-rebuild switch --upgrade --flake "$DOTFILES_DIR#nixos" \
       || fail "nixos-rebuild switch --upgrade failed"
     setup_codebase_memory_mcp --update
   fi

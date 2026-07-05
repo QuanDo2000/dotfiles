@@ -17,6 +17,7 @@ test_flake_uses_flat_nix_config_files() {
 
   assert_file_exists "$REPO_DIR/config/home.nix"
   assert_file_exists "$REPO_DIR/config/host.nix"
+  assert_file_exists "$REPO_DIR/config/hardware-configuration.nix"
   assert_file_exists "$REPO_DIR/config/nixos.nix"
   assert_file_exists "$REPO_DIR/config/darwin.nix"
   assert_contains "$flake_text" "./config/home.nix"
@@ -39,6 +40,17 @@ test_nixos_uses_tracked_host_config() {
   assert_contains "$configuration_text" "import ../host.nix"
   assert_not_contains "$nixos_text" "/etc/nixos/machine.nix"
   assert_not_contains "$configuration_text" "/etc/nixos/machine.nix"
+}
+
+test_nixos_uses_tracked_hardware_config() {
+  local hardware_text configuration_text
+  hardware_text="$(<"$REPO_DIR/config/hardware-configuration.nix")"
+  configuration_text="$(<"$REPO_DIR/config/nixos/configuration.nix")"
+
+  assert_contains "$hardware_text" 'nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux"'
+  assert_contains "$hardware_text" 'fileSystems."/"'
+  assert_contains "$configuration_text" "../hardware-configuration.nix"
+  assert_not_contains "$configuration_text" "/etc/nixos/hardware-configuration.nix"
 }
 
 test_home_config_installs_home_manager_cli() {
