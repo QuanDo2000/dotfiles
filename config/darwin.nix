@@ -1,13 +1,16 @@
 { pkgs, ... }:
 
+let
+  machine = import ./host.nix;
+in
 {
   system.stateVersion = 6;
-  system.primaryUser = "quando";
+  system.primaryUser = machine.username;
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nixpkgs.config.allowUnfree = true;
 
-  users.users.quando.home = "/Users/quando";
+  users.users.${machine.username}.home = "/Users/${machine.username}";
   programs.zsh.enable = true;
 
   environment.systemPackages = with pkgs; [
@@ -19,5 +22,5 @@
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.backupFileExtension = "before-home-manager";
-  home-manager.users.quando = import ./home.nix;
+  home-manager.users.${machine.username} = import ./home.nix;
 }

@@ -45,6 +45,19 @@ test_nixos_uses_tracked_host_config() {
   assert_not_contains "$configuration_text" "/etc/nixos/machine.nix"
 }
 
+test_darwin_uses_tracked_host_username() {
+  local darwin_text
+  darwin_text="$(<"$REPO_DIR/config/darwin.nix")"
+
+  assert_contains "$darwin_text" "machine = import ./host.nix"
+  assert_contains "$darwin_text" "system.primaryUser = machine.username"
+  assert_contains "$darwin_text" "users.users.\${machine.username}.home"
+  assert_contains "$darwin_text" "home-manager.users.\${machine.username}"
+  assert_not_contains "$darwin_text" 'system.primaryUser = "quando"'
+  assert_not_contains "$darwin_text" "users.users.quando"
+  assert_not_contains "$darwin_text" "home-manager.users.quando"
+}
+
 test_nixos_uses_tracked_hardware_config() {
   local hardware_text configuration_text
   hardware_text="$(<"$REPO_DIR/config/hardware-configuration.nix")"
@@ -165,7 +178,7 @@ test_darwin_config_manages_core_packages() {
   assert_contains "$darwin_text" "git"
   assert_contains "$darwin_text" "ast-grep"
   assert_contains "$darwin_text" "programs.zsh.enable = true"
-  assert_contains "$darwin_text" "system.primaryUser = \"quando\""
+  assert_contains "$darwin_text" "system.primaryUser = machine.username"
 }
 
 test_darwin_system_packages_leave_user_tools_to_home_manager() {
