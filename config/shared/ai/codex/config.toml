@@ -31,6 +31,9 @@ trust_level = "trusted"
 [projects."/Users/quando"]
 trust_level = "trusted"
 
+[projects."/home/quando"]
+trust_level = "trusted"
+
 [mcp_servers.codebase-memory-mcp]
 command = "/usr/bin/env"
 args = ["codebase-memory-mcp"]
