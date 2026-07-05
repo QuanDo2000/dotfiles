@@ -22,6 +22,10 @@ in
     jujutsu
     starship
     ast-grep
+    zig
+    odin
+    gleam
+    beamPackages.erlang
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     fontconfig
     nerd-fonts.fira-code

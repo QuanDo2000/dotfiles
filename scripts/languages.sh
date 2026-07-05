@@ -57,7 +57,13 @@ _local_installed_version() {
 # Foreign installs (system/brew/scoop) are left alone.
 _update_if_ours() {
   local name="$1" install_fn="$2"
-  [[ -n "$(_local_installed_version "$name")" ]] && "$install_fn"
+  local current
+  current="$(_local_installed_version "$name")"
+  if _home_manager_manages_languages; then
+    [[ -n "$current" ]] && info "$name is managed by Home Manager on $(detect_platform); skipping update"
+    return 0
+  fi
+  [[ -n "$current" ]] && "$install_fn"
   return 0
 }
 
@@ -228,15 +234,31 @@ install_zig() {
 
 update_zig() { _update_if_ours zig install_zig; }
 
+_home_manager_manages_languages() {
+  case "$(detect_platform)" in
+    arch|nixos|mac) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+_install_or_skip_home_manager_language() {
+  local label="$1" install_fn="$2"
+  if _home_manager_manages_languages; then
+    info "$label is managed by Home Manager on $(detect_platform); skipping"
+    return 0
+  fi
+  "$install_fn"
+}
+
 # Umbrella: install all languages, or just one if specified.
 # Usage: install_languages [LANG]
 install_languages() {
   local target="${1:-all}"
   case "$target" in
-    all|"") install_zig; install_odin; install_gleam; install_jank ;;
-    zig)    install_zig ;;
-    odin)   install_odin ;;
-    gleam)  install_gleam ;;
+    all|"") _install_or_skip_home_manager_language Zig install_zig; _install_or_skip_home_manager_language Odin install_odin; _install_or_skip_home_manager_language Gleam install_gleam; install_jank ;;
+    zig)    _install_or_skip_home_manager_language Zig install_zig ;;
+    odin)   _install_or_skip_home_manager_language Odin install_odin ;;
+    gleam)  _install_or_skip_home_manager_language Gleam install_gleam ;;
     jank)   install_jank ;;
     *)      fail "Unknown language: $target" ;;
   esac

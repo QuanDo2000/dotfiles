@@ -314,6 +314,8 @@ test_update_zig_skips_foreign_install() {
 
 test_update_zig_dry_run_when_ours() {
   DRY=true
+  detect_platform() { echo "debian"; }
+  export -f detect_platform
   mkdir -p "$HOME/.local/zig-0.14.0"
   touch "$HOME/.local/zig-0.14.0/zig"
   ln -s "$HOME/.local/zig-0.14.0/zig" "$HOME/.local/bin/zig"
@@ -326,13 +328,35 @@ test_update_zig_dry_run_when_ours() {
   assert_contains "$output" "Installing Zig"
 }
 
+test_update_languages_nix_managed_skips_local_toolchain_updates() {
+  DRY=true
+  detect_platform() { echo "nixos"; }
+  export -f detect_platform
+  for lang in zig odin gleam; do
+    mkdir -p "$HOME/.local/$lang-old"
+    touch "$HOME/.local/$lang-old/$lang"
+    ln -s "$HOME/.local/$lang-old/$lang" "$HOME/.local/bin/$lang"
+  done
+
+  local output
+  output=$(update_languages 2>&1)
+  assert_contains "$output" "zig is managed by Home Manager on nixos"
+  assert_contains "$output" "odin is managed by Home Manager on nixos"
+  assert_contains "$output" "gleam is managed by Home Manager on nixos"
+  assert_not_contains "$output" "Installing Zig"
+  assert_not_contains "$output" "Installing Odin"
+  assert_not_contains "$output" "Installing Gleam"
+}
+
 # ---------------------------------------------------------------------------
 # install_languages
 # ---------------------------------------------------------------------------
 
 test_install_languages_dry_run() {
   DRY=true
+  detect_platform() { echo "debian"; }
   ensure_pkg() { return 0; }
+  export -f detect_platform
   export -f ensure_pkg
 
   local output
@@ -345,7 +369,9 @@ test_install_languages_dry_run() {
 
 test_install_languages_zig_only_arg() {
   DRY=true
+  detect_platform() { echo "debian"; }
   ensure_pkg() { return 0; }
+  export -f detect_platform
   export -f ensure_pkg
 
   local output
@@ -355,7 +381,9 @@ test_install_languages_zig_only_arg() {
 
 test_install_languages_all_arg() {
   DRY=true
+  detect_platform() { echo "debian"; }
   ensure_pkg() { return 0; }
+  export -f detect_platform
   export -f ensure_pkg
 
   local output
@@ -363,6 +391,19 @@ test_install_languages_all_arg() {
   assert_contains "$output" "Installing Zig"
   assert_contains "$output" "Installing Odin"
   assert_contains "$output" "Installing Gleam"
+  assert_contains "$output" "Installing Jank"
+}
+
+test_install_languages_nix_managed_skips_nix_packages() {
+  DRY=true
+  detect_platform() { echo "nixos"; }
+  export -f detect_platform
+
+  local output
+  output=$(install_languages all 2>&1)
+  assert_contains "$output" "Zig is managed by Home Manager on nixos"
+  assert_contains "$output" "Odin is managed by Home Manager on nixos"
+  assert_contains "$output" "Gleam is managed by Home Manager on nixos"
   assert_contains "$output" "Installing Jank"
 }
 
@@ -395,7 +436,9 @@ test_install_languages_unknown_fails() {
 
 test_install_languages_gleam_only_arg() {
   DRY=true
+  detect_platform() { echo "debian"; }
   ensure_pkg() { return 0; }
+  export -f detect_platform
   export -f ensure_pkg
 
   local output
@@ -411,7 +454,9 @@ test_install_languages_gleam_only_arg() {
 
 test_install_languages_odin_only_arg() {
   DRY=true
+  detect_platform() { echo "debian"; }
   ensure_jq() { return 0; }
+  export -f detect_platform
   export -f ensure_jq
 
   local output
@@ -591,6 +636,8 @@ test_update_odin_skips_foreign_install() {
 
 test_update_odin_dry_run_when_ours() {
   DRY=true
+  detect_platform() { echo "debian"; }
+  export -f detect_platform
   mkdir -p "$HOME/.local/odin-dev-2026-03"
   touch "$HOME/.local/odin-dev-2026-03/odin"
   ln -s "$HOME/.local/odin-dev-2026-03/odin" "$HOME/.local/bin/odin"
@@ -819,6 +866,8 @@ test_update_gleam_skips_foreign_install() {
 
 test_update_gleam_dry_run_when_ours() {
   DRY=true
+  detect_platform() { echo "debian"; }
+  export -f detect_platform
   mkdir -p "$HOME/.local/gleam-v1.14.0"
   touch "$HOME/.local/gleam-v1.14.0/gleam"
   ln -s "$HOME/.local/gleam-v1.14.0/gleam" "$HOME/.local/bin/gleam"

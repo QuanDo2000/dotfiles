@@ -91,7 +91,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   local common_packages
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in neovim tmux fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs ast-grep; do
+  for pkg in neovim tmux fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
   done
 }
