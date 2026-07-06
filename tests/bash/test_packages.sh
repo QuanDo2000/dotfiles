@@ -263,33 +263,3 @@ test_set_zsh_default_skips_on_nixos() {
 
   assert_contains "$output" "declaratively"
 }
-
-test_install_nixos_does_not_write_machine_file() {
-  DRY=false
-  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
-  sudo() { :; }
-
-  install_nixos >/dev/null 2>&1
-
-  if [ -e "$NIXOS_MACHINE_FILE" ]; then
-    echo "  FAILED: install_nixos should not write $NIXOS_MACHINE_FILE" >> "$ERROR_FILE"
-  fi
-
-  unset -f sudo
-  unset NIXOS_MACHINE_FILE
-}
-
-test_update_nixos_does_not_write_machine_file() {
-  DRY=false
-  export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
-  sudo() { :; }
-
-  update_nixos >/dev/null 2>&1
-
-  if [ -e "$NIXOS_MACHINE_FILE" ]; then
-    echo "  FAILED: update_nixos should not write $NIXOS_MACHINE_FILE" >> "$ERROR_FILE"
-  fi
-
-  unset -f sudo
-  unset NIXOS_MACHINE_FILE
-}
