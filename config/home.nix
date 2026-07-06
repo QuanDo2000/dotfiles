@@ -65,6 +65,13 @@ in
     force = true;
   };
 
+  home.file.".zshrc" = {
+    text = ''
+      [ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
+    '';
+    force = true;
+  };
+
   home.file.".ssh/config" = {
     source = ./shared/.ssh/config;
     force = true;

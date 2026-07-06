@@ -66,15 +66,15 @@ test_verify_command_runs() {
   printf 'ID=ubuntu\nID_LIKE=debian\n' > "$osrel"
   mkdir -p "$HOME/.local/bin"
   local f src
-  for f in .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
+  for f in .zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
     case "$f" in
+      .zshrc) src="$REPO_DIR/config/unix/.zshrc.base" ;;
       .gitconfig|.vimrc) src="$REPO_DIR/config/shared/$f" ;;
       *) src="$REPO_DIR/config/unix/$f" ;;
     esac
     ln -s "$src" "$HOME/$f"
   done
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
 
   assert_exit_code 0 env OS_RELEASE="$osrel" bash "$DOTFILE_CMD" verify
 }
@@ -108,7 +108,7 @@ test_all_runs_obsidian_on_arch_with_prereqs() {
   unset __MOCK_UNAME
 }
 
-test_all_skips_symlink_step_on_home_manager_linux() {
+test_all_runs_symlink_noop_on_home_manager_linux() {
   is_windows_bash && return 0
   local distro osrel output
   for distro in arch debian; do
@@ -117,8 +117,7 @@ test_all_skips_symlink_step_on_home_manager_linux() {
     printf 'ID=%s\n' "$distro" > "$osrel"
 
     output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry all 2>&1)
-    assert_contains "$output" "Skipping symlink setup: Home Manager manages Linux dotfiles"
-    assert_not_contains "$output" "Home Manager manages dotfile links"
+    assert_contains "$output" "Home Manager manages dotfile links"
   done
 
   unset -f uname 2>/dev/null || true

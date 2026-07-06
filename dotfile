@@ -54,11 +54,7 @@ function setup_dotfiles {
   install_packages
   update_repo
   install_extras
-  if is_linux_home_manager_platform; then
-    info "Skipping symlink setup: Home Manager manages Linux dotfiles"
-  else
-    setup_symlinks
-  fi
+  setup_symlinks
   setup_obsidian_if_supported
   success "Done!"
 }
@@ -92,7 +88,7 @@ Commands:
   update      Update system packages and language toolchains
   packages    Install system packages only
   extras      No-op on Unix; extras are managed by Nix
-  symlinks    Create symlinks only
+  symlinks    No-op on Unix; links are managed by Nix
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank). LANG selects one.
   verify      Verify core symlinks

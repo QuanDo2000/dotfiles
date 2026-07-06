@@ -16,7 +16,10 @@
   outputs = { nixpkgs, home-manager, nix-darwin, ... }:
     let
       machine = import ./config/host.nix;
-      linuxPkgs = nixpkgs.legacyPackages.x86_64-linux;
+      linuxPkgs = import nixpkgs {
+        system = "x86_64-linux";
+        config.allowUnfree = true;
+      };
     in
     {
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {

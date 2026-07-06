@@ -11,121 +11,32 @@ teardown() {
   cleanup_test_env
 }
 
-# ---------------------------------------------------------------------------
-# Mac: Home Manager owns shared/unix/mac links
-# ---------------------------------------------------------------------------
-
-test_setup_symlinks_skips_home_manager_files_on_darwin() {
+test_setup_symlinks_is_noop_on_mac() {
   mock_uname Darwin
-  local overwrite_all=false backup_all=false skip_all=false
-
   create_dotfiles_dirs
   echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
   echo "mac zsh" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
 
-  setup_symlinks
+  setup_symlinks >/dev/null
 
-  if [ -e "$HOME/.zshrc.mac" ] || [ -L "$HOME/.zshrc.mac" ]; then
-    echo "  FAILED: .zshrc.mac should be left for Home Manager on macOS" >> "$ERROR_FILE"
-  fi
-  if [ -e "$HOME/.gitconfig" ] || [ -L "$HOME/.gitconfig" ]; then
-    echo "  FAILED: .gitconfig should be left for Home Manager on macOS" >> "$ERROR_FILE"
-  fi
+  for path in "$HOME/.gitconfig" "$HOME/.zshrc.mac"; do
+    if [ -e "$path" ] || [ -L "$path" ]; then
+      echo "  FAILED: $path should be left for Home Manager on macOS" >> "$ERROR_FILE"
+    fi
+  done
 }
 
-# ---------------------------------------------------------------------------
-# Linux: setup_symlinks excludes mac/ folder
-# ---------------------------------------------------------------------------
-
-test_setup_symlinks_excludes_mac_on_linux() {
+test_setup_symlinks_is_noop_on_linux() {
   mock_uname Linux
-  local overwrite_all=false backup_all=false skip_all=false
-
   create_dotfiles_dirs
   echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
-  echo "mac zsh" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
-  local osrel="$TEST_TMPDIR/os-release"
-  printf 'ID=fedora\n' > "$osrel"
 
-  OS_RELEASE="$osrel" setup_symlinks
+  setup_symlinks >/dev/null
 
-  if [ -L "$HOME/.zshrc.mac" ] || [ -f "$HOME/.zshrc.mac" ]; then
-    echo "  FAILED: .zshrc.mac should not exist on Linux" >> "$ERROR_FILE"
-  fi
-  assert_symlink "$HOME/.gitconfig" "$DOTFILES_DIR/config/shared/.gitconfig"
-}
-
-# ---------------------------------------------------------------------------
-# Mac: setup_symlinks_folder handles mac dotfiles, config, and bin
-# ---------------------------------------------------------------------------
-
-test_mac_folder_dotfiles() {
-  local overwrite_all=false backup_all=false skip_all=false
-
-  local mac_dir="$TEST_TMPDIR/mac"
-  mkdir -p "$mac_dir"
-  echo "mac zshrc" > "$mac_dir/.zshrc.mac"
-  echo "mac gitconfig" > "$mac_dir/.gitconfig.mac"
-
-  setup_symlinks_folder "$mac_dir"
-
-  assert_symlink "$HOME/.zshrc.mac" "$mac_dir/.zshrc.mac"
-  assert_symlink "$HOME/.gitconfig.mac" "$mac_dir/.gitconfig.mac"
-}
-
-test_mac_folder_config() {
-  local overwrite_all=false backup_all=false skip_all=false
-
-  local mac_dir="$TEST_TMPDIR/mac"
-  mkdir -p "$mac_dir/config/ghostty"
-  echo "font-size=14" > "$mac_dir/config/ghostty/config"
-
-  setup_symlinks_folder "$mac_dir"
-
-  assert_symlink "$HOME/.config/ghostty/config" "$mac_dir/config/ghostty/config"
-}
-
-test_mac_folder_bin() {
-  local overwrite_all=false backup_all=false skip_all=false
-
-  local mac_dir="$TEST_TMPDIR/mac"
-  mkdir -p "$mac_dir/bin"
-  echo "#!/usr/bin/env bash" > "$mac_dir/bin/mac-tool"
-
-  setup_symlinks_folder "$mac_dir"
-
-  assert_symlink "$HOME/.local/bin/mac-tool" "$mac_dir/bin/mac-tool"
-}
-
-# ---------------------------------------------------------------------------
-# Mac: force flag still does not overwrite Home Manager links
-# ---------------------------------------------------------------------------
-
-test_force_does_not_overwrite_home_manager_files_darwin() {
-  FORCE=true
-  mock_uname Darwin
-  local overwrite_all=false backup_all=false skip_all=false
-
-  create_dotfiles_dirs
-  echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
-  echo "mac" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
-
-  echo "old" > "$HOME/.gitconfig"
-  echo "old mac" > "$HOME/.zshrc.mac"
-
-  setup_symlinks
-
-  if [ -L "$HOME/.gitconfig" ] || [ "$(cat "$HOME/.gitconfig")" != "old" ]; then
-    echo "  FAILED: force should not replace Home Manager-owned .gitconfig on macOS" >> "$ERROR_FILE"
-  fi
-  if [ -L "$HOME/.zshrc.mac" ] || [ "$(cat "$HOME/.zshrc.mac")" != "old mac" ]; then
-    echo "  FAILED: force should not replace Home Manager-owned .zshrc.mac on macOS" >> "$ERROR_FILE"
+  if [ -e "$HOME/.gitconfig" ] || [ -L "$HOME/.gitconfig" ]; then
+    echo "  FAILED: .gitconfig should be left for Home Manager on Linux" >> "$ERROR_FILE"
   fi
 }
-
-# ---------------------------------------------------------------------------
-# install_packages: dispatches to correct platform installer
-# ---------------------------------------------------------------------------
 
 test_install_packages_dispatches_mac() {
   source_scripts packages.sh
@@ -170,15 +81,9 @@ test_install_packages_fails_unsupported_os() {
   fi
 }
 
-# ---------------------------------------------------------------------------
-# Dry-run: no files created on either platform
-# ---------------------------------------------------------------------------
-
 test_dry_run_darwin_creates_nothing() {
   DRY=true
   mock_uname Darwin
-  local overwrite_all=false backup_all=false skip_all=false
-
   create_dotfiles_dirs
   echo "content" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
 
@@ -192,8 +97,6 @@ test_dry_run_darwin_creates_nothing() {
 test_dry_run_linux_creates_nothing() {
   DRY=true
   mock_uname Linux
-  local overwrite_all=false backup_all=false skip_all=false
-
   create_dotfiles_dirs
   echo "content" > "$DOTFILES_DIR/config/shared/.gitconfig"
 
@@ -204,12 +107,8 @@ test_dry_run_linux_creates_nothing() {
   fi
 }
 
-# ---------------------------------------------------------------------------
-# detect_platform: NixOS
-# ---------------------------------------------------------------------------
-
 test_detect_platform_nixos() {
-  source_scripts packages.sh   # pulls in platform.sh
+  source_scripts packages.sh
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$osrel"
@@ -221,7 +120,6 @@ test_detect_platform_nixos() {
 }
 
 test_detect_platform_nixos_precedes_arch() {
-  # A NixOS os-release must not be misread as arch even if ID_LIKE mentions it.
   source_scripts packages.sh
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"

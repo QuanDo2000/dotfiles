@@ -34,7 +34,7 @@ git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
 ~/dotfiles/dotfile
 ```
 
-After symlinks are created, the `dotfile` command is available in your PATH:
+After Home Manager applies, the `dotfile` command is available in your PATH:
 
 ```bash
 dotfile
@@ -75,7 +75,7 @@ Commands:
   update      Update system packages and language toolchains
   packages    Install system packages only
   extras      No-op on Unix; extras are managed by Nix
-  symlinks    Create symlinks only
+  symlinks    No-op on Unix; links are managed by Nix
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank)
   verify      Verify core Unix symlinks
@@ -87,7 +87,7 @@ Options:
   -h, --help  Show this help message
 ```
 
-Note: `.zshrc` is machine-local (not symlinked) so local installer edits don't dirty the repo. It sources the tracked `~/.zshrc.base`.
+Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` sources the tracked `~/.zshrc.base`.
 
 Note: `dotfile obsidian` reuses an existing configured vault under `~/documents/obsidian` and skips interactive Sync setup unless `-f` is passed.
 

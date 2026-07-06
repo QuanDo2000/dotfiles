@@ -10,7 +10,7 @@ Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The in
 
 ```bash
 dotfile                      # Full setup (packages -> extras -> symlinks)
-dotfile symlinks             # Create symlinks only
+dotfile symlinks             # No-op on Unix; links are managed by Nix
 dotfile packages             # Install system packages only
 dotfile extras               # No-op on Unix; extras are managed by Nix
 dotfile verify               # Verify core Unix symlinks
@@ -26,18 +26,18 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 
 ## Architecture
 
-- **dotfile** - Unix entry point at the repo root. Sources all scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by `setup_symlinks` on legacy Unix systems and by Home Manager on Nix-managed Linux/macOS.
+- **dotfile** - Unix entry point at the repo root. Sources all scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by Home Manager on Linux/macOS.
 - **dotfile.ps1** - Windows equivalent (PowerShell) at the repo root. Same subcommand structure; symlinked into `$HOME\.local\bin\` by `SetupSymlinks`.
 - **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` - OS-specific package installation (apt/pacman only for Linux bootstrap packages, NixOS flakes, nix-darwin bootstrap on macOS).
   - `extras.sh` - compatibility no-op on Unix. zsh and tmux plugin paths are managed by Home Manager from `config/home.nix`.
-  - `symlinks.sh` - Links dotfiles to `$HOME` on legacy Unix systems. Files in `bin/` directories under each platform layer are symlinked into `$HOME/.local/bin/`; Nix-managed Linux/macOS leave Home Manager-owned links alone.
+  - `symlinks.sh` - compatibility no-op on Unix. Dotfile links are managed by Home Manager from `config/home.nix`.
   - `verify.sh` - Post-install checks.
 
 ## Dotfile Layers
 
-Platform config lives under `config/`. Symlinks are created in priority order by `setup_symlinks`:
+Platform config lives under `config/`. Unix links are managed by Home Manager from `config/home.nix`:
 
 1. **config/shared/** - Cross-platform configs (`.gitconfig`, `.vimrc`, neovim config).
 2. **config/unix/** - Linux/macOS-specific (`.zshrc.base`, `.tmux.conf`, ghostty, hyprland, waybar, lazygit, fcitx5).
@@ -45,13 +45,13 @@ Platform config lives under `config/`. Symlinks are created in priority order by
 4. **config/windows/** - Windows-specific (PowerShell profile, Windows Terminal settings). Used by `dotfile.ps1`.
 5. **config/nixos/** - NixOS-only. `configuration.nix` is a tracked full-desktop system config used through the repo flake. Per-machine values (username, hostname, timezone, stateVersion) live in tracked `config/host.nix`; hardware settings live in tracked `config/hardware-configuration.nix`. Edit those files when provisioning a different host. App config files (hyprland, waybar, etc.) and shell/tmux plugin paths are managed by Home Manager from `config/home.nix`. On NixOS the imperative `setup_*` installers are skipped; packages come from the rebuild.
 
-Files in `config/` subdirectories of each platform layer are symlinked into `~/.config/`. Top-level dotfiles are symlinked directly to `$HOME`.
+Files in `config/` subdirectories of each platform layer are linked into `~/.config/` by Home Manager. Top-level dotfiles are linked directly to `$HOME`.
 
 Both loose files and directories under a layer's `config/` are linked into `~/.config/` by their basename (e.g. `config/shared/config/starship.toml` -> `~/.config/starship.toml`, `config/shared/config/nvim/` -> `~/.config/nvim/`).
 
-Carveouts in `setup_symlinks` handle individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` -> `~/.ssh/config`, `config/shared/ai/claude/settings.json` -> `~/.claude/settings.json`, and `config/shared/ai/codex/config.toml` -> `~/.codex/config.toml` on non-Home-Manager systems. Home Manager seeds `~/.codex/config.toml` as a regular writable file instead of owning it as a Nix store symlink, because Codex persists preferences there at runtime. Only the listed files are linked or seeded - caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
+Home Manager handles individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` -> `~/.ssh/config`, `config/shared/ai/claude/settings.json` -> `~/.claude/settings.json`, and it seeds `~/.codex/config.toml` as a regular writable file because Codex persists preferences there at runtime. Only the listed files are linked or seeded - caches, sessions, credentials, `node_modules`, and plugin runtime artifacts are left alone.
 
-`~/.zshrc` is the one shell file that is **machine-local, not symlinked**. All tracked zsh config lives in `config/unix/.zshrc.base` (symlinked to `~/.zshrc.base`). `setup_symlinks` calls `_ensure_local_zshrc`, which creates `~/.zshrc` if missing - a stub that just sources `~/.zshrc.base` - and replaces it if an older setup left it symlinked into the repo. This keeps the repo clean: tool installers append their lines to the real `~/.zshrc` below the source line, so per-machine edits never modify tracked files. Existing local `~/.zshrc` files are never overwritten.
+`~/.zshrc` is managed by Home Manager and sources `~/.zshrc.base`, which points at `config/unix/.zshrc.base`.
 
 ## Global Variables
 

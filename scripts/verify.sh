@@ -4,7 +4,7 @@ set -eo pipefail
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
 
 # Core symlinked dotfiles under $HOME. This is a smoke check, not a full package audit.
-REQUIRED_SYMLINKS=(.zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
+REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
 
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {
@@ -26,22 +26,6 @@ _check_symlink() {
     errors=$((errors + 1))
   else
     fail_soft "$name not found"
-    errors=$((errors + 1))
-  fi
-}
-
-_check_local_zshrc() {
-  local target="$HOME/.zshrc"
-  if [ ! -f "$target" ]; then
-    fail_soft ".zshrc not found"
-    errors=$((errors + 1))
-  elif [ -L "$target" ]; then
-    fail_soft ".zshrc is a symlink (expected machine-local file)"
-    errors=$((errors + 1))
-  elif grep -F 'source "$HOME/.zshrc.base"' "$target" >/dev/null 2>&1; then
-    success ".zshrc sources ~/.zshrc.base"
-  else
-    fail_soft ".zshrc does not source ~/.zshrc.base"
     errors=$((errors + 1))
   fi
 }
@@ -102,7 +86,6 @@ function verify {
   for f in "${REQUIRED_SYMLINKS[@]}"; do
     _check_symlink "$f" "$platform"
   done
-  _check_local_zshrc
   _check_dotfile_command
   _check_nix_tool codex "$platform"
   _check_nix_tool codebase-memory-mcp "$platform"

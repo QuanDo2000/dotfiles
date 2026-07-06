@@ -80,7 +80,7 @@ test_verify_is_a_small_smoke_check() {
   local output
   output=$(verify 2>&1) || true
   if [[ "$output" == *"starship"* || "$output" == *"zsh plugin"* || "$output" == *"tmux plugin"* ]]; then
-    echo "  FAILED: verify should only smoke-check core symlinks and local zshrc" >> "$ERROR_FILE"
+    echo "  FAILED: verify should only smoke-check core Home Manager links" >> "$ERROR_FILE"
   fi
 }
 
@@ -102,7 +102,6 @@ test_verify_requires_dotfile_command_link() {
     mkdir -p "$(dirname "$HOME/$f")"
     ln -s "$DOTFILES_DIR/$f" "$HOME/$f"
   done
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
   rm -f "$HOME/.local/bin/dotfile"
 
   local output
@@ -121,7 +120,6 @@ test_verify_accepts_repo_dotfile_command_link() {
   done
   echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
   with_nix_agent_tools
 
   local output
@@ -140,7 +138,6 @@ test_verify_accepts_home_manager_store_targets_on_nixos() {
     ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
   done
   ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
   with_nix_agent_tools
 
   local output
@@ -157,7 +154,6 @@ test_verify_accepts_home_manager_store_targets_on_mac() {
     ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
   done
   ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
   with_nix_agent_tools
 
   local output
@@ -176,7 +172,6 @@ test_verify_accepts_home_manager_store_targets_on_arch() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
   with_nix_agent_tools
 
   local output
@@ -194,7 +189,6 @@ test_verify_accepts_home_manager_store_targets_on_debian() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
   with_nix_agent_tools
 
   local output
@@ -213,7 +207,6 @@ test_verify_requires_nix_agent_tools_on_arch() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
 
   local bin_dir="$TEST_TMPDIR/bin"
   mkdir -p "$bin_dir"
@@ -239,7 +232,6 @@ test_verify_requires_nix_agent_tools_on_debian() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
 
   local bin_dir="$TEST_TMPDIR/bin"
   mkdir -p "$bin_dir"
@@ -262,7 +254,6 @@ test_verify_accepts_nix_agent_tools_on_mac() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
   with_nix_agent_tools
 
   local output
