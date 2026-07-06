@@ -11,6 +11,13 @@ test_greetd_launches_hyprland_through_nixos_wrapper() {
   assert_not_contains "$config_text" "--cmd Hyprland"
 }
 
+test_hyprland_launches_obsidian_with_super_n() {
+  local hypr_text
+  hypr_text="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+
+  assert_contains "$hypr_text" 'hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("obsidian"))'
+}
+
 test_flake_uses_flat_nix_config_files() {
   local flake_text
   flake_text="$(<"$REPO_DIR/flake.nix")"
@@ -159,7 +166,7 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "home.activation.seedCodexConfig"
   assert_contains "$home_text" "cp \"\$source\" \"\$target\""
   assert_contains "$home_text" "home.file.\".local/bin/dotfile\""
-  assert_contains "$home_text" "source = ../dotfile"
+  assert_contains "$home_text" 'exec "$HOME/dotfiles/dotfile" "$@"'
   assert_contains "$home_text" "home.file.\".zshrc.mac\""
   assert_contains "$home_text" "source = ./mac/.zshrc.mac"
   assert_contains "$home_text" "home.file.\".local/bin/caf\""

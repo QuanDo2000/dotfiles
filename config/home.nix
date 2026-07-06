@@ -159,7 +159,10 @@ in
   };
 
   home.file.".local/bin/dotfile" = lib.mkIf pkgs.stdenv.isLinux {
-    source = ../dotfile;
+    text = ''
+      #!/usr/bin/env bash
+      exec "$HOME/dotfiles/dotfile" "$@"
+    '';
     executable = true;
     force = true;
   };

@@ -149,6 +149,7 @@ hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(fileManager .. " /mnt/storage
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("google-chrome-stable"))
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(terminal .. " -e " .. musicPlayer .. " all"))
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(anki))
+hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("obsidian"))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + O", hl.dsp.layout("togglesplit"))
