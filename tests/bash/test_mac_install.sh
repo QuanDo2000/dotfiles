@@ -158,7 +158,7 @@ test_set_zsh_default_skips_on_mac() {
 # ---------------------------------------------------------------------------
 
 test_setup_dotfiles_dry_run_mac() {
-  source_scripts verify.sh
+  source_scripts doctor.sh
 
   create_dotfiles_dirs
   echo "mac" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
@@ -188,8 +188,21 @@ test_setup_dotfiles_dry_run_mac() {
 # ---------------------------------------------------------------------------
 
 test_dotfile_packages_command_mac() {
+  mkdir -p "$HOME/.local/bin"
+  local f src
+  for f in .zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
+    case "$f" in
+      .zshrc) src="$REPO_DIR/config/unix/.zshrc.base" ;;
+      .gitconfig|.vimrc) src="$REPO_DIR/config/shared/$f" ;;
+      *) src="$REPO_DIR/config/unix/$f" ;;
+    esac
+    ln -s "$src" "$HOME/$f"
+  done
+  ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
+  with_nix_agent_tools
+
   local output
-  output=$(bash "$DOTFILE_CMD" --dry packages 2>&1)
+  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true bash "$DOTFILE_CMD" --dry packages 2>&1)
 
   assert_contains "$output" "Mac"
 }

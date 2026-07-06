@@ -11,8 +11,7 @@ Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The Un
 ```bash
 dotfile                      # Full setup
 dotfile packages             # Install system packages only
-dotfile verify               # Verify core Unix symlinks
-dotfile doctor               # Detect Home Manager file conflicts
+dotfile doctor               # Detect dotfile and Nix issues
 dotfile update               # Update Nix-managed packages
 dotfile -d <command>         # Dry run
 dotfile -f <command>         # Force overwrite existing files
@@ -25,11 +24,11 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 ## Architecture
 
 - **dotfile** - Unix entry point at the repo root. Sources the needed scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by Home Manager on Linux/macOS.
-- **dotfile.ps1** - Windows equivalent (PowerShell) at the repo root. Exposes the same core public commands (`all`, `update`, `packages`, `verify`); Windows-only symlink and extra setup runs inside `all`. Symlinked into `$HOME\.local\bin\` by `SetupSymlinks`.
+- **dotfile.ps1** - Windows equivalent (PowerShell) at the repo root. Windows keeps its own `verify` command; Windows-only symlink and extra setup runs inside `all`. Symlinked into `$HOME\.local\bin\` by `SetupSymlinks`.
 - **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` - OS-specific package installation (apt/pacman only for Linux bootstrap packages, NixOS flakes, nix-darwin bootstrap on macOS).
-  - `verify.sh` - Post-install checks.
+  - `doctor.sh` - Health checks for Home Manager conflicts, core Unix links, Nix-managed tools, and flake targets.
 
 ## Dotfile Layers
 

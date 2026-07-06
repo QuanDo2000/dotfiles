@@ -103,6 +103,62 @@ _check_nix_tool() {
   fi
 }
 
+_check_nix_eval() {
+  local label="$1"
+  local target="$2"
+
+  if nix eval --raw "$target" >/dev/null 2>&1; then
+    success "$label evaluates"
+  else
+    fail_soft "$label failed to evaluate"
+    errors=$((errors + 1))
+  fi
+}
+
+_check_nix_config() {
+  local platform="$1"
+  is_home_manager_platform "$platform" || return 0
+
+  if [[ "${DOTFILE_DOCTOR_SKIP_NIX_EVAL:-false}" == "true" ]]; then
+    info "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true"
+    return 0
+  fi
+  if ! command -v nix >/dev/null 2>&1; then
+    info "Skipping Nix evaluation: nix not found"
+    return 0
+  fi
+  if [[ ! -f "$DOTFILES_DIR/flake.nix" ]]; then
+    info "Skipping Nix evaluation: flake.nix not found"
+    return 0
+  fi
+
+  local username host_name
+  username="$(nix eval --raw --file "$DOTFILES_DIR/config/host.nix" username 2>/dev/null || true)"
+  host_name="$(nix eval --raw --file "$DOTFILES_DIR/config/host.nix" hostName 2>/dev/null || true)"
+
+  case "$platform" in
+    nixos)
+      if [[ -z "$host_name" ]]; then
+        fail_soft "NixOS hostName failed to evaluate"
+        errors=$((errors + 1))
+        return
+      fi
+      _check_nix_eval "NixOS configuration $host_name" "$DOTFILES_DIR#nixosConfigurations.$host_name.config.system.build.toplevel.drvPath"
+      ;;
+    mac)
+      _check_nix_eval "nix-darwin configuration mac" "$DOTFILES_DIR#darwinConfigurations.mac.config.system.build.toplevel.drvPath"
+      ;;
+    arch | debian)
+      if [[ -z "$username" ]]; then
+        fail_soft "Home Manager username failed to evaluate"
+        errors=$((errors + 1))
+        return
+      fi
+      _check_nix_eval "Home Manager configuration $username@linux" "$DOTFILES_DIR#homeConfigurations.\"$username@linux\".activationPackage.drvPath"
+      ;;
+  esac
+}
+
 _doctor_check_managed_path() {
   local label="$1"
   local target="$2"
@@ -127,58 +183,44 @@ function doctor {
   platform="$(detect_platform)"
 
   info "Checking Home Manager-managed paths..."
-  if ! is_home_manager_platform "$platform"; then
-    info "Skipping Home Manager conflict checks on $platform"
-    return 0
-  fi
+  if is_home_manager_platform "$platform"; then
+    local name
+    for name in "${HM_HOME_PATHS[@]}"; do
+      _doctor_check_managed_path "$name" "$HOME/$name"
+    done
+    for name in "${HM_CONFIG_PATHS[@]}"; do
+      _doctor_check_managed_path ".config/$name" "${XDG_CONFIG_HOME:-$HOME/.config}/$name"
+    done
+    for name in "${HM_DATA_PATHS[@]}"; do
+      _doctor_check_managed_path ".local/share/$name" "${XDG_DATA_HOME:-$HOME/.local/share}/$name"
+    done
 
-  local name
-  for name in "${HM_HOME_PATHS[@]}"; do
-    _doctor_check_managed_path "$name" "$HOME/$name"
-  done
-  for name in "${HM_CONFIG_PATHS[@]}"; do
-    _doctor_check_managed_path ".config/$name" "${XDG_CONFIG_HOME:-$HOME/.config}/$name"
-  done
-  for name in "${HM_DATA_PATHS[@]}"; do
-    _doctor_check_managed_path ".local/share/$name" "${XDG_DATA_HOME:-$HOME/.local/share}/$name"
-  done
-
-  if [[ "$platform" == "mac" ]]; then
-    _doctor_check_managed_path ".zshrc.mac" "$HOME/.zshrc.mac"
-    _doctor_check_managed_path ".local/bin/caf" "$HOME/.local/bin/caf"
+    if [[ "$platform" == "mac" ]]; then
+      _doctor_check_managed_path ".zshrc.mac" "$HOME/.zshrc.mac"
+      _doctor_check_managed_path ".local/bin/caf" "$HOME/.local/bin/caf"
+    else
+      _doctor_check_managed_path ".local/bin/dotfile" "$HOME/.local/bin/dotfile"
+    fi
   else
-    _doctor_check_managed_path ".local/bin/dotfile" "$HOME/.local/bin/dotfile"
+    info "Skipping Home Manager conflict checks on $platform"
   fi
-
-  echo ""
-  if [ "$errors" -eq 0 ]; then
-    success "No Home Manager conflicts found" --force
-    return 0
-  fi
-
-  info "$errors Home Manager conflict(s) found" --force
-  return 1
-}
-
-function verify {
-  local errors=0
 
   info "Verifying symlinks..."
-  local platform
-  platform="$(detect_platform)"
+  local f
   for f in "${REQUIRED_SYMLINKS[@]}"; do
     _check_symlink "$f" "$platform"
   done
   _check_dotfile_command
   _check_nix_tool codex "$platform"
   _check_nix_tool codebase-memory-mcp "$platform"
+  _check_nix_config "$platform"
 
   echo ""
   if [ "$errors" -eq 0 ]; then
     success "All checks passed!" --force
     return 0
-  else
-    info "$errors issue(s) found" --force
-    return 1
   fi
+
+  info "$errors issue(s) found" --force
+  return 1
 }

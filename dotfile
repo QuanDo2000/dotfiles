@@ -34,7 +34,7 @@ fi
 source "$SCRIPTS_DIR/utils.sh"
 source "$SCRIPTS_DIR/platform.sh"
 source "$SCRIPTS_DIR/packages.sh"
-source "$SCRIPTS_DIR/verify.sh"
+source "$SCRIPTS_DIR/doctor.sh"
 source "$SCRIPTS_DIR/obsidian.sh"
 
 function update_repo {
@@ -83,8 +83,7 @@ Commands:
   update      Update Nix-managed packages
   packages    Install system packages only
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
-  verify      Verify core Unix symlinks
-  doctor      Detect Home Manager file conflicts
+  doctor      Detect dotfile and Nix issues
 
 Options:
   -d, --dry     Dry run (no changes made)
@@ -131,7 +130,6 @@ packages)
   install_packages
   ;;
 obsidian) setup_obsidian ;;
-verify) verify ;;
 doctor) doctor ;;
 *)
   fail "Unknown command: $1"
