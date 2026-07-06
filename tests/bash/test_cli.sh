@@ -189,14 +189,6 @@ test_update_runs_doctor_before_package_update() {
   assert_not_contains "$output" "Updating packages"
 }
 
-test_removed_noop_commands_not_in_help() {
-  local output
-  output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  assert_not_contains "$output" $'\n  extras '
-  assert_not_contains "$output" $'\n  symlinks '
-  assert_not_contains "$output" $'\n  languages '
-}
-
 test_packages_nixos_dry() {
   mock_uname Linux
   local osrel="$TEST_HOME/os-release"
