@@ -257,6 +257,17 @@ test_update_debian_uses_existing_home_manager() {
   unset -f command sudo _load_nix_profile home-manager
 }
 
+test_linux_bootstrap_flows_share_home_manager_helper() {
+  local packages_text
+  packages_text="$(<"$REPO_DIR/scripts/packages.sh")"
+
+  assert_contains "$packages_text" "function _run_linux_home_manager_bootstrap"
+  assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to update apt\""
+  assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to install Debian packages\""
+  assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to update pacman\""
+  assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to install Arch packages\""
+}
+
 # ---------------------------------------------------------------------------
 # NixOS package flow
 # ---------------------------------------------------------------------------
