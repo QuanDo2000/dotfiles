@@ -18,46 +18,12 @@ test_help_exits_zero() {
   assert_contains "$output" "Usage"
   assert_contains "$output" "Commands"
   assert_contains "$output" "Options"
-}
-
-test_flag_dry() {
-  assert_exit_code 0 bash "$DOTFILE_CMD" -d -h
-}
-
-test_flag_force() {
-  assert_exit_code 0 bash "$DOTFILE_CMD" -f -h
-}
-
-test_flag_quiet() {
-  local output
-  output=$(bash "$DOTFILE_CMD" -q -h 2>&1)
-  assert_contains "$output" "Usage"
-}
-
-test_combined_flags() {
-  assert_exit_code 0 bash "$DOTFILE_CMD" -d -f -q -h
-}
-
-test_unknown_command_fails() {
-  assert_exit_code 1 bash "$DOTFILE_CMD" nonsense_command
-}
-
-test_long_flag_dry() {
-  assert_exit_code 0 bash "$DOTFILE_CMD" --dry --help
-}
-
-test_long_flag_force() {
-  assert_exit_code 0 bash "$DOTFILE_CMD" --force --help
-}
-
-test_long_flag_quiet() {
-  assert_exit_code 0 bash "$DOTFILE_CMD" --quiet --help
-}
-
-test_long_flag_help() {
-  local output
-  output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  assert_contains "$output" "Usage"
+  assert_contains "$output" "update"
+  assert_contains "$output" "Update Nix-managed packages"
+  assert_contains "$output" "Verify core Unix symlinks"
+  assert_contains "$output" "doctor"
+  assert_contains "$output" "Detect Home Manager file conflicts"
+  assert_contains "$output" "Arch auto-runs during 'all' when ready"
 }
 
 test_verify_command_runs() {
@@ -108,26 +74,6 @@ test_all_runs_obsidian_on_arch_with_prereqs() {
   unset __MOCK_UNAME
 }
 
-test_update_command_in_help() {
-  local output
-  output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  assert_contains "$output" "update"
-  assert_contains "$output" "Update Nix-managed packages"
-}
-
-test_help_describes_verify_as_core_symlink_check() {
-  local output
-  output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  assert_contains "$output" "Verify core Unix symlinks"
-}
-
-test_help_describes_doctor_as_conflict_check() {
-  local output
-  output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  assert_contains "$output" "doctor"
-  assert_contains "$output" "Detect Home Manager file conflicts"
-}
-
 test_doctor_command_runs() {
   mock_uname Linux
   local osrel="$TEST_HOME/os-release"
@@ -136,12 +82,6 @@ test_doctor_command_runs() {
   local output
   output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" doctor 2>&1)
   assert_contains "$output" "No Home Manager conflicts found"
-}
-
-test_help_describes_obsidian_arch_autorun() {
-  local output
-  output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  assert_contains "$output" "Arch auto-runs during 'all' when ready"
 }
 
 test_readme_matches_key_help_text() {
@@ -210,6 +150,21 @@ test_help_has_no_removed_commands() {
   if [[ "$output" == *$'\n  zsh '* || "$output" == *$'\n  tmux '* || "$output" == *$'\n  ai '* || "$output" == *$'\n  extras '* || "$output" == *$'\n  symlinks '* || "$output" == *$'\n  languages '* ]]; then
     echo "  FAILED: help text should not expose removed commands" >> "$ERROR_FILE"
   fi
+}
+
+test_help_flags_exit_zero() {
+  assert_exit_code 0 bash "$DOTFILE_CMD" -d -h
+  assert_exit_code 0 bash "$DOTFILE_CMD" -f -h
+  assert_exit_code 0 bash "$DOTFILE_CMD" -q -h
+  assert_exit_code 0 bash "$DOTFILE_CMD" -d -f -q -h
+  assert_exit_code 0 bash "$DOTFILE_CMD" --dry --help
+  assert_exit_code 0 bash "$DOTFILE_CMD" --force --help
+  assert_exit_code 0 bash "$DOTFILE_CMD" --quiet --help
+  assert_exit_code 0 bash "$DOTFILE_CMD" --help
+}
+
+test_unknown_command_fails() {
+  assert_exit_code 1 bash "$DOTFILE_CMD" nonsense_command
 }
 
 test_removed_commands_fail() {
