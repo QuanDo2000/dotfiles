@@ -155,9 +155,11 @@ test_packages_nixos_dry() {
   mock_uname Linux
   local osrel="$TEST_HOME/os-release"
   printf 'ID=nixos\n' > "$osrel"
+  link_core_dotfiles
+  with_nix_agent_tools
 
   local output
-  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry packages 2>&1)
+  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry packages 2>&1)
   assert_contains "$output" "NixOS"
   assert_not_contains "$output" "Updating packages"
 

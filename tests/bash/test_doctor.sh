@@ -286,3 +286,38 @@ test_doctor_passes_without_home_manager_conflicts() {
 
   assert_contains "$output" "All checks passed"
 }
+
+test_doctor_skips_nix_eval_in_dry_mode() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$os_release"
+  local hm_dir="/nix/store/test-home-files"
+  local f
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    ln -s "$hm_dir/$f" "$HOME/$f"
+  done
+  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
+  with_nix_agent_tools
+
+  local command_calls="$TEST_TMPDIR/command-calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" == "nix" ]]; then
+      printf '/nix/store/fake/bin/nix\n'
+      return 0
+    fi
+    if [[ "${1:-}" == "nix" ]]; then
+      printf 'nix\n' >> "$command_calls"
+      return 1
+    fi
+    builtin command "$@"
+  }
+  export -f command
+
+  DRY=true
+  local output
+  output=$(OS_RELEASE="$os_release" doctor 2>&1) || true
+  assert_contains "$output" "Skipping Nix evaluation in dry-run mode"
+  if [[ -s "$command_calls" ]]; then
+    echo "  FAILED: doctor called nix directly during dry-run" >> "$ERROR_FILE"
+  fi
+}

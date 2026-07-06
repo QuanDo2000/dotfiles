@@ -123,6 +123,10 @@ _check_nix_config() {
     info "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true"
     return 0
   fi
+  if [[ "$DRY" == "true" ]]; then
+    info "Skipping Nix evaluation in dry-run mode"
+    return 0
+  fi
   if ! command -v nix >/dev/null 2>&1; then
     info "Skipping Nix evaluation: nix not found"
     return 0
