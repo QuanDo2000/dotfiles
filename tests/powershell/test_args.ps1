@@ -18,9 +18,9 @@ function test_parseargs_dry_long_flag {
 }
 
 function test_parseargs_force_flag {
-    $cmd = ParseArgs @('-f', 'symlinks')
+    $cmd = ParseArgs @('-f', 'packages')
     Assert-True $script:Force '-f should set Force'
-    Assert-Equals 'symlinks' $cmd
+    Assert-Equals 'packages' $cmd
 }
 
 function test_parseargs_quiet_flag {
@@ -36,7 +36,7 @@ function test_parseargs_help_short_returns_sentinel {
 }
 
 function test_parseargs_positional_command_recognised {
-    foreach ($c in 'packages', 'extras', 'symlinks', 'verify', 'update') {
+    foreach ($c in 'packages', 'verify', 'update') {
         $script:Dry = $false
         $result = ParseArgs @($c)
         Assert-Equals $c $result
@@ -56,12 +56,6 @@ function test_parseargs_combined_flags_and_command {
 # an explicit -Dry param, `-d` prefix-matches -Debug and is silently
 # swallowed on the `pwsh -File dotfile.ps1 -d` path. Lock the explicit
 # declaration + short-form aliases in place.
-function test_parseargs_languages_with_lang_arg_exposes_second_positional {
-    $cmd = ParseArgs @('languages', 'gleam')
-    Assert-Equals 'languages' $cmd
-    Assert-Equals 'gleam' $script:CommandArg
-}
-
 function test_script_declares_flag_params_with_short_aliases {
     $cmd = Get-Command $script:DotfileScript
     foreach ($pair in @(

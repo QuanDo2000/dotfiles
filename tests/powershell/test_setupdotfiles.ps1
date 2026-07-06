@@ -35,7 +35,7 @@ function TestTeardown {
 }
 
 function test_setupdotfiles_dry_run_completes_without_errors {
-    # Should run through all four stages (packages/update/extras/symlinks) without throwing.
+    # Should run through the full Windows setup chain without throwing.
     $err = $null
     try { SetupDotfiles } catch { $err = $_ }
     Assert-True ($null -eq $err) "SetupDotfiles should not throw in dry run, got: $err"

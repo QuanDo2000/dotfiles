@@ -266,7 +266,7 @@ Update-Module
         Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
     }
 
-    $scoopPkgs = @("mingw", "extras/vcredist2022", "zig", "main/ast-grep")
+    $scoopPkgs = @("mingw", "extras/vcredist2022", "zig", "main/ast-grep", "main/gleam")
     scoop bucket add extras *> $null
     Info "Checking scoop packages..."
     $missingScoop = @($scoopPkgs | Where-Object { -not (ScoopHas $_) })
@@ -303,7 +303,7 @@ function InstallFnm {
         $env:Path = "$machinePath;$userPath"
     }
     if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
-        FailSoft "fnm not found on PATH. Skipping Node.js LTS install — open a new shell and re-run 'dotfile.ps1 extras'."
+        FailSoft "fnm not found on PATH. Skipping Node.js LTS install — open a new shell and re-run 'dotfile.ps1'."
         return
     }
 
@@ -320,7 +320,7 @@ function InstallTreeSitter {
     if ($script:Dry) { return }
 
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        FailSoft "npm not found on PATH. Skipping tree-sitter CLI install — open a new shell and re-run 'dotfile.ps1 extras'."
+        FailSoft "npm not found on PATH. Skipping tree-sitter CLI install — open a new shell and re-run 'dotfile.ps1'."
         return
     }
 
@@ -409,44 +409,11 @@ function InstallNeovimNightly {
     AddToUserPath $binDir
 }
 
-function Install-Gleam {
-    Info 'Installing Gleam...'
-    if ($script:Dry) { Success 'Would install gleam via scoop (dry run)'; return }
-    # scoop's gleam manifest depends on erlang, so the runtime comes along.
-    # rebar3 is only needed by some hex deps — left for on-demand install.
-    scoop bucket add main *> $null
-    scoop install main/gleam
-    if ($LASTEXITCODE -ne 0) { Fail 'Failed to install gleam via scoop' }
-    Success 'Installed Gleam'
-}
-
 function Update-Packages {
     Info "Updating packages..."
     if ($script:Dry) { Success "Would run: scoop update *" } else { scoop update * }
     InstallAi -Update
     Success "Finished updating packages"
-}
-
-function Install-Languages {
-    param([string]$Target = 'all')
-    $skipMessages = @{
-        zig  = "Skipping zig: installed via scoop on Windows (run 'dotfile.ps1 packages')"
-        odin = "Skipping odin: no Windows installer wired up"
-        jank = "Skipping jank: Linux/macOS only (no Windows support upstream)"
-    }
-    switch ($Target) {
-        { $_ -in @('all', '') } {
-            Install-Gleam
-            Info $skipMessages.zig
-            Info $skipMessages.odin
-            Info $skipMessages.jank
-        }
-        'gleam' { Install-Gleam }
-        'zig'   { Info $skipMessages.zig }
-        'odin'  { Info $skipMessages.odin }
-        'jank'  { Info $skipMessages.jank }
-        default { Fail "Unknown language: $Target" }
-    }
 }
 
 function AddToUserPath($dir) {
@@ -646,11 +613,8 @@ Usage: dotfile.ps1 [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update system packages and language toolchains
+  update      Update system packages
   packages    Install system packages only
-  extras      Install FiraCode font, Node.js LTS (fnm), and tree-sitter CLI
-  symlinks    Create symlinks only
-  languages [LANG]  Install language toolchains. LANG selects one (Windows: gleam only).
   verify      Verify installation
 
 Options:
@@ -676,8 +640,6 @@ function ParseArgs([string[]]$Arguments) {
         }
     }
     if ($positional.Count -gt 0) { $command = $positional[0] }
-    # Expose the second positional (if any) for subcommands like `languages [LANG]`.
-    $script:CommandArg = if ($positional.Count -gt 1) { $positional[1] } else { '' }
     return $command
 }
 
@@ -697,9 +659,6 @@ if (-not $NoMain) {
         "all"       { SetupDotfiles }
         "update"    { Update-Packages }
         "packages"  { InstallPackages }
-        "extras"    { InstallExtras }
-        "symlinks"  { SetupSymlinks }
-        "languages" { Install-Languages -Target $script:CommandArg }
         "verify"    { Verify }
         default     { Fail "Unknown command: $command"; ShowUsage }
     }
