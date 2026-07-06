@@ -25,7 +25,7 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 ## Architecture
 
 - **dotfile** - Unix entry point at the repo root. Sources the needed scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by Home Manager on Linux/macOS.
-- **dotfile.ps1** - Windows equivalent (PowerShell) at the repo root. Same subcommand structure; symlinked into `$HOME\.local\bin\` by `SetupSymlinks`.
+- **dotfile.ps1** - Windows equivalent (PowerShell) at the repo root. Exposes the same core public commands (`all`, `update`, `packages`, `verify`); Windows-only symlink and extra setup runs inside `all`. Symlinked into `$HOME\.local\bin\` by `SetupSymlinks`.
 - **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` - OS-specific package installation (apt/pacman only for Linux bootstrap packages, NixOS flakes, nix-darwin bootstrap on macOS).
