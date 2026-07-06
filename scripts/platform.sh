@@ -40,13 +40,6 @@ is_home_manager_platform() {
   esac
 }
 
-is_linux_home_manager_platform() {
-  case "${1:-$(detect_platform)}" in
-    arch|debian) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 # Resolve a symlink one level to an absolute path. Single-level on purpose:
 # macOS's `readlink -f` follows parent-dir symlinks too (e.g. /tmp →
 # /private/tmp), which breaks $HOME-prefix matching when callers compare the
