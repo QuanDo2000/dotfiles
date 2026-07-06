@@ -130,6 +130,24 @@ test_update_runs_doctor_before_package_update() {
   assert_not_contains "$output" "Updating packages"
 }
 
+test_packages_runs_doctor_before_package_install() {
+  is_windows_bash && return 0
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  printf 'local shell edits\n' > "$HOME/.zshrc"
+
+  local output exit_code
+  set +e
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry packages 2>&1)
+  exit_code=$?
+  set -e
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" ".zshrc exists but is not Home Manager-owned"
+  assert_not_contains "$output" "Installing packages"
+}
+
 test_packages_nixos_dry() {
   mock_uname Linux
   local osrel="$TEST_HOME/os-release"

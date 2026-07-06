@@ -127,6 +127,7 @@ update)
   update_packages
   ;;
 packages)
+  doctor
   install_packages
   ;;
 obsidian) setup_obsidian ;;
