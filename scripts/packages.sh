@@ -277,23 +277,32 @@ function _run_linux_home_manager_bootstrap {
   "$@" || fail "$fail_message"
 }
 
+function _remove_home_manager_migration_path {
+  local label="$1" path="$2"
+  if [[ -e "$path" || -L "$path" ]]; then
+    info "Removing old $label: $path"
+    rm -rf "$path" || fail "Failed to remove $path"
+  fi
+}
+
+function _remove_home_manager_plugin_conflict {
+  local path="$1"
+  _remove_home_manager_migration_path "imperative plugin install" "$path"
+  _remove_home_manager_migration_path "Home Manager plugin backup" "$path.before-home-manager"
+}
+
 _cleanup_home_manager_migration_conflicts() {
-  local base="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
-  local path
-  for path in \
-    "$base/zsh-autosuggestions" \
-    "$base/fast-syntax-highlighting" \
-    "$base/fzf-tab" \
-    "$HOME/.tmux/plugins/tmux-yank" \
-    "$HOME/.tmux/plugins/catppuccin/tmux"; do
-    if [[ -e "$path" || -L "$path" ]]; then
-      info "Removing old imperative plugin install: $path"
-      rm -rf "$path" || fail "Failed to remove $path"
-    fi
-    if [[ -e "$path.before-home-manager" || -L "$path.before-home-manager" ]]; then
-      info "Removing old Home Manager plugin backup: $path.before-home-manager"
-      rm -rf "$path.before-home-manager" || fail "Failed to remove $path.before-home-manager"
-    fi
+  local zsh_plugins="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
+  local path plugin_paths agent_paths
+  plugin_paths=(
+    "$zsh_plugins/zsh-autosuggestions"
+    "$zsh_plugins/fast-syntax-highlighting"
+    "$zsh_plugins/fzf-tab"
+    "$HOME/.tmux/plugins/tmux-yank"
+    "$HOME/.tmux/plugins/catppuccin/tmux"
+  )
+  for path in "${plugin_paths[@]}"; do
+    _remove_home_manager_plugin_conflict "$path"
   done
 
   local ghostty="$HOME/.config/ghostty"
@@ -303,22 +312,20 @@ _cleanup_home_manager_migration_conflicts() {
     rm -f "$ghostty" || fail "Failed to remove $ghostty"
   fi
 
-  for path in \
-    "$HOME/.local/bin/codex" \
-    "$HOME/.local/bin/codebase-memory-mcp" \
-    "$HOME/.bun/bin/codex" \
-    "$HOME/.bun/install/global/node_modules/@openai/codex" \
-    "$HOME/.bun/install/global/node_modules/@openai/codex-linux-arm64" \
-    "$HOME/.bun/install/global/node_modules/@openai/codex-linux-x64"; do
-    if [[ -e "$path" || -L "$path" ]]; then
-      info "Removing old imperative agent tool install: $path"
-      rm -rf "$path" || fail "Failed to remove $path"
-    fi
+  agent_paths=(
+    "$HOME/.local/bin/codex"
+    "$HOME/.local/bin/codebase-memory-mcp"
+    "$HOME/.bun/bin/codex"
+    "$HOME/.bun/install/global/node_modules/@openai/codex"
+    "$HOME/.bun/install/global/node_modules/@openai/codex-linux-arm64"
+    "$HOME/.bun/install/global/node_modules/@openai/codex-linux-x64"
+  )
+  for path in "${agent_paths[@]}"; do
+    _remove_home_manager_migration_path "imperative agent tool install" "$path"
   done
   for path in "$HOME"/.local/codex-*; do
     [[ -e "$path" || -L "$path" ]] || continue
-    info "Removing old imperative agent tool install: $path"
-    rm -rf "$path" || fail "Failed to remove $path"
+    _remove_home_manager_migration_path "imperative agent tool install" "$path"
   done
 }
 
