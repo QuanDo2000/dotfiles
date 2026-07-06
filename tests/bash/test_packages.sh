@@ -94,80 +94,6 @@ test_install_arch_leaves_agent_tools_to_home_manager() {
   unset -f command sudo _load_nix_profile home-manager setup_codex setup_codebase_memory_mcp
 }
 
-test_install_arch_removes_old_repo_ghostty_dir_symlink_before_home_manager() {
-  DRY=false
-  local calls="$TEST_TMPDIR/calls.log"
-  mkdir -p "$DOTFILES_DIR/config/unix/config/ghostty" "$HOME/.config"
-  echo "ghostty" > "$DOTFILES_DIR/config/unix/config/ghostty/config"
-  ln -s "$DOTFILES_DIR/config/unix/config/ghostty" "$HOME/.config/ghostty"
-  command() {
-    if [[ "${1:-}" == "-v" ]]; then
-      case "${2:-}" in
-        nix|home-manager) return 0 ;;
-      esac
-    fi
-    builtin command "$@"
-  }
-  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
-  _load_nix_profile() { :; }
-  home-manager() {
-    if [ -L "$HOME/.config/ghostty" ]; then
-      echo "ghostty symlink still present before home-manager" >> "$ERROR_FILE"
-    fi
-    printf 'home-manager %s\n' "$*" >> "$calls"
-  }
-
-  install_arch >/dev/null 2>&1
-
-  if [ -L "$HOME/.config/ghostty" ]; then
-    echo "  FAILED: old repo-linked ~/.config/ghostty should be removed before Home Manager" >> "$ERROR_FILE"
-  fi
-  assert_file_exists "$DOTFILES_DIR/config/unix/config/ghostty/config"
-
-  unset -f command sudo _load_nix_profile home-manager
-}
-
-test_install_arch_removes_old_agent_tool_installs_before_home_manager() {
-  DRY=false
-  local calls="$TEST_TMPDIR/calls.log"
-  mkdir -p "$HOME/.local/bin" "$HOME/.local/codex-v1" \
-    "$HOME/.bun/bin" "$HOME/.bun/install/global/node_modules/@openai/codex"
-  touch "$HOME/.local/codex-v1/codex" \
-    "$HOME/.local/bin/codebase-memory-mcp" \
-    "$HOME/.bun/install/global/node_modules/@openai/codex/package.json"
-  ln -s "$HOME/.local/codex-v1/codex" "$HOME/.local/bin/codex"
-  ln -s "../install/global/node_modules/@openai/codex/bin/codex.js" "$HOME/.bun/bin/codex"
-  command() {
-    if [[ "${1:-}" == "-v" ]]; then
-      case "${2:-}" in
-        nix|home-manager) return 0 ;;
-      esac
-    fi
-    builtin command "$@"
-  }
-  sudo() { :; }
-  _load_nix_profile() { :; }
-  home-manager() {
-    for path in \
-      "$HOME/.local/bin/codebase-memory-mcp" \
-      "$HOME/.local/bin/codex" \
-      "$HOME/.local/codex-v1" \
-      "$HOME/.bun/bin/codex" \
-      "$HOME/.bun/install/global/node_modules/@openai/codex"; do
-      if [[ -e "$path" || -L "$path" ]]; then
-        echo "old agent tool install still present before home-manager: $path" >> "$ERROR_FILE"
-      fi
-    done
-    printf 'home-manager %s\n' "$*" >> "$calls"
-  }
-
-  install_arch >/dev/null 2>&1
-
-  assert_contains "$(<"$calls")" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
-
-  unset -f command sudo _load_nix_profile home-manager
-}
-
 test_update_arch_uses_existing_home_manager() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"
@@ -334,26 +260,6 @@ test_nixos_leaves_codebase_memory_to_home_manager() {
   unset -f sudo setup_codebase_memory_mcp
 }
 
-test_install_nixos_cleans_old_plugin_dirs_before_switch() {
-  local zsh_plugin="$HOME/.local/share/zsh/plugins/zsh-autosuggestions"
-  local tmux_plugin="$HOME/.tmux/plugins/tmux-yank"
-  mkdir -p "$zsh_plugin/.git" "$zsh_plugin.before-home-manager/zsh-autosuggestions" \
-    "$tmux_plugin/.git" "$tmux_plugin.before-home-manager/tmux-yank"
-  sudo() { :; }
-  setup_codebase_memory_mcp() { :; }
-
-  install_nixos >/dev/null 2>&1
-
-  if [ -e "$zsh_plugin" ] || [ -e "$zsh_plugin.before-home-manager" ]; then
-    echo "  FAILED: old zsh plugin dirs should be removed before nixos-rebuild" >> "$ERROR_FILE"
-  fi
-  if [ -e "$tmux_plugin" ] || [ -e "$tmux_plugin.before-home-manager" ]; then
-    echo "  FAILED: old tmux plugin dirs should be removed before nixos-rebuild" >> "$ERROR_FILE"
-  fi
-
-  unset -f sudo setup_codebase_memory_mcp
-}
-
 test_update_nixos_uses_flake_switch_upgrade() {
   local calls="$TEST_TMPDIR/sudo.log"
   sudo() { printf '%s\n' "$*" >> "$calls"; }
@@ -385,7 +291,7 @@ test_nix_managed_switches_share_runner() {
   packages_text="$(<"$REPO_DIR/scripts/packages.sh")"
 
   assert_contains "$packages_text" "function _run_nix_managed_switch"
-  assert_contains "$packages_text" "_cleanup_home_manager_migration_conflicts"
+  assert_not_contains "$packages_text" "_cleanup_home_manager_migration_conflicts"
   assert_contains "$packages_text" "_run_nix_managed_switch \"home-manager switch failed\""
   assert_contains "$packages_text" "_run_nix_managed_switch \"darwin-rebuild switch failed\""
   assert_contains "$packages_text" '_run_nix_managed_switch "$fail_message"'

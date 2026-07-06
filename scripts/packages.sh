@@ -95,58 +95,6 @@ function _run_linux_home_manager_bootstrap {
   "$@" || fail "$fail_message"
 }
 
-function _remove_home_manager_migration_path {
-  local label="$1" path="$2"
-  if [[ -e "$path" || -L "$path" ]]; then
-    info "Removing old $label: $path"
-    rm -rf "$path" || fail "Failed to remove $path"
-  fi
-}
-
-function _remove_home_manager_plugin_conflict {
-  local path="$1"
-  _remove_home_manager_migration_path "imperative plugin install" "$path"
-  _remove_home_manager_migration_path "Home Manager plugin backup" "$path.before-home-manager"
-}
-
-_cleanup_home_manager_migration_conflicts() {
-  local zsh_plugins="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
-  local path plugin_paths agent_paths
-  plugin_paths=(
-    "$zsh_plugins/zsh-autosuggestions"
-    "$zsh_plugins/fast-syntax-highlighting"
-    "$zsh_plugins/fzf-tab"
-    "$HOME/.tmux/plugins/tmux-yank"
-    "$HOME/.tmux/plugins/catppuccin/tmux"
-  )
-  for path in "${plugin_paths[@]}"; do
-    _remove_home_manager_plugin_conflict "$path"
-  done
-
-  local ghostty="$HOME/.config/ghostty"
-  local target="$DOTFILES_DIR/config/unix/config/ghostty"
-  if [[ -L "$ghostty" && "$(resolve_symlink "$ghostty")" == "$target" ]]; then
-    info "Removing old repo-linked Ghostty config dir: $ghostty"
-    rm -f "$ghostty" || fail "Failed to remove $ghostty"
-  fi
-
-  agent_paths=(
-    "$HOME/.local/bin/codex"
-    "$HOME/.local/bin/codebase-memory-mcp"
-    "$HOME/.bun/bin/codex"
-    "$HOME/.bun/install/global/node_modules/@openai/codex"
-    "$HOME/.bun/install/global/node_modules/@openai/codex-linux-arm64"
-    "$HOME/.bun/install/global/node_modules/@openai/codex-linux-x64"
-  )
-  for path in "${agent_paths[@]}"; do
-    _remove_home_manager_migration_path "imperative agent tool install" "$path"
-  done
-  for path in "$HOME"/.local/codex-*; do
-    [[ -e "$path" || -L "$path" ]] || continue
-    _remove_home_manager_migration_path "imperative agent tool install" "$path"
-  done
-}
-
 function _home_manager_switch {
   _ensure_nix
   local target
@@ -186,7 +134,6 @@ function _dry_run_nix_managed_switch {
 function _run_nix_managed_switch {
   local fail_message="$1"
   shift
-  _cleanup_home_manager_migration_conflicts
   "$@" || fail "$fail_message"
 }
 
