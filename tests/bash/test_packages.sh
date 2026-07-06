@@ -194,10 +194,10 @@ test_update_arch_uses_existing_home_manager() {
 }
 
 test_debian_packages_are_bootstrap_only() {
-  for pkg in curl git xz-utils zsh procps file; do
+  for pkg in curl git zsh procps file; do
     assert_contains "${DEBIAN_PACKAGES[*]}" "$pkg"
   done
-  for pkg in build-essential neovim starship nodejs tmux lazygit jujutsu ripgrep fd-find fzf fontconfig zoxide unzip; do
+  for pkg in build-essential xz-utils neovim starship nodejs tmux lazygit jujutsu ripgrep fd-find fzf fontconfig zoxide unzip; do
     if [[ " ${DEBIAN_PACKAGES[*]} " == *" $pkg "* ]]; then
       echo "  FAILED: Debian apt packages should not install $pkg; Home Manager owns user tools" >> "$ERROR_FILE"
     fi
@@ -266,6 +266,15 @@ test_linux_bootstrap_flows_share_home_manager_helper() {
   assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to install Debian packages\""
   assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to update pacman\""
   assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to install Arch packages\""
+}
+
+test_packages_do_not_keep_local_release_installer_helpers() {
+  local packages_text
+  packages_text="$(<"$REPO_DIR/scripts/packages.sh")"
+
+  for helper in _action_verb _install_from_github_release _install_into_local _assert_single_top_dir _strip_sha256_prefix _sha256 ensure_pkg ensure_jq; do
+    assert_not_contains "$packages_text" "$helper"
+  done
 }
 
 # ---------------------------------------------------------------------------
