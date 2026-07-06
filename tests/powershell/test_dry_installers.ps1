@@ -46,8 +46,19 @@ function test_installai_dry_run_does_not_call_npm {
     $output = InstallAi 6>&1 | Out-String
 
     Clear-CommandMock 'npm'
-    Assert-Contains $output 'Installing AI CLIs'
+    Assert-Contains $output 'Installing agent CLIs'
     Assert-False $called 'npm should not be invoked in dry run'
+}
+
+function test_installcodex_dry_run_does_not_download {
+    $called = $false
+    Set-CommandMock 'Invoke-RestMethod' { $script:called = $true }
+
+    $output = InstallCodex 6>&1 | Out-String
+
+    Clear-CommandMock 'Invoke-RestMethod'
+    Assert-Contains $output 'Installing Codex CLI'
+    Assert-False $called 'Invoke-RestMethod should not be called in dry run'
 }
 
 function test_installpackages_dry_run_does_not_call_winget {

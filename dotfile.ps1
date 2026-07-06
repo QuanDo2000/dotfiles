@@ -317,11 +317,37 @@ function InstallExtras {
     InstallTreeSitter
 }
 
-# Install or update codebase-memory-mcp during package setup.
+function InstallCodex {
+    param([switch]$Update)
+    Info "Installing Codex CLI..."
+    if ($script:Dry) { return }
+
+    if ($Update -or -not (Get-Command codex -ErrorAction SilentlyContinue)) {
+        $oldNonInteractive = $env:CODEX_NON_INTERACTIVE
+        try {
+            $env:CODEX_NON_INTERACTIVE = "1"
+            Invoke-RestMethod https://chatgpt.com/codex/install.ps1 | Invoke-Expression
+        } finally {
+            if ($null -eq $oldNonInteractive) {
+                Remove-Item Env:CODEX_NON_INTERACTIVE -ErrorAction SilentlyContinue
+            } else {
+                $env:CODEX_NON_INTERACTIVE = $oldNonInteractive
+            }
+        }
+    } else {
+        Info "Already installed Codex CLI"
+    }
+
+    Success "Finished installing Codex CLI"
+}
+
+# Install or update agent CLIs during package setup.
 function InstallAi {
     param([switch]$Update)
-    Info "Installing AI CLIs..."
+    Info "Installing agent CLIs..."
     if ($script:Dry) { return }
+
+    InstallCodex -Update:$Update
 
     if ($Update -and (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
         codebase-memory-mcp update
@@ -332,7 +358,7 @@ function InstallAi {
         Info "Already installed codebase-memory-mcp"
     }
 
-    Success "Finished installing AI CLIs"
+    Success "Finished installing agent CLIs"
 }
 
 function InstallNeovimNightly {
