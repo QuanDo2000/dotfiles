@@ -189,7 +189,8 @@ function set_zsh_default {
 
 function _nixos_rebuild_switch {
   local upgrade="${1:-false}"
-  local target="$(_nixos_flake_target)"
+  local target
+  target="$(_nixos_flake_target)"
   local args=(switch)
   local fail_message="nixos-rebuild switch failed"
 

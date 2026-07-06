@@ -75,6 +75,17 @@ mock_uname_m() {
   _install_uname_mock
 }
 
+with_nix_agent_tools() {
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" =~ ^(codex|codebase-memory-mcp)$ ]]; then
+      printf '/nix/store/test-%s/bin/%s\n' "$2" "$2"
+      return 0
+    fi
+    builtin command "$@"
+  }
+  export -f command
+}
+
 # Create the standard dotfiles/config/{shared,unix,mac} directories under DOTFILES_DIR.
 create_dotfiles_dirs() {
   mkdir -p "$DOTFILES_DIR/config/shared" "$DOTFILES_DIR/config/unix" "$DOTFILES_DIR/config/mac"

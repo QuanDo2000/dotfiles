@@ -41,6 +41,7 @@ test_verify_command_runs() {
     ln -s "$src" "$HOME/$f"
   done
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
+  with_nix_agent_tools
 
   assert_exit_code 0 env OS_RELEASE="$osrel" bash "$DOTFILE_CMD" verify
 }
