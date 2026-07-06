@@ -54,10 +54,11 @@ function setup_dotfiles {
   install_packages
   update_repo
   install_extras
-  case "$(detect_platform)" in
-    arch|debian) info "Skipping symlink setup: Home Manager manages Linux dotfiles" ;;
-    *) setup_symlinks ;;
-  esac
+  if is_linux_home_manager_platform; then
+    info "Skipping symlink setup: Home Manager manages Linux dotfiles"
+  else
+    setup_symlinks
+  fi
   setup_obsidian_if_supported
   success "Done!"
 }

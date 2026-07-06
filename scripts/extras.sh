@@ -62,13 +62,11 @@ function install_tmux_plugins {
 
 function install_extras {
   info "Installing extras"
-  case "$(detect_platform)" in
-    arch|debian|nixos|mac)
-      info "Extras are managed by Nix; skipping imperative plugin installs"
-      success "Finished installing extras"
-      return
-      ;;
-  esac
+  if is_home_manager_platform; then
+    info "Extras are managed by Nix; skipping imperative plugin installs"
+    success "Finished installing extras"
+    return
+  fi
   install_zsh_plugins
   install_tmux_plugins
   success "Finished installing extras"

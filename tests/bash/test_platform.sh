@@ -232,3 +232,35 @@ test_detect_platform_nixos_precedes_arch() {
 
   assert_equals "nixos" "$result"
 }
+
+test_is_home_manager_platform() {
+  source_scripts packages.sh
+
+  local platform
+  for platform in arch debian nixos mac; do
+    if ! is_home_manager_platform "$platform"; then
+      echo "  FAILED: $platform should be a Home Manager platform" >> "$ERROR_FILE"
+    fi
+  done
+
+  if is_home_manager_platform unknown; then
+    echo "  FAILED: unknown should not be a Home Manager platform" >> "$ERROR_FILE"
+  fi
+}
+
+test_is_linux_home_manager_platform() {
+  source_scripts packages.sh
+
+  local platform
+  for platform in arch debian; do
+    if ! is_linux_home_manager_platform "$platform"; then
+      echo "  FAILED: $platform should be a Linux Home Manager platform" >> "$ERROR_FILE"
+    fi
+  done
+
+  for platform in nixos mac unknown; do
+    if is_linux_home_manager_platform "$platform"; then
+      echo "  FAILED: $platform should not be a Linux Home Manager platform" >> "$ERROR_FILE"
+    fi
+  done
+}

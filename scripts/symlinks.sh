@@ -169,7 +169,7 @@ function setup_symlinks {
   fi
 
   platform="$(detect_platform)"
-  if [[ "$platform" == "nixos" || "$platform" == "arch" || "$platform" == "debian" || "$platform" == "mac" ]]; then
+  if is_home_manager_platform "$platform"; then
     info "Home Manager manages dotfile links; skipping shared/unix/mac symlinks"
   else
     setup_symlinks_folder "$DOTFILES_DIR/config/shared"
