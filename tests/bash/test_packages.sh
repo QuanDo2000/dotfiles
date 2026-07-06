@@ -13,323 +13,8 @@ teardown() {
 }
 
 # ---------------------------------------------------------------------------
-# install_font_debian
+# Linux package flows
 # ---------------------------------------------------------------------------
-
-test_install_font_debian_dry_run() {
-  DRY=true
-  local output
-  output=$(install_font_debian 2>&1)
-
-  assert_contains "$output" "Installing Fira Code"
-  assert_contains "$output" "Finished installing Fira Code"
-}
-
-test_install_font_debian_already_installed() {
-  DRY=false
-  mkdir -p "$HOME/.local/share/fonts"
-  touch "$HOME/.local/share/fonts/FiraCodeNerdFont-Regular.ttf"
-
-  local output
-  output=$(install_font_debian 2>&1)
-
-  assert_contains "$output" "Already installed font Fira Code"
-}
-
-# ---------------------------------------------------------------------------
-# _link_debian_fdfind
-# ---------------------------------------------------------------------------
-
-test_link_debian_fdfind_dry_run() {
-  DRY=true
-  local output
-  output=$(_link_debian_fdfind 2>&1)
-
-  assert_contains "$output" "Ensuring 'fd' is available"
-  assert_contains "$output" "Finished ensuring fd"
-}
-
-test_link_debian_fdfind_fd_on_path() {
-  DRY=false
-  # fd is available on macOS through the platform package config.
-  if ! command -v fd >/dev/null 2>&1; then
-    echo '#!/usr/bin/env bash' > "$HOME/.local/bin/fd"
-    chmod +x "$HOME/.local/bin/fd"
-    export PATH="$HOME/.local/bin:$PATH"
-  fi
-
-  local output
-  output=$(_link_debian_fdfind 2>&1)
-
-  assert_contains "$output" "'fd' already available on PATH"
-}
-
-test_link_debian_fdfind_neither_available() {
-  DRY=false
-  # Remove fd and fdfind from PATH by restricting to minimal dirs
-  local orig_path="$PATH"
-  export PATH="/usr/bin:/bin"
-
-  # Make sure neither fd nor fdfind is in /usr/bin or /bin
-  if command -v fd >/dev/null 2>&1 || command -v fdfind >/dev/null 2>&1; then
-    export PATH="$orig_path"
-    return  # Can't test — fd is in a system dir
-  fi
-
-  local output
-  output=$(_link_debian_fdfind 2>&1)
-
-  assert_contains "$output" "fd not found on system"
-  export PATH="$orig_path"
-}
-
-# ---------------------------------------------------------------------------
-# setup_lazygit (Debian GitHub-release installer)
-# ---------------------------------------------------------------------------
-
-test_setup_lazygit_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_lazygit 2>&1)
-
-  assert_contains "$output" "lazygit"
-  assert_contains "$output" "Finished lazygit"
-}
-
-test_setup_lazygit_already_installed() {
-  DRY=false
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/lazygit"
-  chmod +x "$HOME/.local/bin/lazygit"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_lazygit 2>&1)
-
-  assert_contains "$output" "Already installed lazygit"
-}
-
-test_setup_lazygit_update_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_lazygit --update 2>&1)
-
-  assert_contains "$output" "lazygit"
-  assert_contains "$output" "Finished lazygit"
-}
-
-test_setup_lazygit_update_does_not_skip() {
-  DRY=true
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/lazygit"
-  chmod +x "$HOME/.local/bin/lazygit"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_lazygit --update 2>&1)
-
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
-}
-
-# ---------------------------------------------------------------------------
-# setup_jj (Debian GitHub-release installer)
-# ---------------------------------------------------------------------------
-
-test_setup_jj_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_jj 2>&1)
-
-  assert_contains "$output" "jj"
-  assert_contains "$output" "Finished jj"
-}
-
-test_setup_jj_already_installed() {
-  DRY=false
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/jj"
-  chmod +x "$HOME/.local/bin/jj"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_jj 2>&1)
-
-  assert_contains "$output" "Already installed jj"
-}
-
-test_setup_jj_update_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_jj --update 2>&1)
-
-  assert_contains "$output" "jj"
-  assert_contains "$output" "Finished jj"
-}
-
-test_setup_jj_update_does_not_skip() {
-  DRY=true
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/jj"
-  chmod +x "$HOME/.local/bin/jj"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_jj --update 2>&1)
-
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
-}
-
-# setup_codex
-# ---------------------------------------------------------------------------
-
-test_setup_codex_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_codex 2>&1)
-
-  assert_contains "$output" "codex"
-  assert_contains "$output" "Finished codex"
-}
-
-test_setup_codex_already_installed() {
-  DRY=false
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codex"
-  chmod +x "$HOME/.local/bin/codex"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_codex 2>&1)
-
-  assert_contains "$output" "Already installed codex"
-}
-
-test_setup_codex_update_does_not_skip() {
-  DRY=true
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codex"
-  chmod +x "$HOME/.local/bin/codex"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_codex --update 2>&1)
-
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
-}
-
-test_setup_codex_update_uses_bun_when_available() {
-  DRY=false
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codex"
-  chmod +x "$HOME/.local/bin/codex"
-  cat > "$HOME/.local/bin/bun" <<'EOF'
-#!/usr/bin/env bash
-printf '%s\n' "$*" > "$HOME/bun-args"
-EOF
-  chmod +x "$HOME/.local/bin/bun"
-  export PATH="$HOME/.local/bin:$PATH"
-  http_get_retry() { return 1; }
-
-  local output exit_code=0
-  output=$(setup_codex --update 2>&1) || exit_code=$?
-
-  assert_equals "0" "$exit_code"
-  assert_file_exists "$HOME/bun-args"
-  assert_equals "add -g @openai/codex@latest" "$(cat "$HOME/bun-args")"
-  assert_contains "$output" "Finished codex"
-}
-
-# ---------------------------------------------------------------------------
-# setup_codebase_memory_mcp
-# ---------------------------------------------------------------------------
-
-test_setup_codebase_memory_mcp_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_codebase_memory_mcp 2>&1)
-
-  assert_contains "$output" "codebase-memory-mcp"
-  assert_contains "$output" "Finished codebase-memory-mcp"
-}
-
-test_setup_codebase_memory_mcp_already_installed() {
-  DRY=false
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codebase-memory-mcp"
-  chmod +x "$HOME/.local/bin/codebase-memory-mcp"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_codebase_memory_mcp 2>&1)
-
-  assert_contains "$output" "Already installed codebase-memory-mcp"
-}
-
-test_setup_codebase_memory_mcp_update_does_not_skip() {
-  DRY=true
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/codebase-memory-mcp"
-  chmod +x "$HOME/.local/bin/codebase-memory-mcp"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_codebase_memory_mcp --update 2>&1)
-
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
-}
-
-test_codex_triple_linux() {
-  mock_uname Linux
-  local t
-  t=$(_codex_triple)
-  # arch varies by host; assert the OS half is the linux-musl target.
-  assert_contains "$t" "unknown-linux-musl"
-}
-
-test_codex_triple_mac() {
-  mock_uname Darwin
-  local t
-  t=$(_codex_triple)
-  assert_contains "$t" "apple-darwin"
-}
-
-# ---------------------------------------------------------------------------
-# setup_starship + package lists
-# ---------------------------------------------------------------------------
-
-test_setup_starship_dry_run() {
-  DRY=true
-  local output
-  output=$(setup_starship 2>&1)
-
-  assert_contains "$output" "starship"
-  assert_contains "$output" "Finished starship"
-}
-
-test_setup_starship_already_installed() {
-  DRY=false
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/starship"
-  chmod +x "$HOME/.local/bin/starship"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_starship 2>&1)
-
-  assert_contains "$output" "Already installed starship"
-}
-
-test_setup_starship_update_does_not_skip() {
-  DRY=true
-  echo '#!/usr/bin/env bash' > "$HOME/.local/bin/starship"
-  chmod +x "$HOME/.local/bin/starship"
-  export PATH="$HOME/.local/bin:$PATH"
-
-  local output
-  output=$(setup_starship --update 2>&1)
-
-  if [[ "$output" == *"Already installed"* ]]; then
-    echo "  FAILED: --update should not skip when already installed" >> "$ERROR_FILE"
-  fi
-}
 
 test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
@@ -358,8 +43,6 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
   _load_nix_profile() { :; }
   nix() { printf 'nix %s\n' "$*" >> "$calls"; }
-  setup_codex() { :; }
-  setup_codebase_memory_mcp() { :; }
 
   install_arch >/dev/null 2>&1
 
@@ -367,10 +50,10 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   output="$(<"$calls")"
   assert_contains "$output" "sudo pacman -S --needed --noconfirm"
   assert_contains "$output" "install-lix"
-  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#quando@arch"
+  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#quando@linux"
   assert_not_contains "$output" "home-manager/master"
 
-  unset -f command sudo _install_lix _load_nix_profile nix setup_codex setup_codebase_memory_mcp
+  unset -f command sudo _install_lix _load_nix_profile nix
 }
 
 test_install_arch_leaves_agent_tools_to_home_manager() {
@@ -422,8 +105,6 @@ test_install_arch_removes_old_repo_ghostty_dir_symlink_before_home_manager() {
     fi
     printf 'home-manager %s\n' "$*" >> "$calls"
   }
-  setup_codex() { :; }
-  setup_codebase_memory_mcp() { :; }
 
   install_arch >/dev/null 2>&1
 
@@ -432,7 +113,7 @@ test_install_arch_removes_old_repo_ghostty_dir_symlink_before_home_manager() {
   fi
   assert_file_exists "$DOTFILES_DIR/config/unix/config/ghostty/config"
 
-  unset -f command sudo _load_nix_profile home-manager setup_codex setup_codebase_memory_mcp
+  unset -f command sudo _load_nix_profile home-manager
 }
 
 test_install_arch_removes_old_agent_tool_installs_before_home_manager() {
@@ -471,7 +152,7 @@ test_install_arch_removes_old_agent_tool_installs_before_home_manager() {
 
   install_arch >/dev/null 2>&1
 
-  assert_contains "$(<"$calls")" "home-manager switch --flake $DOTFILES_DIR#quando@arch"
+  assert_contains "$(<"$calls")" "home-manager switch --flake $DOTFILES_DIR#quando@linux"
 
   unset -f command sudo _load_nix_profile home-manager
 }
@@ -490,25 +171,80 @@ test_update_arch_uses_existing_home_manager() {
   sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
   _load_nix_profile() { :; }
   home-manager() { printf 'home-manager %s\n' "$*" >> "$calls"; }
-  setup_codex() { :; }
-  setup_codebase_memory_mcp() { :; }
 
   update_arch >/dev/null 2>&1
 
   local output
   output="$(<"$calls")"
   assert_contains "$output" "sudo pacman -Syu --noconfirm"
-  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#quando@arch"
+  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#quando@linux"
 
-  unset -f command sudo _load_nix_profile home-manager setup_codex setup_codebase_memory_mcp
+  unset -f command sudo _load_nix_profile home-manager
 }
 
-test_debian_packages_include_neovim() {
-  assert_contains "${DEBIAN_PACKAGES[*]}" "neovim"
+test_debian_packages_are_bootstrap_only() {
+  for pkg in curl git xz-utils zsh procps file; do
+    assert_contains "${DEBIAN_PACKAGES[*]}" "$pkg"
+  done
+  for pkg in build-essential neovim starship nodejs tmux lazygit jujutsu ripgrep fd-find fzf fontconfig zoxide unzip; do
+    if [[ " ${DEBIAN_PACKAGES[*]} " == *" $pkg "* ]]; then
+      echo "  FAILED: Debian apt packages should not install $pkg; Home Manager owns user tools" >> "$ERROR_FILE"
+    fi
+  done
 }
 
-test_debian_packages_include_nodejs_for_codex_hooks() {
-  assert_contains "${DEBIAN_PACKAGES[*]}" "nodejs"
+test_install_debian_bootstraps_nix_and_switches_home_manager() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|home-manager) return 1 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
+  _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
+  _load_nix_profile() { :; }
+  nix() { printf 'nix %s\n' "$*" >> "$calls"; }
+
+  install_debian >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "sudo apt install -y"
+  assert_contains "$output" "install-lix"
+  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#quando@linux"
+  assert_not_contains "$output" "neovim"
+
+  unset -f command sudo _install_lix _load_nix_profile nix
+}
+
+test_update_debian_uses_existing_home_manager() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|home-manager) return 0 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
+  _load_nix_profile() { :; }
+  home-manager() { printf 'home-manager %s\n' "$*" >> "$calls"; }
+
+  update_debian >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "sudo apt update -y"
+  assert_contains "$output" "sudo apt upgrade -y"
+  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#quando@linux"
+
+  unset -f command sudo _load_nix_profile home-manager
 }
 
 # ---------------------------------------------------------------------------

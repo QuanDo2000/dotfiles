@@ -35,9 +35,15 @@
         ];
       };
 
-      homeConfigurations."${machine.username}@arch" = home-manager.lib.homeManagerConfiguration {
-        pkgs = linuxPkgs;
-        modules = [ ./config/home.nix ];
+      homeConfigurations = {
+        "${machine.username}@linux" = home-manager.lib.homeManagerConfiguration {
+          pkgs = linuxPkgs;
+          modules = [ ./config/home.nix ];
+        };
+        "${machine.username}@arch" = home-manager.lib.homeManagerConfiguration {
+          pkgs = linuxPkgs;
+          modules = [ ./config/home.nix ];
+        };
       };
 
       apps.x86_64-linux.home-manager = {

@@ -10,8 +10,8 @@ _action_verb() {
 # ---------------------------------------------------------------------------
 # Generic GitHub-release download helpers
 #
-# Shared by setup_neovim/setup_lazygit/setup_jj here and by the language
-# installers in languages.sh (install_zig/odin/gleam). Defined in packages.sh
+# Shared by the language installers in languages.sh (install_zig/odin/gleam).
+# Defined in packages.sh
 # because it is sourced before languages.sh, keeping the dependency direction
 # one-way (languages.sh -> packages.sh).
 # ---------------------------------------------------------------------------
@@ -182,211 +182,10 @@ ensure_pkg() {
 # Install jq if missing. Required to parse GitHub release metadata (and Zig index.json).
 ensure_jq() { ensure_pkg jq; }
 
-function install_font_debian {
-  # https://medium.com/source-words/how-to-manually-install-update-and-uninstall-fonts-on-linux-a8d09a3853b0
-  info "Installing Fira Code..."
-  if [[ "$DRY" == "false" ]]; then
-    mkdir -p "$HOME/.local/share/fonts"
-    if [ ! -f "$HOME/.local/share/fonts/FiraCodeNerdFont-Regular.ttf" ]; then
-      cd "$HOME/.local/share/fonts" || fail "Failed to enter fonts directory"
-      curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/HEAD/patched-fonts/FiraCode/Regular/FiraCodeNerdFont-Regular.ttf \
-        || fail "Failed to download Fira Code font"
-      command -v fc-cache >/dev/null 2>&1 && fc-cache -f -v
-      cd "$HOME" || fail "Failed to return to home directory"
-    else
-      info "Already installed font Fira Code"
-    fi
-  fi
-  success "Finished installing Fira Code"
-}
-
-function _link_debian_fdfind {
-  info "Ensuring 'fd' is available in '.local/bin'..."
-  if [[ "$DRY" == "false" ]]; then
-    mkdir -p "$HOME/.local/bin"
-    # 'fd' is already callable as-is; we only normalize Debian's 'fdfind' name.
-    if command -v fd >/dev/null 2>&1; then
-      info "'fd' already available on PATH"
-    elif command -v fdfind >/dev/null 2>&1; then
-      if [ ! -L "$HOME/.local/bin/fd" ]; then
-        ln -s "$(command -v fdfind)" "$HOME/.local/bin/fd"
-      else
-        info "Already symlinked fdfind to '.local/bin/fd'"
-      fi
-    else
-      info "fd not found on system; skipping symlink. Install 'fd' (ripgrep/ fd) manually or via your package manager"
-    fi
-  fi
-  success "Finished ensuring fd in '.local/bin'"
-}
-
-# Map `uname -m` to the Linux arch slug used by lazygit release assets.
-_lazygit_linux_arch() {
-  case "$(uname -m)" in
-    x86_64)        echo "x86_64" ;;
-    aarch64|arm64) echo "arm64" ;;
-    *) fail "Unsupported arch for lazygit: $(uname -m)" ;;
-  esac
-}
-
-# Install or update a flat-binary tool from its GitHub releases into ~/.local/bin.
-# Debian only — Arch/macOS use their package managers. Idempotent: in install
-# mode, no-op if <cmd> is already on PATH; --update always fetches the latest.
-# <asset_fn> echoes the release asset filename given the tag (it varies per tool).
-# Usage: setup_gh_binary <cmd> <owner/repo> <asset_fn> [--update]
-function setup_gh_binary {
-  local cmd="$1" repo="$2" asset_fn="$3"
-  local update=false
-  [[ "${4:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") $cmd..."
-  if [[ "$DRY" == "false" ]]; then
-    if [[ "$update" == "false" ]] && command -v "$cmd" >/dev/null 2>&1; then
-      info "Already installed $cmd"
-      success "Finished $cmd"
-      return
-    fi
-    ensure_jq
-    local release_json tag
-    release_json="$(http_get_retry "https://api.github.com/repos/$repo/releases/latest")" \
-      || fail "Failed to fetch $cmd releases/latest"
-    tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
-    [[ -n "$tag" ]] || fail "Could not read tag_name from $cmd releases/latest"
-    local asset
-    asset="$("$asset_fn" "$tag")"
-    _install_from_github_release "$cmd" "$cmd" "$release_json" "$tag" "$asset" "flat-binary" "$cmd"
-  fi
-  success "Finished $cmd"
-}
-
-# lazygit asset drops the leading 'v' from the tag (e.g. lazygit_0.44.2_Linux_x86_64.tar.gz).
-_lazygit_asset() { echo "lazygit_${1#v}_Linux_$(_lazygit_linux_arch).tar.gz"; }
-# Install or update lazygit (Debian only — Arch uses pacman, macOS nix-darwin).
-function setup_lazygit { setup_gh_binary lazygit jesseduffield/lazygit _lazygit_asset "${1:-}"; }
-
-# Echo starship's Linux release asset arch for the current machine.
-_starship_linux_arch() {
-  case "$(uname -m)" in
-    x86_64)        echo "x86_64" ;;
-    aarch64|arm64) echo "aarch64" ;;
-    *) fail "Unsupported arch for starship: $(uname -m)" ;;
-  esac
-}
-
-_starship_asset() { echo "starship-$(_starship_linux_arch)-unknown-linux-gnu.tar.gz"; }
-
-# Install or update the starship prompt. Arch installs it via pacman and macOS
-# via nix-darwin (see ARCH_PACKAGES / config/darwin.nix); Debian apt does not
-# reliably ship starship, so install the checked GitHub release into ~/.local/bin.
-# Idempotent: in install mode, no-op if `starship` is already on PATH; --update
-# always reinstalls the latest. Usage: setup_starship [--update]
-function setup_starship { setup_gh_binary starship starship/starship _starship_asset "${1:-}"; }
-
-# Map `uname -m` to the Linux arch slug used by jj (jujutsu) release assets.
-_jj_linux_arch() {
-  case "$(uname -m)" in
-    x86_64)        echo "x86_64" ;;
-    aarch64|arm64) echo "aarch64" ;;
-    *) fail "Unsupported arch for jj: $(uname -m)" ;;
-  esac
-}
-
-# jj asset keeps the leading 'v' (e.g. jj-v0.42.0-x86_64-unknown-linux-musl.tar.gz).
-_jj_asset() { echo "jj-${1}-$(_jj_linux_arch)-unknown-linux-musl.tar.gz"; }
-# Install or update jj/jujutsu (Debian only — Arch uses pacman, macOS nix-darwin).
-function setup_jj { setup_gh_binary jj jj-vcs/jj _jj_asset "${1:-}"; }
-
-# Echo codex's release triple (<arch>-<os>) for the current machine.
-_codex_triple() {
-  local arch os
-  case "$(uname -m)" in
-    x86_64)        arch=x86_64 ;;
-    aarch64|arm64) arch=aarch64 ;;
-    *) fail "Unsupported arch for codex: $(uname -m)" ;;
-  esac
-  if is_mac; then os=apple-darwin; else os=unknown-linux-musl; fi
-  echo "${arch}-${os}"
-}
-
-# Install or update the OpenAI Codex CLI from GitHub releases into ~/.local/bin.
-# Cross-platform (Linux + macOS): codex is not in apt/pacman/brew, so the static
-# release binary is fetched with sha256 verification. The tarball ships the
-# binary as codex-<triple>; it's renamed to `codex` on install. Idempotent:
-# install mode no-ops if `codex` is on PATH; --update always fetches the latest.
-# Usage: setup_codex [--update]
-function setup_codex {
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") codex..."
-  if [[ "$DRY" == "false" ]]; then
-    if [[ "$update" == "false" ]] && command -v codex >/dev/null 2>&1; then
-      info "Already installed codex"
-      success "Finished codex"
-      return
-    fi
-    if [[ "$update" == "true" ]] && command -v bun >/dev/null 2>&1; then
-      bun add -g @openai/codex@latest || fail "Failed to update codex with bun"
-      success "Finished codex"
-      return
-    fi
-    ensure_jq
-    local triple asset release_json tag
-    triple="$(_codex_triple)"
-    asset="codex-${triple}.tar.gz"
-    release_json="$(http_get_retry "https://api.github.com/repos/openai/codex/releases/latest")" \
-      || fail "Failed to fetch codex releases/latest"
-    tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
-    [[ -n "$tag" ]] || fail "Could not read tag_name from codex releases/latest"
-    _install_from_github_release codex codex "$release_json" "$tag" \
-      "$asset" "flat-binary" "codex" "codex-${triple}"
-  fi
-  success "Finished codex"
-}
-
-# Install or update codebase-memory-mcp. Usage: setup_codebase_memory_mcp [--update]
-function setup_codebase_memory_mcp {
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") codebase-memory-mcp..."
-  if [[ "$DRY" == "false" ]]; then
-    if command -v codebase-memory-mcp >/dev/null 2>&1; then
-      if [[ "$update" == "true" ]]; then
-        codebase-memory-mcp update || fail "Failed to update codebase-memory-mcp"
-      else
-        info "Already installed codebase-memory-mcp"
-      fi
-    else
-      curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash \
-        || fail "Failed to install codebase-memory-mcp"
-    fi
-  fi
-  success "Finished codebase-memory-mcp"
-}
-
-# build-essential: nvim-treesitter compiles parsers with cc.
 # xz-utils: required to extract the Zig .tar.xz in `dotfile languages zig`.
 DEBIAN_PACKAGES=(
-  build-essential curl git xz-utils nodejs
-  unzip zsh tmux neovim fontconfig fzf fd-find ripgrep
-  procps file zoxide
+  curl git xz-utils zsh procps file
 )
-
-function _install_legacy_debian_user_tools {
-  install_font_debian
-  _link_debian_fdfind
-  setup_lazygit
-  setup_jj
-  setup_starship
-  setup_codex
-  setup_codebase_memory_mcp
-}
-
-function _update_legacy_debian_user_tools {
-  setup_lazygit --update
-  setup_jj --update
-  setup_starship --update
-  setup_codex --update
-  setup_codebase_memory_mcp --update
-}
 
 function update_debian {
   info "Updating packages for Debian..."
@@ -394,7 +193,7 @@ function update_debian {
     sudo apt update -y || fail "Failed to update apt"
     sudo apt upgrade -y || fail "Failed to upgrade apt packages"
 
-    _update_legacy_debian_user_tools
+    _home_manager_switch
   fi
   success "Finished update for Debian"
 }
@@ -405,7 +204,7 @@ function install_debian {
     sudo apt install -y "${DEBIAN_PACKAGES[@]}" \
       || fail "Failed to install Debian packages"
 
-    _install_legacy_debian_user_tools
+    _home_manager_switch
   fi
   success "Finished install for Debian"
 }
@@ -519,13 +318,14 @@ _cleanup_home_manager_migration_conflicts() {
 }
 
 function _home_manager_switch {
+  local target="$DOTFILES_DIR#quando@linux"
   _ensure_nix
   _cleanup_home_manager_migration_conflicts
   if command -v home-manager >/dev/null 2>&1; then
-    home-manager switch --flake "$DOTFILES_DIR#quando@arch" \
+    home-manager switch --flake "$target" \
       || fail "home-manager switch failed"
   else
-    nix run "$DOTFILES_DIR#home-manager" -- switch --flake "$DOTFILES_DIR#quando@arch" \
+    nix run "$DOTFILES_DIR#home-manager" -- switch --flake "$target" \
       || fail "home-manager bootstrap switch failed"
   fi
 }
