@@ -8,9 +8,9 @@ DEBIAN_PACKAGES=(
 function update_debian {
   info "Updating packages for Debian..."
   if [[ "$DRY" == "false" ]]; then
-    _run_linux_home_manager_bootstrap "Failed to update apt" \
+    _run_nix_managed_switch "Failed to update apt" \
       sudo apt update -y
-    _run_linux_home_manager_bootstrap "Failed to upgrade apt packages" \
+    _run_nix_managed_switch "Failed to upgrade apt packages" \
       sudo apt upgrade -y
     _home_manager_switch
   fi
@@ -20,7 +20,7 @@ function update_debian {
 function install_debian {
   info "Installing packages and programs for Debian..."
   if [[ "$DRY" == "false" ]]; then
-    _run_linux_home_manager_bootstrap "Failed to install Debian packages" \
+    _run_nix_managed_switch "Failed to install Debian packages" \
       sudo apt install -y "${DEBIAN_PACKAGES[@]}"
     _home_manager_switch
   fi
@@ -34,7 +34,7 @@ ARCH_PACKAGES=(
 function update_arch {
   info "Updating packages for Arch Linux..."
   if [[ "$DRY" == "false" ]]; then
-    _run_linux_home_manager_bootstrap "Failed to update pacman" \
+    _run_nix_managed_switch "Failed to update pacman" \
       sudo pacman -Syu --noconfirm
     _home_manager_switch
   fi
@@ -44,7 +44,7 @@ function update_arch {
 function install_arch {
   info "Installing packages and programs for Arch Linux..."
   if [[ "$DRY" == "false" ]]; then
-    _run_linux_home_manager_bootstrap "Failed to install Arch packages" \
+    _run_nix_managed_switch "Failed to install Arch packages" \
       sudo pacman -S --needed --noconfirm "${ARCH_PACKAGES[@]}"
     _home_manager_switch
   fi
@@ -87,12 +87,6 @@ function _ensure_nix {
     _install_lix
     _load_nix_profile
   fi
-}
-
-function _run_linux_home_manager_bootstrap {
-  local fail_message="$1"
-  shift
-  "$@" || fail "$fail_message"
 }
 
 function _home_manager_switch {
