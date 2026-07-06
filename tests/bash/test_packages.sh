@@ -356,7 +356,19 @@ test_nixos_rebuilds_share_host_target_helper() {
 
   assert_contains "$packages_text" "function _nixos_rebuild_switch"
   assert_contains "$packages_text" "_nixos_rebuild_switch"
-  assert_contains "$packages_text" 'local target="$DOTFILES_DIR#$(_host_config_value hostName)"'
+  assert_contains "$packages_text" "function _nixos_flake_target"
+  assert_contains "$packages_text" "function _run_nix_managed_switch"
+}
+
+test_nix_managed_switches_share_runner() {
+  local packages_text
+  packages_text="$(<"$REPO_DIR/scripts/packages.sh")"
+
+  assert_contains "$packages_text" "function _run_nix_managed_switch"
+  assert_contains "$packages_text" "_cleanup_home_manager_migration_conflicts"
+  assert_contains "$packages_text" "_run_nix_managed_switch \"home-manager switch failed\""
+  assert_contains "$packages_text" "_run_nix_managed_switch \"darwin-rebuild switch failed\""
+  assert_contains "$packages_text" '_run_nix_managed_switch "$fail_message"'
 }
 
 test_install_packages_dispatches_nixos() {

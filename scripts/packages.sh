@@ -319,17 +319,14 @@ _cleanup_home_manager_migration_conflicts() {
 
 function _home_manager_switch {
   _ensure_nix
-  local username target
-  username="$(_host_config_value username)" \
-    || fail "Failed to resolve Linux Home Manager username"
-  target="$DOTFILES_DIR#${username}@linux"
-  _cleanup_home_manager_migration_conflicts
+  local target
+  target="$(_linux_home_manager_target)"
   if command -v home-manager >/dev/null 2>&1; then
-    home-manager switch --flake "$target" \
-      || fail "home-manager switch failed"
+    _run_nix_managed_switch "home-manager switch failed" \
+      home-manager switch --flake "$target"
   else
-    nix run "$DOTFILES_DIR#home-manager" -- switch --flake "$target" \
-      || fail "home-manager bootstrap switch failed"
+    _run_nix_managed_switch "home-manager bootstrap switch failed" \
+      nix run "$DOTFILES_DIR#home-manager" -- switch --flake "$target"
   fi
 }
 
@@ -337,21 +334,48 @@ _host_config_value() {
   nix eval --raw --file "$DOTFILES_DIR/config/host.nix" "$1"
 }
 
+function _linux_home_manager_target {
+  local username
+  username="$(_host_config_value username)" \
+    || fail "Failed to resolve Linux Home Manager username"
+  echo "$DOTFILES_DIR#${username}@linux"
+}
+
+function _darwin_flake_target {
+  echo "$DOTFILES_DIR#mac"
+}
+
+function _nixos_flake_target {
+  echo "$DOTFILES_DIR#$(_host_config_value hostName)"
+}
+
+function _dry_run_nix_managed_switch {
+  info "Would run: $*"
+}
+
+function _run_nix_managed_switch {
+  local fail_message="$1"
+  shift
+  _cleanup_home_manager_migration_conflicts
+  "$@" || fail "$fail_message"
+}
+
 function _darwin_rebuild_switch {
   _ensure_nix
-  _cleanup_home_manager_migration_conflicts
+  local target
+  target="$(_darwin_flake_target)"
   if command -v darwin-rebuild >/dev/null 2>&1; then
-    sudo HOME=/var/root darwin-rebuild switch --flake "$DOTFILES_DIR#mac" \
-      || fail "darwin-rebuild switch failed"
+    _run_nix_managed_switch "darwin-rebuild switch failed" \
+      sudo HOME=/var/root darwin-rebuild switch --flake "$target"
   else
-    sudo HOME=/var/root nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$DOTFILES_DIR#mac" \
-      || fail "nix-darwin bootstrap switch failed"
+    _run_nix_managed_switch "nix-darwin bootstrap switch failed" \
+      sudo HOME=/var/root nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$target"
   fi
 }
 
 function update_mac {
   info "Updating packages for Mac..."
-  [[ "$DRY" == "true" ]] && info "Would run: sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
+  [[ "$DRY" == "true" ]] && _dry_run_nix_managed_switch sudo HOME=/var/root darwin-rebuild switch --flake "$(_darwin_flake_target)"
   if [[ "$DRY" == "false" ]]; then
     _darwin_rebuild_switch
   fi
@@ -360,7 +384,7 @@ function update_mac {
 
 function install_mac {
   info "Installing packages and programs for Mac..."
-  [[ "$DRY" == "true" ]] && info "Would run: sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
+  [[ "$DRY" == "true" ]] && _dry_run_nix_managed_switch sudo HOME=/var/root darwin-rebuild switch --flake "$(_darwin_flake_target)"
   if [[ "$DRY" == "false" ]]; then
     _darwin_rebuild_switch
   fi
@@ -394,7 +418,7 @@ function set_zsh_default {
 
 function _nixos_rebuild_switch {
   local upgrade="${1:-false}"
-  local target="$DOTFILES_DIR#$(_host_config_value hostName)"
+  local target="$(_nixos_flake_target)"
   local args=(switch)
   local fail_message="nixos-rebuild switch failed"
 
@@ -403,11 +427,9 @@ function _nixos_rebuild_switch {
     fail_message="nixos-rebuild switch --upgrade failed"
   fi
 
-  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild ${args[*]} --flake $target"
+  [[ "$DRY" == "true" ]] && _dry_run_nix_managed_switch sudo nixos-rebuild "${args[@]}" --flake "$target"
   if [[ "$DRY" == "false" ]]; then
-    _cleanup_home_manager_migration_conflicts
-    sudo nixos-rebuild "${args[@]}" --flake "$target" \
-      || fail "$fail_message"
+    _run_nix_managed_switch "$fail_message" sudo nixos-rebuild "${args[@]}" --flake "$target"
   fi
 }
 
