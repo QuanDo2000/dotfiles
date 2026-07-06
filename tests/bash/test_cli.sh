@@ -62,9 +62,13 @@ test_long_flag_help() {
 
 test_verify_command_runs() {
   mkdir -p "$HOME/.local/bin"
-  local f
+  local f src
   for f in .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
-    ln -s "$REPO_DIR/$f" "$HOME/$f"
+    case "$f" in
+      .gitconfig|.vimrc) src="$REPO_DIR/config/shared/$f" ;;
+      *) src="$REPO_DIR/config/unix/$f" ;;
+    esac
+    ln -s "$src" "$HOME/$f"
   done
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
   printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
