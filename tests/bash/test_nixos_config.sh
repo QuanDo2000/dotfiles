@@ -244,3 +244,29 @@ test_home_config_owns_existing_xdg_configs() {
   assert_contains "$home_text" "./unix/config/waybar"
   assert_contains "$home_text" "force = true"
 }
+
+test_doctor_paths_cover_home_manager_managed_paths() {
+  local home_text verify_text path
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+  verify_text="$(<"$REPO_DIR/scripts/verify.sh")"
+
+  while IFS= read -r path; do
+    case "$path" in
+      .local/bin/dotfile|.zshrc.mac|.local/bin/caf) continue ;;
+    esac
+    assert_contains "$verify_text" "$path"
+  done < <(sed -n 's/^[[:space:]]*home\.file\."\([^"]*\)".*/\1/p' <<<"$home_text")
+
+  while IFS= read -r path; do
+    assert_contains "$verify_text" "$path"
+  done < <(sed -n 's/^[[:space:]]*xdg\.configFile\."\([^"]*\)".*/\1/p' <<<"$home_text")
+
+  while IFS= read -r path; do
+    assert_contains "$verify_text" "$path"
+  done < <(sed -n 's/^[[:space:]]*xdg\.dataFile\."\([^"]*\)".*/\1/p' <<<"$home_text")
+
+  assert_contains "$verify_text" '_doctor_check_managed_path ".local/bin/dotfile"'
+  assert_contains "$verify_text" '_doctor_check_managed_path ".zshrc.mac"'
+  assert_contains "$verify_text" '_doctor_check_managed_path ".local/bin/caf"'
+  assert_not_contains "$home_text" 'home.file.".codex/config.toml"'
+}
