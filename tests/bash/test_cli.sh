@@ -61,6 +61,9 @@ test_long_flag_help() {
 }
 
 test_verify_command_runs() {
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=ubuntu\nID_LIKE=debian\n' > "$osrel"
   mkdir -p "$HOME/.local/bin"
   local f src
   for f in .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
@@ -73,7 +76,7 @@ test_verify_command_runs() {
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
   printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
 
-  assert_exit_code 0 bash "$DOTFILE_CMD" verify
+  assert_exit_code 0 env OS_RELEASE="$osrel" bash "$DOTFILE_CMD" verify
 }
 
 test_dry_run_default_command() {

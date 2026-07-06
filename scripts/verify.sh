@@ -71,7 +71,7 @@ _check_dotfile_command() {
 _check_nix_tool() {
   local name="$1"
   local platform="${2:-$(detect_platform)}"
-  [[ "$platform" =~ ^(arch|nixos|mac)$ ]] || return
+  [[ "$platform" =~ ^(arch|nixos|mac)$ ]] || return 0
 
   local target
   if ! target="$(command -v "$name" 2>/dev/null)"; then
@@ -110,7 +110,9 @@ function verify {
   echo ""
   if [ "$errors" -eq 0 ]; then
     success "All checks passed!" --force
+    return 0
   else
     info "$errors issue(s) found" --force
+    return 1
   fi
 }
