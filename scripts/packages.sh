@@ -220,8 +220,8 @@ function _link_debian_fdfind {
   success "Finished ensuring fd in '.local/bin'"
 }
 
-# Map `uname -m` to the arch slug used by lazygit release assets.
-_lazygit_arch() {
+# Map `uname -m` to the Linux arch slug used by lazygit release assets.
+_lazygit_linux_arch() {
   case "$(uname -m)" in
     x86_64)        echo "x86_64" ;;
     aarch64|arm64) echo "arm64" ;;
@@ -259,12 +259,12 @@ function setup_gh_binary {
 }
 
 # lazygit asset drops the leading 'v' from the tag (e.g. lazygit_0.44.2_Linux_x86_64.tar.gz).
-_lazygit_asset() { echo "lazygit_${1#v}_Linux_$(_lazygit_arch).tar.gz"; }
+_lazygit_asset() { echo "lazygit_${1#v}_Linux_$(_lazygit_linux_arch).tar.gz"; }
 # Install or update lazygit (Debian only — Arch uses pacman, macOS nix-darwin).
 function setup_lazygit { setup_gh_binary lazygit jesseduffield/lazygit _lazygit_asset "${1:-}"; }
 
 # Echo starship's Linux release asset arch for the current machine.
-_starship_arch() {
+_starship_linux_arch() {
   case "$(uname -m)" in
     x86_64)        echo "x86_64" ;;
     aarch64|arm64) echo "aarch64" ;;
@@ -272,7 +272,7 @@ _starship_arch() {
   esac
 }
 
-_starship_asset() { echo "starship-$(_starship_arch)-unknown-linux-gnu.tar.gz"; }
+_starship_asset() { echo "starship-$(_starship_linux_arch)-unknown-linux-gnu.tar.gz"; }
 
 # Install or update the starship prompt. Arch installs it via pacman and macOS
 # via nix-darwin (see ARCH_PACKAGES / config/darwin.nix); Debian apt does not
@@ -302,8 +302,8 @@ function setup_starship {
   success "Finished starship"
 }
 
-# Map `uname -m` to the arch slug used by jj (jujutsu) release assets.
-_jj_arch() {
+# Map `uname -m` to the Linux arch slug used by jj (jujutsu) release assets.
+_jj_linux_arch() {
   case "$(uname -m)" in
     x86_64)        echo "x86_64" ;;
     aarch64|arm64) echo "aarch64" ;;
@@ -312,7 +312,7 @@ _jj_arch() {
 }
 
 # jj asset keeps the leading 'v' (e.g. jj-v0.42.0-x86_64-unknown-linux-musl.tar.gz).
-_jj_asset() { echo "jj-${1}-$(_jj_arch)-unknown-linux-musl.tar.gz"; }
+_jj_asset() { echo "jj-${1}-$(_jj_linux_arch)-unknown-linux-musl.tar.gz"; }
 # Install or update jj/jujutsu (Debian only — Arch uses pacman, macOS nix-darwin).
 function setup_jj { setup_gh_binary jj jj-vcs/jj _jj_asset "${1:-}"; }
 
