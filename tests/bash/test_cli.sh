@@ -165,8 +165,12 @@ test_help_describes_obsidian_arch_autorun() {
 test_readme_matches_key_help_text() {
   local readme_text
   readme_text="$(<"$REPO_DIR/README.md")"
+  assert_contains "$readme_text" "### Unix Commands"
   assert_contains "$readme_text" "obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)"
   assert_contains "$readme_text" "verify      Verify core Unix symlinks"
+  assert_contains "$readme_text" "### Windows Commands"
+  assert_contains "$readme_text" "dotfile.ps1 [OPTIONS] [COMMAND]"
+  assert_contains "$readme_text" "verify      Verify installation"
   assert_contains "$readme_text" 'NixOS flake target is `#${hostName}`'
 }
 

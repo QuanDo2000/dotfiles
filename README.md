@@ -64,9 +64,9 @@ git clone https://github.com/QuanDo2000/dotfiles.git $HOME\Documents\Projects\do
 & $HOME\Documents\Projects\dotfiles\dotfile.ps1
 ```
 
-### Commands
+### Unix Commands
 
-```
+```bash
 dotfile [OPTIONS] [COMMAND]
 
 Commands:
@@ -76,6 +76,24 @@ Commands:
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
   verify      Verify core Unix symlinks
   doctor      Detect Home Manager file conflicts
+
+Options:
+  -d, --dry   Dry run (no changes made)
+  -f, --force Overwrite existing files without prompting
+  -q, --quiet Only show errors
+  -h, --help  Show this help message
+```
+
+### Windows Commands
+
+```powershell
+dotfile.ps1 [OPTIONS] [COMMAND]
+
+Commands:
+  all         Run full setup (default)
+  update      Update system packages
+  packages    Install system packages only
+  verify      Verify installation
 
 Options:
   -d, --dry   Dry run (no changes made)
