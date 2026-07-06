@@ -136,7 +136,7 @@ test_update_command_in_help() {
 test_help_describes_verify_as_core_symlink_check() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  assert_contains "$output" "Verify core symlinks"
+  assert_contains "$output" "Verify core Unix symlinks"
 }
 
 test_help_describes_doctor_as_conflict_check() {
