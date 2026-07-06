@@ -8,10 +8,6 @@ DEBIAN_PACKAGES=(
 function update_debian {
   info "Updating packages for Debian..."
   if [[ "$DRY" == "false" ]]; then
-    _run_nix_managed_switch "Failed to update apt" \
-      sudo apt update -y
-    _run_nix_managed_switch "Failed to upgrade apt packages" \
-      sudo apt upgrade -y
     _home_manager_switch
   fi
   success "Finished update for Debian"
@@ -34,8 +30,6 @@ ARCH_PACKAGES=(
 function update_arch {
   info "Updating packages for Arch Linux..."
   if [[ "$DRY" == "false" ]]; then
-    _run_nix_managed_switch "Failed to update pacman" \
-      sudo pacman -Syu --noconfirm
     _home_manager_switch
   fi
   success "Finished update for Arch Linux"

@@ -85,7 +85,7 @@ test_update_arch_uses_existing_home_manager() {
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "sudo pacman -Syu --noconfirm"
+  assert_not_contains "$output" "sudo pacman"
   assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
 
   unset -f command sudo _load_nix_profile home-manager
@@ -148,8 +148,7 @@ test_update_debian_uses_existing_home_manager() {
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "sudo apt update -y"
-  assert_contains "$output" "sudo apt upgrade -y"
+  assert_not_contains "$output" "sudo apt"
   assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
 
   unset -f command sudo _load_nix_profile home-manager
