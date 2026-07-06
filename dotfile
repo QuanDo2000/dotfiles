@@ -34,11 +34,8 @@ fi
 source "$SCRIPTS_DIR/utils.sh"
 source "$SCRIPTS_DIR/platform.sh"
 source "$SCRIPTS_DIR/packages.sh"
-source "$SCRIPTS_DIR/extras.sh"
-source "$SCRIPTS_DIR/symlinks.sh"
 source "$SCRIPTS_DIR/verify.sh"
 source "$SCRIPTS_DIR/obsidian.sh"
-source "$SCRIPTS_DIR/languages.sh"
 
 function update_repo {
   info "Updating dotfiles repo..."
@@ -53,8 +50,6 @@ function setup_dotfiles {
   info "Setting up dotfiles..."
   install_packages
   update_repo
-  install_extras
-  setup_symlinks
   setup_obsidian_if_supported
   success "Done!"
 }
@@ -85,12 +80,9 @@ Usage: $(basename "$0") [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update Nix-managed packages and toolchains
+  update      Update Nix-managed packages
   packages    Install system packages only
-  extras      No-op on Unix; extras are managed by Nix
-  symlinks    No-op on Unix; links are managed by Nix
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
-  languages [LANG]  No-op on Unix; language toolchains are managed by Nix.
   verify      Verify core symlinks
 
 Options:
@@ -131,15 +123,11 @@ case "${1:-all}" in
 all) setup_dotfiles ;;
 update)
   update_packages
-  update_languages
   ;;
 packages)
   install_packages
   ;;
-extras) install_extras ;;
-symlinks) setup_symlinks ;;
 obsidian) setup_obsidian ;;
-languages) install_languages "${2:-}" ;;
 verify) verify ;;
 *)
   fail "Unknown command: $1"

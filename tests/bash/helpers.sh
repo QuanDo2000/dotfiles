@@ -38,8 +38,8 @@ cleanup_test_env() {
 }
 
 # Source one or more scripts from scripts/.
-# Usage: source_scripts utils.sh symlinks.sh
-# Always also sources platform.sh (required by packages.sh and symlinks.sh).
+# Usage: source_scripts utils.sh packages.sh
+# Always also sources platform.sh (required by packages.sh).
 source_scripts() {
   for script in "$@"; do
     source "$REPO_DIR/scripts/$script"

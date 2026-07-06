@@ -4,38 +4,11 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 setup() {
   init_test_env
-  source_scripts utils.sh symlinks.sh
+  source_scripts utils.sh
 }
 
 teardown() {
   cleanup_test_env
-}
-
-test_setup_symlinks_is_noop_on_mac() {
-  mock_uname Darwin
-  create_dotfiles_dirs
-  echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
-  echo "mac zsh" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
-
-  setup_symlinks >/dev/null
-
-  for path in "$HOME/.gitconfig" "$HOME/.zshrc.mac"; do
-    if [ -e "$path" ] || [ -L "$path" ]; then
-      echo "  FAILED: $path should be left for Home Manager on macOS" >> "$ERROR_FILE"
-    fi
-  done
-}
-
-test_setup_symlinks_is_noop_on_linux() {
-  mock_uname Linux
-  create_dotfiles_dirs
-  echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
-
-  setup_symlinks >/dev/null
-
-  if [ -e "$HOME/.gitconfig" ] || [ -L "$HOME/.gitconfig" ]; then
-    echo "  FAILED: .gitconfig should be left for Home Manager on Linux" >> "$ERROR_FILE"
-  fi
 }
 
 test_install_packages_dispatches_mac() {
@@ -78,32 +51,6 @@ test_install_packages_fails_unsupported_os() {
 
   if [ "$exit_code" -eq 0 ]; then
     echo "  FAILED: install_packages should fail on unsupported OS" >> "$ERROR_FILE"
-  fi
-}
-
-test_dry_run_darwin_creates_nothing() {
-  DRY=true
-  mock_uname Darwin
-  create_dotfiles_dirs
-  echo "content" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
-
-  setup_symlinks
-
-  if [ -L "$HOME/.zshrc.mac" ] || [ -f "$HOME/.zshrc.mac" ]; then
-    echo "  FAILED: dry run should not create .zshrc.mac" >> "$ERROR_FILE"
-  fi
-}
-
-test_dry_run_linux_creates_nothing() {
-  DRY=true
-  mock_uname Linux
-  create_dotfiles_dirs
-  echo "content" > "$DOTFILES_DIR/config/shared/.gitconfig"
-
-  setup_symlinks
-
-  if [ -L "$HOME/.gitconfig" ] || [ -f "$HOME/.gitconfig" ]; then
-    echo "  FAILED: dry run should not create .gitconfig" >> "$ERROR_FILE"
   fi
 }
 

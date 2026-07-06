@@ -7,7 +7,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 setup() {
   init_test_env true   # DRY=true by default
-  source_scripts utils.sh packages.sh extras.sh symlinks.sh
+  source_scripts utils.sh packages.sh
   mock_uname Darwin
 }
 
@@ -162,18 +162,6 @@ test_set_zsh_default_skips_on_mac() {
 }
 
 # ---------------------------------------------------------------------------
-# install_extras
-# ---------------------------------------------------------------------------
-
-test_install_extras_dry_run() {
-  local output
-  output=$(install_extras 2>&1)
-
-  assert_contains "$output" "managed by Nix"
-  assert_contains "$output" "Finished installing extras"
-}
-
-# ---------------------------------------------------------------------------
 # Full Mac setup_dotfiles dry-run
 # ---------------------------------------------------------------------------
 
@@ -192,8 +180,6 @@ test_setup_dotfiles_dry_run_mac() {
     info "Setting up dotfiles..."
     install_packages
     update_repo
-    install_extras
-    setup_symlinks
     success "Done!"
   }
 
@@ -202,8 +188,6 @@ test_setup_dotfiles_dry_run_mac() {
 
   assert_contains "$output" "Setting up dotfiles"
   assert_contains "$output" "Installing packages and programs for Mac"
-  assert_contains "$output" "managed by Nix"
-  assert_contains "$output" "Home Manager manages dotfile links"
   assert_contains "$output" "Done!"
 }
 
@@ -216,21 +200,4 @@ test_dotfile_packages_command_mac() {
   output=$(bash "$DOTFILE_CMD" --dry packages 2>&1)
 
   assert_contains "$output" "Mac"
-}
-
-test_dotfile_extras_command_dry() {
-  local output
-  output=$(bash "$DOTFILE_CMD" --dry extras 2>&1)
-
-  assert_contains "$output" "managed by Nix"
-}
-
-test_dotfile_symlinks_command_mac() {
-  create_dotfiles_dirs
-
-  local output
-  output=$(bash "$DOTFILE_CMD" --dry symlinks 2>&1)
-
-  assert_contains "$output" "Home Manager manages dotfile links"
-  assert_not_contains "$output" ".local/bin/dotfile"
 }

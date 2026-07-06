@@ -4,18 +4,15 @@ This file provides guidance to coding agents when working with code in this repo
 
 ## Overview
 
-Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The installer clones this repo to `~/dotfiles` and runs shell scripts to install packages, set up extras where still needed, and create symlinks.
+Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The Unix installer clones this repo to `~/dotfiles` and runs Nix-managed package updates; Home Manager owns Unix links and shell/tool extras.
 
 ## Key Commands
 
 ```bash
-dotfile                      # Full setup (packages -> extras -> symlinks)
-dotfile symlinks             # No-op on Unix; links are managed by Nix
+dotfile                      # Full setup
 dotfile packages             # Install system packages only
-dotfile extras               # No-op on Unix; extras are managed by Nix
 dotfile verify               # Verify core Unix symlinks
-dotfile update               # Update Nix-managed packages and toolchains
-dotfile languages [LANG]     # No-op on Unix; language toolchains are managed by Nix
+dotfile update               # Update Nix-managed packages
 dotfile -d <command>         # Dry run
 dotfile -f <command>         # Force overwrite existing files
 ```
@@ -26,13 +23,11 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 
 ## Architecture
 
-- **dotfile** - Unix entry point at the repo root. Sources all scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by Home Manager on Linux/macOS.
+- **dotfile** - Unix entry point at the repo root. Sources the needed scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by Home Manager on Linux/macOS.
 - **dotfile.ps1** - Windows equivalent (PowerShell) at the repo root. Same subcommand structure; symlinked into `$HOME\.local\bin\` by `SetupSymlinks`.
 - **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` - OS-specific package installation (apt/pacman only for Linux bootstrap packages, NixOS flakes, nix-darwin bootstrap on macOS).
-  - `extras.sh` - compatibility no-op on Unix. zsh and tmux plugin paths are managed by Home Manager from `config/home.nix`.
-  - `symlinks.sh` - compatibility no-op on Unix. Dotfile links are managed by Home Manager from `config/home.nix`.
   - `verify.sh` - Post-install checks.
 
 ## Dotfile Layers

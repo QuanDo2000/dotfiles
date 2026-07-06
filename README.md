@@ -72,12 +72,9 @@ dotfile [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update Nix-managed packages and toolchains
+  update      Update Nix-managed packages
   packages    Install system packages only
-  extras      No-op on Unix; extras are managed by Nix
-  symlinks    No-op on Unix; links are managed by Nix
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
-  languages [LANG]  No-op on Unix; language toolchains are managed by Nix
   verify      Verify core Unix symlinks
 
 Options:
@@ -126,9 +123,8 @@ On macOS it wraps:
 sudo HOME=/var/root darwin-rebuild switch --flake ~/dotfiles#mac
 ```
 
-Both paths then update the repo-managed agent tools. The `dotfile` command
-itself is installed by Home Manager on NixOS/macOS; use `./dotfile` from the
-repo until the first rebuild has switched successfully.
+The `dotfile` command itself is installed by Home Manager on NixOS/macOS; use
+`./dotfile` from the repo until the first rebuild has switched successfully.
 
 ## Testing
 

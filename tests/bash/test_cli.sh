@@ -108,7 +108,7 @@ test_all_runs_obsidian_on_arch_with_prereqs() {
   unset __MOCK_UNAME
 }
 
-test_all_runs_symlink_noop_on_home_manager_linux() {
+test_all_skips_removed_noop_commands_on_home_manager_linux() {
   is_windows_bash && return 0
   local distro osrel output
   for distro in arch debian; do
@@ -117,7 +117,9 @@ test_all_runs_symlink_noop_on_home_manager_linux() {
     printf 'ID=%s\n' "$distro" > "$osrel"
 
     output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry all 2>&1)
-    assert_contains "$output" "Home Manager manages dotfile links"
+    assert_not_contains "$output" "Home Manager manages dotfile links"
+    assert_not_contains "$output" "Extras are managed by Nix"
+    assert_not_contains "$output" "language toolchains are managed by Home Manager"
   done
 
   unset -f uname 2>/dev/null || true
@@ -153,38 +155,18 @@ test_readme_matches_key_help_text() {
 
 test_dry_run_update_command() {
   is_windows_bash && return 0
-  assert_exit_code 0 bash "$DOTFILE_CMD" --dry update
+  local output
+  output=$(bash "$DOTFILE_CMD" --dry update 2>&1)
+  assert_contains "$output" "Updating packages"
+  assert_not_contains "$output" "language toolchains"
 }
 
-test_languages_command_in_help() {
+test_removed_noop_commands_not_in_help() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  assert_contains "$output" "languages"
-}
-
-test_dry_run_languages_command() {
-  is_windows_bash && return 0
-  assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages
-}
-
-test_dry_run_languages_zig() {
-  is_windows_bash && return 0
-  assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages zig
-}
-
-test_dry_run_languages_odin() {
-  is_windows_bash && return 0
-  assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages odin
-}
-
-test_dry_run_languages_gleam() {
-  is_windows_bash && return 0
-  assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages gleam
-}
-
-test_dry_run_languages_jank() {
-  is_windows_bash && return 0
-  assert_exit_code 0 bash "$DOTFILE_CMD" --dry languages jank
+  assert_not_contains "$output" $'\n  extras '
+  assert_not_contains "$output" $'\n  symlinks '
+  assert_not_contains "$output" $'\n  languages '
 }
 
 test_packages_nixos_dry() {
@@ -202,16 +184,19 @@ test_packages_nixos_dry() {
   unset __MOCK_UNAME
 }
 
-test_help_has_no_direct_zsh_or_tmux_commands() {
+test_help_has_no_removed_commands() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  if [[ "$output" == *$'\n  zsh '* || "$output" == *$'\n  tmux '* || "$output" == *$'\n  ai '* ]]; then
-    echo "  FAILED: help text should not expose direct zsh/tmux/ai commands" >> "$ERROR_FILE"
+  if [[ "$output" == *$'\n  zsh '* || "$output" == *$'\n  tmux '* || "$output" == *$'\n  ai '* || "$output" == *$'\n  extras '* || "$output" == *$'\n  symlinks '* || "$output" == *$'\n  languages '* ]]; then
+    echo "  FAILED: help text should not expose removed commands" >> "$ERROR_FILE"
   fi
 }
 
-test_direct_zsh_tmux_and_ai_commands_fail() {
+test_removed_commands_fail() {
   assert_exit_code 1 bash "$DOTFILE_CMD" --dry zsh
   assert_exit_code 1 bash "$DOTFILE_CMD" --dry tmux
   assert_exit_code 1 bash "$DOTFILE_CMD" --dry ai
+  assert_exit_code 1 bash "$DOTFILE_CMD" --dry extras
+  assert_exit_code 1 bash "$DOTFILE_CMD" --dry symlinks
+  assert_exit_code 1 bash "$DOTFILE_CMD" --dry languages
 }
