@@ -178,28 +178,6 @@ function UpdateRepo {
     Success "Finished updating repo"
 }
 
-# Clone $repo into $dest if $dest doesn't already exist.
-function CloneIfMissing($name, $repo, $dest, [string[]]$GitArgs = @()) {
-    Info "Installing $name..."
-    # dest without a .git inside is a leftover partial clone — wipe it.
-    if ((Test-Path $dest) -and -not (Test-Path (Join-Path $dest '.git'))) {
-        Info "Found partial $name install at $dest; removing"
-        Remove-Item -Recurse -Force $dest
-    }
-    if (-not (Test-Path $dest)) {
-        if ($script:Dry) {
-            Info "Would clone $repo into $dest"
-        } else {
-            git clone @GitArgs $repo $dest
-            if ($LASTEXITCODE -ne 0) {
-                Remove-Item -Recurse -Force $dest -ErrorAction SilentlyContinue
-                Fail "Failed to clone $name"
-            }
-        }
-    }
-    Success "Finished installing $name"
-}
-
 function WingetHas($id) {
     $null = winget list --id $id --exact --accept-source-agreements 2>$null | Out-String
     return ($LASTEXITCODE -eq 0)
