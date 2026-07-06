@@ -476,8 +476,7 @@ function SetupSymlinks {
     LinkFile -source (Join-Path $sharedPath "config\starship.toml") -destination (Join-Path $starshipConfigDir "starship.toml")
 
     # AI tool configs live in their own dotfolders (not ~/.config) alongside
-    # runtime state we don't track, so link only the tracked files. Mirrors the
-    # unix setup_symlinks.
+    # runtime state we don't track, so link only the tracked files.
     $aiPath = Join-Path $sharedPath "ai"
     $aiLinks = @(
         @{ Src = "claude\settings.json";        Dst = "$userHome\.claude\settings.json" }
