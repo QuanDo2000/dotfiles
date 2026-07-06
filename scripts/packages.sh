@@ -422,17 +422,31 @@ DEBIAN_PACKAGES=(
   procps file zoxide
 )
 
+function _install_legacy_debian_user_tools {
+  install_font_debian
+  setup_fdfind
+  setup_lazygit
+  setup_jj
+  setup_starship
+  setup_codex
+  setup_codebase_memory_mcp
+}
+
+function _update_legacy_debian_user_tools {
+  setup_lazygit --update
+  setup_jj --update
+  setup_starship --update
+  setup_codex --update
+  setup_codebase_memory_mcp --update
+}
+
 function update_debian {
   info "Updating packages for Debian..."
   if [[ "$DRY" == "false" ]]; then
     sudo apt update -y || fail "Failed to update apt"
     sudo apt upgrade -y || fail "Failed to upgrade apt packages"
 
-    setup_lazygit --update
-    setup_jj --update
-    setup_starship --update
-    setup_codex --update
-    setup_codebase_memory_mcp --update
+    _update_legacy_debian_user_tools
   fi
   success "Finished update for Debian"
 }
@@ -443,13 +457,7 @@ function install_debian {
     sudo apt install -y "${DEBIAN_PACKAGES[@]}" \
       || fail "Failed to install Debian packages"
 
-    install_font_debian
-    setup_fdfind
-    setup_lazygit
-    setup_jj
-    setup_starship
-    setup_codex
-    setup_codebase_memory_mcp
+    _install_legacy_debian_user_tools
   fi
   success "Finished install for Debian"
 }
