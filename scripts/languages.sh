@@ -236,7 +236,7 @@ update_zig() { _update_if_ours zig install_zig; }
 
 _home_manager_manages_languages() {
   case "$(detect_platform)" in
-    arch|nixos|mac) return 0 ;;
+    arch|debian|nixos|mac) return 0 ;;
     *) return 1 ;;
   esac
 }

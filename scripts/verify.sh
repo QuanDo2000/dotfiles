@@ -15,7 +15,7 @@ _check_symlink() {
     local link_target
     link_target="$(resolve_symlink "$target")"
     if [[ "$link_target" == "$DOTFILES_DIR"* ]] \
-      || [[ "$platform" =~ ^(arch|nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
+      || [[ "$platform" =~ ^(arch|debian|nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
       success "$name -> $link_target"
     else
       fail_soft "$name points to $link_target (expected $DOTFILES_DIR/... or Home Manager store target)"
@@ -53,7 +53,7 @@ _check_dotfile_command() {
     link_target="$(resolve_symlink "$target")"
     platform="$(detect_platform)"
     if [[ "$link_target" == "$DOTFILES_DIR/dotfile" ]] \
-      || [[ "$platform" =~ ^(arch|nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
+      || [[ "$platform" =~ ^(arch|debian|nixos|mac)$ && "$link_target" == /nix/store/* ]]; then
       success ".local/bin/dotfile -> $link_target"
     else
       fail_soft ".local/bin/dotfile points to $link_target (expected $DOTFILES_DIR/dotfile or Home Manager store target)"
@@ -71,7 +71,7 @@ _check_dotfile_command() {
 _check_nix_tool() {
   local name="$1"
   local platform="${2:-$(detect_platform)}"
-  [[ "$platform" =~ ^(arch|nixos|mac)$ ]] || return 0
+  [[ "$platform" =~ ^(arch|debian|nixos|mac)$ ]] || return 0
 
   local target
   if ! target="$(command -v "$name" 2>/dev/null)"; then
