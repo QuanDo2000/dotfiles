@@ -103,17 +103,32 @@ Per-machine values live in tracked `config/host.nix`; hardware settings live in
 tracked `config/hardware-configuration.nix`. Edit those files before the first
 rebuild if the username, hostname, timezone, NixOS stateVersion, disks, or CPU
 settings differ. Then `sudo bash ./dotfile all` for the rest of the dotfiles.
+The NixOS flake target is `#${hostName}` from `config/host.nix`; the current
+tracked host uses `#nixos`.
 
-On a brand-new machine, run `sudo nixos-rebuild build --flake ~/dotfiles#nixos`
-once before the first `switch` to confirm the config evaluates.
+On a brand-new machine, run this once before the first `switch` to confirm the
+config evaluates:
+
+```bash
+sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
+```
 
 After provisioning, use `dotfile update` as the normal Nix-managed update
-command. On NixOS it wraps
-`sudo nixos-rebuild switch --upgrade --flake ~/dotfiles#nixos`; on macOS it
-wraps `sudo HOME=/var/root darwin-rebuild switch --flake ~/dotfiles#mac`. Both
-paths then update the repo-managed agent tools. The `dotfile` command itself is
-installed by Home Manager on NixOS/macOS; use `./dotfile` from the repo until
-the first rebuild has switched successfully.
+command. On NixOS it wraps:
+
+```bash
+sudo nixos-rebuild switch --upgrade --flake ~/dotfiles#${hostName}
+```
+
+On macOS it wraps:
+
+```bash
+sudo HOME=/var/root darwin-rebuild switch --flake ~/dotfiles#mac
+```
+
+Both paths then update the repo-managed agent tools. The `dotfile` command
+itself is installed by Home Manager on NixOS/macOS; use `./dotfile` from the
+repo until the first rebuild has switched successfully.
 
 ## Testing
 
