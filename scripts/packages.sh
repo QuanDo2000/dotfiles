@@ -320,7 +320,7 @@ _cleanup_home_manager_migration_conflicts() {
 function _home_manager_switch {
   _ensure_nix
   local username target
-  username="$(nix eval --raw --file "$DOTFILES_DIR/config/host.nix" username)" \
+  username="$(_host_config_value username)" \
     || fail "Failed to resolve Linux Home Manager username"
   target="$DOTFILES_DIR#${username}@linux"
   _cleanup_home_manager_migration_conflicts
@@ -331,6 +331,10 @@ function _home_manager_switch {
     nix run "$DOTFILES_DIR#home-manager" -- switch --flake "$target" \
       || fail "home-manager bootstrap switch failed"
   fi
+}
+
+_host_config_value() {
+  nix eval --raw --file "$DOTFILES_DIR/config/host.nix" "$1"
 }
 
 function _darwin_rebuild_switch {
@@ -393,10 +397,11 @@ function set_zsh_default {
 # Usage: install_nixos
 function install_nixos {
   info "Installing packages for NixOS..."
-  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --flake $DOTFILES_DIR#nixos"
+  local target="$DOTFILES_DIR#$(_host_config_value hostName)"
+  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --flake $target"
   if [[ "$DRY" == "false" ]]; then
     _cleanup_home_manager_migration_conflicts
-    sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos" \
+    sudo nixos-rebuild switch --flake "$target" \
       || fail "nixos-rebuild switch failed"
   fi
   success "Finished install for NixOS"
@@ -406,10 +411,11 @@ function install_nixos {
 # Usage: update_nixos
 function update_nixos {
   info "Updating packages for NixOS..."
-  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#nixos"
+  local target="$DOTFILES_DIR#$(_host_config_value hostName)"
+  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --upgrade --flake $target"
   if [[ "$DRY" == "false" ]]; then
     _cleanup_home_manager_migration_conflicts
-    sudo nixos-rebuild switch --upgrade --flake "$DOTFILES_DIR#nixos" \
+    sudo nixos-rebuild switch --upgrade --flake "$target" \
       || fail "nixos-rebuild switch --upgrade failed"
   fi
   success "Finished update for NixOS"

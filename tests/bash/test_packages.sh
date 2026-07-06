@@ -17,6 +17,10 @@ nix() {
     printf 'testuser@linux\n'
     return 0
   fi
+  if [[ "${1:-}" == "eval" && "${2:-}" == "--raw" && "${3:-}" == "--file" && "${4:-}" == "$DOTFILES_DIR/config/host.nix" && "${5:-}" == "hostName" ]]; then
+    printf 'testhost\n'
+    return 0
+  fi
   printf 'nix %s\n' "$*" >> "$calls"
 }
 
@@ -264,7 +268,7 @@ test_install_nixos_dry_run() {
   output=$(install_nixos 2>&1)
 
   assert_contains "$output" "NixOS"
-  assert_contains "$output" "sudo nixos-rebuild switch --flake $DOTFILES_DIR#nixos"
+  assert_contains "$output" "sudo nixos-rebuild switch --flake $DOTFILES_DIR#testhost"
   assert_not_contains "$output" "neovim"
 }
 
@@ -275,7 +279,7 @@ test_update_nixos_dry_run() {
   output=$(update_nixos 2>&1)
 
   assert_contains "$output" "NixOS"
-  assert_contains "$output" "sudo nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#nixos"
+  assert_contains "$output" "sudo nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#testhost"
 }
 
 test_install_nixos_uses_flake_switch() {
@@ -287,7 +291,7 @@ test_install_nixos_uses_flake_switch() {
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "nixos-rebuild switch --flake $DOTFILES_DIR#nixos"
+  assert_contains "$output" "nixos-rebuild switch --flake $DOTFILES_DIR#testhost"
   assert_not_contains "$output" "--impure"
 
   unset -f sudo
@@ -339,7 +343,7 @@ test_update_nixos_uses_flake_switch_upgrade() {
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#nixos"
+  assert_contains "$output" "nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#testhost"
   assert_not_contains "$output" "--impure"
 
   unset -f sudo
