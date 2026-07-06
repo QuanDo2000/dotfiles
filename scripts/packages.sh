@@ -279,28 +279,7 @@ _starship_asset() { echo "starship-$(_starship_linux_arch)-unknown-linux-gnu.tar
 # reliably ship starship, so install the checked GitHub release into ~/.local/bin.
 # Idempotent: in install mode, no-op if `starship` is already on PATH; --update
 # always reinstalls the latest. Usage: setup_starship [--update]
-function setup_starship {
-  local update=false
-  [[ "${1:-}" == "--update" ]] && update=true
-  info "$(_action_verb "$update") starship..."
-  if [[ "$DRY" == "false" ]]; then
-    if [[ "$update" == "false" ]] && command -v starship >/dev/null 2>&1; then
-      info "Already installed starship"
-      success "Finished starship"
-      return
-    fi
-    ensure_jq
-    local release_json tag asset
-    release_json="$(http_get_retry "https://api.github.com/repos/starship/starship/releases/latest")" \
-      || fail "Failed to fetch starship releases/latest"
-    tag="$(echo "$release_json" | jq -r '.tag_name // empty')"
-    [[ -n "$tag" ]] || fail "Could not read tag_name from starship releases/latest"
-    asset="$(_starship_asset)"
-    _install_from_github_release starship starship "$release_json" "$tag" \
-      "$asset" "flat-binary" "starship"
-  fi
-  success "Finished starship"
-}
+function setup_starship { setup_gh_binary starship starship/starship _starship_asset "${1:-}"; }
 
 # Map `uname -m` to the Linux arch slug used by jj (jujutsu) release assets.
 _jj_linux_arch() {
