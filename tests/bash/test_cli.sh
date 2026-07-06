@@ -52,9 +52,13 @@ test_doctor_command_runs_with_health_checks() {
 test_dry_run_default_command() {
   # Unix installer does not target Windows (Windows has its own PowerShell setup).
   is_windows_bash && return 0
+  link_core_dotfiles
+  with_nix_agent_tools
+
   local output
-  output=$(bash "$DOTFILE_CMD" --dry all 2>&1)
+  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true bash "$DOTFILE_CMD" --dry all 2>&1)
   assert_contains "$output" "Installing packages"
+  assert_contains "$output" "Checking Home Manager-managed paths"
   assert_not_contains "$output" "Updating packages"
 }
 
@@ -63,6 +67,9 @@ test_all_runs_obsidian_on_arch_with_prereqs() {
   mock_uname Linux
   local osrel="$TEST_HOME/os-release"
   local bindir="$TEST_HOME/bin"
+  link_core_dotfiles
+  with_nix_agent_tools
+
   mkdir -p "$bindir"
   printf 'ID=arch\n' > "$osrel"
   printf '#!/usr/bin/env bash\nexit 0\n' > "$bindir/npm"
@@ -71,9 +78,9 @@ test_all_runs_obsidian_on_arch_with_prereqs() {
   chmod +x "$bindir/npm" "$bindir/ob" "$bindir/systemctl"
 
   local output
-  output=$(OS_RELEASE="$osrel" PATH="$bindir:$PATH" bash "$DOTFILE_CMD" --dry all 2>&1)
+  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$osrel" PATH="$bindir:$PATH" bash "$DOTFILE_CMD" --dry all 2>&1)
   assert_contains "$output" "Setting up Obsidian headless sync"
-
+  assert_contains "$output" "Checking Home Manager-managed paths"
   unset -f uname 2>/dev/null || true
   unset __MOCK_UNAME
 }

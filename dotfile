@@ -48,6 +48,7 @@ function update_repo {
 
 function setup_dotfiles {
   info "Setting up dotfiles..."
+  doctor
   install_packages
   update_repo
   setup_obsidian_if_supported
