@@ -178,6 +178,24 @@ test_dry_run_update_command() {
   assert_not_contains "$output" "language toolchains"
 }
 
+test_update_runs_doctor_before_package_update() {
+  is_windows_bash && return 0
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  printf 'local shell edits\n' > "$HOME/.zshrc"
+
+  local output exit_code
+  set +e
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry update 2>&1)
+  exit_code=$?
+  set -e
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" ".zshrc exists but is not Home Manager-owned"
+  assert_not_contains "$output" "Updating packages"
+}
+
 test_removed_noop_commands_not_in_help() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)

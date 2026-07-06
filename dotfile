@@ -123,6 +123,7 @@ done
 case "${1:-all}" in
 all) setup_dotfiles ;;
 update)
+  doctor
   update_packages
   ;;
 packages)
