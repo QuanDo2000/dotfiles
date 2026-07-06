@@ -28,17 +28,6 @@ function test_installfnm_dry_run_does_not_call_fnm {
     Assert-False $called 'fnm should not be invoked in dry run'
 }
 
-function test_installtreesitter_dry_run_does_not_call_npm {
-    $called = $false
-    Set-CommandMock 'npm' { $script:called = $true }
-
-    $output = InstallTreeSitter 6>&1 | Out-String
-
-    Clear-CommandMock 'npm'
-    Assert-Contains $output 'Installing tree-sitter CLI'
-    Assert-False $called 'npm should not be invoked in dry run'
-}
-
 function test_installai_dry_run_does_not_call_npm {
     $called = $false
     Set-CommandMock 'npm' { $script:called = $true }
@@ -72,20 +61,8 @@ function test_installpackages_dry_run_does_not_call_winget {
     Assert-False $called 'winget should not be invoked in dry run'
 }
 
-function test_installneovimnightly_dry_run_does_not_download {
-    $called = $false
-    Set-CommandMock 'Invoke-WebRequest' { $script:called = $true }
-
-    $output = InstallNeovimNightly 6>&1 | Out-String
-
-    Clear-CommandMock 'Invoke-WebRequest'
-    Assert-Contains $output 'Checking Neovim nightly'
-    Assert-False $called 'Invoke-WebRequest should not be called in dry run'
-}
-
-function test_installextras_dry_run_chains_three_installers {
+function test_installextras_dry_run_chains_font_and_node {
     $output = InstallExtras 6>&1 | Out-String
     Assert-Contains $output 'Installing FiraCode'
     Assert-Contains $output 'Installing Node.js LTS'
-    Assert-Contains $output 'Installing tree-sitter CLI'
 }

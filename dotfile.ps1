@@ -51,27 +51,6 @@ if ($env:DOTFILES_DIR -and (Test-Path $env:DOTFILES_DIR)) {
 }
 $script:RepoUrl = "https://github.com/QuanDo2000/dotfiles.git"
 
-# Invoke-RestMethod with retry + exponential backoff. GitHub API is rate-limited
-# to 60 req/hr unauthenticated; a single blip shouldn't kill the install.
-function InvokeRestMethodRetry {
-    param(
-        [Parameter(Mandatory)][string]$Uri,
-        [hashtable]$Headers = @{ "User-Agent" = "dotfile.ps1" },
-        [int]$MaxAttempts = 4
-    )
-    $delay = 2
-    for ($i = 1; $i -le $MaxAttempts; $i++) {
-        try {
-            return Invoke-RestMethod -Uri $Uri -Headers $Headers
-        } catch {
-            if ($i -eq $MaxAttempts) { throw }
-            Info "Request to $Uri failed (attempt $i/$MaxAttempts): $($_.Exception.Message). Retrying in ${delay}s..."
-            Start-Sleep -Seconds $delay
-            $delay *= 2
-        }
-    }
-}
-
 # Logging helpers
 function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }
 function Success($msg) { if (-not $script:Quiet) { Write-Host "  [ OK ] $msg" -ForegroundColor Green } }
@@ -183,18 +162,13 @@ function WingetHas($id) {
     return ($LASTEXITCODE -eq 0)
 }
 
-function ScoopHas($name) {
-    $bare = ($name -split '/')[-1]
-    return [Boolean](scoop list $bare 6>$null | Where-Object { $_.Name -eq $bare })
-}
-
 function InstallPackages {
     Info "Installing packages..."
     if ($script:Dry) { return }
 
     $wingetPkgs = @(
         "Microsoft.Powershell", "Git.Git", "Microsoft.WindowsTerminal",
-        "Starship.Starship", "JesseDuffield.lazygit",
+        "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd",
         "junegunn.fzf", "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide"
     )
@@ -215,49 +189,6 @@ function InstallPackages {
     Info "Upgrading all winget packages..."
     winget upgrade --all --disable-interactivity --accept-package-agreements
 
-    InstallNeovimNightly
-
-    # Run module installs in a fresh pwsh process to avoid
-    # "module is currently in use" warnings from PackageManagement/PowerShellGet.
-    $modules = @("PowerShellGet", "PSReadLine")
-    Info "Checking PowerShell modules..."
-    $missingMods = @($modules | Where-Object { -not (Get-Module -ListAvailable -Name $_) })
-    if ($missingMods.Count -gt 0) {
-        Info "Installing missing PowerShell modules: $($missingMods -join ', ') (this may take a few minutes)"
-        $pwsh = (Get-Command pwsh -ErrorAction SilentlyContinue)?.Source
-        if (-not $pwsh) { $pwsh = (Get-Command powershell).Source }
-        $moduleScript = @'
-$ErrorActionPreference = "Stop"
-Install-Module -Name PowerShellGet -Force -AllowClobber -Scope CurrentUser
-Install-Module PSReadLine -AllowPrerelease -Force -Scope CurrentUser
-Update-Module
-'@
-        & $pwsh -NoProfile -ExecutionPolicy Bypass -Command $moduleScript
-        if ($LASTEXITCODE -ne 0) { FailSoft "Module install subprocess exited with code $LASTEXITCODE" }
-    } else {
-        Success "All PowerShell modules already installed"
-    }
-
-    $scoopExists = [Boolean](Get-Command scoop -ErrorAction SilentlyContinue)
-    if (-not $scoopExists) {
-        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-        Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-    }
-
-    $scoopPkgs = @("mingw", "extras/vcredist2022", "zig", "main/ast-grep", "main/gleam")
-    scoop bucket add extras *> $null
-    Info "Checking scoop packages..."
-    $missingScoop = @($scoopPkgs | Where-Object { -not (ScoopHas $_) })
-    if ($missingScoop.Count -gt 0) {
-        Info "Installing missing scoop package(s): $($missingScoop -join ', ')"
-        scoop install @missingScoop
-    } else {
-        Success "All scoop packages already installed"
-    }
-
-    Info "Updating all scoop packages..."
-    scoop update *
-
     Success "Finished installing packages"
 }
 
@@ -265,6 +196,10 @@ function InstallFont {
     Info "Installing FiraCode using scoop..."
     if ($script:Dry) { return }
 
+    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+        Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+    }
     scoop bucket add nerd-fonts
     scoop install FiraCode
 
@@ -293,28 +228,9 @@ function InstallFnm {
     Success "Finished installing Node.js LTS"
 }
 
-function InstallTreeSitter {
-    Info "Installing tree-sitter CLI via npm..."
-    if ($script:Dry) { return }
-
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        FailSoft "npm not found on PATH. Skipping tree-sitter CLI install — open a new shell and re-run 'dotfile.ps1'."
-        return
-    }
-
-    npm install -g tree-sitter-cli
-    if ($LASTEXITCODE -ne 0) {
-        FailSoft "npm install -g tree-sitter-cli failed with exit code $LASTEXITCODE"
-        return
-    }
-
-    Success "Finished installing tree-sitter CLI"
-}
-
 function InstallExtras {
     InstallFont
     InstallFnm
-    InstallTreeSitter
 }
 
 function InstallCodex {
@@ -361,61 +277,9 @@ function InstallAi {
     Success "Finished installing agent CLIs"
 }
 
-function InstallNeovimNightly {
-    Info "Checking Neovim nightly..."
-    if ($script:Dry) { return }
-
-    $installDir = Join-Path $env:LOCALAPPDATA "Programs\Neovim"
-    $binDir = Join-Path $installDir "bin"
-    $markerFile = Join-Path $installDir ".nightly-sha"
-
-    try {
-        $release = InvokeRestMethodRetry -Uri "https://api.github.com/repos/neovim/neovim/releases/tags/nightly"
-    } catch {
-        FailSoft "Could not query Neovim nightly release after retries: $($_.Exception.Message)"
-        return
-    }
-
-    $latestSha = $release.target_commitish
-    $asset = $release.assets | Where-Object { $_.name -eq "nvim-win64.zip" } | Select-Object -First 1
-    if (-not $asset) {
-        FailSoft "nvim-win64.zip not found in nightly release assets"
-        return
-    }
-
-    $currentSha = if (Test-Path $markerFile) { (Get-Content -Raw $markerFile).Trim() } else { "" }
-    if ($currentSha -eq $latestSha -and (Test-Path (Join-Path $binDir "nvim.exe"))) {
-        Success "Neovim nightly up to date ($($latestSha.Substring(0, 7)))"
-        AddToUserPath $binDir
-        return
-    }
-
-    Info "Downloading Neovim nightly ($($latestSha.Substring(0, 7)))..."
-    $tmpZip = Join-Path ([System.IO.Path]::GetTempPath()) "nvim-nightly-$([Guid]::NewGuid().ToString('N')).zip"
-    $tmpExtract = Join-Path ([System.IO.Path]::GetTempPath()) "nvim-nightly-$([Guid]::NewGuid().ToString('N'))"
-    try {
-        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $tmpZip -UseBasicParsing
-        Expand-Archive -Path $tmpZip -DestinationPath $tmpExtract -Force
-
-        $extracted = Get-ChildItem -Path $tmpExtract -Directory | Select-Object -First 1
-        if (-not $extracted) { Fail "Extracted nightly archive has no top-level directory" }
-
-        if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
-        New-Item -ItemType Directory -Path $installDir -Force | Out-Null
-        Get-ChildItem -Path $extracted.FullName -Force | Move-Item -Destination $installDir
-        Set-Content -Path $markerFile -Value $latestSha -NoNewline
-        Success "Installed Neovim nightly to $installDir"
-    } finally {
-        if (Test-Path $tmpZip) { Remove-Item -Force $tmpZip }
-        if (Test-Path $tmpExtract) { Remove-Item -Recurse -Force $tmpExtract }
-    }
-
-    AddToUserPath $binDir
-}
-
 function Update-Packages {
     Info "Updating packages..."
-    if ($script:Dry) { Success "Would run: scoop update *" } else { scoop update * }
+    if ($script:Dry) { Success "Would run: winget upgrade --all" } else { winget upgrade --all --disable-interactivity --accept-package-agreements }
     InstallAi -Update
     Success "Finished updating packages"
 }
