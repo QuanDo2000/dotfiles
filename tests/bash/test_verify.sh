@@ -260,3 +260,33 @@ test_verify_accepts_nix_agent_tools_on_mac() {
   output=$(verify 2>&1) || true
   assert_contains "$output" "All checks passed"
 }
+
+test_doctor_reports_home_manager_conflicts() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$os_release"
+  printf 'local shell edits\n' > "$HOME/.zshrc"
+  ln -s /nix/store/test-home-files/.vimrc "$HOME/.vimrc"
+
+  local output exit_code
+  set +e
+  output=$(OS_RELEASE="$os_release" doctor 2>&1)
+  exit_code=$?
+  set -e
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" ".zshrc exists but is not Home Manager-owned"
+  assert_not_contains "$output" ".vimrc exists but is not Home Manager-owned"
+}
+
+test_doctor_passes_without_home_manager_conflicts() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$os_release"
+  ln -s /nix/store/test-home-files/.zshrc "$HOME/.zshrc"
+
+  local output
+  output=$(OS_RELEASE="$os_release" doctor 2>&1)
+
+  assert_contains "$output" "No Home Manager conflicts found"
+}

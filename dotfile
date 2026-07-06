@@ -84,6 +84,7 @@ Commands:
   packages    Install system packages only
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
   verify      Verify core symlinks
+  doctor      Detect Home Manager file conflicts
 
 Options:
   -d, --dry     Dry run (no changes made)
@@ -129,6 +130,7 @@ packages)
   ;;
 obsidian) setup_obsidian ;;
 verify) verify ;;
+doctor) doctor ;;
 *)
   fail "Unknown command: $1"
   ;;

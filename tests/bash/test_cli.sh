@@ -139,6 +139,23 @@ test_help_describes_verify_as_core_symlink_check() {
   assert_contains "$output" "Verify core symlinks"
 }
 
+test_help_describes_doctor_as_conflict_check() {
+  local output
+  output=$(bash "$DOTFILE_CMD" --help 2>&1)
+  assert_contains "$output" "doctor"
+  assert_contains "$output" "Detect Home Manager file conflicts"
+}
+
+test_doctor_command_runs() {
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+
+  local output
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" doctor 2>&1)
+  assert_contains "$output" "No Home Manager conflicts found"
+}
+
 test_help_describes_obsidian_arch_autorun() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)

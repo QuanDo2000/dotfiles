@@ -12,6 +12,7 @@ Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The Un
 dotfile                      # Full setup
 dotfile packages             # Install system packages only
 dotfile verify               # Verify core Unix symlinks
+dotfile doctor               # Detect Home Manager file conflicts
 dotfile update               # Update Nix-managed packages
 dotfile -d <command>         # Dry run
 dotfile -f <command>         # Force overwrite existing files
