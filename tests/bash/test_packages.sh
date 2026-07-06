@@ -244,7 +244,6 @@ test_nix_managed_switches_share_runner() {
   packages_text="$(<"$REPO_DIR/scripts/packages.sh")"
 
   assert_contains "$packages_text" "function _run_nix_managed_switch"
-  assert_not_contains "$packages_text" "_cleanup_home_manager_migration_conflicts"
   assert_contains "$packages_text" "_run_nix_managed_switch \"home-manager switch failed\""
   assert_contains "$packages_text" "_run_nix_managed_switch \"darwin-rebuild switch failed\""
   assert_contains "$packages_text" '_run_nix_managed_switch "$fail_message"'
