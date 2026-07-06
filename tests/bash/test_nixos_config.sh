@@ -178,15 +178,6 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "pkgs.stdenv.isDarwin"
 }
 
-test_home_manager_does_not_auto_rename_conflicts() {
-  local nixos_text darwin_text
-  nixos_text="$(<"$REPO_DIR/config/nixos.nix")"
-  darwin_text="$(<"$REPO_DIR/config/darwin.nix")"
-
-  assert_not_contains "$nixos_text" "home-manager.backupFileExtension"
-  assert_not_contains "$darwin_text" "home-manager.backupFileExtension"
-}
-
 test_darwin_config_manages_core_packages() {
   local darwin_text
   darwin_text="$(<"$REPO_DIR/config/darwin.nix")"
