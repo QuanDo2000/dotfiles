@@ -199,6 +199,21 @@ test_install_extras_skips_on_nixos() {
   assert_contains "$output" "managed by Nix"
 }
 
+test_install_extras_skips_on_arch() {
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=arch\n' > "$osrel"
+  mock_uname Linux
+  mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
+
+  local output exit_code=0
+  output=$(OS_RELEASE="$osrel" install_extras 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: install_extras should skip on Arch ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "managed by Nix"
+}
+
 test_install_extras_skips_on_mac() {
   mock_uname Darwin
   mock_cmd git 'echo "unexpected git call: $*" >&2; exit 99'
