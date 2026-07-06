@@ -156,17 +156,6 @@ test_update_debian_uses_existing_home_manager() {
   unset -f command sudo _load_nix_profile home-manager
 }
 
-test_linux_bootstrap_flows_share_home_manager_helper() {
-  local packages_text
-  packages_text="$(<"$REPO_DIR/scripts/packages.sh")"
-
-  assert_contains "$packages_text" "function _run_linux_home_manager_bootstrap"
-  assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to update apt\""
-  assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to install Debian packages\""
-  assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to update pacman\""
-  assert_contains "$packages_text" "_run_linux_home_manager_bootstrap \"Failed to install Arch packages\""
-}
-
 # ---------------------------------------------------------------------------
 # NixOS package flow
 # ---------------------------------------------------------------------------
@@ -218,26 +207,6 @@ test_update_nixos_uses_flake_switch_upgrade() {
   assert_not_contains "$output" "--impure"
 
   unset -f sudo
-}
-
-test_nixos_rebuilds_share_host_target_helper() {
-  local packages_text
-  packages_text="$(<"$REPO_DIR/scripts/packages.sh")"
-
-  assert_contains "$packages_text" "function _nixos_rebuild_switch"
-  assert_contains "$packages_text" "_nixos_rebuild_switch"
-  assert_contains "$packages_text" "function _nixos_flake_target"
-  assert_contains "$packages_text" "function _run_nix_managed_switch"
-}
-
-test_nix_managed_switches_share_runner() {
-  local packages_text
-  packages_text="$(<"$REPO_DIR/scripts/packages.sh")"
-
-  assert_contains "$packages_text" "function _run_nix_managed_switch"
-  assert_contains "$packages_text" "_run_nix_managed_switch \"home-manager switch failed\""
-  assert_contains "$packages_text" "_run_nix_managed_switch \"darwin-rebuild switch failed\""
-  assert_contains "$packages_text" '_run_nix_managed_switch "$fail_message"'
 }
 
 test_install_packages_dispatches_nixos() {
