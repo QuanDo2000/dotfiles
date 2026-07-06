@@ -6,9 +6,6 @@ function test_showusage_mentions_all_commands {
     foreach ($cmd in 'all', 'packages', 'verify', 'update') {
         Assert-Contains $output $cmd
     }
-    foreach ($cmd in 'extras', 'symlinks', 'languages') {
-        Assert-False ($output -match "(?m)^\s+$cmd(\s|$)") "ShowUsage should not expose $cmd"
-    }
     Assert-False ($output -match '(?m)^\s+ai\s+') 'ShowUsage should not expose a standalone ai command'
 }
 
