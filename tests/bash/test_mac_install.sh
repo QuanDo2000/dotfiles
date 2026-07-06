@@ -59,8 +59,6 @@ test_install_mac_bootstraps_nix_darwin_without_brew() {
   _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
   _load_nix_profile() { :; }
   sudo() { printf '%s\n' "$*" >> "$calls"; }
-  setup_codex() { printf '%s\n' "setup_codex $*" >> "$calls"; }
-  setup_codebase_memory_mcp() { printf '%s\n' "setup_codebase_memory_mcp $*" >> "$calls"; }
 
   install_mac >/dev/null 2>&1
 
@@ -69,10 +67,8 @@ test_install_mac_bootstraps_nix_darwin_without_brew() {
   assert_contains "$output" "install-lix"
   assert_contains "$output" "HOME=/var/root nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
   assert_not_contains "$output" "brew"
-  assert_not_contains "$output" "setup_codex"
-  assert_not_contains "$output" "setup_codebase_memory_mcp"
 
-  unset -f command _install_lix _load_nix_profile sudo setup_codex setup_codebase_memory_mcp
+  unset -f command _install_lix _load_nix_profile sudo
 }
 
 test_update_mac_switches_existing_darwin_rebuild() {
@@ -88,8 +84,6 @@ test_update_mac_switches_existing_darwin_rebuild() {
   }
   _load_nix_profile() { :; }
   sudo() { printf '%s\n' "$*" >> "$calls"; }
-  setup_codex() { printf '%s\n' "setup_codex $*" >> "$calls"; }
-  setup_codebase_memory_mcp() { printf '%s\n' "setup_codebase_memory_mcp $*" >> "$calls"; }
 
   update_mac >/dev/null 2>&1
 
@@ -97,10 +91,8 @@ test_update_mac_switches_existing_darwin_rebuild() {
   output="$(<"$calls")"
   assert_contains "$output" "HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
   assert_not_contains "$output" "brew"
-  assert_not_contains "$output" "setup_codex"
-  assert_not_contains "$output" "setup_codebase_memory_mcp"
 
-  unset -f command _load_nix_profile sudo setup_codex setup_codebase_memory_mcp
+  unset -f command _load_nix_profile sudo
 }
 
 test_ensure_nix_loads_profile_before_installing() {

@@ -67,33 +67,6 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   unset -f command sudo _install_lix _load_nix_profile
 }
 
-test_install_arch_leaves_agent_tools_to_home_manager() {
-  DRY=false
-  local calls="$TEST_TMPDIR/calls.log"
-  command() {
-    if [[ "${1:-}" == "-v" ]]; then
-      case "${2:-}" in
-        nix|home-manager) return 0 ;;
-      esac
-    fi
-    builtin command "$@"
-  }
-  sudo() { :; }
-  _load_nix_profile() { :; }
-  home-manager() { :; }
-  setup_codex() { printf 'setup_codex %s\n' "$*" >> "$calls"; }
-  setup_codebase_memory_mcp() { printf 'setup_codebase_memory_mcp %s\n' "$*" >> "$calls"; }
-
-  install_arch >/dev/null 2>&1
-  update_arch >/dev/null 2>&1
-
-  if [[ -e "$calls" ]]; then
-    echo "  FAILED: Arch should leave codex/codebase-memory-mcp to Home Manager: $(cat "$calls")" >> "$ERROR_FILE"
-  fi
-
-  unset -f command sudo _load_nix_profile home-manager setup_codex setup_codebase_memory_mcp
-}
-
 test_update_arch_uses_existing_home_manager() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"
@@ -231,7 +204,6 @@ test_update_nixos_dry_run() {
 test_install_nixos_uses_flake_switch() {
   local calls="$TEST_TMPDIR/sudo.log"
   sudo() { printf '%s\n' "$*" >> "$calls"; }
-  setup_codebase_memory_mcp() { :; }
 
   install_nixos >/dev/null 2>&1
 
@@ -241,29 +213,11 @@ test_install_nixos_uses_flake_switch() {
   assert_not_contains "$output" "--impure"
 
   unset -f sudo
-  unset -f setup_codebase_memory_mcp
-}
-
-test_nixos_leaves_codebase_memory_to_home_manager() {
-  DRY=false
-  local calls="$TEST_TMPDIR/calls.log"
-  sudo() { :; }
-  setup_codebase_memory_mcp() { printf 'setup_codebase_memory_mcp %s\n' "$*" >> "$calls"; }
-
-  install_nixos >/dev/null 2>&1
-  update_nixos >/dev/null 2>&1
-
-  if [[ -e "$calls" ]]; then
-    echo "  FAILED: NixOS should leave codebase-memory-mcp to Home Manager: $(cat "$calls")" >> "$ERROR_FILE"
-  fi
-
-  unset -f sudo setup_codebase_memory_mcp
 }
 
 test_update_nixos_uses_flake_switch_upgrade() {
   local calls="$TEST_TMPDIR/sudo.log"
   sudo() { printf '%s\n' "$*" >> "$calls"; }
-  setup_codebase_memory_mcp() { :; }
 
   update_nixos >/dev/null 2>&1
 
@@ -273,7 +227,6 @@ test_update_nixos_uses_flake_switch_upgrade() {
   assert_not_contains "$output" "--impure"
 
   unset -f sudo
-  unset -f setup_codebase_memory_mcp
 }
 
 test_nixos_rebuilds_share_host_target_helper() {
@@ -325,7 +278,6 @@ test_install_nixos_does_not_write_machine_file() {
   DRY=false
   export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
   sudo() { :; }
-  setup_codebase_memory_mcp() { :; }
 
   install_nixos >/dev/null 2>&1
 
@@ -333,7 +285,7 @@ test_install_nixos_does_not_write_machine_file() {
     echo "  FAILED: install_nixos should not write $NIXOS_MACHINE_FILE" >> "$ERROR_FILE"
   fi
 
-  unset -f sudo setup_codebase_memory_mcp
+  unset -f sudo
   unset NIXOS_MACHINE_FILE
 }
 
@@ -341,7 +293,6 @@ test_update_nixos_does_not_write_machine_file() {
   DRY=false
   export NIXOS_MACHINE_FILE="$TEST_TMPDIR/machine.nix"
   sudo() { :; }
-  setup_codebase_memory_mcp() { :; }
 
   update_nixos >/dev/null 2>&1
 
@@ -349,6 +300,6 @@ test_update_nixos_does_not_write_machine_file() {
     echo "  FAILED: update_nixos should not write $NIXOS_MACHINE_FILE" >> "$ERROR_FILE"
   fi
 
-  unset -f sudo setup_codebase_memory_mcp
+  unset -f sudo
   unset NIXOS_MACHINE_FILE
 }
