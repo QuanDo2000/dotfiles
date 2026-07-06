@@ -26,6 +26,9 @@ test_flake_uses_flat_nix_config_files() {
   assert_contains "$flake_text" "machine = import ./config/host.nix"
   assert_contains "$flake_text" "homeConfigurations.\"\${machine.username}@arch\""
   assert_contains "$flake_text" "apps.x86_64-linux.home-manager"
+  assert_contains "$flake_text" "devShells.x86_64-linux.default"
+  assert_contains "$flake_text" "gh"
+  assert_contains "$flake_text" "powershell"
   assert_not_contains "$flake_text" "config/nix/"
 }
 

@@ -61,6 +61,14 @@ test_long_flag_help() {
 }
 
 test_verify_command_runs() {
+  mkdir -p "$HOME/.local/bin"
+  local f
+  for f in .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
+    ln -s "$REPO_DIR/$f" "$HOME/$f"
+  done
+  ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
+  printf 'source "$HOME/.zshrc.base"\n' > "$HOME/.zshrc"
+
   assert_exit_code 0 bash "$DOTFILE_CMD" verify
 }
 

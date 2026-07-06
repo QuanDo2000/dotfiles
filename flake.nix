@@ -44,5 +44,13 @@
         type = "app";
         program = "${home-manager.packages.x86_64-linux.home-manager}/bin/home-manager";
       };
+
+      devShells.x86_64-linux.default = linuxPkgs.mkShell {
+        packages = with linuxPkgs; [
+          git
+          gh
+          powershell
+        ];
+      };
     };
 }

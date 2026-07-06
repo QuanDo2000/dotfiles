@@ -131,6 +131,7 @@ test_verify_accepts_repo_dotfile_command_link() {
 }
 
 test_verify_accepts_home_manager_store_targets_on_nixos() {
+  mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$osrel"
   mkdir -p "$DOTFILES_DIR"
