@@ -45,7 +45,7 @@ test_setup_symlinks_excludes_mac_on_linux() {
   echo "shared" > "$DOTFILES_DIR/config/shared/.gitconfig"
   echo "mac zsh" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
   local osrel="$TEST_TMPDIR/os-release"
-  printf 'ID=debian\n' > "$osrel"
+  printf 'ID=fedora\n' > "$osrel"
 
   OS_RELEASE="$osrel" setup_symlinks
 

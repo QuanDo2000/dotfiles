@@ -387,7 +387,7 @@ create_fake_command() {
 
 test_setup_symlinks_links_claude_settings() {
   local osrel="$TEST_TMPDIR/os-release"
-  printf 'ID=ubuntu\nID_LIKE=debian\n' > "$osrel"
+  printf 'ID=fedora\n' > "$osrel"
   mock_uname Linux
   create_dotfiles_dirs
   create_fake_command claude
@@ -402,7 +402,7 @@ test_setup_symlinks_links_claude_settings() {
 
 test_setup_symlinks_links_codex_config() {
   local osrel="$TEST_TMPDIR/os-release"
-  printf 'ID=ubuntu\nID_LIKE=debian\n' > "$osrel"
+  printf 'ID=fedora\n' > "$osrel"
   mock_uname Linux
   create_dotfiles_dirs
   create_fake_command codex
@@ -519,6 +519,25 @@ test_setup_symlinks_skips_home_manager_files_on_arch() {
   assert_file_exists "$HOME/.zshrc"
 }
 
+test_setup_symlinks_skips_home_manager_files_on_debian() {
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=debian\n' > "$osrel"
+  mock_uname Linux
+  create_dotfiles_dirs
+  mkdir -p "$DOTFILES_DIR/config/shared/config" "$DOTFILES_DIR/config/unix/config/ghostty"
+  echo 'format = "$character"' > "$DOTFILES_DIR/config/shared/config/starship.toml"
+  echo 'font-family = "FiraCode Nerd Font"' > "$DOTFILES_DIR/config/unix/config/ghostty/config"
+  FORCE=true
+
+  OS_RELEASE="$osrel" setup_symlinks
+
+  if [ -e "$HOME/.config/starship.toml" ] || [ -L "$HOME/.config/starship.toml" ]; then
+    echo "  FAILED: $HOME/.config/starship.toml should be left for Home Manager on Debian" >> "$ERROR_FILE"
+  fi
+  assert_file_exists "$DOTFILES_DIR/config/unix/config/ghostty/config"
+  assert_file_exists "$HOME/.zshrc"
+}
+
 test_setup_symlinks_skips_home_manager_files_on_mac() {
   mock_uname Darwin
   create_dotfiles_dirs
@@ -540,7 +559,7 @@ test_setup_symlinks_skips_home_manager_files_on_mac() {
 
 test_setup_symlinks_links_starship_config_on_non_home_manager_linux() {
   local osrel="$TEST_TMPDIR/os-release"
-  printf 'ID=ubuntu\nID_LIKE=debian\n' > "$osrel"
+  printf 'ID=fedora\n' > "$osrel"
   mock_uname Linux
   create_dotfiles_dirs
   mkdir -p "$DOTFILES_DIR/config/shared/config"

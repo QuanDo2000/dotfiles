@@ -40,10 +40,10 @@ After symlinks are created, the `dotfile` command is available in your PATH:
 dotfile
 ```
 
-### Arch Linux with Nix/Home Manager
+### Linux with Nix/Home Manager
 
-Arch uses `pacman` only for bootstrap packages, then uses this repo's pinned
-flake to install Home Manager user tools and config:
+Arch and Debian use the native package manager only for bootstrap packages,
+then use this repo's pinned flake to install Home Manager user tools and config:
 
 ```bash
 git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
@@ -51,10 +51,10 @@ git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
 ~/dotfiles/dotfile all
 ```
 
-The Arch Home Manager output is `${username}@arch`, where `username` comes from
-`config/host.nix`. `dotfile packages` installs Lix/Nix if missing and runs the
-pinned `~/dotfiles#home-manager` app; it does not use floating
-`home-manager/master`.
+The Linux Home Manager output is `${username}@linux`, where `username` comes
+from `config/host.nix`. `dotfile packages` installs Lix/Nix if missing and runs
+the pinned `~/dotfiles#home-manager` app; it does not use floating
+`home-manager/master`. `${username}@arch` remains as a compatibility alias.
 
 ### Windows
 

@@ -63,7 +63,7 @@ function install_tmux_plugins {
 function install_extras {
   info "Installing extras"
   case "$(detect_platform)" in
-    arch|nixos|mac)
+    arch|debian|nixos|mac)
       info "Extras are managed by Nix; skipping imperative plugin installs"
       success "Finished installing extras"
       return
