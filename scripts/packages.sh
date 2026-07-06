@@ -517,7 +517,7 @@ function _ensure_nix {
   fi
 }
 
-_cleanup_home_manager_plugin_migration() {
+_cleanup_home_manager_migration_conflicts() {
   local base="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
   local path
   for path in \
@@ -535,19 +535,14 @@ _cleanup_home_manager_plugin_migration() {
       rm -rf "$path.before-home-manager" || fail "Failed to remove $path.before-home-manager"
     fi
   done
-}
 
-_cleanup_home_manager_dotfile_migration() {
   local ghostty="$HOME/.config/ghostty"
   local target="$DOTFILES_DIR/config/unix/config/ghostty"
   if [[ -L "$ghostty" && "$(resolve_symlink "$ghostty")" == "$target" ]]; then
     info "Removing old repo-linked Ghostty config dir: $ghostty"
     rm -f "$ghostty" || fail "Failed to remove $ghostty"
   fi
-}
 
-_cleanup_home_manager_agent_tool_migration() {
-  local path
   for path in \
     "$HOME/.local/bin/codex" \
     "$HOME/.local/bin/codebase-memory-mcp" \
@@ -569,9 +564,7 @@ _cleanup_home_manager_agent_tool_migration() {
 
 function _home_manager_switch {
   _ensure_nix
-  _cleanup_home_manager_plugin_migration
-  _cleanup_home_manager_dotfile_migration
-  _cleanup_home_manager_agent_tool_migration
+  _cleanup_home_manager_migration_conflicts
   if command -v home-manager >/dev/null 2>&1; then
     home-manager switch --flake "$DOTFILES_DIR#quando@arch" \
       || fail "home-manager switch failed"
@@ -583,8 +576,7 @@ function _home_manager_switch {
 
 function _darwin_rebuild_switch {
   _ensure_nix
-  _cleanup_home_manager_plugin_migration
-  _cleanup_home_manager_agent_tool_migration
+  _cleanup_home_manager_migration_conflicts
   if command -v darwin-rebuild >/dev/null 2>&1; then
     sudo HOME=/var/root darwin-rebuild switch --flake "$DOTFILES_DIR#mac" \
       || fail "darwin-rebuild switch failed"
@@ -644,7 +636,7 @@ function install_nixos {
   info "Installing packages for NixOS..."
   [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --flake $DOTFILES_DIR#nixos"
   if [[ "$DRY" == "false" ]]; then
-    _cleanup_home_manager_plugin_migration
+    _cleanup_home_manager_migration_conflicts
     sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos" \
       || fail "nixos-rebuild switch failed"
   fi
@@ -657,7 +649,7 @@ function update_nixos {
   info "Updating packages for NixOS..."
   [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#nixos"
   if [[ "$DRY" == "false" ]]; then
-    _cleanup_home_manager_plugin_migration
+    _cleanup_home_manager_migration_conflicts
     sudo nixos-rebuild switch --upgrade --flake "$DOTFILES_DIR#nixos" \
       || fail "nixos-rebuild switch --upgrade failed"
   fi
