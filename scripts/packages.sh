@@ -318,8 +318,11 @@ _cleanup_home_manager_migration_conflicts() {
 }
 
 function _home_manager_switch {
-  local target="$DOTFILES_DIR#quando@linux"
   _ensure_nix
+  local username target
+  username="$(nix eval --raw --file "$DOTFILES_DIR/config/host.nix" username)" \
+    || fail "Failed to resolve Linux Home Manager username"
+  target="$DOTFILES_DIR#${username}@linux"
   _cleanup_home_manager_migration_conflicts
   if command -v home-manager >/dev/null 2>&1; then
     home-manager switch --flake "$target" \
