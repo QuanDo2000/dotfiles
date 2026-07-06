@@ -10,10 +10,7 @@ _action_verb() {
 # ---------------------------------------------------------------------------
 # Generic GitHub-release download helpers
 #
-# Shared by the language installers in languages.sh (install_zig/odin/gleam).
-# Defined in packages.sh
-# because it is sourced before languages.sh, keeping the dependency direction
-# one-way (languages.sh -> packages.sh).
+# Kept here for small release-download tasks and existing tests.
 # ---------------------------------------------------------------------------
 
 # Portable sha256 of a file. Linux ships sha256sum; macOS ships shasum.
@@ -79,8 +76,7 @@ _strip_sha256_prefix() {
   echo "$stripped"
 }
 
-# Install a binary from a GitHub release tarball. Used by install_odin and
-# install_gleam (zig has its own flow with mirror retry + minisign).
+# Install a binary from a GitHub release tarball.
 #
 # Args (positional):
 #   $1 display_name  e.g. "Odin"

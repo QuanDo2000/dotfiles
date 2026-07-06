@@ -128,7 +128,7 @@ test_update_command_in_help() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)
   assert_contains "$output" "update"
-  assert_contains "$output" "Update system packages"
+  assert_contains "$output" "Update Nix-managed packages"
 }
 
 test_help_describes_verify_as_core_symlink_check() {

@@ -72,12 +72,12 @@ dotfile [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update system packages and language toolchains
+  update      Update Nix-managed packages and toolchains
   packages    Install system packages only
   extras      No-op on Unix; extras are managed by Nix
   symlinks    No-op on Unix; links are managed by Nix
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
-  languages [LANG]  Install language toolchains (zig, odin, gleam, jank)
+  languages [LANG]  No-op on Unix; language toolchains are managed by Nix
   verify      Verify core Unix symlinks
 
 Options:

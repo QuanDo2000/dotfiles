@@ -14,8 +14,8 @@ dotfile symlinks             # No-op on Unix; links are managed by Nix
 dotfile packages             # Install system packages only
 dotfile extras               # No-op on Unix; extras are managed by Nix
 dotfile verify               # Verify core Unix symlinks
-dotfile update               # Update system packages and language toolchains
-dotfile languages [LANG]     # Install language toolchains (zig, odin, gleam, jank)
+dotfile update               # Update Nix-managed packages and toolchains
+dotfile languages [LANG]     # No-op on Unix; language toolchains are managed by Nix
 dotfile -d <command>         # Dry run
 dotfile -f <command>         # Force overwrite existing files
 ```
