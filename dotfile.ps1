@@ -178,8 +178,7 @@ function UpdateRepo {
     Success "Finished updating repo"
 }
 
-# Clone $repo into $dest if $dest doesn't already exist. Mirrors the unix
-# clone_if_missing in scripts/extras.sh.
+# Clone $repo into $dest if $dest doesn't already exist.
 function CloneIfMissing($name, $repo, $dest, [string[]]$GitArgs = @()) {
     Info "Installing $name..."
     # dest without a .git inside is a leftover partial clone — wipe it.

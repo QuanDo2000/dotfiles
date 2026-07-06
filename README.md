@@ -74,7 +74,7 @@ Commands:
   all         Run full setup (default)
   update      Update system packages and language toolchains
   packages    Install system packages only
-  extras      Install zsh and tmux plugins
+  extras      No-op on Unix; extras are managed by Nix
   symlinks    Create symlinks only
   obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
   languages [LANG]  Install language toolchains (zig, odin, gleam, jank)

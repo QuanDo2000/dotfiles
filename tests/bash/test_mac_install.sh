@@ -228,49 +228,8 @@ test_set_zsh_default_skips_on_mac() {
 }
 
 # ---------------------------------------------------------------------------
-# install_extras (zsh plugins, tmux plugins)
+# install_extras
 # ---------------------------------------------------------------------------
-
-test_install_zsh_plugins_dry_run() {
-  local output
-  output=$(install_zsh_plugins 2>&1)
-
-  assert_contains "$output" "Installing zsh plugins"
-  assert_contains "$output" "Finished installing zsh plugins"
-}
-
-test_install_zsh_plugins_already_installed() {
-  DRY=false
-  local plugins_dir="$HOME/.local/share/zsh/plugins"
-  mkdir -p "$plugins_dir/zsh-autosuggestions/.git"
-  mkdir -p "$plugins_dir/fast-syntax-highlighting/.git"
-  mkdir -p "$plugins_dir/fzf-tab/.git"
-
-  local output
-  output=$(install_zsh_plugins 2>&1)
-
-  assert_contains "$output" "Finished installing zsh plugins"
-}
-
-test_install_tmux_plugins_dry_run() {
-  local output
-  output=$(install_tmux_plugins 2>&1)
-
-  assert_contains "$output" "Installing tmux plugins"
-  assert_contains "$output" "Finished installing tmux plugins"
-}
-
-test_install_tmux_plugins_already_installed() {
-  DRY=false
-  # Both plugins present with .git inside → clone_if_missing skips, no git call.
-  mkdir -p "$HOME/.tmux/plugins/tmux-yank/.git" \
-    "$HOME/.tmux/plugins/catppuccin/tmux/.git"
-
-  local output
-  output=$(install_tmux_plugins 2>&1)
-
-  assert_contains "$output" "Finished installing tmux plugins"
-}
 
 test_install_extras_dry_run() {
   local output

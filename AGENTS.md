@@ -12,7 +12,7 @@ Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The in
 dotfile                      # Full setup (packages -> extras -> symlinks)
 dotfile symlinks             # Create symlinks only
 dotfile packages             # Install system packages only
-dotfile extras               # Install zsh and tmux plugins where not Home Manager-managed
+dotfile extras               # No-op on Unix; extras are managed by Nix
 dotfile verify               # Verify core Unix symlinks
 dotfile update               # Update system packages and language toolchains
 dotfile languages [LANG]     # Install language toolchains (zig, odin, gleam, jank)
@@ -31,7 +31,7 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 - **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` - OS-specific package installation (apt/pacman only for Linux bootstrap packages, NixOS flakes, nix-darwin bootstrap on macOS).
-  - `extras.sh` - zsh plugins (cloned to `~/.local/share/zsh/plugins`) and the directly-cloned tmux plugins (tmux-yank, catppuccin) for non-Home-Manager paths; no tmux plugin manager (sensible/pain-control are inlined in `.tmux.conf`). On Nix-managed systems these plugin paths are managed by Home Manager from `config/home.nix`.
+  - `extras.sh` - compatibility no-op on Unix. zsh and tmux plugin paths are managed by Home Manager from `config/home.nix`.
   - `symlinks.sh` - Links dotfiles to `$HOME` on legacy Unix systems. Files in `bin/` directories under each platform layer are symlinked into `$HOME/.local/bin/`; Nix-managed Linux/macOS leave Home Manager-owned links alone.
   - `verify.sh` - Post-install checks.
 
