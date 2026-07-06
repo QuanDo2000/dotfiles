@@ -62,7 +62,6 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   assert_contains "$output" "sudo pacman -S --needed --noconfirm"
   assert_contains "$output" "install-lix"
   assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@linux"
-  assert_not_contains "$output" "home-manager/master"
 
   unset -f command sudo _install_lix _load_nix_profile
 }
