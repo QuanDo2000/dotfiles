@@ -86,6 +86,7 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "nodejs"
   assert_contains "$home_text" "jujutsu"
   assert_contains "$home_text" "ripgrep"
+  assert_contains "$home_text" "obsidian"
   assert_contains "$home_text" "lib.optional (pkgs ? codex) pkgs.codex"
   assert_contains "$home_text" "lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp"
 }
@@ -110,7 +111,7 @@ test_nixos_system_packages_leave_user_tools_to_home_manager() {
   assert_contains "$packages_text" "waybar"
   assert_contains "$packages_text" "google-chrome"
 
-  for pkg in tmux neovim fzf fd ripgrep lazygit jujutsu starship zoxide gnupg wl-clipboard openssh unzip fontconfig tree-sitter nodejs lua5_1 luarocks; do
+  for pkg in tmux neovim fzf fd ripgrep lazygit jujutsu starship zoxide gnupg wl-clipboard openssh unzip fontconfig tree-sitter nodejs lua5_1 luarocks obsidian; do
     assert_not_contains "$packages_text" "      $pkg"
   done
   assert_not_contains "$packages_text" "codex"
@@ -157,7 +158,8 @@ test_home_config_owns_remaining_dotfiles() {
   assert_not_contains "$home_text" "home.file.\".codex/config.toml\""
   assert_contains "$home_text" "home.activation.seedCodexConfig"
   assert_contains "$home_text" "cp \"\$source\" \"\$target\""
-  assert_not_contains "$home_text" "home.file.\".local/bin/dotfile\""
+  assert_contains "$home_text" "home.file.\".local/bin/dotfile\""
+  assert_contains "$home_text" "source = ../dotfile"
   assert_contains "$home_text" "home.file.\".zshrc.mac\""
   assert_contains "$home_text" "source = ./mac/.zshrc.mac"
   assert_contains "$home_text" "home.file.\".local/bin/caf\""

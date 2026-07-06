@@ -37,19 +37,19 @@ test_install_font_debian_already_installed() {
 }
 
 # ---------------------------------------------------------------------------
-# setup_fdfind
+# _link_debian_fdfind
 # ---------------------------------------------------------------------------
 
-test_setup_fdfind_dry_run() {
+test_link_debian_fdfind_dry_run() {
   DRY=true
   local output
-  output=$(setup_fdfind 2>&1)
+  output=$(_link_debian_fdfind 2>&1)
 
   assert_contains "$output" "Ensuring 'fd' is available"
   assert_contains "$output" "Finished ensuring fd"
 }
 
-test_setup_fdfind_fd_on_path() {
+test_link_debian_fdfind_fd_on_path() {
   DRY=false
   # fd is available on macOS through the platform package config.
   if ! command -v fd >/dev/null 2>&1; then
@@ -59,12 +59,12 @@ test_setup_fdfind_fd_on_path() {
   fi
 
   local output
-  output=$(setup_fdfind 2>&1)
+  output=$(_link_debian_fdfind 2>&1)
 
   assert_contains "$output" "'fd' already available on PATH"
 }
 
-test_setup_fdfind_neither_available() {
+test_link_debian_fdfind_neither_available() {
   DRY=false
   # Remove fd and fdfind from PATH by restricting to minimal dirs
   local orig_path="$PATH"
@@ -77,7 +77,7 @@ test_setup_fdfind_neither_available() {
   fi
 
   local output
-  output=$(setup_fdfind 2>&1)
+  output=$(_link_debian_fdfind 2>&1)
 
   assert_contains "$output" "fd not found on system"
   export PATH="$orig_path"
@@ -383,7 +383,6 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
   _load_nix_profile() { :; }
   nix() { printf 'nix %s\n' "$*" >> "$calls"; }
-  setup_fdfind() { :; }
   setup_codex() { :; }
   setup_codebase_memory_mcp() { :; }
 
@@ -396,7 +395,7 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#quando@arch"
   assert_not_contains "$output" "home-manager/master"
 
-  unset -f command sudo _install_lix _load_nix_profile nix setup_fdfind setup_codex setup_codebase_memory_mcp
+  unset -f command sudo _install_lix _load_nix_profile nix setup_codex setup_codebase_memory_mcp
 }
 
 test_install_arch_leaves_agent_tools_to_home_manager() {

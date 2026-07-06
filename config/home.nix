@@ -35,6 +35,7 @@ in
     luarocks
     tree-sitter
     unzip
+    obsidian
   ]
   ++ lib.optional (pkgs ? codex) pkgs.codex
   ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
@@ -154,6 +155,12 @@ in
 
   xdg.dataFile."zsh/plugins/fzf-tab" = {
     source = "${pkgs.zsh-fzf-tab}/share/fzf-tab";
+    force = true;
+  };
+
+  home.file.".local/bin/dotfile" = lib.mkIf pkgs.stdenv.isLinux {
+    source = ../dotfile;
+    executable = true;
     force = true;
   };
 

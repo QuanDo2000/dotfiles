@@ -200,7 +200,7 @@ function install_font_debian {
   success "Finished installing Fira Code"
 }
 
-function setup_fdfind {
+function _link_debian_fdfind {
   info "Ensuring 'fd' is available in '.local/bin'..."
   if [[ "$DRY" == "false" ]]; then
     mkdir -p "$HOME/.local/bin"
@@ -424,7 +424,7 @@ DEBIAN_PACKAGES=(
 
 function _install_legacy_debian_user_tools {
   install_font_debian
-  setup_fdfind
+  _link_debian_fdfind
   setup_lazygit
   setup_jj
   setup_starship
