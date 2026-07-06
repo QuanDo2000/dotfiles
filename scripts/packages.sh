@@ -392,18 +392,31 @@ function set_zsh_default {
   success "Finished changing zsh as default"
 }
 
+function _nixos_rebuild_switch {
+  local upgrade="${1:-false}"
+  local target="$DOTFILES_DIR#$(_host_config_value hostName)"
+  local args=(switch)
+  local fail_message="nixos-rebuild switch failed"
+
+  if [[ "$upgrade" == "true" ]]; then
+    args+=(--upgrade)
+    fail_message="nixos-rebuild switch --upgrade failed"
+  fi
+
+  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild ${args[*]} --flake $target"
+  if [[ "$DRY" == "false" ]]; then
+    _cleanup_home_manager_migration_conflicts
+    sudo nixos-rebuild "${args[@]}" --flake "$target" \
+      || fail "$fail_message"
+  fi
+}
+
 # Reprovision NixOS from this repo's flake. System packages come from the
 # rebuild; agent extensions install after it.
 # Usage: install_nixos
 function install_nixos {
   info "Installing packages for NixOS..."
-  local target="$DOTFILES_DIR#$(_host_config_value hostName)"
-  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --flake $target"
-  if [[ "$DRY" == "false" ]]; then
-    _cleanup_home_manager_migration_conflicts
-    sudo nixos-rebuild switch --flake "$target" \
-      || fail "nixos-rebuild switch failed"
-  fi
+  _nixos_rebuild_switch
   success "Finished install for NixOS"
 }
 
@@ -411,13 +424,7 @@ function install_nixos {
 # Usage: update_nixos
 function update_nixos {
   info "Updating packages for NixOS..."
-  local target="$DOTFILES_DIR#$(_host_config_value hostName)"
-  [[ "$DRY" == "true" ]] && info "Would run: sudo nixos-rebuild switch --upgrade --flake $target"
-  if [[ "$DRY" == "false" ]]; then
-    _cleanup_home_manager_migration_conflicts
-    sudo nixos-rebuild switch --upgrade --flake "$target" \
-      || fail "nixos-rebuild switch --upgrade failed"
-  fi
+  _nixos_rebuild_switch true
   success "Finished update for NixOS"
 }
 

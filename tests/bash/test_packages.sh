@@ -350,6 +350,15 @@ test_update_nixos_uses_flake_switch_upgrade() {
   unset -f setup_codebase_memory_mcp
 }
 
+test_nixos_rebuilds_share_host_target_helper() {
+  local packages_text
+  packages_text="$(<"$REPO_DIR/scripts/packages.sh")"
+
+  assert_contains "$packages_text" "function _nixos_rebuild_switch"
+  assert_contains "$packages_text" "_nixos_rebuild_switch"
+  assert_contains "$packages_text" 'local target="$DOTFILES_DIR#$(_host_config_value hostName)"'
+}
+
 test_install_packages_dispatches_nixos() {
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"
