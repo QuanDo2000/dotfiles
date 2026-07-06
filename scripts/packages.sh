@@ -220,37 +220,6 @@ function _link_debian_fdfind {
   success "Finished ensuring fd in '.local/bin'"
 }
 
-# Bootstrap yay (AUR helper) on Arch. Clones yay-bin from the AUR and builds
-# it with makepkg. Idempotent: no-op if yay is already on PATH.
-# Usage: setup_yay
-function setup_yay {
-  info "Installing yay..."
-  if [[ "$DRY" == "false" ]]; then
-    if command -v yay >/dev/null 2>&1; then
-      info "Already installed yay"
-      success "Finished yay"
-      return
-    fi
-    if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-      fail "setup_yay must not run as root (makepkg refuses root)"
-    fi
-    command -v git >/dev/null 2>&1 || fail "git required for setup_yay"
-    command -v makepkg >/dev/null 2>&1 || fail "makepkg required for setup_yay (install base-devel)"
-
-    local build_dir
-    build_dir="$(mktemp -d -t yay-bin.XXXXXX)" || fail "Failed to create temp dir"
-    # EXIT covers fail()'s exit 1 path; RETURN covers normal returns. Without
-    # EXIT, every fail() in this function would leak $build_dir under /tmp.
-    # shellcheck disable=SC2064
-    trap "rm -rf '$build_dir'" EXIT RETURN
-    git clone https://aur.archlinux.org/yay-bin.git "$build_dir" \
-      || fail "Failed to clone yay-bin AUR repo"
-    (cd "$build_dir" && makepkg -si --noconfirm) \
-      || fail "Failed to build/install yay-bin"
-  fi
-  success "Finished yay"
-}
-
 # Map `uname -m` to the arch slug used by lazygit release assets.
 _lazygit_arch() {
   case "$(uname -m)" in

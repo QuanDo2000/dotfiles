@@ -486,7 +486,7 @@ install_jank() {
       brew install jank-lang/jank/jank || fail "Failed to install jank via brew"
       ;;
     arch)
-      setup_yay  # idempotent helper from packages.sh
+      command -v yay >/dev/null 2>&1 || fail "yay required to install jank-bin on Arch"
       yay -S --needed --noconfirm jank-bin || fail "Failed to install jank-bin via yay"
       ;;
     debian)  # Ubuntu only — jank_check_platform already enforced

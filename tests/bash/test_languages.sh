@@ -1012,6 +1012,26 @@ test_install_jank_dry_run_arch() {
   assert_contains "$output" "Finished installing Jank (dry run)"
 }
 
+test_install_jank_arch_requires_yay() {
+  DRY=false
+  detect_platform() { echo "arch"; }
+  export -f detect_platform
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        jank|yay) return 1 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  export -f command
+
+  local output rc=0
+  output=$(install_jank 2>&1) || rc=$?
+  assert_equals "1" "$rc"
+  assert_contains "$output" "yay required to install jank-bin on Arch"
+}
+
 test_install_jank_already_installed_short_circuits() {
   detect_platform() { echo "arch"; }
   export -f detect_platform
