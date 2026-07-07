@@ -73,7 +73,7 @@ Commands:
   all         Run full setup (default)
   update      Update Nix-managed packages
   packages    Install system packages only
-  obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
+  obsidian    Bootstrap Obsidian Sync login and vault setup
   doctor      Detect dotfile and Nix issues
 
 Options:
@@ -103,7 +103,7 @@ Options:
 
 Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` sources the tracked `~/.zshrc.base`.
 
-Note: `dotfile obsidian` reuses an existing configured vault under `~/documents/obsidian` and skips interactive Sync setup unless `-f` is passed.
+Note: Home Manager owns the `obsidian-sync` user service on Linux. `dotfile obsidian` installs the headless CLI, bootstraps login/vault setup, and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
 
 ## Provisioning a fresh NixOS machine
 

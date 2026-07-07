@@ -36,7 +36,7 @@ test_help_exits_zero() {
   assert_contains "$output" "Update Nix-managed packages"
   assert_contains "$output" "doctor"
   assert_contains "$output" "Detect dotfile and Nix issues"
-  assert_contains "$output" "Arch auto-runs during 'all' when ready"
+  assert_contains "$output" "Bootstrap Obsidian Sync login and vault setup"
 }
 
 test_doctor_command_runs_with_health_checks() {
@@ -62,24 +62,18 @@ test_dry_run_default_command() {
   assert_not_contains "$output" "Updating packages"
 }
 
-test_all_runs_obsidian_on_arch_with_prereqs() {
+test_all_does_not_run_obsidian_bootstrap() {
   is_windows_bash && return 0
   mock_uname Linux
   local osrel="$TEST_HOME/os-release"
-  local bindir="$TEST_HOME/bin"
   link_core_dotfiles
   with_nix_agent_tools
 
-  mkdir -p "$bindir"
   printf 'ID=arch\n' > "$osrel"
-  printf '#!/usr/bin/env bash\nexit 0\n' > "$bindir/npm"
-  printf '#!/usr/bin/env bash\nexit 0\n' > "$bindir/ob"
-  printf '#!/usr/bin/env bash\n[[ "$*" == "--user show-environment" ]] && exit 0\nexit 0\n' > "$bindir/systemctl"
-  chmod +x "$bindir/npm" "$bindir/ob" "$bindir/systemctl"
 
   local output
-  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$osrel" PATH="$bindir:$PATH" bash "$DOTFILE_CMD" --dry all 2>&1)
-  assert_contains "$output" "Setting up Obsidian headless sync"
+  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry all 2>&1)
+  assert_not_contains "$output" "Setting up Obsidian headless sync"
   assert_contains "$output" "Checking Home Manager-managed paths"
   unset -f uname 2>/dev/null || true
   unset __MOCK_UNAME
@@ -89,7 +83,7 @@ test_readme_matches_key_help_text() {
   local readme_text
   readme_text="$(<"$REPO_DIR/README.md")"
   assert_contains "$readme_text" "### Unix Commands"
-  assert_contains "$readme_text" "obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)"
+  assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
   assert_contains "$readme_text" "doctor      Detect dotfile and Nix issues"
   assert_contains "$readme_text" "### Windows Commands"
   assert_contains "$readme_text" "dotfile.ps1 [OPTIONS] [COMMAND]"

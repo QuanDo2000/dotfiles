@@ -2,21 +2,14 @@
 set -eo pipefail
 
 OBSIDIAN_SERVICE_NAME="obsidian-sync.service"
-OBSIDIAN_SERVICE_PATH="$HOME/.config/systemd/user/$OBSIDIAN_SERVICE_NAME"
 OBSIDIAN_VAULT_BASE="$HOME/documents/obsidian"
 
 function _obsidian_check_prereqs {
   if ! is_linux; then
-    fail "Obsidian sync setup is only supported on Linux (systemd required)"
+    fail "Obsidian sync setup is only supported on Linux"
   fi
   if ! command -v npm >/dev/null 2>&1; then
     fail "npm not found. Install Node.js (e.g. via nvm) before running 'dotfile obsidian'"
-  fi
-  if ! command -v systemctl >/dev/null 2>&1; then
-    fail "systemctl not found. systemd is required for the obsidian-sync service"
-  fi
-  if ! systemctl --user show-environment >/dev/null 2>&1; then
-    fail "systemd user instance is not available. Ensure you are on a systemd-based distro with a user session"
   fi
 }
 
@@ -99,52 +92,18 @@ function _obsidian_existing_vault_path {
   return 1
 }
 
-function _obsidian_install_service {
-  local vault_path="$1"
-  local ob_bin
-  ob_bin="$(command -v ob || true)"
-  [[ -n "$ob_bin" ]] || fail "ob binary not found on PATH"
-
-  info "Installing systemd user unit $OBSIDIAN_SERVICE_NAME..."
-  if [[ -f "$OBSIDIAN_SERVICE_PATH" && "$FORCE" != "true" ]]; then
-    if grep -Fq -- "--path $vault_path --continuous" "$OBSIDIAN_SERVICE_PATH"; then
-      info "Service file already exists at $OBSIDIAN_SERVICE_PATH (use -f to overwrite)"
-    else
-      fail "Service file already exists at $OBSIDIAN_SERVICE_PATH but points at a different vault; use -f to overwrite"
-    fi
-  else
-    if [[ "$DRY" == "true" ]]; then
-      info "Would write $OBSIDIAN_SERVICE_PATH pointing at $vault_path"
-    else
-      mkdir -p "$(dirname "$OBSIDIAN_SERVICE_PATH")"
-      cat >"$OBSIDIAN_SERVICE_PATH" <<EOF
-[Unit]
-Description=Obsidian Sync (headless, continuous)
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=$ob_bin sync --path $vault_path --continuous
-Restart=on-failure
-RestartSec=10
-
-[Install]
-WantedBy=default.target
-EOF
-    fi
-  fi
-
-  info "Enabling and starting $OBSIDIAN_SERVICE_NAME..."
+function _obsidian_start_service {
+  info "Starting Home Manager-managed $OBSIDIAN_SERVICE_NAME..."
   if [[ "$DRY" == "true" ]]; then
-    info "Would run: systemctl --user daemon-reload"
-    info "Would run: systemctl --user enable --now $OBSIDIAN_SERVICE_NAME"
-  else
-    systemctl --user daemon-reload || fail "systemctl daemon-reload failed"
-    systemctl --user enable --now "$OBSIDIAN_SERVICE_NAME" \
-      || fail "Failed to enable/start $OBSIDIAN_SERVICE_NAME"
+    info "Would run: systemctl --user restart $OBSIDIAN_SERVICE_NAME"
+    return
   fi
-  success "Service $OBSIDIAN_SERVICE_NAME is active"
+  if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+    systemctl --user restart "$OBSIDIAN_SERVICE_NAME" \
+      || fail "Failed to restart $OBSIDIAN_SERVICE_NAME; run 'dotfile update' to activate the Home Manager service"
+  else
+    info "systemd user session unavailable; run 'dotfile update' after login to activate $OBSIDIAN_SERVICE_NAME"
+  fi
 }
 
 function setup_obsidian {
@@ -155,7 +114,8 @@ function setup_obsidian {
   local existing_vault_path
   if [[ "$FORCE" != "true" ]] && existing_vault_path="$(_obsidian_existing_vault_path)"; then
     info "Vault at $existing_vault_path is already configured; skipping Obsidian Sync setup"
-    _obsidian_install_service "$existing_vault_path"
+    _obsidian_start_service
+    success "$OBSIDIAN_SERVICE_NAME is managed by Home Manager"
     return
   fi
 
@@ -167,7 +127,7 @@ function setup_obsidian {
 
   local vault_path="$OBSIDIAN_VAULT_BASE/$vault_name"
   _obsidian_setup_vault "$vault_name" "$vault_path"
-  _obsidian_install_service "$vault_path"
+  _obsidian_start_service
 
-  success "Obsidian sync is running continuously. Check status with: systemctl --user status $OBSIDIAN_SERVICE_NAME"
+  success "Vault ready. $OBSIDIAN_SERVICE_NAME is managed by Home Manager"
 }

@@ -100,6 +100,20 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp"
 }
 
+test_home_config_manages_obsidian_sync_service() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home_text" "systemd.user.services.obsidian-sync"
+  assert_contains "$home_text" "pkgs.stdenv.isLinux"
+  assert_contains "$home_text" "ob sync-status --path"
+  assert_contains "$home_text" "ob sync --path"
+  assert_contains "$home_text" "ob not found; run dotfile obsidian once"
+  assert_contains "$home_text" "No configured Obsidian vault found"
+  assert_contains "$home_text" "Restart = \"on-failure\""
+  assert_contains "$home_text" "WantedBy = [ \"default.target\" ]"
+}
+
 test_home_config_puts_shared_user_tools_in_common_packages() {
   local common_packages
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"

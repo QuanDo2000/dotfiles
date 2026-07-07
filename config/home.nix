@@ -4,6 +4,25 @@ let
   machine = import ./host.nix;
   homeDir =
     if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
+  obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
+    set -euo pipefail
+    export PATH="$HOME/.npm-global/bin:$HOME/.npm/bin:$HOME/.local/bin:${lib.makeBinPath [ pkgs.nodejs ]}:$PATH"
+
+    if ! command -v ob >/dev/null 2>&1; then
+      echo "ob not found; run dotfile obsidian once to install and log in" >&2
+      exit 0
+    fi
+
+    shopt -s nullglob
+    for vault in "$HOME"/documents/obsidian/*; do
+      if [ -d "$vault" ] && ob sync-status --path "$vault" >/dev/null 2>&1; then
+        exec ob sync --path "$vault" --continuous
+      fi
+    done
+
+    echo "No configured Obsidian vault found under $HOME/documents/obsidian" >&2
+    exit 0
+  '';
 in
 {
   home.username = machine.username;
@@ -93,6 +112,23 @@ in
   };
 
   programs.home-manager.enable = true;
+
+  systemd.user.services.obsidian-sync = lib.mkIf pkgs.stdenv.isLinux {
+    Unit = {
+      Description = "Obsidian Sync";
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
+    };
+
+    Service = {
+      Type = "simple";
+      ExecStart = "${obsidianSync}";
+      Restart = "on-failure";
+      RestartSec = 10;
+    };
+
+    Install.WantedBy = [ "default.target" ];
+  };
 
   home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     target="$HOME/.codex/config.toml"

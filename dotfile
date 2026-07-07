@@ -51,28 +51,7 @@ function setup_dotfiles {
   doctor
   install_packages
   update_repo
-  setup_obsidian_if_supported
   success "Done!"
-}
-
-function setup_obsidian_if_supported {
-  if [[ "$(detect_platform)" != "arch" ]]; then
-    info "Skipping Obsidian sync setup: not Arch Linux"
-    return
-  fi
-  if ! command -v npm >/dev/null 2>&1; then
-    info "Skipping Obsidian sync setup: npm not found"
-    return
-  fi
-  if ! command -v systemctl >/dev/null 2>&1; then
-    info "Skipping Obsidian sync setup: systemctl not found"
-    return
-  fi
-  if ! systemctl --user show-environment >/dev/null 2>&1; then
-    info "Skipping Obsidian sync setup: systemd user session unavailable"
-    return
-  fi
-  setup_obsidian
 }
 
 function usage {
@@ -83,7 +62,7 @@ Commands:
   all         Run full setup (default)
   update      Update Nix-managed packages
   packages    Install system packages only
-  obsidian    Set up Obsidian headless sync (Arch auto-runs during 'all' when ready)
+  obsidian    Bootstrap Obsidian Sync login and vault setup
   doctor      Detect dotfile and Nix issues
 
 Options:
