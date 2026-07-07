@@ -4,6 +4,10 @@ let
   machine = import ./host.nix;
   homeDir =
     if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
+  forceSource = source: {
+    inherit source;
+    force = true;
+  };
   obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
     set -euo pipefail
     export PATH="${lib.makeBinPath [ pkgs.obsidian-headless pkgs.nodejs ]}:$PATH"
@@ -60,30 +64,15 @@ in
   ++ lib.optional (pkgs ? codex) pkgs.codex
   ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
 
-  home.file.".gitconfig" = {
-    source = ./shared/.gitconfig;
-    force = true;
-  };
+  home.file.".gitconfig" = forceSource ./shared/.gitconfig;
 
-  home.file.".vimrc" = {
-    source = ./shared/.vimrc;
-    force = true;
-  };
+  home.file.".vimrc" = forceSource ./shared/.vimrc;
 
-  home.file.".tmux.conf" = {
-    source = ./unix/.tmux.conf;
-    force = true;
-  };
+  home.file.".tmux.conf" = forceSource ./unix/.tmux.conf;
 
-  home.file.".zprofile" = {
-    source = ./unix/.zprofile;
-    force = true;
-  };
+  home.file.".zprofile" = forceSource ./unix/.zprofile;
 
-  home.file.".zshrc.base" = {
-    source = ./unix/.zshrc.base;
-    force = true;
-  };
+  home.file.".zshrc.base" = forceSource ./unix/.zshrc.base;
 
   home.file.".zshrc" = {
     text = ''
@@ -92,25 +81,13 @@ in
     force = true;
   };
 
-  home.file.".ssh/config" = {
-    source = ./shared/.ssh/config;
-    force = true;
-  };
+  home.file.".ssh/config" = forceSource ./shared/.ssh/config;
 
-  home.file.".claude/settings.json" = {
-    source = ./shared/ai/claude/settings.json;
-    force = true;
-  };
+  home.file.".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
 
-  home.file.".tmux/plugins/tmux-yank" = {
-    source = "${pkgs.tmuxPlugins.yank}/share/tmux-plugins/yank";
-    force = true;
-  };
+  home.file.".tmux/plugins/tmux-yank" = forceSource "${pkgs.tmuxPlugins.yank}/share/tmux-plugins/yank";
 
-  home.file.".tmux/plugins/catppuccin/tmux" = {
-    source = "${pkgs.tmuxPlugins.catppuccin}/share/tmux-plugins/catppuccin";
-    force = true;
-  };
+  home.file.".tmux/plugins/catppuccin/tmux" = forceSource "${pkgs.tmuxPlugins.catppuccin}/share/tmux-plugins/catppuccin";
 
   programs.home-manager.enable = true;
 
@@ -152,55 +129,25 @@ in
     fi
   '';
 
-  xdg.configFile."starship.toml" = {
-    source = ./shared/config/starship.toml;
-    force = true;
-  };
+  xdg.configFile."starship.toml" = forceSource ./shared/config/starship.toml;
 
-  xdg.configFile."jj" = {
-    source = ./shared/config/jj;
-    force = true;
-  };
+  xdg.configFile."jj" = forceSource ./shared/config/jj;
 
-  xdg.configFile."nvim" = {
-    source = ./shared/config/nvim;
-    force = true;
-  };
+  xdg.configFile."nvim" = forceSource ./shared/config/nvim;
 
-  xdg.configFile."fcitx5" = {
-    source = ./unix/config/fcitx5;
-    force = true;
-  };
+  xdg.configFile."fcitx5" = forceSource ./unix/config/fcitx5;
 
-  xdg.configFile."ghostty/config" = {
-    source = ./unix/config/ghostty/config;
-    force = true;
-  };
+  xdg.configFile."ghostty/config" = forceSource ./unix/config/ghostty/config;
 
-  xdg.configFile."hypr" = {
-    source = ./unix/config/hypr;
-    force = true;
-  };
+  xdg.configFile."hypr" = forceSource ./unix/config/hypr;
 
-  xdg.configFile."waybar" = {
-    source = ./unix/config/waybar;
-    force = true;
-  };
+  xdg.configFile."waybar" = forceSource ./unix/config/waybar;
 
-  xdg.dataFile."zsh/plugins/zsh-autosuggestions" = {
-    source = "${pkgs.zsh-autosuggestions}/share/zsh/plugins/zsh-autosuggestions";
-    force = true;
-  };
+  xdg.dataFile."zsh/plugins/zsh-autosuggestions" = forceSource "${pkgs.zsh-autosuggestions}/share/zsh/plugins/zsh-autosuggestions";
 
-  xdg.dataFile."zsh/plugins/fast-syntax-highlighting" = {
-    source = "${pkgs.zsh-fast-syntax-highlighting}/share/zsh/plugins/fast-syntax-highlighting";
-    force = true;
-  };
+  xdg.dataFile."zsh/plugins/fast-syntax-highlighting" = forceSource "${pkgs.zsh-fast-syntax-highlighting}/share/zsh/plugins/fast-syntax-highlighting";
 
-  xdg.dataFile."zsh/plugins/fzf-tab" = {
-    source = "${pkgs.zsh-fzf-tab}/share/fzf-tab";
-    force = true;
-  };
+  xdg.dataFile."zsh/plugins/fzf-tab" = forceSource "${pkgs.zsh-fzf-tab}/share/fzf-tab";
 
   home.file.".local/bin/dotfile" = lib.mkIf pkgs.stdenv.isLinux {
     text = ''
@@ -211,14 +158,9 @@ in
     force = true;
   };
 
-  home.file.".zshrc.mac" = lib.mkIf pkgs.stdenv.isDarwin {
-    source = ./mac/.zshrc.mac;
-    force = true;
-  };
+  home.file.".zshrc.mac" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/.zshrc.mac);
 
-  home.file.".local/bin/caf" = lib.mkIf pkgs.stdenv.isDarwin {
-    source = ./mac/bin/caf;
+  home.file.".local/bin/caf" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/bin/caf // {
     executable = true;
-    force = true;
-  };
+  });
 }
