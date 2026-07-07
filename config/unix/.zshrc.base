@@ -1,4 +1,4 @@
-# Base config (tracked in dotfiles repo). Sourced first by ~/.zshrc.
+# Base config (tracked in dotfiles repo). Inlined into generated ~/.zshrc by Home Manager.
 
 if [[ -t 0 ]]; then
   export GPG_TTY=$(tty)
