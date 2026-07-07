@@ -62,10 +62,6 @@ export HYPRSHOT_DIR="$HOME/hyprshot"
 [ -d "/snap/bin" ] && export PATH="/snap/bin:$PATH"
 [ -d "$HOME/.devcontainers/bin" ] && export PATH="$HOME/.devcontainers/bin:$PATH"
 
-# macOS-specific config (brew shellenv, etc.) — must run before tools below so
-# brew-installed binaries (starship, zoxide, fzf) are on PATH.
-[ -e "$HOME/.zshrc.mac" ] && source "$HOME/.zshrc.mac"
-
 # tmux autostart: on an interactive shell not already inside tmux, attach to
 # (or create) the "main" session. Replaces the omz tmux plugin. Not exec'd, so
 # exiting tmux drops back to this shell (old ZSH_TMUX_AUTOQUIT=false). Guards

@@ -78,7 +78,6 @@ in
       executable = true;
       force = true;
     };
-    ".zshrc.mac" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/.zshrc.mac);
     ".local/bin/caf" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/bin/caf // {
       executable = true;
     });
@@ -157,8 +156,12 @@ in
       share = true;
     };
     setOptions = [ "INC_APPEND_HISTORY" "HIST_VERIFY" ];
-    profileExtra = ''
-      [ -e "/opt/homebrew/bin/brew" ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+    profileExtra = lib.optionalString pkgs.stdenv.isDarwin ''
+      if [ -x /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      elif [ -x /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+      fi
     '';
     initContent = lib.mkOrder 550 (builtins.readFile ./unix/.zshrc.base);
     completionInit = ''

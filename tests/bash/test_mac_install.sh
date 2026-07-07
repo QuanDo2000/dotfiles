@@ -161,7 +161,6 @@ test_setup_dotfiles_dry_run_mac() {
   source_scripts doctor.sh
 
   create_dotfiles_dirs
-  echo "mac" > "$DOTFILES_DIR/config/mac/.zshrc.mac"
 
   function update_repo {
     info "Updating dotfiles repo..."
