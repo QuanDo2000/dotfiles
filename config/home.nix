@@ -67,6 +67,7 @@ in
     openssh
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     wl-clipboard
+    waybar
     obsidian
     obsidian-headless
     codex

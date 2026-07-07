@@ -106,7 +106,6 @@ in
     git
     jq
     gcc
-    waybar
     google-chrome    # Browser + OAuth sign-in
     ghostty
   ];
