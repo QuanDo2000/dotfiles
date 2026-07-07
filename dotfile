@@ -46,12 +46,16 @@ function update_repo {
   success "Finished updating repo"
 }
 
-function setup_dotfiles {
-  info "Setting up dotfiles..."
+function run_repo_update_flow {
   doctor
   update_repo
-  install_packages
+  "$@"
   DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
+}
+
+function setup_dotfiles {
+  info "Setting up dotfiles..."
+  run_repo_update_flow install_packages
   success "Done!"
 }
 
@@ -105,12 +109,7 @@ done
 # Run command
 case "${1:-all}" in
 all) setup_dotfiles ;;
-update)
-  doctor
-  update_repo
-  update_packages
-  DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
-  ;;
+update) run_repo_update_flow update_packages ;;
 packages)
   doctor
   install_packages
