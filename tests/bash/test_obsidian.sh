@@ -32,6 +32,13 @@ EOF
 # _obsidian_check_prereqs
 # ---------------------------------------------------------------------------
 
+test_obsidian_config_vault_override_is_preserved() {
+  export OBSIDIAN_CONFIG_VAULT="$TEST_TMPDIR/custom/.obsidian"
+  source "$REPO_DIR/scripts/obsidian_paths.sh"
+
+  assert_equals "$TEST_TMPDIR/custom/.obsidian" "$OBSIDIAN_CONFIG_VAULT"
+}
+
 test_check_prereqs_fails_on_non_linux() {
   mock_uname Darwin
 
