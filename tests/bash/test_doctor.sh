@@ -300,8 +300,8 @@ test_doctor_reports_obsidian_config_drift() {
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
   with_nix_agent_tools
 
-  mkdir -p "$DOTFILES_DIR/config/shared/obsidian" "$OBSIDIAN_CONFIG_VAULT"
-  printf '{"vimMode":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/app.json"
+  mkdir -p "$OBSIDIAN_CONFIG_SOURCE" "$OBSIDIAN_CONFIG_VAULT"
+  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
   printf '{"vimMode":false}\n' > "$OBSIDIAN_CONFIG_VAULT/app.json"
 
   local output exit_code
@@ -327,8 +327,8 @@ test_doctor_reports_obsidian_config_match() {
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
   with_nix_agent_tools
 
-  mkdir -p "$DOTFILES_DIR/config/shared/obsidian" "$OBSIDIAN_CONFIG_VAULT"
-  printf '{"vimMode":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/app.json"
+  mkdir -p "$OBSIDIAN_CONFIG_SOURCE" "$OBSIDIAN_CONFIG_VAULT"
+  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
   printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_VAULT/app.json"
 
   local output

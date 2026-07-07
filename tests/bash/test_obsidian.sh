@@ -219,9 +219,9 @@ test_setup_obsidian_skips_reconfiguring_existing_sync() {
 test_setup_obsidian_does_not_apply_general_app_config() {
   local vault_path="$HOME/documents/obsidian/test-vault"
   mkdir -p "$vault_path"
-  mkdir -p "$DOTFILES_DIR/config/shared/obsidian/plugins/example"
-  printf '{"vimMode":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/app.json"
-  printf '{"enabled":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/plugins/example/data.json"
+  mkdir -p "$OBSIDIAN_CONFIG_SOURCE/plugins/example"
+  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
+  printf '{"enabled":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/plugins/example/data.json"
   mock_cmd ob 'case "$1" in
     sync-status) exit 0 ;;
     sync-list-remote|login|sync-setup)
@@ -244,8 +244,8 @@ test_setup_obsidian_does_not_apply_general_app_config() {
 
 test_apply_obsidian_config_dry_run_does_not_copy() {
   DRY=true
-  mkdir -p "$DOTFILES_DIR/config/shared/obsidian"
-  printf '{"vimMode":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/app.json"
+  mkdir -p "$OBSIDIAN_CONFIG_SOURCE"
+  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
 
   local output exit_code=0
   output=$(_obsidian_apply_config "$OBSIDIAN_CONFIG_VAULT" 2>&1) || exit_code=$?
@@ -278,8 +278,8 @@ test_setup_obsidian_config_check_uses_fast_doctor() {
 test_setup_obsidian_config_force_announces_apply() {
   FORCE=true
   DRY=true
-  mkdir -p "$DOTFILES_DIR/config/shared/obsidian"
-  printf '{"vimMode":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/app.json"
+  mkdir -p "$OBSIDIAN_CONFIG_SOURCE"
+  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
 
   local output exit_code=0
   output=$(setup_obsidian_config 2>&1) || exit_code=$?
