@@ -132,9 +132,3 @@ if [ -s "$NVM_DIR/nvm.sh" ]; then
     nvm "$@"
   }
 fi
-
-# opencode
-[ -d "$HOME/.opencode/bin" ] && export PATH="$HOME/.opencode/bin:$PATH"
-
-# bun
-[ -d "$HOME/.bun/bin" ] && export PATH="$HOME/.bun/bin:$PATH"
