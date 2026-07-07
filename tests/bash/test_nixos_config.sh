@@ -133,6 +133,9 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_not_contains "$(<"$REPO_DIR/config/home.nix")" ".local/go"
   assert_not_contains "$(<"$REPO_DIR/config/home.nix")" "PNPM_HOME"
   assert_not_contains "$(<"$REPO_DIR/config/home.nix")" ".local/share/pnpm"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "nixosSystem = pkgs.stdenv.isLinux && osConfig != null"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "lib.optionals (!nixosSystem)"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "nerd-fonts.fira-code"
   assert_not_contains "$common_packages" "neovim"
   assert_not_contains "$common_packages" "gnupg"
   assert_not_contains "$common_packages" "fd"
@@ -170,6 +173,7 @@ test_nixos_system_packages_leave_user_tools_to_home_manager() {
   local packages_text
   packages_text="$(sed -n '/environment.systemPackages =/,/];/p' "$REPO_DIR/config/nixos/configuration.nix")"
 
+  assert_contains "$(<"$REPO_DIR/config/nixos/configuration.nix")" "fonts.packages = with pkgs; [ nerd-fonts.fira-code ];"
   assert_contains "$packages_text" "git"
   assert_contains "$packages_text" "jq"
   assert_contains "$packages_text" "zsh"

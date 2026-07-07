@@ -1,7 +1,8 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, osConfig ? null, ... }:
 
 let
   machine = import ./host.nix;
+  nixosSystem = pkgs.stdenv.isLinux && osConfig != null;
   homeDir =
     if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
   forceSource = source: {
@@ -60,6 +61,8 @@ in
     odin
     gleam
     beamPackages.erlang
+  ] ++ lib.optionals (!nixosSystem) [
+    nerd-fonts.fira-code
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     fontconfig
     wl-clipboard
