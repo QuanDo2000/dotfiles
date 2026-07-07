@@ -379,6 +379,7 @@ test_home_config_owns_existing_xdg_configs() {
   assert_not_contains "$home_text" "xdg.configFile.\"jj\""
   assert_contains "$home_text" "xdg.configFile.\"nvim\""
   assert_contains "$home_text" "./shared/config/nvim"
+  assert_not_contains "$(<"$REPO_DIR/config/shared/config/nvim/init.lua")" "bootstrap lazy.nvim"
   assert_not_contains "$lazy_text" "lazyrepo"
   assert_not_contains "$lazy_text" "git\", \"clone"
   assert_contains "$lazy_text" "run dotfile update"
