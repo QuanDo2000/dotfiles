@@ -94,6 +94,7 @@ in
   programs.zsh = {
     enable = true;
     enableCompletion = false;
+    defaultKeymap = "viins";
     history = {
       append = true;
       size = 50000;
@@ -102,6 +103,7 @@ in
       ignoreSpace = true;
       share = true;
     };
+    setOptions = [ "INC_APPEND_HISTORY" "HIST_VERIFY" ];
     initContent = lib.mkOrder 550 ''
       [ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
     '';

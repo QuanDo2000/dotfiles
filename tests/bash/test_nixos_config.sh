@@ -232,6 +232,11 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_contains "$home_text" "programs.zsh = {"
   assert_contains "$home_text" "enable = true"
   assert_contains "$home_text" "enableCompletion = false"
+  assert_contains "$home_text" "defaultKeymap = \"viins\""
+  assert_contains "$home_text" "history = {"
+  assert_contains "$home_text" "size = 50000"
+  assert_contains "$home_text" "save = 10000"
+  assert_contains "$home_text" "setOptions = [ \"INC_APPEND_HISTORY\" \"HIST_VERIFY\" ]"
   assert_contains "$home_text" "autosuggestion.enable = true"
   assert_contains "$home_text" "fastSyntaxHighlighting.enable = true"
   assert_contains "$home_text" "plugins = ["
@@ -241,6 +246,11 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_not_contains "$zsh_text" "zsh-autosuggestions.zsh"
   assert_not_contains "$zsh_text" "fast-syntax-highlighting.plugin.zsh"
   assert_not_contains "$zsh_text" "fzf-tab.plugin.zsh"
+  assert_not_contains "$zsh_text" "HISTFILE="
+  assert_not_contains "$zsh_text" "HISTSIZE="
+  assert_not_contains "$zsh_text" "SAVEHIST="
+  assert_not_contains "$zsh_text" "setopt append_history"
+  assert_not_contains "$zsh_text" "bindkey -v"
 }
 
 test_zsh_arrow_keys_search_history_by_prefix() {

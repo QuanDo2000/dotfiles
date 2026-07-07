@@ -92,14 +92,6 @@ tmux() {
   fi
 }
 
-# History (replaces omz lib/history.zsh). Without this, HISTFILE is unset and
-# SAVEHIST=0, so nothing persists and zsh-autosuggestions has nothing to suggest.
-HISTFILE="$HOME/.zsh_history"
-HISTSIZE=50000
-SAVEHIST=10000
-setopt append_history inc_append_history share_history
-setopt hist_ignore_dups hist_ignore_space hist_verify
-
 # Completion system (cached for fast startup). Rebuild + security-check the dump
 # only when it is older than 24h; otherwise load it fast (-C skips the check).
 autoload -Uz compinit
@@ -116,8 +108,6 @@ fi
 # (so `log` completes `catalog`). fzf-tab shows whatever this generates.
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'l:|=* r:|=*'
 
-# vi mode (replaces the omz vi-mode plugin + VI_MODE_SET_CURSOR=true)
-bindkey -v
 bindkey -M viins '^[[A' history-beginning-search-backward
 bindkey -M viins '^[[B' history-beginning-search-forward
 bindkey -M viins '^[OA' history-beginning-search-backward
