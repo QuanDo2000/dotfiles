@@ -204,7 +204,10 @@ _check_obsidian_config() {
   local tracked_dir="$OBSIDIAN_CONFIG_SOURCE"
   local live_dir="$OBSIDIAN_CONFIG_VAULT"
 
-  [ -d "$tracked_dir" ] || return 0
+  [ -d "$tracked_dir" ] || {
+    info "Skipping Obsidian config drift check: $tracked_dir not found"
+    return 0
+  }
   [ -d "$live_dir" ] || {
     info "Skipping Obsidian config drift check: $live_dir not found"
     return 0

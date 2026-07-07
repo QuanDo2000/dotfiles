@@ -337,6 +337,15 @@ test_doctor_reports_obsidian_config_match() {
   assert_contains "$output" "Obsidian config matches tracked settings"
 }
 
+test_doctor_reports_missing_obsidian_config_source() {
+  OBSIDIAN_CONFIG_SOURCE="$TEST_TMPDIR/missing-obsidian-config"
+
+  local output
+  output=$(_check_obsidian_config 2>&1)
+
+  assert_contains "$output" "Skipping Obsidian config drift check: $OBSIDIAN_CONFIG_SOURCE not found"
+}
+
 test_doctor_skips_nix_eval_in_dry_mode() {
   mock_uname Linux
   local os_release="$TEST_TMPDIR/os-release"
