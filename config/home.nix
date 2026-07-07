@@ -39,7 +39,6 @@ in
     lazygit
     gnupg
     nodejs
-    jujutsu
     ast-grep
     zig
     odin
@@ -102,6 +101,11 @@ in
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
+  };
+
+  programs.jujutsu = {
+    enable = true;
+    settings = builtins.fromTOML (builtins.readFile ./shared/config/jj/config.toml);
   };
 
   programs.zsh = {
@@ -205,8 +209,6 @@ in
       chmod u+w "$target"
     fi
   '';
-
-  xdg.configFile."jj" = forceSource ./shared/config/jj;
 
   xdg.configFile."nvim" = forceSource ./shared/config/nvim;
 

@@ -121,9 +121,10 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   local common_packages
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in neovim fd ripgrep gnupg lazygit jujutsu nodejs ast-grep zig odin gleam erlang; do
+  for pkg in neovim fd ripgrep gnupg lazygit nodejs ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
   done
+  assert_not_contains "$common_packages" "jujutsu"
   assert_not_contains "$common_packages" "fzf"
   assert_not_contains "$common_packages" "zoxide"
   assert_not_contains "$common_packages" "starship"
@@ -276,6 +277,10 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_contains "$home_text" "programs.fzf = {"
   assert_contains "$home_text" "enableZshIntegration = true"
   assert_not_contains "$zsh_text" "fzf --zsh"
+  assert_contains "$home_text" "programs.jujutsu = {"
+  assert_contains "$home_text" "settings = builtins.fromTOML"
+  assert_contains "$home_text" "builtins.readFile ./shared/config/jj/config.toml"
+  assert_not_contains "$zsh_text" "COMPLETE=zsh jj"
 }
 
 test_zsh_arrow_keys_search_history_by_prefix() {
@@ -307,8 +312,7 @@ test_home_config_owns_existing_xdg_configs() {
   local home_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
 
-  assert_contains "$home_text" "xdg.configFile.\"jj\""
-  assert_contains "$home_text" "./shared/config/jj"
+  assert_not_contains "$home_text" "xdg.configFile.\"jj\""
   assert_contains "$home_text" "xdg.configFile.\"nvim\""
   assert_contains "$home_text" "./shared/config/nvim"
   assert_contains "$home_text" "xdg.configFile.\"fcitx5\""
