@@ -135,6 +135,8 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_not_contains "$common_packages" "starship"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.neovim = {"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "defaultEditor = true"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "vimAlias = true"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "viAlias = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "withPython3 = false"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "withRuby = false"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.gpg.enable = true"
@@ -204,8 +206,8 @@ test_home_config_owns_remaining_dotfiles() {
   local home_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
 
-  assert_contains "$home_text" "home.file.\".vimrc\""
-  assert_contains "$home_text" "forceSource ./shared/.vimrc"
+  assert_not_contains "$home_text" "home.file.\".vimrc\""
+  assert_not_contains "$home_text" "forceSource ./shared/.vimrc"
   assert_not_contains "$home_text" "home.file.\".tmux.conf\""
   assert_contains "$home_text" "home.file.\".zprofile\""
   assert_contains "$home_text" "forceSource ./unix/.zprofile"
@@ -360,6 +362,7 @@ test_doctor_paths_cover_home_manager_managed_paths() {
   assert_not_contains "$doctor_text" "home-manager-managed-paths"
   assert_not_contains "$doctor_text" "_read_home_manager_managed_paths()"
   assert_not_contains "$doctor_text" "  .gitconfig"
+  assert_not_contains "$doctor_text" "  .vimrc"
   assert_not_contains "$doctor_text" "REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)"
   assert_not_contains "$doctor_text" "_doctor_check_managed_paths"
   assert_not_contains "$home_text" 'home.file.".codex/config.toml"'

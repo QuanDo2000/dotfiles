@@ -38,24 +38,24 @@ test_doctor_tool_missing() {
 
 test_doctor_symlink_valid() {
   mkdir -p "$DOTFILES_DIR"
-  echo "content" > "$DOTFILES_DIR/.vimrc"
-  ln -s "$DOTFILES_DIR/.vimrc" "$HOME/.vimrc"
+  echo "content" > "$DOTFILES_DIR/.zprofile"
+  ln -s "$DOTFILES_DIR/.zprofile" "$HOME/.zprofile"
 
-  if [[ ! -L "$HOME/.vimrc" ]]; then
-    echo "  Expected $HOME/.vimrc to be a symlink" >> "$ERROR_FILE"
+  if [[ ! -L "$HOME/.zprofile" ]]; then
+    echo "  Expected $HOME/.zprofile to be a symlink" >> "$ERROR_FILE"
     return
   fi
   local link_target
-  link_target="$(readlink "$HOME/.vimrc")"
+  link_target="$(readlink "$HOME/.zprofile")"
   assert_contains "$link_target" "$DOTFILES_DIR"
 }
 
 test_doctor_file_not_symlink() {
-  echo "not a symlink" > "$HOME/.vimrc"
-  if [[ -L "$HOME/.vimrc" ]]; then
+  echo "not a symlink" > "$HOME/.zprofile"
+  if [[ -L "$HOME/.zprofile" ]]; then
     echo "  File should be regular, not a symlink" >> "$ERROR_FILE"
   fi
-  assert_file_exists "$HOME/.vimrc"
+  assert_file_exists "$HOME/.zprofile"
 }
 
 test_doctor_error_count() {
@@ -77,8 +77,8 @@ test_doctor_is_a_small_smoke_check() {
 test_doctor_symlink_wrong_target() {
   mkdir -p "$DOTFILES_DIR"
   mkdir -p "$HOME/other"
-  echo "content" > "$HOME/other/.vimrc"
-  ln -s "$HOME/other/.vimrc" "$HOME/.vimrc"
+  echo "content" > "$HOME/other/.zprofile"
+  ln -s "$HOME/other/.zprofile" "$HOME/.zprofile"
   local output
   output=$(doctor 2>&1) || true
   assert_contains "$output" "expected"
@@ -256,7 +256,7 @@ test_doctor_reports_core_dotfile_conflicts() {
   local os_release="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$os_release"
   printf 'local shell edits\n' > "$HOME/.zshrc"
-  ln -s /nix/store/test-home-files/.vimrc "$HOME/.vimrc"
+  ln -s /nix/store/test-home-files/.zprofile "$HOME/.zprofile"
 
   local output exit_code
   set +e
@@ -266,7 +266,7 @@ test_doctor_reports_core_dotfile_conflicts() {
 
   assert_equals "1" "$exit_code"
   assert_contains "$output" ".zshrc exists but is not a symlink"
-  assert_not_contains "$output" ".vimrc exists but is not a symlink"
+  assert_not_contains "$output" ".zprofile exists but is not a symlink"
 }
 
 test_doctor_passes_with_home_manager_store_targets() {

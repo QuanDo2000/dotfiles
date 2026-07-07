@@ -54,8 +54,6 @@ in
   ++ lib.optional (pkgs ? codex) pkgs.codex
   ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
 
-  home.file.".vimrc" = forceSource ./shared/.vimrc;
-
   home.file.".zprofile" = forceSource ./unix/.zprofile;
 
   home.file.".zshrc.base" = forceSource ./unix/.zshrc.base;
@@ -85,6 +83,8 @@ in
   programs.neovim = {
     enable = true;
     defaultEditor = true;
+    vimAlias = true;
+    viAlias = true;
     withPython3 = false;
     withRuby = false;
   };

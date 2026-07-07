@@ -36,7 +36,7 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 
 Platform config lives under `config/`. Unix links are managed by Home Manager from `config/home.nix`:
 
-1. **config/shared/** - Cross-platform configs (`.gitconfig`, `.vimrc`, neovim config).
+1. **config/shared/** - Cross-platform configs (`.gitconfig`, neovim config).
 2. **config/unix/** - Linux/macOS-specific (`.zshrc.base`, `.tmux.conf`, ghostty, hyprland, waybar, lazygit, fcitx5).
 3. **config/mac/** - macOS-only (`.zshrc.mac`), applied only when `uname == Darwin`.
 4. **config/windows/** - Windows-specific (PowerShell profile, Windows Terminal settings). Used by `dotfile.ps1`.

@@ -14,10 +14,10 @@ teardown() {
 link_core_dotfiles() {
   mkdir -p "$HOME/.local/bin"
   local f src
-  for f in .zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile; do
+  for f in .zshrc .zshrc.base .tmux.conf .gitconfig .zprofile; do
     case "$f" in
       .zshrc) src="$REPO_DIR/config/unix/.zshrc.base" ;;
-      .gitconfig|.vimrc) src="$REPO_DIR/config/shared/$f" ;;
+      .gitconfig) src="$REPO_DIR/config/shared/$f" ;;
       *) src="$REPO_DIR/config/unix/$f" ;;
     esac
     ln -s "$src" "$HOME/$f"
