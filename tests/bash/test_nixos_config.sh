@@ -136,6 +136,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "nixosSystem = pkgs.stdenv.isLinux && osConfig != null"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "lib.optionals (!nixosSystem)"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "nerd-fonts.fira-code"
+  assert_contains "$common_packages" "fontconfig"
   assert_contains "$common_packages" "openssh"
   assert_not_contains "$common_packages" "neovim"
   assert_not_contains "$common_packages" "gnupg"

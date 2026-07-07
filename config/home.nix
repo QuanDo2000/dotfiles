@@ -62,10 +62,10 @@ in
     gleam
     beamPackages.erlang
   ] ++ lib.optionals (!nixosSystem) [
+    fontconfig
     nerd-fonts.fira-code
     openssh
   ] ++ lib.optionals pkgs.stdenv.isLinux [
-    fontconfig
     wl-clipboard
     obsidian
     obsidian-headless
