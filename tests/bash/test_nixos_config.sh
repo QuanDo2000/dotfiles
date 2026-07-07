@@ -125,7 +125,8 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
     assert_contains "$common_packages" "$pkg"
   done
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "home.sessionVariables.GOPATH = \"\${homeDir}/.local/go\""
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "home.sessionPath = [ \"\${homeDir}/.local/go/bin\" ]"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "\"\${homeDir}/.local/bin\""
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "\"\${homeDir}/.local/go/bin\""
   assert_not_contains "$(<"$REPO_DIR/config/home.nix")" "PNPM_HOME"
   assert_not_contains "$(<"$REPO_DIR/config/home.nix")" ".local/share/pnpm"
   assert_not_contains "$common_packages" "neovim"
@@ -299,6 +300,7 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_not_contains "$zsh_text" "GOPATH"
   assert_not_contains "$zsh_text" "GOBIN"
   assert_not_contains "$zsh_text" "PNPM_HOME"
+  assert_not_contains "$zsh_text" "\$HOME/.local/bin"
   assert_not_contains "$zsh_text" "_zsh_plugins="
   assert_not_contains "$zsh_text" "zsh-autosuggestions.zsh"
   assert_not_contains "$zsh_text" "fast-syntax-highlighting.plugin.zsh"

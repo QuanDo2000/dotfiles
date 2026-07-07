@@ -53,7 +53,6 @@ alias gsta='git stash'
 alias gstp='git stash pop'
 
 # Path
-[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 [ -d "/snap/bin" ] && export PATH="/snap/bin:$PATH"
 [ -d "$HOME/.devcontainers/bin" ] && export PATH="$HOME/.devcontainers/bin:$PATH"
 
