@@ -8,6 +8,12 @@ let
     inherit source;
     force = true;
   };
+  cavemanSrc = pkgs.fetchFromGitHub {
+    owner = "JuliusBrussee";
+    repo = "caveman";
+    rev = "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0";
+    hash = "sha256-VqRHx3/4SSCnEh3cUJ/he5saIfwNhS0hOzoH/wwtU2o=";
+  };
   obsidianSettings = [
     "app.json"
     "appearance.json"
@@ -75,6 +81,8 @@ in
   home.file = obsidianFiles // {
     ".ssh/config" = forceSource ./shared/.ssh/config;
     ".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
+    ".codex/skills/caveman/README.md" = forceSource "${cavemanSrc}/skills/caveman/README.md";
+    ".codex/skills/caveman/SKILL.md" = forceSource "${cavemanSrc}/skills/caveman/SKILL.md";
     ".local/bin/dotfile" = lib.mkIf pkgs.stdenv.isLinux {
       text = ''
         #!/usr/bin/env bash
