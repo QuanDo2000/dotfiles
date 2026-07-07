@@ -276,23 +276,29 @@ test_home_config_owns_existing_xdg_configs() {
 }
 
 test_doctor_paths_cover_home_manager_managed_paths() {
-  local doctor_text home_text path
+  local doctor_text home_text manifest_text path
   home_text="$(<"$REPO_DIR/config/home.nix")"
   doctor_text="$(<"$REPO_DIR/scripts/doctor.sh")"
+  manifest_text="$(<"$REPO_DIR/config/home-manager-managed-paths")"
+
+  assert_contains "$doctor_text" "home-manager-managed-paths"
+  assert_not_contains "$doctor_text" "HM_HOME_PATHS="
+  assert_not_contains "$doctor_text" "HM_CONFIG_PATHS="
+  assert_not_contains "$doctor_text" "HM_DATA_PATHS="
 
   while IFS= read -r path; do
     case "$path" in
       .local/bin/dotfile|.zshrc.mac|.local/bin/caf) continue ;;
     esac
-    assert_contains "$doctor_text" "$path"
+    assert_contains "$manifest_text" "home $path"
   done < <(sed -n 's/^[[:space:]]*home\.file\."\([^"]*\)".*/\1/p' <<<"$home_text")
 
   while IFS= read -r path; do
-    assert_contains "$doctor_text" "$path"
+    assert_contains "$manifest_text" "config $path"
   done < <(sed -n 's/^[[:space:]]*xdg\.configFile\."\([^"]*\)".*/\1/p' <<<"$home_text")
 
   while IFS= read -r path; do
-    assert_contains "$doctor_text" "$path"
+    assert_contains "$manifest_text" "data $path"
   done < <(sed -n 's/^[[:space:]]*xdg\.dataFile\."\([^"]*\)".*/\1/p' <<<"$home_text")
 
   assert_contains "$doctor_text" '_doctor_check_managed_path ".local/bin/dotfile"'

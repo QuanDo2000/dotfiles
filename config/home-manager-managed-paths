@@ -1,0 +1,21 @@
+# kind path
+home .gitconfig
+home .vimrc
+home .tmux.conf
+home .zprofile
+home .zshrc.base
+home .zshrc
+home .ssh/config
+home .claude/settings.json
+home .tmux/plugins/tmux-yank
+home .tmux/plugins/catppuccin/tmux
+config starship.toml
+config jj
+config nvim
+config fcitx5
+config ghostty/config
+config hypr
+config waybar
+data zsh/plugins/zsh-autosuggestions
+data zsh/plugins/fast-syntax-highlighting
+data zsh/plugins/fzf-tab

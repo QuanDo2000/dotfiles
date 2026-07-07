@@ -7,32 +7,10 @@ source "$scripts_dir/obsidian_paths.sh"
 
 # Core symlinked dotfiles under $HOME. This is a smoke check, not a full package audit.
 REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
-HM_HOME_PATHS=(
-  .gitconfig
-  .vimrc
-  .tmux.conf
-  .zprofile
-  .zshrc.base
-  .zshrc
-  .ssh/config
-  .claude/settings.json
-  .tmux/plugins/tmux-yank
-  .tmux/plugins/catppuccin/tmux
-)
-HM_CONFIG_PATHS=(
-  starship.toml
-  jj
-  nvim
-  fcitx5
-  ghostty/config
-  hypr
-  waybar
-)
-HM_DATA_PATHS=(
-  zsh/plugins/zsh-autosuggestions
-  zsh/plugins/fast-syntax-highlighting
-  zsh/plugins/fzf-tab
-)
+HM_MANAGED_PATHS_FILE="${HM_MANAGED_PATHS_FILE:-$DOTFILES_DIR/config/home-manager-managed-paths}"
+if [[ ! -f "$HM_MANAGED_PATHS_FILE" && -f "$scripts_dir/../config/home-manager-managed-paths" ]]; then
+  HM_MANAGED_PATHS_FILE="$scripts_dir/../config/home-manager-managed-paths"
+fi
 
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {
@@ -200,6 +178,28 @@ _doctor_check_managed_path() {
   errors=$((errors + 1))
 }
 
+_doctor_check_managed_paths() {
+  if [[ ! -f "$HM_MANAGED_PATHS_FILE" ]]; then
+    fail_soft "Home Manager managed path manifest not found: $HM_MANAGED_PATHS_FILE"
+    errors=$((errors + 1))
+    return
+  fi
+
+  local kind path
+  while read -r kind path; do
+    [[ -n "${kind:-}" && "${kind:0:1}" != "#" ]] || continue
+    case "$kind" in
+      home) _doctor_check_managed_path "$path" "$HOME/$path" ;;
+      config) _doctor_check_managed_path ".config/$path" "${XDG_CONFIG_HOME:-$HOME/.config}/$path" ;;
+      data) _doctor_check_managed_path ".local/share/$path" "${XDG_DATA_HOME:-$HOME/.local/share}/$path" ;;
+      *)
+        fail_soft "Unknown Home Manager managed path kind '$kind' in $HM_MANAGED_PATHS_FILE"
+        errors=$((errors + 1))
+        ;;
+    esac
+  done < "$HM_MANAGED_PATHS_FILE"
+}
+
 _check_obsidian_config() {
   local tracked_dir="$OBSIDIAN_CONFIG_SOURCE"
   local live_dir="$OBSIDIAN_CONFIG_VAULT"
@@ -242,17 +242,7 @@ function doctor {
 
   info "Checking Home Manager-managed paths..."
   if is_home_manager_platform "$platform"; then
-    local name
-    for name in "${HM_HOME_PATHS[@]}"; do
-      _doctor_check_managed_path "$name" "$HOME/$name"
-    done
-    for name in "${HM_CONFIG_PATHS[@]}"; do
-      _doctor_check_managed_path ".config/$name" "${XDG_CONFIG_HOME:-$HOME/.config}/$name"
-    done
-    for name in "${HM_DATA_PATHS[@]}"; do
-      _doctor_check_managed_path ".local/share/$name" "${XDG_DATA_HOME:-$HOME/.local/share}/$name"
-    done
-
+    _doctor_check_managed_paths
     if [[ "$platform" == "mac" ]]; then
       _doctor_check_managed_path ".zshrc.mac" "$HOME/.zshrc.mac"
       _doctor_check_managed_path ".local/bin/caf" "$HOME/.local/bin/caf"
