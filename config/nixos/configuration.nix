@@ -99,11 +99,4 @@ in
   # --- Fonts ---------------------------------------------------------------
   fonts.packages = with pkgs; [ nerd-fonts.fira-code ];
 
-  # --- Packages ------------------------------------------------------------
-  # System/session packages only. User CLI tools and app configs live in
-  # Home Manager (config/home.nix), matching the Arch bootstrap split.
-  environment.systemPackages = with pkgs; [
-    jq
-    gcc
-  ];
 }

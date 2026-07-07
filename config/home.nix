@@ -61,6 +61,7 @@ in
     odin
     gleam
     beamPackages.erlang
+    jq
   ] ++ lib.optionals (!nixosSystem) [
     fontconfig
     nerd-fonts.fira-code
@@ -70,6 +71,7 @@ in
     waybar
     ghostty
     google-chrome
+    gcc
     obsidian
     obsidian-headless
     codex

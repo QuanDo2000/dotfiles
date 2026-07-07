@@ -125,7 +125,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
   linux_packages="$(sed -n '/\] ++ lib.optionals pkgs.stdenv.isLinux \[/,/  \];/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in ast-grep zig odin gleam erlang; do
+  for pkg in ast-grep zig odin gleam erlang jq; do
     assert_contains "$common_packages" "$pkg"
   done
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "\"\${homeDir}/.local/bin\""
@@ -152,6 +152,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_contains "$linux_packages" "waybar"
   assert_contains "$linux_packages" "ghostty"
   assert_contains "$linux_packages" "google-chrome"
+  assert_contains "$linux_packages" "gcc"
   for pkg in lua5_1 luarocks tree-sitter unzip; do
     assert_not_contains "$common_packages" "$pkg"
     assert_not_contains "$linux_packages" "$pkg"
@@ -179,10 +180,10 @@ test_nixos_system_packages_leave_user_tools_to_home_manager() {
   packages_text="$(sed -n '/environment.systemPackages =/,/];/p' "$REPO_DIR/config/nixos/configuration.nix")"
 
   assert_contains "$(<"$REPO_DIR/config/nixos/configuration.nix")" "fonts.packages = with pkgs; [ nerd-fonts.fira-code ];"
-  assert_contains "$packages_text" "jq"
-  assert_contains "$packages_text" "gcc"
   assert_not_contains "$packages_text" "lib.optional (pkgs ? ghostty)"
   assert_not_contains "$packages_text" "    git"
+  assert_not_contains "$packages_text" "    jq"
+  assert_not_contains "$packages_text" "    gcc"
   assert_not_contains "$packages_text" "    zsh"
   assert_not_contains "$packages_text" "    waybar"
   assert_not_contains "$packages_text" "    ghostty"
