@@ -5,7 +5,6 @@ set -eo pipefail
 REQUIRED_SYMLINKS=(
   .gitconfig
   .vimrc
-  .tmux.conf
   .zprofile
   .zshrc.base
   .zshrc

@@ -34,7 +34,6 @@ in
   home.stateVersion = "24.11";
   home.packages = with pkgs; [
     neovim
-    tmux
     fzf
     fd
     ripgrep
@@ -68,8 +67,6 @@ in
 
   home.file.".vimrc" = forceSource ./shared/.vimrc;
 
-  home.file.".tmux.conf" = forceSource ./unix/.tmux.conf;
-
   home.file.".zprofile" = forceSource ./unix/.zprofile;
 
   home.file.".zshrc.base" = forceSource ./unix/.zshrc.base;
@@ -99,11 +96,33 @@ in
 
   home.file."documents/Sync/.obsidian/templates.json" = forceSource ./shared/obsidian/templates.json;
 
-  home.file.".tmux/plugins/tmux-yank" = forceSource "${pkgs.tmuxPlugins.yank}/share/tmux-plugins/yank";
-
-  home.file.".tmux/plugins/catppuccin/tmux" = forceSource "${pkgs.tmuxPlugins.catppuccin}/share/tmux-plugins/catppuccin";
-
   programs.home-manager.enable = true;
+
+  programs.tmux = {
+    enable = true;
+    terminal = "tmux-256color";
+    keyMode = "vi";
+    mouse = true;
+    focusEvents = true;
+    aggressiveResize = true;
+    escapeTime = 10;
+    historyLimit = 50000;
+    plugins = [
+      {
+        plugin = pkgs.tmuxPlugins.catppuccin;
+        extraConfig = ''
+          set -g @catppuccin_flavor 'macchiato'
+          set -g @catppuccin_window_status_style 'basic'
+          set -g @catppuccin_window_text ' #{b:pane_current_command}'
+          set -g @catppuccin_window_current_text ' #{b:pane_current_command}'
+          set -g @catppuccin_status_background 'none'
+          set -g @catppuccin_date_time_text ' %Y-%m-%d %H:%M:%S'
+        '';
+      }
+      pkgs.tmuxPlugins.yank
+    ];
+    extraConfig = builtins.readFile ./unix/.tmux.conf;
+  };
 
   systemd.user.services.obsidian-sync = lib.mkIf pkgs.stdenv.isLinux {
     Unit = {

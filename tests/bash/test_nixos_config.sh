@@ -122,9 +122,10 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   local common_packages
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in neovim tmux fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs ast-grep zig odin gleam erlang; do
+  for pkg in neovim fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
   done
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.tmux"
 }
 
 test_nixos_system_packages_leave_user_tools_to_home_manager() {
@@ -173,8 +174,7 @@ test_home_config_owns_remaining_dotfiles() {
 
   assert_contains "$home_text" "home.file.\".vimrc\""
   assert_contains "$home_text" "forceSource ./shared/.vimrc"
-  assert_contains "$home_text" "home.file.\".tmux.conf\""
-  assert_contains "$home_text" "forceSource ./unix/.tmux.conf"
+  assert_not_contains "$home_text" "home.file.\".tmux.conf\""
   assert_contains "$home_text" "home.file.\".zprofile\""
   assert_contains "$home_text" "forceSource ./unix/.zprofile"
   assert_contains "$home_text" "home.file.\".zshrc.base\""
@@ -246,15 +246,19 @@ test_zsh_arrow_keys_search_history_by_prefix() {
   assert_contains "$zsh_text" "bindkey -M viins '^[OB' history-beginning-search-forward"
 }
 
-test_home_config_links_tmux_plugins_from_nix() {
-  local home_text
+test_home_config_uses_home_manager_tmux_plugins() {
+  local home_text tmux_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
+  tmux_text="$(<"$REPO_DIR/config/unix/.tmux.conf")"
 
-  assert_contains "$home_text" "home.file.\".tmux/plugins/tmux-yank\""
+  assert_contains "$home_text" "programs.tmux = {"
+  assert_contains "$home_text" "enable = true"
+  assert_contains "$home_text" "plugins = ["
   assert_contains "$home_text" "pkgs.tmuxPlugins.yank"
-  assert_contains "$home_text" "home.file.\".tmux/plugins/catppuccin/tmux\""
   assert_contains "$home_text" "pkgs.tmuxPlugins.catppuccin"
-  assert_contains "$home_text" "force = true"
+  assert_contains "$home_text" "extraConfig = builtins.readFile ./unix/.tmux.conf"
+  assert_not_contains "$home_text" "home.file.\".tmux/plugins"
+  assert_not_contains "$tmux_text" "run ~/.tmux/plugins"
 }
 
 test_home_config_owns_existing_xdg_configs() {
