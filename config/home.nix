@@ -93,7 +93,7 @@ in
 
   programs.zsh = {
     enable = true;
-    enableCompletion = false;
+    enableCompletion = true;
     defaultKeymap = "viins";
     history = {
       append = true;
@@ -106,6 +106,18 @@ in
     setOptions = [ "INC_APPEND_HISTORY" "HIST_VERIFY" ];
     initContent = lib.mkOrder 550 ''
       [ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
+    '';
+    completionInit = ''
+      autoload -Uz compinit
+      _zcompdump="''${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
+      mkdir -p "''${_zcompdump:h}"
+      if [[ ! -f "$_zcompdump" || -n "$_zcompdump"(#qN.mh+24) ]]; then
+        compinit -d "$_zcompdump"
+      else
+        compinit -C -d "$_zcompdump"
+      fi
+
+      zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'l:|=* r:|=*'
     '';
     autosuggestion.enable = true;
     fastSyntaxHighlighting.enable = true;

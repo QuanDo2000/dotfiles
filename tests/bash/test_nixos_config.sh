@@ -231,7 +231,12 @@ test_home_config_uses_home_manager_zsh_plugins() {
 
   assert_contains "$home_text" "programs.zsh = {"
   assert_contains "$home_text" "enable = true"
-  assert_contains "$home_text" "enableCompletion = false"
+  assert_contains "$home_text" "enableCompletion = true"
+  assert_contains "$home_text" "completionInit = ''"
+  assert_contains "$home_text" "_zcompdump="
+  assert_contains "$home_text" "compinit -d \"\$_zcompdump\""
+  assert_contains "$home_text" "compinit -C -d \"\$_zcompdump\""
+  assert_contains "$home_text" "zstyle ':completion:*' matcher-list"
   assert_contains "$home_text" "defaultKeymap = \"viins\""
   assert_contains "$home_text" "history = {"
   assert_contains "$home_text" "size = 50000"
@@ -251,6 +256,11 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_not_contains "$zsh_text" "SAVEHIST="
   assert_not_contains "$zsh_text" "setopt append_history"
   assert_not_contains "$zsh_text" "bindkey -v"
+  assert_not_contains "$zsh_text" "autoload -Uz compinit"
+  assert_not_contains "$zsh_text" "_zcompdump="
+  assert_not_contains "$zsh_text" "compinit -d"
+  assert_not_contains "$zsh_text" "compinit -C"
+  assert_not_contains "$zsh_text" "zstyle ':completion:*' matcher-list"
 }
 
 test_zsh_arrow_keys_search_history_by_prefix() {

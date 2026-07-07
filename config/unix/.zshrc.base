@@ -92,22 +92,6 @@ tmux() {
   fi
 }
 
-# Completion system (cached for fast startup). Rebuild + security-check the dump
-# only when it is older than 24h; otherwise load it fast (-C skips the check).
-autoload -Uz compinit
-_zcompdump="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
-mkdir -p "${_zcompdump:h}"
-if [[ ! -f "$_zcompdump" || -n "$_zcompdump"(#qN.mh+24) ]]; then
-  compinit -d "$_zcompdump"
-else
-  compinit -C -d "$_zcompdump"
-fi
-
-# Case-insensitive + substring completion: 'm:...' folds case; 'l:|=* r:|=*'
-# lets the typed text match anywhere in a candidate, not just the prefix
-# (so `log` completes `catalog`). fzf-tab shows whatever this generates.
-zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'l:|=* r:|=*'
-
 bindkey -M viins '^[[A' history-beginning-search-backward
 bindkey -M viins '^[[B' history-beginning-search-forward
 bindkey -M viins '^[OA' history-beginning-search-backward
