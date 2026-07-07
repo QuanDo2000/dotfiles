@@ -84,6 +84,7 @@ in
 
   programs.neovim = {
     enable = true;
+    defaultEditor = true;
     withPython3 = false;
     withRuby = false;
   };
@@ -97,7 +98,6 @@ in
       };
       core = {
         ignorecase = false;
-        editor = "nvim";
       };
       commit.gpgsign = true;
       tag.gpgsign = true;
