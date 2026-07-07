@@ -252,7 +252,8 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "\"app.json\""
   assert_contains "$home_text" "\"documents/Sync/.obsidian/\${name}\""
   assert_contains "$home_text" "forceSource ./shared/obsidian/\${name}"
-  assert_contains "$home_text" "\".local/bin/dotfile\" = lib.mkIf pkgs.stdenv.isLinux"
+  assert_contains "$home_text" "\".local/bin/dotfile\" = {"
+  assert_not_contains "$home_text" "\".local/bin/dotfile\" = lib.mkIf pkgs.stdenv.isLinux"
   assert_contains "$home_text" "dotfiles_dir=\"''\${DOTFILES_DIR:-\$HOME/dotfiles}\""
   assert_contains "$home_text" 'exec "$dotfiles_dir/dotfile" "$@"'
   assert_not_contains "$home_text" "\".zshrc.mac\""

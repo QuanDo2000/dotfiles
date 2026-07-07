@@ -79,7 +79,7 @@ in
     ".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
     ".codex/skills/caveman/README.md" = forceSource "${cavemanSrc}/skills/caveman/README.md";
     ".codex/skills/caveman/SKILL.md" = forceSource "${cavemanSrc}/skills/caveman/SKILL.md";
-    ".local/bin/dotfile" = lib.mkIf pkgs.stdenv.isLinux {
+    ".local/bin/dotfile" = {
       text = ''
         #!/usr/bin/env bash
         dotfiles_dir="''${DOTFILES_DIR:-$HOME/dotfiles}"
