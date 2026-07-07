@@ -38,7 +38,6 @@ in
     fd
     ripgrep
     lazygit
-    zoxide
     gnupg
     nodejs
     jujutsu
@@ -93,6 +92,12 @@ in
   programs.starship = {
     enable = true;
     settings = builtins.fromTOML (builtins.readFile ./shared/config/starship.toml);
+  };
+
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
+    options = [ "--cmd" "cd" ];
   };
 
   programs.zsh = {

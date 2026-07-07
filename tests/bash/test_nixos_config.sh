@@ -121,9 +121,10 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   local common_packages
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in neovim fzf fd ripgrep gnupg lazygit zoxide jujutsu nodejs ast-grep zig odin gleam erlang; do
+  for pkg in neovim fzf fd ripgrep gnupg lazygit jujutsu nodejs ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
   done
+  assert_not_contains "$common_packages" "zoxide"
   assert_not_contains "$common_packages" "starship"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.tmux"
 }
@@ -266,6 +267,11 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_not_contains "$zsh_text" "compinit -d"
   assert_not_contains "$zsh_text" "compinit -C"
   assert_not_contains "$zsh_text" "zstyle ':completion:*' matcher-list"
+  assert_contains "$home_text" "programs.zoxide = {"
+  assert_contains "$home_text" "enableZshIntegration = true"
+  assert_contains "$home_text" "options = [ \"--cmd\" \"cd\" ]"
+  assert_not_contains "$zsh_text" "zoxide init zsh"
+  assert_not_contains "$zsh_text" "_ZO_DOCTOR"
 }
 
 test_zsh_arrow_keys_search_history_by_prefix() {
