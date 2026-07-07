@@ -57,7 +57,6 @@ in
     "${homeDir}/.local/go/bin"
   ];
   home.packages = with pkgs; [
-    nodejs
     ast-grep
     zig
     odin

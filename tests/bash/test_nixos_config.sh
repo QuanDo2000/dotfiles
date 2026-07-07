@@ -112,6 +112,7 @@ test_home_config_manages_obsidian_sync_service() {
   assert_contains "$home_text" "ob sync-status --path"
   assert_contains "$home_text" "ob sync --path"
   assert_contains "$home_text" "pkgs.obsidian-headless"
+  assert_contains "$home_text" "pkgs.nodejs"
   assert_contains "$home_text" "ob not found; run dotfile update"
   assert_contains "$home_text" "No configured Obsidian vault found"
   assert_contains "$home_text" "Restart = \"on-failure\""
@@ -125,7 +126,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
   linux_packages="$(sed -n '/\] ++ lib.optionals pkgs.stdenv.isLinux \[/,/  \];/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in nodejs ast-grep zig odin gleam erlang; do
+  for pkg in ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
   done
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "home.sessionVariables.GOPATH = \"\${homeDir}/.local/go\""
@@ -142,6 +143,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_not_contains "$common_packages" "fzf"
   assert_not_contains "$common_packages" "zoxide"
   assert_not_contains "$common_packages" "starship"
+  assert_not_contains "$common_packages" "nodejs"
   for pkg in lua5_1 luarocks tree-sitter unzip; do
     assert_not_contains "$common_packages" "$pkg"
     assert_not_contains "$linux_packages" "$pkg"
