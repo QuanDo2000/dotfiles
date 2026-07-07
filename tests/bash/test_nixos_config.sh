@@ -115,6 +115,10 @@ test_home_config_manages_obsidian_sync_service() {
   assert_contains "$home_text" "No configured Obsidian vault found"
   assert_contains "$home_text" "Restart = \"on-failure\""
   assert_contains "$home_text" "WantedBy = [ \"default.target\" ]"
+  assert_contains "$home_text" "home.activation.removeLegacyObsidianSyncService"
+  assert_contains "$home_text" "entryBefore [ \"checkLinkTargets\" ]"
+  assert_contains "$home_text" "rm -f \"\$HOME/.config/systemd/user/obsidian-sync.service\""
+  assert_contains "$home_text" "rm -f \"\$HOME/.config/systemd/user/default.target.wants/obsidian-sync.service\""
 }
 
 test_home_config_puts_shared_user_tools_in_common_packages() {

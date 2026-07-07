@@ -131,6 +131,11 @@ in
     Install.WantedBy = [ "default.target" ];
   };
 
+  home.activation.removeLegacyObsidianSyncService = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+    rm -f "$HOME/.config/systemd/user/obsidian-sync.service"
+    rm -f "$HOME/.config/systemd/user/default.target.wants/obsidian-sync.service"
+  '';
+
   home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     target="$HOME/.codex/config.toml"
     source="${./shared/ai/codex/config.toml}"
