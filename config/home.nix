@@ -42,7 +42,6 @@ in
     gnupg
     nodejs
     jujutsu
-    starship
     ast-grep
     zig
     odin
@@ -90,6 +89,11 @@ in
   home.file."documents/Sync/.obsidian/templates.json" = forceSource ./shared/obsidian/templates.json;
 
   programs.home-manager.enable = true;
+
+  programs.starship = {
+    enable = true;
+    settings = builtins.fromTOML (builtins.readFile ./shared/config/starship.toml);
+  };
 
   programs.zsh = {
     enable = true;
@@ -192,8 +196,6 @@ in
       chmod u+w "$target"
     fi
   '';
-
-  xdg.configFile."starship.toml" = forceSource ./shared/config/starship.toml;
 
   xdg.configFile."jj" = forceSource ./shared/config/jj;
 

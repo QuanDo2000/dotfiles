@@ -91,7 +91,6 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "programs.home-manager.enable = true"
   assert_not_contains "$home_text" "    home-manager"
   assert_contains "$home_text" "neovim"
-  assert_contains "$home_text" "starship"
   assert_contains "$home_text" "nodejs"
   assert_contains "$home_text" "jujutsu"
   assert_contains "$home_text" "ripgrep"
@@ -122,9 +121,10 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   local common_packages
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in neovim fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs ast-grep zig odin gleam erlang; do
+  for pkg in neovim fzf fd ripgrep gnupg lazygit zoxide jujutsu nodejs ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
   done
+  assert_not_contains "$common_packages" "starship"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.tmux"
 }
 
@@ -157,15 +157,20 @@ test_home_config_uses_tracked_host_username() {
 }
 
 test_home_config_manages_gitconfig_and_starship_config() {
-  local home_text
+  local home_text zsh_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
+  zsh_text="$(<"$REPO_DIR/config/unix/.zshrc.base")"
 
   assert_contains "$home_text" "forceSource = source:"
   assert_contains "$home_text" "home.file.\".gitconfig\""
   assert_contains "$home_text" "forceSource ./shared/.gitconfig"
   assert_contains "$home_text" "force = true"
-  assert_contains "$home_text" "xdg.configFile.\"starship.toml\""
-  assert_contains "$home_text" "./shared/config/starship.toml"
+  assert_contains "$home_text" "programs.starship = {"
+  assert_contains "$home_text" "enable = true"
+  assert_contains "$home_text" "settings = builtins.fromTOML"
+  assert_contains "$home_text" "builtins.readFile ./shared/config/starship.toml"
+  assert_not_contains "$home_text" "xdg.configFile.\"starship.toml\""
+  assert_not_contains "$zsh_text" "starship init zsh"
 }
 
 test_home_config_owns_remaining_dotfiles() {

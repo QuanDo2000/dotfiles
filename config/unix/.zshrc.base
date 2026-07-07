@@ -122,11 +122,6 @@ if [[ -t 0 && -o interactive ]] && command -v fzf >/dev/null 2>&1; then
   source <(fzf --zsh)
 fi
 
-# Prompt (replaces the omz "ys" theme). Reads ~/.config/starship.toml.
-if [[ -t 0 && -o interactive && -o zle ]] && command -v starship >/dev/null 2>&1; then
-  eval "$(starship init zsh)"
-fi
-
 # jj (jujutsu) completion — dynamic mode, requires compinit (set up above).
 command -v jj >/dev/null 2>&1 && source <(COMPLETE=zsh jj)
 
