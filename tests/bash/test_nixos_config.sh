@@ -155,7 +155,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
 
 test_nixos_system_packages_leave_user_tools_to_home_manager() {
   local packages_text
-  packages_text="$(sed -n '/environment.systemPackages =/,/pkgs.ghostty;/p' "$REPO_DIR/config/nixos/configuration.nix")"
+  packages_text="$(sed -n '/environment.systemPackages =/,/];/p' "$REPO_DIR/config/nixos/configuration.nix")"
 
   assert_contains "$packages_text" "git"
   assert_contains "$packages_text" "jq"
@@ -163,6 +163,8 @@ test_nixos_system_packages_leave_user_tools_to_home_manager() {
   assert_contains "$packages_text" "gcc"
   assert_contains "$packages_text" "waybar"
   assert_contains "$packages_text" "google-chrome"
+  assert_contains "$packages_text" "ghostty"
+  assert_not_contains "$packages_text" "lib.optional (pkgs ? ghostty)"
 
   for pkg in tmux neovim fzf fd ripgrep lazygit jujutsu starship zoxide gnupg wl-clipboard openssh unzip fontconfig tree-sitter nodejs lua5_1 luarocks obsidian; do
     assert_not_contains "$packages_text" "      $pkg"

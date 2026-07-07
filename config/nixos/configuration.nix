@@ -102,16 +102,13 @@ in
   # --- Packages ------------------------------------------------------------
   # System/session packages only. User CLI tools and app configs live in
   # Home Manager (config/home.nix), matching the Arch bootstrap split.
-  # ghostty is appended only if the running channel provides it, so this
-  # evaluates cleanly on stable channels that predate it.
-  environment.systemPackages =
-    (with pkgs; [
-      git
-      jq
-      zsh
-      gcc
-      waybar
-      google-chrome    # Browser + OAuth sign-in
-    ])
-    ++ lib.optional (pkgs ? ghostty) pkgs.ghostty;
+  environment.systemPackages = with pkgs; [
+    git
+    jq
+    zsh
+    gcc
+    waybar
+    google-chrome    # Browser + OAuth sign-in
+    ghostty
+  ];
 }
