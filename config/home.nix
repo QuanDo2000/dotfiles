@@ -86,7 +86,8 @@ in
     ".local/bin/dotfile" = lib.mkIf pkgs.stdenv.isLinux {
       text = ''
         #!/usr/bin/env bash
-        exec "$HOME/dotfiles/dotfile" "$@"
+        dotfiles_dir="''${DOTFILES_DIR:-$HOME/dotfiles}"
+        exec "$dotfiles_dir/dotfile" "$@"
       '';
       executable = true;
       force = true;
