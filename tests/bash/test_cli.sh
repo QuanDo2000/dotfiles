@@ -72,8 +72,15 @@ test_dry_run_default_command() {
 
   local output
   output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true bash "$DOTFILE_CMD" --dry all 2>&1)
+  assert_contains "$output" "Updating dotfiles repo"
   assert_contains "$output" "Installing packages"
   assert_contains "$output" "Checking Home Manager-managed paths"
+  local repo_line packages_line
+  repo_line="$(grep -n "Updating dotfiles repo" <<<"$output" | head -n1 | cut -d: -f1)"
+  packages_line="$(grep -n "Installing packages" <<<"$output" | head -n1 | cut -d: -f1)"
+  if (( repo_line >= packages_line )); then
+    echo "  FAILED: dotfile all should update repo before installing packages" >> "$ERROR_FILE"
+  fi
   assert_not_contains "$output" "Updating packages"
 }
 
