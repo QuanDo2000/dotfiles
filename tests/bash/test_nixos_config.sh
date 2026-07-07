@@ -147,6 +147,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "viAlias = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "withPython3 = false"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "withRuby = false"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "pkgs.vimPlugins.lazy-nvim"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.gpg.enable = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.fd.enable = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.ripgrep.enable = true"
@@ -371,12 +372,16 @@ test_home_config_uses_home_manager_tmux_plugins() {
 }
 
 test_home_config_owns_existing_xdg_configs() {
-  local home_text
+  local home_text lazy_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
+  lazy_text="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/lazy.lua")"
 
   assert_not_contains "$home_text" "xdg.configFile.\"jj\""
   assert_contains "$home_text" "xdg.configFile.\"nvim\""
   assert_contains "$home_text" "./shared/config/nvim"
+  assert_not_contains "$lazy_text" "lazyrepo"
+  assert_not_contains "$lazy_text" "git\", \"clone"
+  assert_contains "$lazy_text" "run dotfile update"
   assert_contains "$home_text" "xdg.configFile.\"fcitx5\""
   assert_contains "$home_text" "./unix/config/fcitx5"
   assert_contains "$home_text" "xdg.configFile.\"ghostty/config\""

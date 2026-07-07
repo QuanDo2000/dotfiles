@@ -107,6 +107,7 @@ in
     viAlias = true;
     withPython3 = false;
     withRuby = false;
+    plugins = [ pkgs.vimPlugins.lazy-nvim ];
   };
 
   programs.git = {
