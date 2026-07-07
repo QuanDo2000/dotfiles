@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+OBSIDIAN_CONFIG_DEFAULT_VAULT="$HOME/documents/Sync/.obsidian"
+OBSIDIAN_CONFIG_VAULT="${OBSIDIAN_CONFIG_VAULT:-$OBSIDIAN_CONFIG_DEFAULT_VAULT}"

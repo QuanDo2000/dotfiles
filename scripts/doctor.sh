@@ -2,6 +2,7 @@
 set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
+source "$(dirname "${BASH_SOURCE[0]}")/obsidian_paths.sh"
 
 # Core symlinked dotfiles under $HOME. This is a smoke check, not a full package audit.
 REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
@@ -31,7 +32,6 @@ HM_DATA_PATHS=(
   zsh/plugins/fast-syntax-highlighting
   zsh/plugins/fzf-tab
 )
-OBSIDIAN_CONFIG_VAULT="${OBSIDIAN_CONFIG_VAULT:-$HOME/documents/Sync/.obsidian}"
 
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {

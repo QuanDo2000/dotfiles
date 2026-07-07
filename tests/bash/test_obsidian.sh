@@ -239,13 +239,13 @@ test_apply_obsidian_config_dry_run_does_not_copy() {
   printf '{"vimMode":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/app.json"
 
   local output exit_code=0
-  output=$(_obsidian_apply_config "$HOME/documents/Sync/.obsidian" 2>&1) || exit_code=$?
+  output=$(_obsidian_apply_config "$OBSIDIAN_CONFIG_VAULT" 2>&1) || exit_code=$?
 
   if [ "$exit_code" -ne 0 ]; then
     echo "  FAILED: _obsidian_apply_config should support dry-run ($output)" >> "$ERROR_FILE"
   fi
   assert_contains "$output" "Would copy tracked Obsidian config"
-  if [ -e "$HOME/documents/Sync/.obsidian/app.json" ]; then
+  if [ -e "$OBSIDIAN_CONFIG_VAULT/app.json" ]; then
     echo "  FAILED: dry-run should not copy Obsidian config" >> "$ERROR_FILE"
   fi
 }
