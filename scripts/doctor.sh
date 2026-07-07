@@ -106,11 +106,28 @@ _check_nix_tool() {
 _check_nix_eval() {
   local label="$1"
   local target="$2"
+  local output
 
-  if nix eval --raw "$target" >/dev/null 2>&1; then
+  if output="$(nix eval --raw "$target" 2>&1 >/dev/null)"; then
     success "$label evaluates"
   else
-    fail_soft "$label failed to evaluate"
+    if [[ "$output" == *"fetcher-cache-v4.sqlite"* ]]; then
+      local cache_dir
+      cache_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotfile-nix-cache.XXXXXX")"
+      if output="$(XDG_CACHE_HOME="$cache_dir" nix eval --raw "$target" 2>&1 >/dev/null)"; then
+        rm -rf "$cache_dir"
+        success "$label evaluates"
+        return
+      fi
+      rm -rf "$cache_dir"
+    fi
+
+    output="${output//$'\n'/ }"
+    if [[ -n "$output" ]]; then
+      fail_soft "$label failed to evaluate: $output"
+    else
+      fail_soft "$label failed to evaluate"
+    fi
     errors=$((errors + 1))
   fi
 }

@@ -321,3 +321,44 @@ test_doctor_skips_nix_eval_in_dry_mode() {
     echo "  FAILED: doctor called nix directly during dry-run" >> "$ERROR_FILE"
   fi
 }
+
+test_doctor_retries_nix_eval_with_temp_cache_after_fetcher_cache_failure() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$os_release"
+  mkdir -p "$DOTFILES_DIR/config"
+  printf '{ username = "quando"; hostName = "nixos"; }\n' > "$DOTFILES_DIR/config/host.nix"
+  touch "$DOTFILES_DIR/flake.nix"
+
+  local hm_dir="/nix/store/test-home-files"
+  local f
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    ln -s "$hm_dir/$f" "$HOME/$f"
+  done
+  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
+  with_nix_agent_tools
+
+  local calls="$TEST_TMPDIR/nix-calls.log"
+  nix() {
+    printf '%s\n' "${XDG_CACHE_HOME:-default}" >> "$calls"
+    if [[ "$*" == *"--file"* ]]; then
+      case "${@: -1}" in
+        username) printf 'quando\n' ;;
+        hostName) printf 'nixos\n' ;;
+      esac
+      return 0
+    fi
+    if [[ -z "${XDG_CACHE_HOME:-}" ]]; then
+      printf "error: executing SQLite statement 'pragma synchronous = off': unable to open database file (in '$HOME/.cache/nix/fetcher-cache-v4.sqlite')\n" >&2
+      return 1
+    fi
+    printf '/nix/store/test-system.drv\n'
+  }
+  export -f nix
+
+  local output
+  output=$(OS_RELEASE="$os_release" doctor 2>&1)
+
+  assert_contains "$output" "All checks passed"
+  assert_contains "$(tail -n 1 "$calls")" "dotfile-nix-cache."
+}
