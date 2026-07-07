@@ -88,15 +88,6 @@ zle-line-init() { _set_cursor_shape }
 zle -N zle-keymap-select
 zle -N zle-line-init
 
-# colored man pages (replaces the omz colored-man-pages plugin)
-export LESS_TERMCAP_mb=$'\e[1;31m'
-export LESS_TERMCAP_md=$'\e[1;36m'
-export LESS_TERMCAP_me=$'\e[0m'
-export LESS_TERMCAP_se=$'\e[0m'
-export LESS_TERMCAP_so=$'\e[1;44;33m'
-export LESS_TERMCAP_ue=$'\e[0m'
-export LESS_TERMCAP_us=$'\e[1;32m'
-
 # nvm — lazy-loaded for speed. Sourcing nvm.sh eagerly costs ~750ms per shell
 # (nvm_auto resolves the default Node version on every startup). But node/npm/npx
 # and globally-installed CLIs must stay on PATH for NON-interactive consumers
