@@ -34,7 +34,6 @@ in
   home.stateVersion = "24.11";
   home.packages = with pkgs; [
     neovim
-    fzf
     fd
     ripgrep
     lazygit
@@ -98,6 +97,11 @@ in
     enable = true;
     enableZshIntegration = true;
     options = [ "--cmd" "cd" ];
+  };
+
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
   };
 
   programs.zsh = {
