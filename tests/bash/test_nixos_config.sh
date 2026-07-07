@@ -175,24 +175,12 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.tmux"
 }
 
-test_nixos_system_packages_leave_user_tools_to_home_manager() {
-  local packages_text
-  packages_text="$(sed -n '/environment.systemPackages =/,/];/p' "$REPO_DIR/config/nixos/configuration.nix")"
+test_nixos_does_not_use_raw_system_packages() {
+  local nixos_text
+  nixos_text="$(<"$REPO_DIR/config/nixos/configuration.nix")"
 
-  assert_contains "$(<"$REPO_DIR/config/nixos/configuration.nix")" "fonts.packages = with pkgs; [ nerd-fonts.fira-code ];"
-  assert_not_contains "$packages_text" "lib.optional (pkgs ? ghostty)"
-  assert_not_contains "$packages_text" "    git"
-  assert_not_contains "$packages_text" "    jq"
-  assert_not_contains "$packages_text" "    gcc"
-  assert_not_contains "$packages_text" "    zsh"
-  assert_not_contains "$packages_text" "    waybar"
-  assert_not_contains "$packages_text" "    ghostty"
-  assert_not_contains "$packages_text" "    google-chrome"
-
-  for pkg in tmux neovim fzf fd ripgrep lazygit jujutsu starship zoxide gnupg wl-clipboard openssh unzip fontconfig tree-sitter nodejs lua5_1 luarocks obsidian; do
-    assert_not_contains "$packages_text" "      $pkg"
-  done
-  assert_not_contains "$packages_text" "codex"
+  assert_contains "$nixos_text" "fonts.packages = with pkgs; [ nerd-fonts.fira-code ];"
+  assert_not_contains "$nixos_text" "environment.systemPackages"
 }
 
 test_home_config_uses_tracked_host_username() {
