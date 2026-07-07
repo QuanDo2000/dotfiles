@@ -86,6 +86,12 @@ test_default_globals() {
   assert_equals "false" "$FORCE"
 }
 
+test_utils_does_not_keep_unused_http_retry_helper() {
+  local utils_text
+  utils_text="$(<"$REPO_DIR/scripts/utils.sh")"
+  assert_not_contains "$utils_text" "http_get_retry"
+}
+
 test_mock_uname_m_overrides_uname_m() {
   init_test_env
   mock_uname_m aarch64
