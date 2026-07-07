@@ -200,7 +200,7 @@ function _nixos_rebuild_switch {
 }
 
 # Reprovision NixOS from this repo's flake. System packages come from the
-# rebuild; agent extensions install after it.
+# rebuild; user config and Codex skills come from Home Manager.
 # Usage: install_nixos
 function install_nixos {
   info "Installing packages for NixOS..."
