@@ -288,6 +288,31 @@ test_doctor_passes_without_home_manager_conflicts() {
   assert_contains "$output" "All checks passed"
 }
 
+test_doctor_reports_invalid_home_manager_manifest_kind() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$os_release"
+  local hm_dir="/nix/store/test-home-files"
+  local f
+  for f in "${REQUIRED_SYMLINKS[@]}"; do
+    ln -s "$hm_dir/$f" "$HOME/$f"
+  done
+  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
+  with_nix_agent_tools
+
+  HM_MANAGED_PATHS_FILE="$TEST_TMPDIR/managed-paths"
+  printf 'bad-kind example\n' > "$HM_MANAGED_PATHS_FILE"
+
+  local output exit_code
+  set +e
+  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$os_release" doctor 2>&1)
+  exit_code=$?
+  set -e
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "Unknown Home Manager managed path kind 'bad-kind'"
+}
+
 test_doctor_reports_obsidian_config_drift() {
   mock_uname Linux
   local os_release="$TEST_TMPDIR/os-release"
