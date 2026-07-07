@@ -35,7 +35,6 @@ in
   home.packages = with pkgs; [
     neovim
     fd
-    ripgrep
     gnupg
     nodejs
     ast-grep
@@ -127,6 +126,8 @@ in
   };
 
   programs.lazygit.enable = true;
+
+  programs.ripgrep.enable = true;
 
   programs.zsh = {
     enable = true;
