@@ -207,6 +207,49 @@ test_setup_obsidian_skips_reconfiguring_existing_sync() {
   assert_contains "$output" "managed by Home Manager"
 }
 
+test_setup_obsidian_does_not_apply_general_app_config() {
+  local vault_path="$HOME/documents/obsidian/test-vault"
+  mkdir -p "$vault_path"
+  mkdir -p "$DOTFILES_DIR/config/shared/obsidian/plugins/example"
+  printf '{"vimMode":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/app.json"
+  printf '{"enabled":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/plugins/example/data.json"
+  mock_cmd ob 'case "$1" in
+    sync-status) exit 0 ;;
+    sync-list-remote|login|sync-setup)
+      echo "unexpected ob $1 call" >&2
+      exit 99
+      ;;
+    *) exit 0 ;;
+  esac'
+
+  local output exit_code=0
+  output=$(setup_obsidian 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: setup_obsidian should skip reconfiguring existing sync ($output)" >> "$ERROR_FILE"
+  fi
+  if [ -e "$vault_path/.obsidian/app.json" ]; then
+    echo "  FAILED: setup_obsidian should not apply general Obsidian app config" >> "$ERROR_FILE"
+  fi
+}
+
+test_apply_obsidian_config_dry_run_does_not_copy() {
+  DRY=true
+  mkdir -p "$DOTFILES_DIR/config/shared/obsidian"
+  printf '{"vimMode":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/app.json"
+
+  local output exit_code=0
+  output=$(_obsidian_apply_config "$HOME/documents/Sync/.obsidian" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_apply_config should support dry-run ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Would copy tracked Obsidian config"
+  if [ -e "$HOME/documents/Sync/.obsidian/app.json" ]; then
+    echo "  FAILED: dry-run should not copy Obsidian config" >> "$ERROR_FILE"
+  fi
+}
+
 test_start_service_dry_run_does_not_call_systemctl() {
   DRY=true
   mock_cmd systemctl 'echo "unexpected systemctl call: $*" >&2; exit 99'

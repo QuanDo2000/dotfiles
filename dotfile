@@ -63,6 +63,8 @@ Commands:
   update      Update Nix-managed packages
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
+  obsidian-config
+              Apply or check tracked Obsidian vault settings
   doctor      Detect dotfile and Nix issues
 
 Options:
@@ -110,6 +112,7 @@ packages)
   install_packages
   ;;
 obsidian) setup_obsidian ;;
+obsidian-config) setup_obsidian_config ;;
 doctor) doctor ;;
 *)
   fail "Unknown command: $1"

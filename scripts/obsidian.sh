@@ -3,6 +3,8 @@ set -eo pipefail
 
 OBSIDIAN_SERVICE_NAME="obsidian-sync.service"
 OBSIDIAN_VAULT_BASE="$HOME/documents/obsidian"
+OBSIDIAN_CONFIG_SOURCE="${OBSIDIAN_CONFIG_SOURCE:-$DOTFILES_DIR/config/shared/obsidian}"
+OBSIDIAN_CONFIG_VAULT="${OBSIDIAN_CONFIG_VAULT:-$HOME/documents/Sync/.obsidian}"
 
 function _obsidian_check_prereqs {
   if ! is_linux; then
@@ -102,6 +104,31 @@ function _obsidian_start_service {
       || fail "Failed to restart $OBSIDIAN_SERVICE_NAME; run 'dotfile update' to activate the Home Manager service"
   else
     info "systemd user session unavailable; run 'dotfile update' after login to activate $OBSIDIAN_SERVICE_NAME"
+  fi
+}
+
+function _obsidian_apply_config {
+  local target="${1:-$OBSIDIAN_CONFIG_VAULT}"
+  if [[ ! -d "$OBSIDIAN_CONFIG_SOURCE" ]]; then
+    info "Skipping Obsidian config apply: $OBSIDIAN_CONFIG_SOURCE not found"
+    return
+  fi
+  if [[ "$DRY" == "true" ]]; then
+    info "Would copy tracked Obsidian config to $target"
+    return
+  fi
+
+  mkdir -p "$target" || fail "Failed to create $target"
+  cp -R "$OBSIDIAN_CONFIG_SOURCE/." "$target/" \
+    || fail "Failed to copy tracked Obsidian config to $target"
+  success "Obsidian config applied to $target"
+}
+
+function setup_obsidian_config {
+  if [[ "$FORCE" == "true" ]]; then
+    _obsidian_apply_config "$OBSIDIAN_CONFIG_VAULT"
+  else
+    doctor
   fi
 }
 

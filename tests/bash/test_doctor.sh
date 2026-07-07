@@ -312,6 +312,7 @@ test_doctor_reports_obsidian_config_drift() {
 
   assert_equals "1" "$exit_code"
   assert_contains "$output" "Obsidian config drift: app.json"
+  assert_contains "$output" "Run 'dotfile -f obsidian-config' to apply tracked Obsidian config"
 }
 
 test_doctor_reports_obsidian_config_match() {

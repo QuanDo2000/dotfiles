@@ -74,6 +74,8 @@ Commands:
   update      Update Nix-managed packages
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
+  obsidian-config
+              Apply or check tracked Obsidian vault settings
   doctor      Detect dotfile and Nix issues
 
 Options:
@@ -105,7 +107,7 @@ Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` sources the tracked 
 
 Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
 
-Note: `config/shared/obsidian` tracks portable Obsidian vault settings and selected plugin `data.json` files. `dotfile doctor` reports drift against `~/documents/Sync/.obsidian`; plugin bundles, themes, workspace state, bookmarks, starred files, recent files, and Electron app state stay out of the repo.
+Note: `config/shared/obsidian` tracks portable Obsidian app/vault settings and selected plugin `data.json` files for `~/documents/Sync/.obsidian`. `dotfile doctor` and `dotfile obsidian-config` report drift; `dotfile -f obsidian-config` applies the tracked settings. Plugin bundles, themes, workspace state, bookmarks, starred files, recent files, and Electron app state stay out of the repo.
 
 ## Provisioning a fresh NixOS machine
 

@@ -209,20 +209,26 @@ _check_obsidian_config() {
     return 0
   }
 
-  local tracked relative live
+  local tracked relative live obsidian_errors=0
   while IFS= read -r tracked; do
     relative="${tracked#"$tracked_dir"/}"
     live="$live_dir/$relative"
     if [[ ! -f "$live" ]]; then
       fail_soft "Obsidian config missing: $relative"
       errors=$((errors + 1))
+      obsidian_errors=$((obsidian_errors + 1))
     elif ! cmp -s "$tracked" "$live"; then
       fail_soft "Obsidian config drift: $relative"
       errors=$((errors + 1))
+      obsidian_errors=$((obsidian_errors + 1))
     fi
   done < <(find "$tracked_dir" -type f | sort)
 
-  success "Obsidian config matches tracked settings"
+  if [[ "$obsidian_errors" -eq 0 ]]; then
+    success "Obsidian config matches tracked settings"
+  else
+    info "Run 'dotfile -f obsidian-config' to apply tracked Obsidian config" --force
+  fi
 }
 
 function doctor {
