@@ -30,13 +30,15 @@
     {
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
 
-      nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          { nixpkgs.overlays = overlays; }
-          ./config/nixos.nix
-          home-manager.nixosModules.home-manager
-        ];
+      nixosConfigurations = {
+        "${machine.hostName}" = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            { nixpkgs.overlays = overlays; }
+            ./config/nixos/configuration.nix
+            home-manager.nixosModules.home-manager
+          ];
+        };
       };
 
       darwinConfigurations.mac = nix-darwin.lib.darwinSystem {

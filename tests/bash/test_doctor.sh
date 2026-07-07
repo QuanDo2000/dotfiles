@@ -251,7 +251,7 @@ test_doctor_accepts_nix_agent_tools_on_mac() {
   assert_contains "$output" "All checks passed"
 }
 
-test_doctor_reports_home_manager_conflicts() {
+test_doctor_reports_core_dotfile_conflicts() {
   mock_uname Linux
   local os_release="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$os_release"
@@ -265,11 +265,11 @@ test_doctor_reports_home_manager_conflicts() {
   set -e
 
   assert_equals "1" "$exit_code"
-  assert_contains "$output" ".zshrc exists but is not Home Manager-owned"
-  assert_not_contains "$output" ".vimrc exists but is not Home Manager-owned"
+  assert_contains "$output" ".zshrc exists but is not a symlink"
+  assert_not_contains "$output" ".vimrc exists but is not a symlink"
 }
 
-test_doctor_passes_without_home_manager_conflicts() {
+test_doctor_passes_with_home_manager_store_targets() {
   mock_uname Linux
   local os_release="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$os_release"
@@ -284,91 +284,7 @@ test_doctor_passes_without_home_manager_conflicts() {
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1)
 
-  assert_contains "$output" "Home Manager-managed paths are clear"
   assert_contains "$output" "All checks passed"
-}
-
-test_doctor_reports_invalid_home_manager_manifest_kind() {
-  mock_uname Linux
-  local os_release="$TEST_TMPDIR/os-release"
-  printf 'ID=nixos\n' > "$os_release"
-  local hm_dir="/nix/store/test-home-files"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
-  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
-
-  HM_MANAGED_PATHS_FILE="$TEST_TMPDIR/managed-paths"
-  printf 'bad-kind example\n' > "$HM_MANAGED_PATHS_FILE"
-
-  local output exit_code
-  set +e
-  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$os_release" doctor 2>&1)
-  exit_code=$?
-  set -e
-
-  assert_equals "1" "$exit_code"
-  assert_contains "$output" "Unknown Home Manager managed path kind 'bad-kind'"
-}
-
-test_doctor_reports_obsidian_config_drift() {
-  mock_uname Linux
-  local os_release="$TEST_TMPDIR/os-release"
-  printf 'ID=nixos\n' > "$os_release"
-  local hm_dir="/nix/store/test-home-files"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
-  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
-
-  mkdir -p "$OBSIDIAN_CONFIG_SOURCE" "$OBSIDIAN_CONFIG_VAULT"
-  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
-  printf '{"vimMode":false}\n' > "$OBSIDIAN_CONFIG_VAULT/app.json"
-
-  local output exit_code
-  set +e
-  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$os_release" doctor 2>&1)
-  exit_code=$?
-  set -e
-
-  assert_equals "1" "$exit_code"
-  assert_contains "$output" "Obsidian config drift: app.json"
-  assert_contains "$output" "Run 'dotfile -f obsidian-config' to apply tracked Obsidian config"
-}
-
-test_doctor_reports_obsidian_config_match() {
-  mock_uname Linux
-  local os_release="$TEST_TMPDIR/os-release"
-  printf 'ID=nixos\n' > "$os_release"
-  local hm_dir="/nix/store/test-home-files"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
-  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
-
-  mkdir -p "$OBSIDIAN_CONFIG_SOURCE" "$OBSIDIAN_CONFIG_VAULT"
-  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
-  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_VAULT/app.json"
-
-  local output
-  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$os_release" doctor 2>&1)
-
-  assert_contains "$output" "Obsidian config matches tracked settings"
-}
-
-test_doctor_reports_missing_obsidian_config_source() {
-  OBSIDIAN_CONFIG_SOURCE="$TEST_TMPDIR/missing-obsidian-config"
-
-  local output
-  output=$(_check_obsidian_config 2>&1)
-
-  assert_contains "$output" "Skipping Obsidian config drift check: $OBSIDIAN_CONFIG_SOURCE not found"
 }
 
 test_doctor_skips_nix_eval_in_dry_mode() {

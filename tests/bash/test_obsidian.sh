@@ -32,15 +32,6 @@ EOF
 # _obsidian_check_prereqs
 # ---------------------------------------------------------------------------
 
-test_obsidian_config_path_overrides_are_preserved() {
-  export OBSIDIAN_CONFIG_VAULT="$TEST_TMPDIR/custom/.obsidian"
-  export OBSIDIAN_CONFIG_SOURCE="$TEST_TMPDIR/source"
-  source "$REPO_DIR/scripts/obsidian_paths.sh"
-
-  assert_equals "$TEST_TMPDIR/custom/.obsidian" "$OBSIDIAN_CONFIG_VAULT"
-  assert_equals "$TEST_TMPDIR/source" "$OBSIDIAN_CONFIG_SOURCE"
-}
-
 test_check_prereqs_fails_on_non_linux() {
   mock_uname Darwin
 
@@ -219,9 +210,6 @@ test_setup_obsidian_skips_reconfiguring_existing_sync() {
 test_setup_obsidian_does_not_apply_general_app_config() {
   local vault_path="$HOME/documents/obsidian/test-vault"
   mkdir -p "$vault_path"
-  mkdir -p "$OBSIDIAN_CONFIG_SOURCE/plugins/example"
-  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
-  printf '{"enabled":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/plugins/example/data.json"
   mock_cmd ob 'case "$1" in
     sync-status) exit 0 ;;
     sync-list-remote|login|sync-setup)
@@ -240,55 +228,6 @@ test_setup_obsidian_does_not_apply_general_app_config() {
   if [ -e "$vault_path/.obsidian/app.json" ]; then
     echo "  FAILED: setup_obsidian should not apply general Obsidian app config" >> "$ERROR_FILE"
   fi
-}
-
-test_apply_obsidian_config_dry_run_does_not_copy() {
-  DRY=true
-  mkdir -p "$OBSIDIAN_CONFIG_SOURCE"
-  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
-
-  local output exit_code=0
-  output=$(_obsidian_apply_config "$OBSIDIAN_CONFIG_VAULT" 2>&1) || exit_code=$?
-
-  if [ "$exit_code" -ne 0 ]; then
-    echo "  FAILED: _obsidian_apply_config should support dry-run ($output)" >> "$ERROR_FILE"
-  fi
-  assert_contains "$output" "Would copy tracked Obsidian config"
-  if [ -e "$OBSIDIAN_CONFIG_VAULT/app.json" ]; then
-    echo "  FAILED: dry-run should not copy Obsidian config" >> "$ERROR_FILE"
-  fi
-}
-
-test_setup_obsidian_config_check_uses_fast_doctor() {
-  doctor() {
-    [[ "${DOTFILE_DOCTOR_SKIP_NIX_EVAL:-}" == "true" ]] \
-      || echo "expected fast doctor" >&2
-  }
-
-  local output exit_code=0
-  output=$(setup_obsidian_config 2>&1) || exit_code=$?
-
-  if [ "$exit_code" -ne 0 ]; then
-    echo "  FAILED: setup_obsidian_config check should run fast doctor ($output)" >> "$ERROR_FILE"
-  fi
-  assert_contains "$output" "Checking tracked Obsidian config"
-  assert_not_contains "$output" "expected fast doctor"
-}
-
-test_setup_obsidian_config_force_announces_apply() {
-  FORCE=true
-  DRY=true
-  mkdir -p "$OBSIDIAN_CONFIG_SOURCE"
-  printf '{"vimMode":true}\n' > "$OBSIDIAN_CONFIG_SOURCE/app.json"
-
-  local output exit_code=0
-  output=$(setup_obsidian_config 2>&1) || exit_code=$?
-
-  if [ "$exit_code" -ne 0 ]; then
-    echo "  FAILED: setup_obsidian_config force should support dry-run ($output)" >> "$ERROR_FILE"
-  fi
-  assert_contains "$output" "Applying tracked Obsidian config"
-  assert_contains "$output" "Would copy tracked Obsidian config"
 }
 
 test_start_service_dry_run_does_not_call_systemctl() {

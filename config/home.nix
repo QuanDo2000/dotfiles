@@ -85,6 +85,20 @@ in
 
   home.file.".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
 
+  home.file."documents/Sync/.obsidian/app.json" = forceSource ./shared/obsidian/app.json;
+
+  home.file."documents/Sync/.obsidian/appearance.json" = forceSource ./shared/obsidian/appearance.json;
+
+  home.file."documents/Sync/.obsidian/community-plugins.json" = forceSource ./shared/obsidian/community-plugins.json;
+
+  home.file."documents/Sync/.obsidian/core-plugins.json" = forceSource ./shared/obsidian/core-plugins.json;
+
+  home.file."documents/Sync/.obsidian/daily-notes.json" = forceSource ./shared/obsidian/daily-notes.json;
+
+  home.file."documents/Sync/.obsidian/hotkeys.json" = forceSource ./shared/obsidian/hotkeys.json;
+
+  home.file."documents/Sync/.obsidian/templates.json" = forceSource ./shared/obsidian/templates.json;
+
   home.file.".tmux/plugins/tmux-yank" = forceSource "${pkgs.tmuxPlugins.yank}/share/tmux-plugins/yank";
 
   home.file.".tmux/plugins/catppuccin/tmux" = forceSource "${pkgs.tmuxPlugins.catppuccin}/share/tmux-plugins/catppuccin";

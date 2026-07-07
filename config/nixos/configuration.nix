@@ -61,6 +61,10 @@ in
     shell = pkgs.zsh;
   };
 
+  home-manager.useGlobalPkgs = true;
+  home-manager.useUserPackages = true;
+  home-manager.users.${machine.username} = import ../home.nix;
+
   # --- Desktop: Hyprland + greetd login ------------------------------------
   hardware.graphics.enable = true;   # GPU accel; EDIT: add vendor driver (e.g. nvidia)
   programs.hyprland.enable = true;

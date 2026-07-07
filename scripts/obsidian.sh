@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-scripts_dir="${SCRIPTS_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
-source "$scripts_dir/obsidian_paths.sh"
-
 OBSIDIAN_SERVICE_NAME="obsidian-sync.service"
 OBSIDIAN_VAULT_BASE="$HOME/documents/obsidian"
 
@@ -105,33 +102,6 @@ function _obsidian_start_service {
       || fail "Failed to restart $OBSIDIAN_SERVICE_NAME; run 'dotfile update' to activate the Home Manager service"
   else
     info "systemd user session unavailable; run 'dotfile update' after login to activate $OBSIDIAN_SERVICE_NAME"
-  fi
-}
-
-function _obsidian_apply_config {
-  local target="${1:-$OBSIDIAN_CONFIG_VAULT}"
-  if [[ ! -d "$OBSIDIAN_CONFIG_SOURCE" ]]; then
-    info "Skipping Obsidian config apply: $OBSIDIAN_CONFIG_SOURCE not found"
-    return
-  fi
-  if [[ "$DRY" == "true" ]]; then
-    info "Would copy tracked Obsidian config to $target"
-    return
-  fi
-
-  mkdir -p "$target" || fail "Failed to create $target"
-  cp -R "$OBSIDIAN_CONFIG_SOURCE/." "$target/" \
-    || fail "Failed to copy tracked Obsidian config to $target"
-  success "Obsidian config applied to $target"
-}
-
-function setup_obsidian_config {
-  if [[ "$FORCE" == "true" ]]; then
-    info "Applying tracked Obsidian config..."
-    _obsidian_apply_config "$OBSIDIAN_CONFIG_VAULT"
-  else
-    info "Checking tracked Obsidian config..."
-    DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
   fi
 }
 

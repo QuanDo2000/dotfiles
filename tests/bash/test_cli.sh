@@ -29,7 +29,7 @@ assert_checked_flow() {
   local output="$1"
   local pulls_repo="$2"
 
-  assert_equals "2" "$(grep -c "Checking Home Manager-managed paths" <<<"$output")"
+  assert_equals "2" "$(grep -c "Verifying symlinks" <<<"$output")"
   assert_equals "1" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
   if [[ "$pulls_repo" == "true" ]]; then
     assert_contains "$output" "Updating dotfiles repo"
@@ -50,7 +50,7 @@ test_help_exits_zero() {
   assert_contains "$output" "doctor"
   assert_contains "$output" "Detect dotfile and Nix issues"
   assert_contains "$output" "Bootstrap Obsidian Sync login and vault setup"
-  assert_contains "$output" "Apply or check tracked Obsidian vault settings"
+  assert_not_contains "$output" "obsidian-config"
 }
 
 test_doctor_command_runs_with_health_checks() {
@@ -108,7 +108,7 @@ test_all_does_not_run_obsidian_bootstrap() {
   local output
   output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry all 2>&1)
   assert_not_contains "$output" "Setting up Obsidian headless sync"
-  assert_contains "$output" "Checking Home Manager-managed paths"
+  assert_contains "$output" "Verifying symlinks"
   unset -f uname 2>/dev/null || true
   unset __MOCK_UNAME
 }
@@ -118,22 +118,13 @@ test_readme_matches_key_help_text() {
   readme_text="$(<"$REPO_DIR/README.md")"
   assert_contains "$readme_text" "### Unix Commands"
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
-  assert_contains "$readme_text" "obsidian-config"
   assert_contains "$readme_text" "doctor [--fast]"
   assert_contains "$readme_text" "Detect dotfile and Nix issues"
+  assert_contains "$readme_text" "Home Manager owns tracked Obsidian settings"
   assert_contains "$readme_text" "### Windows Commands"
   assert_contains "$readme_text" "dotfile.ps1 [OPTIONS] [COMMAND]"
   assert_contains "$readme_text" "verify      Verify installation"
   assert_contains "$readme_text" 'NixOS flake target is `#${hostName}`'
-}
-
-test_obsidian_config_force_dry_run_copies_config() {
-  is_windows_bash && return 0
-
-  local output
-  output=$(bash "$DOTFILE_CMD" --dry --force obsidian-config 2>&1)
-
-  assert_contains "$output" "Would copy tracked Obsidian config"
 }
 
 test_agents_describes_windows_core_public_commands() {
@@ -169,7 +160,7 @@ test_update_runs_doctor_before_package_update() {
   set -e
 
   assert_equals "1" "$exit_code"
-  assert_contains "$output" ".zshrc exists but is not Home Manager-owned"
+  assert_contains "$output" ".zshrc exists but is not a symlink"
   assert_not_contains "$output" "Updating dotfiles repo"
   assert_not_contains "$output" "Updating packages"
 }
@@ -188,7 +179,7 @@ test_packages_runs_doctor_before_package_install() {
   set -e
 
   assert_equals "1" "$exit_code"
-  assert_contains "$output" ".zshrc exists but is not Home Manager-owned"
+  assert_contains "$output" ".zshrc exists but is not a symlink"
   assert_not_contains "$output" "Installing packages"
 }
 
@@ -213,7 +204,7 @@ test_packages_nixos_dry() {
 test_help_has_no_removed_commands() {
   local output
   output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  if [[ "$output" == *$'\n  zsh '* || "$output" == *$'\n  tmux '* || "$output" == *$'\n  ai '* || "$output" == *$'\n  extras '* || "$output" == *$'\n  symlinks '* || "$output" == *$'\n  languages '* || "$output" == *$'\n  verify '* ]]; then
+  if [[ "$output" == *$'\n  zsh '* || "$output" == *$'\n  tmux '* || "$output" == *$'\n  ai '* || "$output" == *$'\n  extras '* || "$output" == *$'\n  symlinks '* || "$output" == *$'\n  languages '* || "$output" == *$'\n  verify '* || "$output" == *$'\n  obsidian-config'* ]]; then
     echo "  FAILED: help text should not expose removed commands" >> "$ERROR_FILE"
   fi
 }

@@ -25,12 +25,12 @@ test_flake_uses_flat_nix_config_files() {
   assert_file_exists "$REPO_DIR/config/home.nix"
   assert_file_exists "$REPO_DIR/config/host.nix"
   assert_file_exists "$REPO_DIR/config/hardware-configuration.nix"
-  assert_file_exists "$REPO_DIR/config/nixos.nix"
   assert_file_exists "$REPO_DIR/config/darwin.nix"
   assert_contains "$flake_text" "./config/home.nix"
-  assert_contains "$flake_text" "./config/nixos.nix"
+  assert_contains "$flake_text" "./config/nixos/configuration.nix"
   assert_contains "$flake_text" "./config/darwin.nix"
   assert_contains "$flake_text" "machine = import ./config/host.nix"
+  assert_contains "$flake_text" '"${machine.hostName}" = nixpkgs.lib.nixosSystem'
   assert_contains "$flake_text" "\"\${machine.username}@linux\""
   assert_not_contains "$flake_text" "\"\${machine.username}@arch\""
   assert_contains "$flake_text" "config.allowUnfree = true"
@@ -43,18 +43,17 @@ test_flake_uses_flat_nix_config_files() {
 }
 
 test_nixos_uses_tracked_host_config() {
-  local host_text nixos_text configuration_text
+  local host_text flake_text configuration_text
   host_text="$(<"$REPO_DIR/config/host.nix")"
-  nixos_text="$(<"$REPO_DIR/config/nixos.nix")"
+  flake_text="$(<"$REPO_DIR/flake.nix")"
   configuration_text="$(<"$REPO_DIR/config/nixos/configuration.nix")"
 
   assert_contains "$host_text" 'username = "quando"'
   assert_contains "$host_text" 'hostName = "nixos"'
   assert_contains "$host_text" 'timeZone = "America/Los_Angeles"'
   assert_contains "$host_text" 'stateVersion = "26.05"'
-  assert_contains "$nixos_text" "import ./host.nix"
+  assert_contains "$flake_text" 'nixosConfigurations = {'
   assert_contains "$configuration_text" "import ../host.nix"
-  assert_not_contains "$nixos_text" "/etc/nixos/machine.nix"
   assert_not_contains "$configuration_text" "/etc/nixos/machine.nix"
 }
 
@@ -189,6 +188,8 @@ test_home_config_owns_remaining_dotfiles() {
   assert_not_contains "$home_text" "home.file.\".codex/config.toml\""
   assert_contains "$home_text" "home.activation.seedCodexConfig"
   assert_contains "$home_text" "cp \"\$source\" \"\$target\""
+  assert_contains "$home_text" "home.file.\"documents/Sync/.obsidian/app.json\""
+  assert_contains "$home_text" "forceSource ./shared/obsidian/app.json"
   assert_contains "$home_text" "home.file.\".local/bin/dotfile\""
   assert_contains "$home_text" 'exec "$HOME/dotfiles/dotfile" "$@"'
   assert_contains "$home_text" "home.file.\".zshrc.mac\""
@@ -279,34 +280,12 @@ test_doctor_paths_cover_home_manager_managed_paths() {
   local doctor_text home_text manifest_text path
   home_text="$(<"$REPO_DIR/config/home.nix")"
   doctor_text="$(<"$REPO_DIR/scripts/doctor.sh")"
-  manifest_text="$(<"$REPO_DIR/config/home-manager-managed-paths")"
-
-  assert_contains "$doctor_text" "home-manager-managed-paths"
-  assert_contains "$doctor_text" "_read_home_manager_managed_paths()"
-  assert_contains "$doctor_text" "REQUIRED_SYMLINKS+=("
+  if [[ -e "$REPO_DIR/config/home-manager-managed-paths" ]]; then
+    echo "  FAILED: Home Manager paths should be declared only in config/home.nix" >> "$ERROR_FILE"
+  fi
+  assert_not_contains "$doctor_text" "home-manager-managed-paths"
+  assert_not_contains "$doctor_text" "_read_home_manager_managed_paths()"
   assert_not_contains "$doctor_text" "REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)"
-  assert_equals "1" "$(grep -c "while read -r kind path" <<<"$doctor_text")"
-  assert_not_contains "$doctor_text" "HM_HOME_PATHS="
-  assert_not_contains "$doctor_text" "HM_CONFIG_PATHS="
-  assert_not_contains "$doctor_text" "HM_DATA_PATHS="
-
-  while IFS= read -r path; do
-    case "$path" in
-      .local/bin/dotfile|.zshrc.mac|.local/bin/caf) continue ;;
-    esac
-    assert_contains "$manifest_text" "home $path"
-  done < <(sed -n 's/^[[:space:]]*home\.file\."\([^"]*\)".*/\1/p' <<<"$home_text")
-
-  while IFS= read -r path; do
-    assert_contains "$manifest_text" "config $path"
-  done < <(sed -n 's/^[[:space:]]*xdg\.configFile\."\([^"]*\)".*/\1/p' <<<"$home_text")
-
-  while IFS= read -r path; do
-    assert_contains "$manifest_text" "data $path"
-  done < <(sed -n 's/^[[:space:]]*xdg\.dataFile\."\([^"]*\)".*/\1/p' <<<"$home_text")
-
-  assert_contains "$doctor_text" '_doctor_check_managed_path ".local/bin/dotfile"'
-  assert_contains "$doctor_text" '_doctor_check_managed_path ".zshrc.mac"'
-  assert_contains "$doctor_text" '_doctor_check_managed_path ".local/bin/caf"'
+  assert_not_contains "$doctor_text" "_doctor_check_managed_paths"
   assert_not_contains "$home_text" 'home.file.".codex/config.toml"'
 }

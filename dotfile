@@ -70,8 +70,6 @@ Commands:
   update      Update Nix-managed packages
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
-  obsidian-config
-              Apply or check tracked Obsidian vault settings
   doctor [--fast]
               Detect dotfile and Nix issues
 
@@ -114,7 +112,6 @@ all) setup_dotfiles ;;
 update) run_checked_flow true update_packages ;;
 packages) run_checked_flow false install_packages ;;
 obsidian) setup_obsidian ;;
-obsidian-config) setup_obsidian_config ;;
 doctor)
   case "${2:-}" in
     "") ;;
