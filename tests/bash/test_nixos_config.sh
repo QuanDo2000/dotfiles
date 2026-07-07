@@ -179,7 +179,8 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "forceSource ./unix/.zprofile"
   assert_contains "$home_text" "home.file.\".zshrc.base\""
   assert_contains "$home_text" "forceSource ./unix/.zshrc.base"
-  assert_contains "$home_text" "home.file.\".zshrc\""
+  assert_not_contains "$home_text" "home.file.\".zshrc\""
+  assert_contains "$home_text" "initContent = lib.mkOrder 550"
   assert_contains "$home_text" "source \"\$HOME/.zshrc.base\""
   assert_contains "$home_text" "home.file.\".ssh/config\""
   assert_contains "$home_text" "forceSource ./shared/.ssh/config"
@@ -223,17 +224,23 @@ test_darwin_system_packages_leave_user_tools_to_home_manager() {
   done
 }
 
-test_home_config_links_zsh_plugins_from_nix() {
-  local home_text
+test_home_config_uses_home_manager_zsh_plugins() {
+  local home_text zsh_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
+  zsh_text="$(<"$REPO_DIR/config/unix/.zshrc.base")"
 
-  assert_contains "$home_text" "xdg.dataFile.\"zsh/plugins/zsh-autosuggestions\""
-  assert_contains "$home_text" "pkgs.zsh-autosuggestions"
-  assert_contains "$home_text" "xdg.dataFile.\"zsh/plugins/fast-syntax-highlighting\""
-  assert_contains "$home_text" "pkgs.zsh-fast-syntax-highlighting"
-  assert_contains "$home_text" "xdg.dataFile.\"zsh/plugins/fzf-tab\""
+  assert_contains "$home_text" "programs.zsh = {"
+  assert_contains "$home_text" "enable = true"
+  assert_contains "$home_text" "enableCompletion = false"
+  assert_contains "$home_text" "autosuggestion.enable = true"
+  assert_contains "$home_text" "fastSyntaxHighlighting.enable = true"
+  assert_contains "$home_text" "plugins = ["
   assert_contains "$home_text" "pkgs.zsh-fzf-tab"
-  assert_contains "$home_text" "force = true"
+  assert_not_contains "$home_text" "xdg.dataFile.\"zsh/plugins"
+  assert_not_contains "$zsh_text" "_zsh_plugins="
+  assert_not_contains "$zsh_text" "zsh-autosuggestions.zsh"
+  assert_not_contains "$zsh_text" "fast-syntax-highlighting.plugin.zsh"
+  assert_not_contains "$zsh_text" "fzf-tab.plugin.zsh"
 }
 
 test_zsh_arrow_keys_search_history_by_prefix() {

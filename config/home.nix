@@ -71,13 +71,6 @@ in
 
   home.file.".zshrc.base" = forceSource ./unix/.zshrc.base;
 
-  home.file.".zshrc" = {
-    text = ''
-      [ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
-    '';
-    force = true;
-  };
-
   home.file.".ssh/config" = forceSource ./shared/.ssh/config;
 
   home.file.".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
@@ -97,6 +90,30 @@ in
   home.file."documents/Sync/.obsidian/templates.json" = forceSource ./shared/obsidian/templates.json;
 
   programs.home-manager.enable = true;
+
+  programs.zsh = {
+    enable = true;
+    enableCompletion = false;
+    history = {
+      append = true;
+      size = 50000;
+      save = 10000;
+      ignoreDups = true;
+      ignoreSpace = true;
+      share = true;
+    };
+    initContent = lib.mkOrder 550 ''
+      [ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
+    '';
+    autosuggestion.enable = true;
+    fastSyntaxHighlighting.enable = true;
+    plugins = [
+      {
+        name = "fzf-tab";
+        src = "${pkgs.zsh-fzf-tab}/share/fzf-tab";
+      }
+    ];
+  };
 
   programs.tmux = {
     enable = true;
@@ -175,12 +192,6 @@ in
   xdg.configFile."hypr" = forceSource ./unix/config/hypr;
 
   xdg.configFile."waybar" = forceSource ./unix/config/waybar;
-
-  xdg.dataFile."zsh/plugins/zsh-autosuggestions" = forceSource "${pkgs.zsh-autosuggestions}/share/zsh/plugins/zsh-autosuggestions";
-
-  xdg.dataFile."zsh/plugins/fast-syntax-highlighting" = forceSource "${pkgs.zsh-fast-syntax-highlighting}/share/zsh/plugins/fast-syntax-highlighting";
-
-  xdg.dataFile."zsh/plugins/fzf-tab" = forceSource "${pkgs.zsh-fzf-tab}/share/fzf-tab";
 
   home.file.".local/bin/dotfile" = lib.mkIf pkgs.stdenv.isLinux {
     text = ''

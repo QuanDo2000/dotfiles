@@ -148,29 +148,6 @@ if [[ -t 0 && -o interactive ]] && command -v fzf >/dev/null 2>&1; then
   source <(fzf --zsh)
 fi
 
-# Standalone plugins — sourced directly, order matters:
-# fzf-tab (after compinit) -> autosuggestions -> fast-syntax-highlighting (last).
-_zsh_plugins="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
-if [[ -t 0 && -o interactive && -f "$_zsh_plugins/fzf-tab/fzf-tab.plugin.zsh" ]]; then
-  _fzf_tab_orig_widget="${${$(builtin bindkey '^I')##* }:-expand-or-complete}"
-  _lazy_fzf_tab() {
-    bindkey -M emacs '^I' "$_fzf_tab_orig_widget"
-    bindkey -M viins '^I' "$_fzf_tab_orig_widget"
-    if source "$_zsh_plugins/fzf-tab/fzf-tab.plugin.zsh"; then
-      zle fzf-tab-complete
-    else
-      zle "$_fzf_tab_orig_widget"
-    fi
-  }
-  zle -N _lazy_fzf_tab
-  bindkey -M emacs '^I' _lazy_fzf_tab
-  bindkey -M viins '^I' _lazy_fzf_tab
-fi
-[ -f "$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ] \
-  && source "$_zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
-[ -f "$_zsh_plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ] \
-  && source "$_zsh_plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
-
 # Prompt (replaces the omz "ys" theme). Reads ~/.config/starship.toml.
 if [[ -t 0 && -o interactive && -o zle ]] && command -v starship >/dev/null 2>&1; then
   eval "$(starship init zsh)"
