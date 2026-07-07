@@ -33,7 +33,6 @@ in
   home.homeDirectory = homeDir;
   home.stateVersion = "24.11";
   home.packages = with pkgs; [
-    neovim
     nodejs
     ast-grep
     zig
@@ -82,6 +81,12 @@ in
   programs.home-manager.enable = true;
 
   programs.gpg.enable = true;
+
+  programs.neovim = {
+    enable = true;
+    withPython3 = false;
+    withRuby = false;
+  };
 
   programs.git = {
     enable = true;
