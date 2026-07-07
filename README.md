@@ -104,6 +104,11 @@ Options:
 
 Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` is generated from `config/unix/.zshrc.base`.
 
+Note: Home Manager seeds `~/.codex/config.toml` as a writable file for Codex
+runtime preferences and owns the pinned `~/.codex/skills/caveman/` skill.
+Generated Codex/plugin state such as `.agents/`, `skills-lock.json`, caches,
+and sessions stays out of the repo.
+
 Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
 
 Note: Home Manager owns tracked Obsidian settings from `config/shared/obsidian`
