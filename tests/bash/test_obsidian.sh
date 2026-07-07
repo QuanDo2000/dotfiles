@@ -219,3 +219,24 @@ test_start_service_dry_run_does_not_call_systemctl() {
   fi
   assert_contains "$output" "Would run: systemctl --user restart obsidian-sync.service"
 }
+
+test_start_service_skips_when_home_manager_unit_missing() {
+  mock_cmd systemctl 'case "$*" in
+    "--user show-environment") exit 0 ;;
+    "--user cat obsidian-sync.service") exit 1 ;;
+    "--user restart obsidian-sync.service")
+      echo "unexpected restart" >&2
+      exit 99
+      ;;
+    *) exit 0 ;;
+  esac'
+
+  local output exit_code=0
+  output=$(_obsidian_start_service 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: _obsidian_start_service should skip missing Home Manager unit ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "is not installed yet"
+  assert_contains "$output" "dotfile update"
+}

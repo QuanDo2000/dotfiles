@@ -94,6 +94,10 @@ function _obsidian_start_service {
     return
   fi
   if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+    if ! systemctl --user cat "$OBSIDIAN_SERVICE_NAME" >/dev/null 2>&1; then
+      info "$OBSIDIAN_SERVICE_NAME is not installed yet; run 'dotfile update' to activate the Home Manager service"
+      return
+    fi
     systemctl --user restart "$OBSIDIAN_SERVICE_NAME" \
       || fail "Failed to restart $OBSIDIAN_SERVICE_NAME; run 'dotfile update' to activate the Home Manager service"
   else
