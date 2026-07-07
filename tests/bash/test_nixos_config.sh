@@ -129,9 +129,9 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   for pkg in ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
   done
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "home.sessionVariables.GOPATH = \"\${homeDir}/.local/go\""
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "\"\${homeDir}/.local/bin\""
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "\"\${homeDir}/.local/go/bin\""
+  assert_not_contains "$(<"$REPO_DIR/config/home.nix")" "GOPATH"
+  assert_not_contains "$(<"$REPO_DIR/config/home.nix")" ".local/go"
   assert_not_contains "$(<"$REPO_DIR/config/home.nix")" "PNPM_HOME"
   assert_not_contains "$(<"$REPO_DIR/config/home.nix")" ".local/share/pnpm"
   assert_not_contains "$common_packages" "neovim"

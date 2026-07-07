@@ -51,10 +51,8 @@ in
   home.username = machine.username;
   home.homeDirectory = homeDir;
   home.stateVersion = "24.11";
-  home.sessionVariables.GOPATH = "${homeDir}/.local/go";
   home.sessionPath = [
     "${homeDir}/.local/bin"
-    "${homeDir}/.local/go/bin"
   ];
   home.packages = with pkgs; [
     ast-grep
