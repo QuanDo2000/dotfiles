@@ -282,6 +282,8 @@ test_doctor_paths_cover_home_manager_managed_paths() {
   manifest_text="$(<"$REPO_DIR/config/home-manager-managed-paths")"
 
   assert_contains "$doctor_text" "home-manager-managed-paths"
+  assert_contains "$doctor_text" "REQUIRED_SYMLINKS+=("
+  assert_not_contains "$doctor_text" "REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)"
   assert_not_contains "$doctor_text" "HM_HOME_PATHS="
   assert_not_contains "$doctor_text" "HM_CONFIG_PATHS="
   assert_not_contains "$doctor_text" "HM_DATA_PATHS="

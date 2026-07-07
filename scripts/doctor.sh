@@ -6,10 +6,19 @@ scripts_dir="${SCRIPTS_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
 source "$scripts_dir/obsidian_paths.sh"
 
 # Core symlinked dotfiles under $HOME. This is a smoke check, not a full package audit.
-REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
 HM_MANAGED_PATHS_FILE="${HM_MANAGED_PATHS_FILE:-$DOTFILES_DIR/config/home-manager-managed-paths}"
 if [[ ! -f "$HM_MANAGED_PATHS_FILE" && -f "$scripts_dir/../config/home-manager-managed-paths" ]]; then
   HM_MANAGED_PATHS_FILE="$scripts_dir/../config/home-manager-managed-paths"
+fi
+REQUIRED_SYMLINKS=()
+if [[ -f "$HM_MANAGED_PATHS_FILE" ]]; then
+  while read -r kind path; do
+    case "$kind $path" in
+      "home .zshrc"|"home .zshrc.base"|"home .tmux.conf"|"home .vimrc"|"home .gitconfig"|"home .zprofile")
+        REQUIRED_SYMLINKS+=("$path")
+        ;;
+    esac
+  done < "$HM_MANAGED_PATHS_FILE"
 fi
 
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
