@@ -6,10 +6,10 @@ let
     if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
   obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
     set -euo pipefail
-    export PATH="$HOME/.npm-global/bin:$HOME/.npm/bin:$HOME/.local/bin:${lib.makeBinPath [ pkgs.nodejs ]}:$PATH"
+    export PATH="${lib.makeBinPath [ pkgs.obsidian-headless pkgs.nodejs ]}:$PATH"
 
     if ! command -v ob >/dev/null 2>&1; then
-      echo "ob not found; run dotfile obsidian once to install and log in" >&2
+      echo "ob not found; run dotfile update to install obsidian-headless" >&2
       exit 0
     fi
 
@@ -55,6 +55,7 @@ in
     tree-sitter
     unzip
     obsidian
+    obsidian-headless
   ]
   ++ lib.optional (pkgs ? codex) pkgs.codex
   ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;

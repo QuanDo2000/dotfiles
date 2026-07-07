@@ -16,15 +16,24 @@
   outputs = { nixpkgs, home-manager, nix-darwin, ... }:
     let
       machine = import ./config/host.nix;
+      overlays = [
+        (final: _prev: {
+          obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
+        })
+      ];
       linuxPkgs = import nixpkgs {
         system = "x86_64-linux";
         config.allowUnfree = true;
+        inherit overlays;
       };
     in
     {
+      packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
+
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
+          { nixpkgs.overlays = overlays; }
           ./config/nixos.nix
           home-manager.nixosModules.home-manager
         ];
@@ -33,6 +42,7 @@
       darwinConfigurations.mac = nix-darwin.lib.darwinSystem {
         system = "aarch64-darwin";
         modules = [
+          { nixpkgs.overlays = overlays; }
           ./config/darwin.nix
           home-manager.darwinModules.home-manager
         ];

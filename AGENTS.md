@@ -30,7 +30,7 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` - OS-specific package installation (apt/pacman only for Linux bootstrap packages, NixOS flakes, nix-darwin bootstrap on macOS).
   - `doctor.sh` - Health checks for Home Manager conflicts, core Unix links, Nix-managed tools, and flake targets.
-  - `obsidian.sh` - Interactive Obsidian Sync bootstrap and service restart; Home Manager owns the Linux `obsidian-sync` unit file.
+  - `obsidian.sh` - Interactive Obsidian Sync bootstrap and service restart; Home Manager owns the Linux `obsidian-headless` package and `obsidian-sync` unit file.
 
 ## Dotfile Layers
 

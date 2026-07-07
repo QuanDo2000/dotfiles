@@ -103,7 +103,7 @@ Options:
 
 Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` sources the tracked `~/.zshrc.base`.
 
-Note: Home Manager owns the `obsidian-sync` user service on Linux. `dotfile obsidian` installs the headless CLI, bootstraps login/vault setup, and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
+Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
 
 ## Provisioning a fresh NixOS machine
 

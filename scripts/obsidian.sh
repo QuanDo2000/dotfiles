@@ -8,23 +8,18 @@ function _obsidian_check_prereqs {
   if ! is_linux; then
     fail "Obsidian sync setup is only supported on Linux"
   fi
-  if ! command -v npm >/dev/null 2>&1; then
-    fail "npm not found. Install Node.js (e.g. via nvm) before running 'dotfile obsidian'"
+  if ! command -v ob >/dev/null 2>&1; then
+    fail "ob not found. Run 'dotfile update' to install the Nix-managed obsidian-headless package"
   fi
 }
 
-function _obsidian_install_cli {
-  info "Installing obsidian-headless..."
+function _obsidian_check_cli {
+  info "Checking obsidian-headless..."
   if [[ "$DRY" == "true" ]]; then
-    info "Would run: npm install -g obsidian-headless"
+    info "Would verify ob is on PATH"
     return
   fi
-  if command -v ob >/dev/null 2>&1; then
-    info "obsidian-headless already installed ($(command -v ob))"
-  else
-    npm install -g obsidian-headless || fail "Failed to install obsidian-headless"
-  fi
-  success "Finished installing obsidian-headless"
+  success "obsidian-headless found at $(command -v ob)"
 }
 
 function _obsidian_login {
@@ -109,7 +104,7 @@ function _obsidian_start_service {
 function setup_obsidian {
   info "Setting up Obsidian headless sync..."
   _obsidian_check_prereqs
-  _obsidian_install_cli
+  _obsidian_check_cli
 
   local existing_vault_path
   if [[ "$FORCE" != "true" ]] && existing_vault_path="$(_obsidian_existing_vault_path)"; then

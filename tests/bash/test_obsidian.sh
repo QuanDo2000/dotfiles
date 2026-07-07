@@ -44,22 +44,21 @@ test_check_prereqs_fails_on_non_linux() {
   assert_contains "$output" "only supported on Linux"
 }
 
-test_check_prereqs_fails_when_npm_missing() {
-  # Restrict PATH to exclude nvm-injected npm. /usr/bin:/bin is enough
-  # for any other basic tools obsidian.sh might need; npm must not appear.
+test_check_prereqs_fails_when_ob_missing() {
   export PATH="$FAKE_BIN:/usr/bin:/bin"
 
   local output exit_code=0
   output=$(_obsidian_check_prereqs 2>&1) || exit_code=$?
 
   if [ "$exit_code" -eq 0 ]; then
-    echo "  FAILED: _obsidian_check_prereqs should fail when npm missing" >> "$ERROR_FILE"
+    echo "  FAILED: _obsidian_check_prereqs should fail when ob missing" >> "$ERROR_FILE"
   fi
-  assert_contains "$output" "npm not found"
+  assert_contains "$output" "ob not found"
+  assert_contains "$output" "dotfile update"
 }
 
 test_check_prereqs_succeeds_with_all_tools() {
-  mock_cmd npm 'exit 0'
+  mock_cmd ob 'exit 0'
 
   local output exit_code=0
   output=$(_obsidian_check_prereqs 2>&1) || exit_code=$?
@@ -70,48 +69,31 @@ test_check_prereqs_succeeds_with_all_tools() {
 }
 
 # ---------------------------------------------------------------------------
-# _obsidian_install_cli
+# _obsidian_check_cli
 # ---------------------------------------------------------------------------
 
-test_install_cli_dry_run_does_not_call_npm() {
+test_check_cli_dry_run_only_checks_path() {
   DRY=true
-  # Canary: any npm invocation in DRY mode is a regression.
-  mock_cmd npm 'echo "unexpected npm call: $*" >&2; exit 99'
 
   local output exit_code=0
-  output=$(_obsidian_install_cli 2>&1) || exit_code=$?
+  output=$(_obsidian_check_cli 2>&1) || exit_code=$?
 
   if [ "$exit_code" -ne 0 ]; then
-    echo "  FAILED: _obsidian_install_cli should not call npm in DRY mode ($output)" >> "$ERROR_FILE"
+    echo "  FAILED: _obsidian_check_cli should only check PATH in DRY mode ($output)" >> "$ERROR_FILE"
   fi
-  assert_contains "$output" "Would run: npm install -g obsidian-headless"
+  assert_contains "$output" "Would verify ob is on PATH"
 }
 
-test_install_cli_already_installed_short_circuits() {
-  # `ob` present on PATH → command -v ob succeeds → npm should not be called.
+test_check_cli_reports_nix_managed_ob() {
   mock_cmd ob 'exit 0'
-  mock_cmd npm 'echo "unexpected npm call: $*" >&2; exit 99'
 
   local output exit_code=0
-  output=$(_obsidian_install_cli 2>&1) || exit_code=$?
+  output=$(_obsidian_check_cli 2>&1) || exit_code=$?
 
   if [ "$exit_code" -ne 0 ]; then
-    echo "  FAILED: _obsidian_install_cli should short-circuit when ob present ($output)" >> "$ERROR_FILE"
+    echo "  FAILED: _obsidian_check_cli should report ob path ($output)" >> "$ERROR_FILE"
   fi
-  assert_contains "$output" "already installed"
-}
-
-test_install_cli_invokes_npm_when_missing() {
-  # No `ob` mock → command -v ob fails → npm install runs.
-  mock_cmd npm 'exit 0'
-
-  local output exit_code=0
-  output=$(_obsidian_install_cli 2>&1) || exit_code=$?
-
-  if [ "$exit_code" -ne 0 ]; then
-    echo "  FAILED: _obsidian_install_cli should succeed when npm exits 0 ($output)" >> "$ERROR_FILE"
-  fi
-  assert_contains "$output" "Finished installing"
+  assert_contains "$output" "obsidian-headless found at"
 }
 
 # ---------------------------------------------------------------------------
@@ -205,7 +187,6 @@ test_setup_vault_skips_when_already_configured() {
 test_setup_obsidian_skips_reconfiguring_existing_sync() {
   local vault_path="$HOME/documents/obsidian/test-vault"
   mkdir -p "$vault_path"
-  mock_cmd npm 'exit 0'
   mock_cmd ob 'case "$1" in
     sync-status) exit 0 ;;
     sync-list-remote|login|sync-setup)
