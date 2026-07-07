@@ -32,11 +32,13 @@ EOF
 # _obsidian_check_prereqs
 # ---------------------------------------------------------------------------
 
-test_obsidian_config_vault_override_is_preserved() {
+test_obsidian_config_path_overrides_are_preserved() {
   export OBSIDIAN_CONFIG_VAULT="$TEST_TMPDIR/custom/.obsidian"
+  export OBSIDIAN_CONFIG_SOURCE="$TEST_TMPDIR/source"
   source "$REPO_DIR/scripts/obsidian_paths.sh"
 
   assert_equals "$TEST_TMPDIR/custom/.obsidian" "$OBSIDIAN_CONFIG_VAULT"
+  assert_equals "$TEST_TMPDIR/source" "$OBSIDIAN_CONFIG_SOURCE"
 }
 
 test_check_prereqs_fails_on_non_linux() {

@@ -201,7 +201,7 @@ _doctor_check_managed_path() {
 }
 
 _check_obsidian_config() {
-  local tracked_dir="$DOTFILES_DIR/config/shared/obsidian"
+  local tracked_dir="$OBSIDIAN_CONFIG_SOURCE"
   local live_dir="$OBSIDIAN_CONFIG_VAULT"
 
   [ -d "$tracked_dir" ] || return 0

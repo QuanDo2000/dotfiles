@@ -6,7 +6,6 @@ source "$scripts_dir/obsidian_paths.sh"
 
 OBSIDIAN_SERVICE_NAME="obsidian-sync.service"
 OBSIDIAN_VAULT_BASE="$HOME/documents/obsidian"
-OBSIDIAN_CONFIG_SOURCE="${OBSIDIAN_CONFIG_SOURCE:-$DOTFILES_DIR/config/shared/obsidian}"
 
 function _obsidian_check_prereqs {
   if ! is_linux; then
