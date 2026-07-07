@@ -8,6 +8,19 @@ let
     inherit source;
     force = true;
   };
+  obsidianSettings = [
+    "app.json"
+    "appearance.json"
+    "community-plugins.json"
+    "core-plugins.json"
+    "daily-notes.json"
+    "hotkeys.json"
+    "templates.json"
+  ];
+  obsidianFiles = builtins.listToAttrs (map (name: {
+    name = "documents/Sync/.obsidian/${name}";
+    value = forceSource ./shared/obsidian/${name};
+  }) obsidianSettings);
   obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
     set -euo pipefail
     export PATH="${lib.makeBinPath [ pkgs.obsidian-headless pkgs.nodejs ]}:$PATH"
@@ -54,23 +67,22 @@ in
   ++ lib.optional (pkgs ? codex) pkgs.codex
   ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
 
-  home.file.".ssh/config" = forceSource ./shared/.ssh/config;
-
-  home.file.".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
-
-  home.file."documents/Sync/.obsidian/app.json" = forceSource ./shared/obsidian/app.json;
-
-  home.file."documents/Sync/.obsidian/appearance.json" = forceSource ./shared/obsidian/appearance.json;
-
-  home.file."documents/Sync/.obsidian/community-plugins.json" = forceSource ./shared/obsidian/community-plugins.json;
-
-  home.file."documents/Sync/.obsidian/core-plugins.json" = forceSource ./shared/obsidian/core-plugins.json;
-
-  home.file."documents/Sync/.obsidian/daily-notes.json" = forceSource ./shared/obsidian/daily-notes.json;
-
-  home.file."documents/Sync/.obsidian/hotkeys.json" = forceSource ./shared/obsidian/hotkeys.json;
-
-  home.file."documents/Sync/.obsidian/templates.json" = forceSource ./shared/obsidian/templates.json;
+  home.file = obsidianFiles // {
+    ".ssh/config" = forceSource ./shared/.ssh/config;
+    ".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
+    ".local/bin/dotfile" = lib.mkIf pkgs.stdenv.isLinux {
+      text = ''
+        #!/usr/bin/env bash
+        exec "$HOME/dotfiles/dotfile" "$@"
+      '';
+      executable = true;
+      force = true;
+    };
+    ".zshrc.mac" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/.zshrc.mac);
+    ".local/bin/caf" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/bin/caf // {
+      executable = true;
+    });
+  };
 
   programs.home-manager.enable = true;
 
@@ -245,18 +257,4 @@ in
 
   xdg.configFile."waybar" = forceSource ./unix/config/waybar;
 
-  home.file.".local/bin/dotfile" = lib.mkIf pkgs.stdenv.isLinux {
-    text = ''
-      #!/usr/bin/env bash
-      exec "$HOME/dotfiles/dotfile" "$@"
-    '';
-    executable = true;
-    force = true;
-  };
-
-  home.file.".zshrc.mac" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/.zshrc.mac);
-
-  home.file.".local/bin/caf" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/bin/caf // {
-    executable = true;
-  });
 }
