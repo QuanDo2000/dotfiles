@@ -134,7 +134,7 @@ function _darwin_rebuild_switch {
       sudo HOME=/var/root darwin-rebuild switch --flake "$target"
   else
     _run_nix_managed_switch "nix-darwin bootstrap switch failed" \
-      sudo HOME=/var/root nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$target"
+      sudo HOME=/var/root nix run "$DOTFILES_DIR#darwin-rebuild" -- switch --flake "$target"
   fi
 }
 

@@ -62,6 +62,11 @@
         program = "${home-manager.packages.x86_64-linux.home-manager}/bin/home-manager";
       };
 
+      apps.aarch64-darwin.darwin-rebuild = {
+        type = "app";
+        program = "${nix-darwin.packages.aarch64-darwin.darwin-rebuild}/bin/darwin-rebuild";
+      };
+
       devShells.x86_64-linux.default = linuxPkgs.mkShell {
         packages = with linuxPkgs; [
           git

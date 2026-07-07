@@ -65,7 +65,7 @@ test_install_mac_bootstraps_nix_darwin_without_brew() {
   local output
   output="$(<"$calls")"
   assert_contains "$output" "install-lix"
-  assert_contains "$output" "HOME=/var/root nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
+  assert_contains "$output" "HOME=/var/root nix run $DOTFILES_DIR#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
   assert_not_contains "$output" "brew"
 
   unset -f command _install_lix _load_nix_profile sudo

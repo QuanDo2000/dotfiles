@@ -35,6 +35,7 @@ test_flake_uses_flat_nix_config_files() {
   assert_not_contains "$flake_text" "\"\${machine.username}@arch\""
   assert_contains "$flake_text" "config.allowUnfree = true"
   assert_contains "$flake_text" "apps.x86_64-linux.home-manager"
+  assert_contains "$flake_text" "apps.aarch64-darwin.darwin-rebuild"
   assert_contains "$flake_text" "packages.x86_64-linux.obsidian-headless"
   assert_contains "$flake_text" "devShells.x86_64-linux.default"
   assert_contains "$flake_text" "gh"
