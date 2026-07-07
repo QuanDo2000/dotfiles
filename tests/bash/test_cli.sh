@@ -25,6 +25,19 @@ link_core_dotfiles() {
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
 }
 
+assert_checked_flow() {
+  local output="$1"
+  local pulls_repo="$2"
+
+  assert_equals "2" "$(grep -c "Checking Home Manager-managed paths" <<<"$output")"
+  assert_equals "1" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
+  if [[ "$pulls_repo" == "true" ]]; then
+    assert_contains "$output" "Updating dotfiles repo"
+  else
+    assert_not_contains "$output" "Updating dotfiles repo"
+  fi
+}
+
 test_help_exits_zero() {
   local output
   output=$(bash "$DOTFILE_CMD" -h 2>&1)
@@ -72,11 +85,8 @@ test_dry_run_default_command() {
 
   local output
   output=$(bash "$DOTFILE_CMD" --dry all 2>&1)
-  assert_contains "$output" "Updating dotfiles repo"
+  assert_checked_flow "$output" true
   assert_contains "$output" "Installing packages"
-  assert_contains "$output" "Checking Home Manager-managed paths"
-  assert_equals "2" "$(grep -c "Checking Home Manager-managed paths" <<<"$output")"
-  assert_equals "1" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
   local repo_line packages_line
   repo_line="$(grep -n "Updating dotfiles repo" <<<"$output" | head -n1 | cut -d: -f1)"
   packages_line="$(grep -n "Installing packages" <<<"$output" | head -n1 | cut -d: -f1)"
@@ -140,10 +150,8 @@ test_dry_run_update_command() {
 
   local output
   output=$(bash "$DOTFILE_CMD" --dry update 2>&1)
-  assert_contains "$output" "Updating dotfiles repo"
+  assert_checked_flow "$output" true
   assert_contains "$output" "Updating packages"
-  assert_equals "2" "$(grep -c "Checking Home Manager-managed paths" <<<"$output")"
-  assert_equals "1" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
   assert_not_contains "$output" "language toolchains"
 }
 
@@ -193,10 +201,8 @@ test_packages_nixos_dry() {
 
   local output
   output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry packages 2>&1)
+  assert_checked_flow "$output" false
   assert_contains "$output" "NixOS"
-  assert_equals "2" "$(grep -c "Checking Home Manager-managed paths" <<<"$output")"
-  assert_equals "1" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
-  assert_not_contains "$output" "Updating dotfiles repo"
   assert_not_contains "$output" "Updating packages"
 
   # Don't leak the uname mock into later tests in this file.
