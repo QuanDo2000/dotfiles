@@ -41,7 +41,7 @@ in
   };
 
   # --- Boot ----------------------------------------------------------------
-  boot.loader.systemd-boot.enable = true;     # EDIT: use GRUB instead if needed
+  boot.loader.systemd-boot.enable = true;
   boot.loader.systemd-boot.configurationLimit = 10;  # cap boot menu / ESP usage
   boot.loader.efi.canTouchEfiVariables = true;
 
@@ -66,7 +66,7 @@ in
   home-manager.users.${machine.username} = import ../home.nix;
 
   # --- Desktop: Hyprland + greetd login ------------------------------------
-  hardware.graphics.enable = true;   # GPU accel; EDIT: add vendor driver (e.g. nvidia)
+  hardware.graphics.enable = true;
   programs.hyprland.enable = true;
 
   # Audio (PipeWire) and screenshare/file-picker portals — hardware-independent.
@@ -93,7 +93,7 @@ in
   i18n.inputMethod = {
     enable = true;
     type = "fcitx5";
-    fcitx5.addons = with pkgs; [ qt6Packages.fcitx5-unikey ];   # EDIT: your input addons
+    fcitx5.addons = with pkgs; [ qt6Packages.fcitx5-unikey ];
   };
 
   # --- Fonts ---------------------------------------------------------------
