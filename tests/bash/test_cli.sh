@@ -121,6 +121,7 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "doctor [--fast]"
   assert_contains "$readme_text" "Detect dotfile and Nix issues"
   assert_contains "$readme_text" "Home Manager owns tracked Obsidian settings"
+  assert_contains "$readme_text" 'Home Manager owns the `lazy.nvim` bootstrap package'
   assert_contains "$readme_text" "### Windows Commands"
   assert_contains "$readme_text" "dotfile.ps1 [OPTIONS] [COMMAND]"
   assert_contains "$readme_text" "verify      Verify installation"
