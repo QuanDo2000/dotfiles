@@ -106,6 +106,7 @@ case "${1:-all}" in
 all) setup_dotfiles ;;
 update)
   doctor
+  update_repo
   update_packages
   DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
   ;;

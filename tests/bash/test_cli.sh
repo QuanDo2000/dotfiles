@@ -131,6 +131,7 @@ test_dry_run_update_command() {
 
   local output
   output=$(bash "$DOTFILE_CMD" --dry update 2>&1)
+  assert_contains "$output" "Updating dotfiles repo"
   assert_contains "$output" "Updating packages"
   assert_equals "2" "$(grep -c "Checking Home Manager-managed paths" <<<"$output")"
   assert_equals "1" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
@@ -152,6 +153,7 @@ test_update_runs_doctor_before_package_update() {
 
   assert_equals "1" "$exit_code"
   assert_contains "$output" ".zshrc exists but is not Home Manager-owned"
+  assert_not_contains "$output" "Updating dotfiles repo"
   assert_not_contains "$output" "Updating packages"
 }
 
