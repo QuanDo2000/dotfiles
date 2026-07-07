@@ -303,6 +303,8 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_not_contains "$zsh_text" "\$HOME/.local/bin"
   assert_not_contains "$zsh_text" ".opencode/bin"
   assert_not_contains "$zsh_text" ".bun/bin"
+  assert_not_contains "$zsh_text" "/snap/bin"
+  assert_not_contains "$zsh_text" ".devcontainers/bin"
   assert_not_contains "$zsh_text" "_zsh_plugins="
   assert_not_contains "$zsh_text" "zsh-autosuggestions.zsh"
   assert_not_contains "$zsh_text" "fast-syntax-highlighting.plugin.zsh"
