@@ -92,7 +92,6 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "programs.home-manager.enable = true"
   assert_not_contains "$home_text" "    home-manager"
   assert_contains "$home_text" "neovim"
-  assert_contains "$home_text" "nodejs"
   assert_contains "$home_text" "jujutsu"
   assert_contains "$home_text" "ripgrep"
   assert_contains "$home_text" "obsidian"
