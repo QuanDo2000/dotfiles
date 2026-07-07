@@ -192,8 +192,11 @@ test_packages_nixos_dry() {
   with_nix_agent_tools
 
   local output
-  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry packages 2>&1)
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry packages 2>&1)
   assert_contains "$output" "NixOS"
+  assert_equals "2" "$(grep -c "Checking Home Manager-managed paths" <<<"$output")"
+  assert_equals "1" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
+  assert_not_contains "$output" "Updating dotfiles repo"
   assert_not_contains "$output" "Updating packages"
 
   # Don't leak the uname mock into later tests in this file.
