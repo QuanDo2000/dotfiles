@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-source "$(dirname "${BASH_SOURCE[0]}")/obsidian_paths.sh"
+scripts_dir="${SCRIPTS_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
+source "$scripts_dir/obsidian_paths.sh"
 
 OBSIDIAN_SERVICE_NAME="obsidian-sync.service"
 OBSIDIAN_VAULT_BASE="$HOME/documents/obsidian"

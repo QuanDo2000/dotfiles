@@ -2,7 +2,8 @@
 set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
-source "$(dirname "${BASH_SOURCE[0]}")/obsidian_paths.sh"
+scripts_dir="${SCRIPTS_DIR:-$(dirname "${BASH_SOURCE[0]}")}"
+source "$scripts_dir/obsidian_paths.sh"
 
 # Core symlinked dotfiles under $HOME. This is a smoke check, not a full package audit.
 REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)
