@@ -68,10 +68,6 @@ in
     nerd-fonts.fira-code
     wl-clipboard
     openssh
-    lua5_1
-    luarocks
-    tree-sitter
-    unzip
     obsidian
     obsidian-headless
     codex
@@ -109,6 +105,12 @@ in
     withPython3 = false;
     withRuby = false;
     plugins = [ pkgs.vimPlugins.lazy-nvim ];
+    extraPackages = with pkgs; [
+      lua5_1
+      luarocks
+      tree-sitter
+      unzip
+    ];
   };
 
   programs.git = {

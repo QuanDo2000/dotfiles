@@ -121,8 +121,9 @@ test_home_config_manages_obsidian_sync_service() {
 }
 
 test_home_config_puts_shared_user_tools_in_common_packages() {
-  local common_packages
+  local common_packages linux_packages
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
+  linux_packages="$(sed -n '/\] ++ lib.optionals pkgs.stdenv.isLinux \[/,/  \];/p' "$REPO_DIR/config/home.nix")"
 
   for pkg in nodejs ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
@@ -141,6 +142,10 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_not_contains "$common_packages" "fzf"
   assert_not_contains "$common_packages" "zoxide"
   assert_not_contains "$common_packages" "starship"
+  for pkg in lua5_1 luarocks tree-sitter unzip; do
+    assert_not_contains "$common_packages" "$pkg"
+    assert_not_contains "$linux_packages" "$pkg"
+  done
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.neovim = {"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "defaultEditor = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "vimAlias = true"
@@ -148,6 +153,10 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "withPython3 = false"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "withRuby = false"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "pkgs.vimPlugins.lazy-nvim"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "extraPackages = with pkgs; ["
+  for pkg in lua5_1 luarocks tree-sitter unzip; do
+    assert_contains "$(<"$REPO_DIR/config/home.nix")" "$pkg"
+  done
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.gpg.enable = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.fd.enable = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.ripgrep.enable = true"
