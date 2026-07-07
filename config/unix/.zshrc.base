@@ -2,15 +2,11 @@
 
 # Environment variables
 export SHELL=$(command -v zsh)
-export EDITOR=nvim
 if [[ -t 0 ]]; then
   export GPG_TTY=$(tty)
   command -v gpg-connect-agent >/dev/null 2>&1 \
     && gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
 fi
-
-# vim is no longer installed locally (neovim is the editor); keep muscle memory.
-alias vim=nvim
 
 # ls aliases (replaces omz lib/directories.zsh + theme-and-appearance color).
 # Listing aliases re-expand `ls`, so color propagates from the base alias.
