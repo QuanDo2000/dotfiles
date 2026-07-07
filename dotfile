@@ -106,6 +106,7 @@ all) setup_dotfiles ;;
 update)
   doctor
   update_packages
+  doctor
   ;;
 packages)
   doctor

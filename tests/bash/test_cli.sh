@@ -117,6 +117,7 @@ test_dry_run_update_command() {
   local output
   output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true bash "$DOTFILE_CMD" --dry update 2>&1)
   assert_contains "$output" "Updating packages"
+  assert_equals "2" "$(grep -c "Checking Home Manager-managed paths" <<<"$output")"
   assert_not_contains "$output" "language toolchains"
 }
 
