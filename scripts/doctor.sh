@@ -31,6 +31,7 @@ HM_DATA_PATHS=(
   zsh/plugins/fast-syntax-highlighting
   zsh/plugins/fzf-tab
 )
+OBSIDIAN_CONFIG_VAULT="${OBSIDIAN_CONFIG_VAULT:-$HOME/documents/Sync/.obsidian}"
 
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {
@@ -198,6 +199,32 @@ _doctor_check_managed_path() {
   errors=$((errors + 1))
 }
 
+_check_obsidian_config() {
+  local tracked_dir="$DOTFILES_DIR/config/shared/obsidian"
+  local live_dir="$OBSIDIAN_CONFIG_VAULT"
+
+  [ -d "$tracked_dir" ] || return 0
+  [ -d "$live_dir" ] || {
+    info "Skipping Obsidian config drift check: $live_dir not found"
+    return 0
+  }
+
+  local tracked relative live
+  while IFS= read -r tracked; do
+    relative="${tracked#"$tracked_dir"/}"
+    live="$live_dir/$relative"
+    if [[ ! -f "$live" ]]; then
+      fail_soft "Obsidian config missing: $relative"
+      errors=$((errors + 1))
+    elif ! cmp -s "$tracked" "$live"; then
+      fail_soft "Obsidian config drift: $relative"
+      errors=$((errors + 1))
+    fi
+  done < <(find "$tracked_dir" -type f | sort)
+
+  success "Obsidian config matches tracked settings"
+}
+
 function doctor {
   local errors=0
   local platform
@@ -222,6 +249,7 @@ function doctor {
     else
       _doctor_check_managed_path ".local/bin/dotfile" "$HOME/.local/bin/dotfile"
     fi
+    success "Home Manager-managed paths are clear"
   else
     info "Skipping Home Manager conflict checks on $platform"
   fi
@@ -234,6 +262,7 @@ function doctor {
   _check_dotfile_command
   _check_nix_tool codex "$platform"
   _check_nix_tool codebase-memory-mcp "$platform"
+  _check_obsidian_config
   _check_nix_config "$platform"
 
   echo ""

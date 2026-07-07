@@ -1,0 +1,33 @@
+{
+  "showGettingStartedBanner": false,
+  "hasMigratedDailyNoteSettings": true,
+  "hasMigratedWeeklyNoteSettings": false,
+  "daily": {
+    "folder": "Calendar",
+    "template": "Extras/Templates/Template - Daily Note",
+    "enabled": true
+  },
+  "weekly": {
+    "format": "",
+    "template": "",
+    "folder": ""
+  },
+  "monthly": {
+    "format": "",
+    "template": "Extras/Templates/Template - Monthly Review.md",
+    "folder": "Calendar",
+    "enabled": true
+  },
+  "quarterly": {
+    "format": "",
+    "template": "Extras/Templates/Template - Quarterly Review.md",
+    "folder": "Calendar",
+    "enabled": true
+  },
+  "yearly": {
+    "format": "",
+    "template": "Extras/Templates/Template - Yearly Review.md",
+    "folder": "Calendar",
+    "enabled": true
+  }
+}

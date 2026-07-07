@@ -105,6 +105,8 @@ Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` sources the tracked 
 
 Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
 
+Note: `config/shared/obsidian` tracks portable Obsidian vault settings and selected plugin `data.json` files. `dotfile doctor` reports drift against `~/documents/Sync/.obsidian`; plugin bundles, themes, workspace state, bookmarks, starred files, recent files, and Electron app state stay out of the repo.
+
 ## Provisioning a fresh NixOS machine
 
 On a freshly-installed NixOS box:
