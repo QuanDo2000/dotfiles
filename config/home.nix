@@ -34,7 +34,6 @@ in
   home.stateVersion = "24.11";
   home.packages = with pkgs; [
     neovim
-    gnupg
     nodejs
     ast-grep
     zig
@@ -81,6 +80,8 @@ in
   home.file."documents/Sync/.obsidian/templates.json" = forceSource ./shared/obsidian/templates.json;
 
   programs.home-manager.enable = true;
+
+  programs.gpg.enable = true;
 
   programs.git = {
     enable = true;

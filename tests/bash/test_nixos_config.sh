@@ -121,9 +121,10 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   local common_packages
   common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in neovim gnupg nodejs ast-grep zig odin gleam erlang; do
+  for pkg in neovim nodejs ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
   done
+  assert_not_contains "$common_packages" "gnupg"
   assert_not_contains "$common_packages" "fd"
   assert_not_contains "$common_packages" "ripgrep"
   assert_not_contains "$common_packages" "lazygit"
@@ -131,6 +132,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_not_contains "$common_packages" "fzf"
   assert_not_contains "$common_packages" "zoxide"
   assert_not_contains "$common_packages" "starship"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.gpg.enable = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.fd.enable = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.ripgrep.enable = true"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.lazygit.enable = true"
