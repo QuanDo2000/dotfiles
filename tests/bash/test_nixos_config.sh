@@ -282,9 +282,9 @@ test_home_config_uses_home_manager_zsh_plugins() {
 
   assert_contains "$home_text" "programs.zsh = {"
   assert_contains "$home_text" "enable = true"
-  assert_contains "$home_text" "profileExtra = lib.optionalString pkgs.stdenv.isDarwin"
-  assert_contains "$home_text" "/opt/homebrew/bin/brew"
-  assert_contains "$home_text" "/usr/local/bin/brew"
+  assert_not_contains "$home_text" "brew shellenv"
+  assert_not_contains "$home_text" "/opt/homebrew/bin/brew"
+  assert_not_contains "$home_text" "/usr/local/bin/brew"
   assert_contains "$home_text" "enableCompletion = true"
   assert_contains "$home_text" "completionInit = ''"
   assert_contains "$home_text" "_zcompdump="
