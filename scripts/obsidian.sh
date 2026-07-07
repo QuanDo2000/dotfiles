@@ -126,8 +126,10 @@ function _obsidian_apply_config {
 
 function setup_obsidian_config {
   if [[ "$FORCE" == "true" ]]; then
+    info "Applying tracked Obsidian config..."
     _obsidian_apply_config "$OBSIDIAN_CONFIG_VAULT"
   else
+    info "Checking tracked Obsidian config..."
     DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
   fi
 }

@@ -262,7 +262,24 @@ test_setup_obsidian_config_check_uses_fast_doctor() {
   if [ "$exit_code" -ne 0 ]; then
     echo "  FAILED: setup_obsidian_config check should run fast doctor ($output)" >> "$ERROR_FILE"
   fi
+  assert_contains "$output" "Checking tracked Obsidian config"
   assert_not_contains "$output" "expected fast doctor"
+}
+
+test_setup_obsidian_config_force_announces_apply() {
+  FORCE=true
+  DRY=true
+  mkdir -p "$DOTFILES_DIR/config/shared/obsidian"
+  printf '{"vimMode":true}\n' > "$DOTFILES_DIR/config/shared/obsidian/app.json"
+
+  local output exit_code=0
+  output=$(setup_obsidian_config 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: setup_obsidian_config force should support dry-run ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Applying tracked Obsidian config"
+  assert_contains "$output" "Would copy tracked Obsidian config"
 }
 
 test_start_service_dry_run_does_not_call_systemctl() {
