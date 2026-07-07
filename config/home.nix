@@ -69,6 +69,7 @@ in
     wl-clipboard
     waybar
     ghostty
+    google-chrome
     obsidian
     obsidian-headless
     codex

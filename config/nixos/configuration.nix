@@ -106,6 +106,5 @@ in
     git
     jq
     gcc
-    google-chrome    # Browser + OAuth sign-in
   ];
 }
