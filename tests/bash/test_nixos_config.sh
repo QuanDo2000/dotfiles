@@ -289,6 +289,7 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_not_contains "$zsh_text" "export SHELL="
   assert_not_contains "$zsh_text" "export EDITOR=nvim"
   assert_not_contains "$zsh_text" "alias vim=nvim"
+  assert_not_contains "$zsh_text" "/opt/nvim-linux-x86_64"
   assert_not_contains "$zsh_text" "_zsh_plugins="
   assert_not_contains "$zsh_text" "zsh-autosuggestions.zsh"
   assert_not_contains "$zsh_text" "fast-syntax-highlighting.plugin.zsh"

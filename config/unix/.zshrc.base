@@ -57,7 +57,6 @@ alias gstp='git stash pop'
 export HYPRSHOT_DIR="$HOME/hyprshot"
 
 # Path
-[ -d "/opt/nvim-linux-x86_64/bin" ] && export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
 [ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 [ -d "/snap/bin" ] && export PATH="/snap/bin:$PATH"
 [ -d "$HOME/.devcontainers/bin" ] && export PATH="$HOME/.devcontainers/bin:$PATH"
