@@ -76,7 +76,8 @@ Commands:
   obsidian    Bootstrap Obsidian Sync login and vault setup
   obsidian-config
               Apply or check tracked Obsidian vault settings
-  doctor      Detect dotfile and Nix issues
+  doctor [--fast]
+              Detect dotfile and Nix issues
 
 Options:
   -d, --dry   Dry run (no changes made)

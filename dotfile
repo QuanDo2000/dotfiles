@@ -65,7 +65,8 @@ Commands:
   obsidian    Bootstrap Obsidian Sync login and vault setup
   obsidian-config
               Apply or check tracked Obsidian vault settings
-  doctor      Detect dotfile and Nix issues
+  doctor [--fast]
+              Detect dotfile and Nix issues
 
 Options:
   -d, --dry     Dry run (no changes made)
@@ -114,7 +115,14 @@ packages)
   ;;
 obsidian) setup_obsidian ;;
 obsidian-config) setup_obsidian_config ;;
-doctor) doctor ;;
+doctor)
+  case "${2:-}" in
+    "") ;;
+    --fast) export DOTFILE_DOCTOR_SKIP_NIX_EVAL=true ;;
+    *) fail "Unknown doctor option: $2" ;;
+  esac
+  doctor
+  ;;
 *)
   fail "Unknown command: $1"
   ;;

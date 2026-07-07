@@ -50,6 +50,20 @@ test_doctor_command_runs_with_health_checks() {
   assert_exit_code 0 env DOTFILE_DOCTOR_SKIP_NIX_EVAL=true OS_RELEASE="$osrel" bash "$DOTFILE_CMD" doctor
 }
 
+test_doctor_fast_skips_nix_eval() {
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  link_core_dotfiles
+  with_nix_agent_tools
+
+  local output
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" doctor --fast 2>&1)
+
+  assert_contains "$output" "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true"
+  assert_contains "$output" "All checks passed"
+}
+
 test_dry_run_default_command() {
   # Unix installer does not target Windows (Windows has its own PowerShell setup).
   is_windows_bash && return 0
@@ -86,7 +100,8 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "### Unix Commands"
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
   assert_contains "$readme_text" "obsidian-config"
-  assert_contains "$readme_text" "doctor      Detect dotfile and Nix issues"
+  assert_contains "$readme_text" "doctor [--fast]"
+  assert_contains "$readme_text" "Detect dotfile and Nix issues"
   assert_contains "$readme_text" "### Windows Commands"
   assert_contains "$readme_text" "dotfile.ps1 [OPTIONS] [COMMAND]"
   assert_contains "$readme_text" "verify      Verify installation"
