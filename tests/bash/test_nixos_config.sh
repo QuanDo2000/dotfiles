@@ -236,6 +236,16 @@ test_home_config_links_zsh_plugins_from_nix() {
   assert_contains "$home_text" "force = true"
 }
 
+test_zsh_arrow_keys_search_history_by_prefix() {
+  local zsh_text
+  zsh_text="$(<"$REPO_DIR/config/unix/.zshrc.base")"
+
+  assert_contains "$zsh_text" "bindkey -M viins '^[[A' history-beginning-search-backward"
+  assert_contains "$zsh_text" "bindkey -M viins '^[[B' history-beginning-search-forward"
+  assert_contains "$zsh_text" "bindkey -M viins '^[OA' history-beginning-search-backward"
+  assert_contains "$zsh_text" "bindkey -M viins '^[OB' history-beginning-search-forward"
+}
+
 test_home_config_links_tmux_plugins_from_nix() {
   local home_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
