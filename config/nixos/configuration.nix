@@ -107,6 +107,5 @@ in
     jq
     gcc
     google-chrome    # Browser + OAuth sign-in
-    ghostty
   ];
 }

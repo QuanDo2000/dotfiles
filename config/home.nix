@@ -68,6 +68,7 @@ in
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     wl-clipboard
     waybar
+    ghostty
     obsidian
     obsidian-headless
     codex
