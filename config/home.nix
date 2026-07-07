@@ -59,8 +59,6 @@ in
   ++ lib.optional (pkgs ? codex) pkgs.codex
   ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
 
-  home.file.".gitconfig" = forceSource ./shared/.gitconfig;
-
   home.file.".vimrc" = forceSource ./shared/.vimrc;
 
   home.file.".zprofile" = forceSource ./unix/.zprofile;
@@ -86,6 +84,27 @@ in
   home.file."documents/Sync/.obsidian/templates.json" = forceSource ./shared/obsidian/templates.json;
 
   programs.home-manager.enable = true;
+
+  programs.git = {
+    enable = true;
+    settings = {
+      user = {
+        name = "Quan Do";
+        email = "minhquand3@gmail.com";
+      };
+      core = {
+        ignorecase = false;
+        editor = "nvim";
+      };
+      commit.gpgsign = true;
+      tag.gpgsign = true;
+      gpg.program = "gpg";
+    };
+    includes = [
+      { path = "~/.gitconfig.local"; }
+      { path = "~/.gitconfig.windows"; }
+    ];
+  };
 
   programs.starship = {
     enable = true;
