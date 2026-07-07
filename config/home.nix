@@ -34,7 +34,6 @@ in
   home.stateVersion = "24.11";
   home.packages = with pkgs; [
     neovim
-    fd
     gnupg
     nodejs
     ast-grep
@@ -128,6 +127,8 @@ in
   programs.lazygit.enable = true;
 
   programs.ripgrep.enable = true;
+
+  programs.fd.enable = true;
 
   programs.zsh = {
     enable = true;
