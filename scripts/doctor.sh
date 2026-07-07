@@ -10,16 +10,27 @@ HM_MANAGED_PATHS_FILE="${HM_MANAGED_PATHS_FILE:-$DOTFILES_DIR/config/home-manage
 if [[ ! -f "$HM_MANAGED_PATHS_FILE" && -f "$scripts_dir/../config/home-manager-managed-paths" ]]; then
   HM_MANAGED_PATHS_FILE="$scripts_dir/../config/home-manager-managed-paths"
 fi
-REQUIRED_SYMLINKS=()
-if [[ -f "$HM_MANAGED_PATHS_FILE" ]]; then
+
+_read_home_manager_managed_paths() {
+  local callback="$1" kind path
+  [[ -f "$HM_MANAGED_PATHS_FILE" ]] || return 0
   while read -r kind path; do
-    case "$kind $path" in
-      "home .zshrc"|"home .zshrc.base"|"home .tmux.conf"|"home .vimrc"|"home .gitconfig"|"home .zprofile")
-        REQUIRED_SYMLINKS+=("$path")
-        ;;
-    esac
+    [[ -n "${kind:-}" && "${kind:0:1}" != "#" ]] || continue
+    "$callback" "$kind" "$path"
   done < "$HM_MANAGED_PATHS_FILE"
-fi
+}
+
+_collect_required_symlink() {
+  local kind="$1" path="$2"
+  case "$kind $path" in
+    "home .zshrc"|"home .zshrc.base"|"home .tmux.conf"|"home .vimrc"|"home .gitconfig"|"home .zprofile")
+      REQUIRED_SYMLINKS+=("$path")
+      ;;
+  esac
+}
+
+REQUIRED_SYMLINKS=()
+_read_home_manager_managed_paths _collect_required_symlink
 
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {
@@ -194,19 +205,20 @@ _doctor_check_managed_paths() {
     return
   fi
 
-  local kind path
-  while read -r kind path; do
-    [[ -n "${kind:-}" && "${kind:0:1}" != "#" ]] || continue
-    case "$kind" in
-      home) _doctor_check_managed_path "$path" "$HOME/$path" ;;
-      config) _doctor_check_managed_path ".config/$path" "${XDG_CONFIG_HOME:-$HOME/.config}/$path" ;;
-      data) _doctor_check_managed_path ".local/share/$path" "${XDG_DATA_HOME:-$HOME/.local/share}/$path" ;;
-      *)
-        fail_soft "Unknown Home Manager managed path kind '$kind' in $HM_MANAGED_PATHS_FILE"
-        errors=$((errors + 1))
-        ;;
-    esac
-  done < "$HM_MANAGED_PATHS_FILE"
+  _read_home_manager_managed_paths _doctor_check_managed_path_entry
+}
+
+_doctor_check_managed_path_entry() {
+  local kind="$1" path="$2"
+  case "$kind" in
+    home) _doctor_check_managed_path "$path" "$HOME/$path" ;;
+    config) _doctor_check_managed_path ".config/$path" "${XDG_CONFIG_HOME:-$HOME/.config}/$path" ;;
+    data) _doctor_check_managed_path ".local/share/$path" "${XDG_DATA_HOME:-$HOME/.local/share}/$path" ;;
+    *)
+      fail_soft "Unknown Home Manager managed path kind '$kind' in $HM_MANAGED_PATHS_FILE"
+      errors=$((errors + 1))
+      ;;
+  esac
 }
 
 _check_obsidian_config() {
