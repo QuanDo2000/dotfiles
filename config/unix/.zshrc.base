@@ -1,7 +1,5 @@
 # Base config (tracked in dotfiles repo). Sourced first by ~/.zshrc.
 
-# Environment variables
-export SHELL=$(command -v zsh)
 if [[ -t 0 ]]; then
   export GPG_TTY=$(tty)
   command -v gpg-connect-agent >/dev/null 2>&1 \

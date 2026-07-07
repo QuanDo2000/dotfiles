@@ -283,6 +283,7 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_contains "$home_text" "plugins = ["
   assert_contains "$home_text" "pkgs.zsh-fzf-tab"
   assert_not_contains "$home_text" "xdg.dataFile.\"zsh/plugins"
+  assert_not_contains "$zsh_text" "export SHELL="
   assert_not_contains "$zsh_text" "export EDITOR=nvim"
   assert_not_contains "$zsh_text" "alias vim=nvim"
   assert_not_contains "$zsh_text" "_zsh_plugins="
