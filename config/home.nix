@@ -36,7 +36,6 @@ in
     neovim
     fd
     ripgrep
-    lazygit
     gnupg
     nodejs
     ast-grep
@@ -126,6 +125,8 @@ in
     enable = true;
     settings = builtins.fromTOML (builtins.readFile ./shared/config/jj/config.toml);
   };
+
+  programs.lazygit.enable = true;
 
   programs.zsh = {
     enable = true;
