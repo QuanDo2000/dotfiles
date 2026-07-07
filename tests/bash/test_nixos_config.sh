@@ -124,6 +124,8 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   for pkg in nodejs ast-grep zig odin gleam erlang; do
     assert_contains "$common_packages" "$pkg"
   done
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "home.sessionVariables.GOPATH = \"\${homeDir}/.local/go\""
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "home.sessionPath = [ \"\${homeDir}/.local/go/bin\" ]"
   assert_not_contains "$common_packages" "neovim"
   assert_not_contains "$common_packages" "gnupg"
   assert_not_contains "$common_packages" "fd"
@@ -292,6 +294,8 @@ test_home_config_uses_home_manager_zsh_plugins() {
   assert_not_contains "$zsh_text" "/opt/nvim-linux-x86_64"
   assert_not_contains "$zsh_text" "HYPRSHOT_DIR"
   assert_not_contains "$zsh_text" "hyprshot"
+  assert_not_contains "$zsh_text" "GOPATH"
+  assert_not_contains "$zsh_text" "GOBIN"
   assert_not_contains "$zsh_text" "_zsh_plugins="
   assert_not_contains "$zsh_text" "zsh-autosuggestions.zsh"
   assert_not_contains "$zsh_text" "fast-syntax-highlighting.plugin.zsh"

@@ -102,13 +102,6 @@ export LESS_TERMCAP_so=$'\e[1;44;33m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;32m'
 
-# Go
-export GOPATH="$HOME/.local/go"
-if [[ -e "$GOPATH" ]]; then
-  export GOBIN=$GOPATH/bin
-  export PATH=$PATH:$GOBIN
-fi
-
 # nvm — lazy-loaded for speed. Sourcing nvm.sh eagerly costs ~750ms per shell
 # (nvm_auto resolves the default Node version on every startup). But node/npm/npx
 # and globally-installed CLIs must stay on PATH for NON-interactive consumers
