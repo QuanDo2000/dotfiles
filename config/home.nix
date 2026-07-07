@@ -63,10 +63,10 @@ in
     beamPackages.erlang
   ] ++ lib.optionals (!nixosSystem) [
     nerd-fonts.fira-code
+    openssh
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     fontconfig
     wl-clipboard
-    openssh
     obsidian
     obsidian-headless
     codex
