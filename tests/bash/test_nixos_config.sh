@@ -382,6 +382,7 @@ test_home_config_owns_existing_xdg_configs() {
   assert_not_contains "$(<"$REPO_DIR/config/shared/config/nvim/init.lua")" "bootstrap lazy.nvim"
   assert_not_contains "$lazy_text" "lazyrepo"
   assert_not_contains "$lazy_text" "git\", \"clone"
+  assert_not_contains "$lazy_text" "enabled = true, -- check for plugin updates"
   assert_contains "$lazy_text" "run dotfile update"
   assert_contains "$home_text" "xdg.configFile.\"fcitx5\""
   assert_contains "$home_text" "./unix/config/fcitx5"
