@@ -62,7 +62,6 @@ in
     beamPackages.erlang
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     fontconfig
-    nerd-fonts.fira-code
     wl-clipboard
     openssh
     obsidian

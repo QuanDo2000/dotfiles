@@ -143,6 +143,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_not_contains "$common_packages" "zoxide"
   assert_not_contains "$common_packages" "starship"
   assert_not_contains "$common_packages" "nodejs"
+  assert_not_contains "$linux_packages" "nerd-fonts.fira-code"
   for pkg in lua5_1 luarocks tree-sitter unzip; do
     assert_not_contains "$common_packages" "$pkg"
     assert_not_contains "$linux_packages" "$pkg"
