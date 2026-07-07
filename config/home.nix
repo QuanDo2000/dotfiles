@@ -74,9 +74,9 @@ in
     unzip
     obsidian
     obsidian-headless
-  ]
-  ++ lib.optional (pkgs ? codex) pkgs.codex
-  ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
+    codex
+    codebase-memory-mcp
+  ];
 
   home.file = obsidianFiles // {
     ".ssh/config" = forceSource ./shared/.ssh/config;

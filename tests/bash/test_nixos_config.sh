@@ -96,8 +96,10 @@ test_home_config_uses_program_home_manager_cli() {
   assert_contains "$home_text" "ripgrep"
   assert_contains "$home_text" "obsidian"
   assert_contains "$home_text" "obsidian-headless"
-  assert_contains "$home_text" "lib.optional (pkgs ? codex) pkgs.codex"
-  assert_contains "$home_text" "lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp"
+  assert_contains "$home_text" "    codex"
+  assert_contains "$home_text" "    codebase-memory-mcp"
+  assert_not_contains "$home_text" "lib.optional (pkgs ? codex)"
+  assert_not_contains "$home_text" "lib.optional (pkgs ? codebase-memory-mcp)"
 }
 
 test_home_config_manages_obsidian_sync_service() {
