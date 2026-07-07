@@ -51,6 +51,7 @@ function setup_dotfiles {
   doctor
   update_repo
   install_packages
+  DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
   success "Done!"
 }
 
