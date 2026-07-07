@@ -250,6 +250,21 @@ test_apply_obsidian_config_dry_run_does_not_copy() {
   fi
 }
 
+test_setup_obsidian_config_check_uses_fast_doctor() {
+  doctor() {
+    [[ "${DOTFILE_DOCTOR_SKIP_NIX_EVAL:-}" == "true" ]] \
+      || echo "expected fast doctor" >&2
+  }
+
+  local output exit_code=0
+  output=$(setup_obsidian_config 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: setup_obsidian_config check should run fast doctor ($output)" >> "$ERROR_FILE"
+  fi
+  assert_not_contains "$output" "expected fast doctor"
+}
+
 test_start_service_dry_run_does_not_call_systemctl() {
   DRY=true
   mock_cmd systemctl 'echo "unexpected systemctl call: $*" >&2; exit 99'

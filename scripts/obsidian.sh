@@ -128,7 +128,7 @@ function setup_obsidian_config {
   if [[ "$FORCE" == "true" ]]; then
     _obsidian_apply_config "$OBSIDIAN_CONFIG_VAULT"
   else
-    doctor
+    DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
   fi
 }
 
