@@ -102,7 +102,7 @@ Options:
   -h, --help  Show this help message
 ```
 
-Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` sources the tracked `~/.zshrc.base`.
+Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` is generated from `config/unix/.zshrc.base`.
 
 Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
 
