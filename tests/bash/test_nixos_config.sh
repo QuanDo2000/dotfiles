@@ -176,12 +176,12 @@ test_nixos_system_packages_leave_user_tools_to_home_manager() {
   assert_contains "$(<"$REPO_DIR/config/nixos/configuration.nix")" "fonts.packages = with pkgs; [ nerd-fonts.fira-code ];"
   assert_contains "$packages_text" "git"
   assert_contains "$packages_text" "jq"
-  assert_contains "$packages_text" "zsh"
   assert_contains "$packages_text" "gcc"
   assert_contains "$packages_text" "waybar"
   assert_contains "$packages_text" "google-chrome"
   assert_contains "$packages_text" "ghostty"
   assert_not_contains "$packages_text" "lib.optional (pkgs ? ghostty)"
+  assert_not_contains "$packages_text" "    zsh"
 
   for pkg in tmux neovim fzf fd ripgrep lazygit jujutsu starship zoxide gnupg wl-clipboard openssh unzip fontconfig tree-sitter nodejs lua5_1 luarocks obsidian; do
     assert_not_contains "$packages_text" "      $pkg"

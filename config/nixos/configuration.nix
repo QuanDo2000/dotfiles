@@ -105,7 +105,6 @@ in
   environment.systemPackages = with pkgs; [
     git
     jq
-    zsh
     gcc
     waybar
     google-chrome    # Browser + OAuth sign-in
