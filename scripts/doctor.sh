@@ -3,7 +3,6 @@ set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
 REQUIRED_SYMLINKS=(
-  .zshrc.base
   .zshrc
 )
 

@@ -54,8 +54,6 @@ in
   ++ lib.optional (pkgs ? codex) pkgs.codex
   ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
 
-  home.file.".zshrc.base" = forceSource ./unix/.zshrc.base;
-
   home.file.".ssh/config" = forceSource ./shared/.ssh/config;
 
   home.file.".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
@@ -150,9 +148,7 @@ in
     profileExtra = ''
       [ -e "/opt/homebrew/bin/brew" ] && eval "$(/opt/homebrew/bin/brew shellenv)"
     '';
-    initContent = lib.mkOrder 550 ''
-      [ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
-    '';
+    initContent = lib.mkOrder 550 (builtins.readFile ./unix/.zshrc.base);
     completionInit = ''
       autoload -Uz compinit
       _zcompdump="''${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"

@@ -14,7 +14,7 @@ teardown() {
 link_core_dotfiles() {
   mkdir -p "$HOME/.local/bin"
   local f src
-  for f in .zshrc .zshrc.base .tmux.conf .gitconfig; do
+  for f in .zshrc .tmux.conf .gitconfig; do
     case "$f" in
       .zshrc) src="$REPO_DIR/config/unix/.zshrc.base" ;;
       .gitconfig) src="$REPO_DIR/config/shared/$f" ;;
