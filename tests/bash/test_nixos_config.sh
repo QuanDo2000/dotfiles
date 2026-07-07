@@ -209,8 +209,8 @@ test_home_config_owns_remaining_dotfiles() {
   assert_not_contains "$home_text" "home.file.\".vimrc\""
   assert_not_contains "$home_text" "forceSource ./shared/.vimrc"
   assert_not_contains "$home_text" "home.file.\".tmux.conf\""
-  assert_contains "$home_text" "home.file.\".zprofile\""
-  assert_contains "$home_text" "forceSource ./unix/.zprofile"
+  assert_not_contains "$home_text" "home.file.\".zprofile\""
+  assert_not_contains "$home_text" "forceSource ./unix/.zprofile"
   assert_contains "$home_text" "home.file.\".zshrc.base\""
   assert_contains "$home_text" "forceSource ./unix/.zshrc.base"
   assert_not_contains "$home_text" "home.file.\".zshrc\""
@@ -265,6 +265,8 @@ test_home_config_uses_home_manager_zsh_plugins() {
 
   assert_contains "$home_text" "programs.zsh = {"
   assert_contains "$home_text" "enable = true"
+  assert_contains "$home_text" "profileExtra = ''"
+  assert_contains "$home_text" "/opt/homebrew/bin/brew"
   assert_contains "$home_text" "enableCompletion = true"
   assert_contains "$home_text" "completionInit = ''"
   assert_contains "$home_text" "_zcompdump="
@@ -363,6 +365,7 @@ test_doctor_paths_cover_home_manager_managed_paths() {
   assert_not_contains "$doctor_text" "_read_home_manager_managed_paths()"
   assert_not_contains "$doctor_text" "  .gitconfig"
   assert_not_contains "$doctor_text" "  .vimrc"
+  assert_not_contains "$doctor_text" "  .zprofile"
   assert_not_contains "$doctor_text" "REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)"
   assert_not_contains "$doctor_text" "_doctor_check_managed_paths"
   assert_not_contains "$home_text" 'home.file.".codex/config.toml"'

@@ -190,7 +190,7 @@ test_setup_dotfiles_dry_run_mac() {
 test_dotfile_packages_command_mac() {
   mkdir -p "$HOME/.local/bin"
   local f src
-  for f in .zshrc .zshrc.base .tmux.conf .gitconfig .zprofile; do
+  for f in .zshrc .zshrc.base .tmux.conf .gitconfig; do
     case "$f" in
       .zshrc) src="$REPO_DIR/config/unix/.zshrc.base" ;;
       .gitconfig) src="$REPO_DIR/config/shared/$f" ;;

@@ -54,8 +54,6 @@ in
   ++ lib.optional (pkgs ? codex) pkgs.codex
   ++ lib.optional (pkgs ? codebase-memory-mcp) pkgs.codebase-memory-mcp;
 
-  home.file.".zprofile" = forceSource ./unix/.zprofile;
-
   home.file.".zshrc.base" = forceSource ./unix/.zshrc.base;
 
   home.file.".ssh/config" = forceSource ./shared/.ssh/config;
@@ -149,6 +147,9 @@ in
       share = true;
     };
     setOptions = [ "INC_APPEND_HISTORY" "HIST_VERIFY" ];
+    profileExtra = ''
+      [ -e "/opt/homebrew/bin/brew" ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+    '';
     initContent = lib.mkOrder 550 ''
       [ -e "$HOME/.zshrc.base" ] && source "$HOME/.zshrc.base"
     '';
