@@ -215,7 +215,7 @@ test_home_config_manages_gitconfig_and_starship_config() {
   assert_contains "$home_text" "tag.gpgsign = true"
   assert_contains "$home_text" "gpg.program = \"gpg\""
   assert_contains "$home_text" "path = \"~/.gitconfig.local\""
-  assert_contains "$home_text" "path = \"~/.gitconfig.windows\""
+  assert_not_contains "$home_text" "path = \"~/.gitconfig.windows\""
   assert_not_contains "$home_text" "home.file.\".gitconfig\""
   assert_not_contains "$home_text" "forceSource ./shared/.gitconfig"
   assert_contains "$home_text" "force = true"

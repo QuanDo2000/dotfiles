@@ -135,7 +135,6 @@ in
     };
     includes = [
       { path = "~/.gitconfig.local"; }
-      { path = "~/.gitconfig.windows"; }
     ];
   };
 
