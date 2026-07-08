@@ -17,3 +17,11 @@ test_ci_runs_flake_check() {
 
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
 }
+
+test_ci_pins_nix_installer_action() {
+  local workflow
+  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+
+  assert_contains "$workflow" "DeterminateSystems/nix-installer-action@v"
+  assert_not_contains "$workflow" "DeterminateSystems/nix-installer-action@main"
+}
