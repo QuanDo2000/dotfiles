@@ -14,7 +14,7 @@ teardown() {
 
 nix() {
   if [[ "${1:-}" == "eval" && "${2:-}" == "--raw" && "${3:-}" == "--file" && "${4:-}" == "$DOTFILES_DIR/config/host.nix" && "${5:-}" == "username" ]]; then
-    printf 'testuser@linux\n'
+    printf 'testuser\n'
     return 0
   fi
   if [[ "${1:-}" == "eval" && "${2:-}" == "--raw" && "${3:-}" == "--file" && "${4:-}" == "$DOTFILES_DIR/config/host.nix" && "${5:-}" == "hostName" ]]; then
@@ -62,6 +62,7 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   assert_contains "$output" "sudo pacman -S --needed --noconfirm"
   assert_contains "$output" "install-lix"
   assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_not_contains "$output" "@linux@linux"
 
   unset -f command sudo _install_lix _load_nix_profile
 }
