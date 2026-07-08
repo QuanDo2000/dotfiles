@@ -123,6 +123,10 @@ function LinkFile($source, $destination) {
         }
     }
 
+    $parent = Split-Path $destination -Parent
+    if ($parent -and -not (Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
     New-Item -ItemType SymbolicLink -Path $destination -Target $source | Out-Null
     Success "Linked $source to $destination"
 }
@@ -475,7 +479,8 @@ function Verify {
             if (-not $diff) {
                 Success "$($file.Dest) matches source"
             } else {
-                Info "$($file.Dest) exists but differs from source"
+                FailSoft "$($file.Dest) exists but differs from source"
+                $errors++
             }
         } else {
             FailSoft "$($file.Dest) not found"

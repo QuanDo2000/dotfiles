@@ -49,6 +49,26 @@ function test_verify_checks_starship_config {
     Assert-Contains $output 'starship.toml'
 }
 
+function test_verify_fails_when_tracked_config_differs {
+    Set-CommandMock 'Get-Command' {
+        [pscustomobject]@{ Source = 'C:\fake\tool.exe' }
+    }
+    Set-CommandMock 'Get-Module' {
+        [pscustomobject]@{ Name = 'FakeModule' }
+    }
+    New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE '.config') -Force | Out-Null
+    'different git' | Set-Content (Join-Path $env:USERPROFILE '.gitconfig')
+    'different starship' | Set-Content (Join-Path $env:USERPROFILE '.config\starship.toml')
+    $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
+    New-Item -ItemType Directory -Path (Join-Path $env:LOCALAPPDATA 'nvim') -Force | Out-Null
+    'init' | Set-Content (Join-Path $env:LOCALAPPDATA 'nvim\init.lua')
+
+    $output = Verify 6>&1 | Out-String
+
+    Assert-Contains $output 'differs from source'
+    Assert-True $script:VerifyFailed 'verify should fail when tracked config differs'
+}
+
 function test_verify_reports_issues_when_tools_absent {
     Set-CommandMock 'Get-Command' { return $null }
     Set-CommandMock 'Get-Module' { return $null }

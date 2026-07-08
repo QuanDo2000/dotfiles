@@ -11,7 +11,7 @@ _check_symlink() {
   if [ -L "$target" ]; then
     local link_target
     link_target="$(resolve_symlink "$target")"
-    if [[ "$link_target" == "$DOTFILES_DIR"* ]] \
+    if [[ "$link_target" == "$DOTFILES_DIR/"* ]] \
       || { is_home_manager_platform "$platform" && [[ "$link_target" == /nix/store/* ]]; }; then
       success "$name -> $link_target"
     else

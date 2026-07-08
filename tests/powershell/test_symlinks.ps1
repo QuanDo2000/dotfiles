@@ -54,6 +54,22 @@ function test_linkfile_creates_symlink_when_privileged {
     Assert-True ($item -and $item.LinkType -eq 'SymbolicLink') 'dst should be a symlink'
 }
 
+function test_linkfile_creates_missing_parent_directory {
+    $src = Join-Path $env:USERPROFILE 'src.txt'
+    $dst = Join-Path $env:USERPROFILE 'missing\parent\dst.txt'
+    'hello' | Set-Content -LiteralPath $src
+
+    try {
+        LinkFile $src $dst
+    } catch {
+        if ($_.Exception.Message -match 'privilege|Administrator') { return }
+        throw
+    }
+
+    $item = Get-Item -LiteralPath $dst -Force -ErrorAction SilentlyContinue
+    Assert-True ($item -and $item.LinkType -eq 'SymbolicLink') 'dst should be a symlink when parent was missing'
+}
+
 function test_setupsymlinks_dry_run_completes {
     # Dry run drives every branch (incl. the AI config + skills loops) without
     # touching the filesystem — LinkFile/LinkDir return early when $Dry.

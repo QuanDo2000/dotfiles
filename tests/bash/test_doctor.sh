@@ -66,6 +66,20 @@ test_doctor_symlink_wrong_target() {
   assert_contains "$output" "expected"
 }
 
+test_doctor_rejects_prefix_sibling_checkout() {
+  mkdir -p "$DOTFILES_DIR" "${DOTFILES_DIR}-old"
+  echo "content" > "${DOTFILES_DIR}-old/.zshrc"
+  echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
+  ln -s "${DOTFILES_DIR}-old/.zshrc" "$HOME/.zshrc"
+  ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
+
+  local output
+  output=$(doctor 2>&1) || true
+
+  assert_contains "$output" "expected"
+  assert_not_contains "$output" "All checks passed"
+}
+
 test_doctor_requires_dotfile_command_link() {
   mkdir -p "$DOTFILES_DIR"
   echo "content" > "$DOTFILES_DIR/.zshrc"
