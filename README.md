@@ -149,11 +149,14 @@ command. On NixOS it wraps:
 sudo nixos-rebuild switch --upgrade --flake ~/dotfiles#${hostName}
 ```
 
-On macOS it wraps:
+On macOS it uses existing `darwin-rebuild` when available:
 
 ```bash
 sudo HOME=/var/root darwin-rebuild switch --flake ~/dotfiles#mac
 ```
+
+If `darwin-rebuild` is not installed yet, it bootstraps through the pinned
+`~/dotfiles#darwin-rebuild` app.
 
 The `dotfile` command itself is installed by Home Manager on NixOS/macOS; use
 `./dotfile` from the repo until the first rebuild has switched successfully.
