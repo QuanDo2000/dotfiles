@@ -274,6 +274,7 @@ function InstallCodex {
         try {
             $env:CODEX_NON_INTERACTIVE = "1"
             Invoke-RestMethod https://chatgpt.com/codex/install.ps1 | Invoke-Expression
+            if ($LASTEXITCODE -ne 0) { throw "Codex CLI install failed" }
         } finally {
             if ($null -eq $oldNonInteractive) {
                 Remove-Item Env:CODEX_NON_INTERACTIVE -ErrorAction SilentlyContinue
@@ -503,8 +504,8 @@ function Verify {
 
 function SetupDotfiles {
     Info "Setting up dotfiles..."
-    InstallPackages
     UpdateRepo
+    InstallPackages
     InstallExtras
     InstallAi
     SetupSymlinks

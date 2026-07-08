@@ -14,8 +14,8 @@ function TestTeardown {
 
 function test_update_packages_dry_run_does_not_call_winget {
     $script:Dry = $true
-    $called = $false
-    Set-CommandMock 'winget' { $script:called = $true }
+    $script:Called = $false
+    Set-CommandMock 'winget' { $script:Called = $true }
 
     try {
         $output = Update-Packages 6>&1 | Out-String
@@ -24,7 +24,7 @@ function test_update_packages_dry_run_does_not_call_winget {
     }
 
     Assert-Contains $output 'Would run: winget upgrade --all'
-    Assert-False $called 'winget should not be invoked in dry run'
+    Assert-False $script:Called 'winget should not be invoked in dry run'
 }
 
 function test_update_packages_fails_when_winget_upgrade_fails {
@@ -225,4 +225,26 @@ function test_installai_fails_when_codebase_memory_install_fails {
     }
 
     Assert-True $failed 'InstallAi should fail when codebase-memory-mcp install script fails'
+}
+
+function test_installcodex_fails_when_installer_exits_nonzero {
+    $script:Dry = $false
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'codex') { return $null }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'Invoke-RestMethod' { '$global:LASTEXITCODE = 1' }
+
+    $failed = $false
+    try {
+        InstallCodex 6>&1 | Out-Null
+    } catch {
+        $failed = $true
+    } finally {
+        Clear-CommandMock 'Invoke-RestMethod'
+        Clear-CommandMock 'Get-Command'
+    }
+
+    Assert-True $failed 'InstallCodex should fail when installer exits nonzero'
 }

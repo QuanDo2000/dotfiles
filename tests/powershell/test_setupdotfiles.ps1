@@ -41,6 +41,33 @@ function test_setupdotfiles_dry_run_completes_without_errors {
     Assert-True ($null -eq $err) "SetupDotfiles should not throw in dry run, got: $err"
 }
 
+function test_setupdotfiles_updates_repo_before_installing_packages {
+    $script:Calls = @()
+    $originalInstallPackages = (Get-Command InstallPackages).ScriptBlock
+    $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
+    $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
+    $originalInstallAi = (Get-Command InstallAi).ScriptBlock
+    $originalSetupSymlinks = (Get-Command SetupSymlinks).ScriptBlock
+    Set-Item -Path function:global:InstallPackages -Value { $script:Calls += 'InstallPackages' }
+    Set-Item -Path function:global:UpdateRepo -Value { $script:Calls += 'UpdateRepo' }
+    Set-Item -Path function:global:InstallExtras -Value { $script:Calls += 'InstallExtras' }
+    Set-Item -Path function:global:InstallAi -Value { $script:Calls += 'InstallAi' }
+    Set-Item -Path function:global:SetupSymlinks -Value { $script:Calls += 'SetupSymlinks' }
+
+    try {
+        SetupDotfiles
+    } finally {
+        Set-Item -Path function:global:InstallPackages -Value $originalInstallPackages
+        Set-Item -Path function:global:UpdateRepo -Value $originalUpdateRepo
+        Set-Item -Path function:global:InstallExtras -Value $originalInstallExtras
+        Set-Item -Path function:global:InstallAi -Value $originalInstallAi
+        Set-Item -Path function:global:SetupSymlinks -Value $originalSetupSymlinks
+    }
+
+    Assert-Equals 'UpdateRepo' $script:Calls[0]
+    Assert-Equals 'InstallPackages' $script:Calls[1]
+}
+
 function test_setupsymlinks_dry_run_creates_no_symlinks {
     # Dry mode: each LinkFile/LinkDir bails before creating anything.
     SetupSymlinks
