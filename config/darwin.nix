@@ -16,10 +16,6 @@ in
   };
   programs.zsh.enable = true;
 
-  environment.systemPackages = with pkgs; [
-    bash
-  ];
-
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.users.${machine.username} = import ./home.nix;
