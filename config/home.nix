@@ -24,11 +24,20 @@ let
     "core-plugins.json"
     "daily-notes.json"
     "hotkeys.json"
+    "plugins/calendar/data.json"
+    "plugins/dataview/data.json"
+    "plugins/obsidian-linter/data.json"
+    "plugins/obsidian-minimal-settings/data.json"
+    "plugins/obsidian-style-settings/data.json"
+    "plugins/obsidian-tasks-plugin/data.json"
+    "plugins/obsidian-vimrc-support/data.json"
+    "plugins/periodic-notes/data.json"
+    "plugins/table-editor-obsidian/data.json"
     "templates.json"
   ];
   obsidianFiles = lib.genAttrs
     (map (name: "documents/Sync/.obsidian/${name}") obsidianSettings)
-    (path: forceSource ./shared/obsidian/${builtins.baseNameOf path});
+    (path: forceSource (./shared/obsidian + "/${lib.removePrefix "documents/Sync/.obsidian/" path}"));
   obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
     set -euo pipefail
     export PATH="${lib.makeBinPath [ pkgs.obsidian-headless pkgs.nodejs ]}:$PATH"
