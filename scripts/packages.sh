@@ -129,9 +129,14 @@ function _run_nix_managed_switch {
 }
 
 function _darwin_rebuild_switch {
-  _ensure_nix
   local target
   target="$(_darwin_flake_target)"
+  if [[ "$DRY" == "true" ]]; then
+    _dry_run_nix_managed_switch sudo HOME=/var/root darwin-rebuild switch --flake "$target"
+    return
+  fi
+
+  _ensure_nix
   if command -v darwin-rebuild >/dev/null 2>&1; then
     _run_nix_managed_switch "darwin-rebuild switch failed" \
       sudo HOME=/var/root darwin-rebuild switch --flake "$target"
@@ -143,19 +148,13 @@ function _darwin_rebuild_switch {
 
 function update_mac {
   info "Updating packages for Mac..."
-  [[ "$DRY" == "true" ]] && _dry_run_nix_managed_switch sudo HOME=/var/root darwin-rebuild switch --flake "$(_darwin_flake_target)"
-  if [[ "$DRY" == "false" ]]; then
-    _darwin_rebuild_switch
-  fi
+  _darwin_rebuild_switch
   success "Finished update for Mac"
 }
 
 function install_mac {
   info "Installing packages and programs for Mac..."
-  [[ "$DRY" == "true" ]] && _dry_run_nix_managed_switch sudo HOME=/var/root darwin-rebuild switch --flake "$(_darwin_flake_target)"
-  if [[ "$DRY" == "false" ]]; then
-    _darwin_rebuild_switch
-  fi
+  _darwin_rebuild_switch
   success "Finished install for Mac"
 }
 
