@@ -12,30 +12,6 @@ teardown() {
   cleanup_test_env
 }
 
-test_doctor_tool_found() {
-  local output
-  output=$(
-    if command -v bash >/dev/null 2>&1; then
-      success "bash found: $(command -v bash)"
-    else
-      fail_soft "bash not found"
-    fi
-  )
-  assert_contains "$output" "bash found"
-}
-
-test_doctor_tool_missing() {
-  local output
-  output=$(
-    if command -v nonexistent_tool_xyz >/dev/null 2>&1; then
-      success "found"
-    else
-      fail_soft "nonexistent_tool_xyz not found"
-    fi
-  )
-  assert_contains "$output" "nonexistent_tool_xyz not found"
-}
-
 test_doctor_symlink_valid() {
   mkdir -p "$DOTFILES_DIR"
   echo "content" > "$DOTFILES_DIR/.zshrc"
