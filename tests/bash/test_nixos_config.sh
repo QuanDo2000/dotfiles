@@ -273,7 +273,7 @@ test_darwin_config_manages_core_packages() {
   assert_contains "$darwin_text" "system.primaryUser = machine.username"
 }
 
-test_darwin_system_packages_leave_user_tools_to_home_manager() {
+test_darwin_does_not_use_raw_system_packages() {
   local darwin_text
   darwin_text="$(<"$REPO_DIR/config/darwin.nix")"
 
