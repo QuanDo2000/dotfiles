@@ -26,10 +26,9 @@ let
     "hotkeys.json"
     "templates.json"
   ];
-  obsidianFiles = builtins.listToAttrs (map (name: {
-    name = "documents/Sync/.obsidian/${name}";
-    value = forceSource ./shared/obsidian/${name};
-  }) obsidianSettings);
+  obsidianFiles = lib.genAttrs
+    (map (name: "documents/Sync/.obsidian/${name}") obsidianSettings)
+    (path: forceSource ./shared/obsidian/${builtins.baseNameOf path});
   obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
     set -euo pipefail
     export PATH="${lib.makeBinPath [ pkgs.obsidian-headless pkgs.nodejs ]}:$PATH"
