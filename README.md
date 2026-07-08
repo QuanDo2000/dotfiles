@@ -52,8 +52,9 @@ git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
 ```
 
 The Linux Home Manager output is `${username}@linux`, where `username` comes
-from `config/host.nix`. `dotfile packages` installs Lix/Nix if missing and runs
-the pinned `~/dotfiles#home-manager` app.
+from `config/host.nix`. `dotfile packages` installs Lix/Nix if missing, uses
+an existing `home-manager` when available, and falls back to the pinned
+`~/dotfiles#home-manager` app for bootstrap.
 
 ### Windows
 
