@@ -1,8 +1,4 @@
 {
-    "statusLine": {
-        "type": "command",
-        "command": "bash \"/home/quando/.claude/plugins/cache/ponytail/ponytail/4.7.0/hooks/ponytail-statusline.sh\""
-    },
     "enabledPlugins": {
         "superpowers@claude-plugins-official": true,
         "ponytail@ponytail": true,

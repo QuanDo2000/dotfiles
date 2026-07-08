@@ -54,6 +54,21 @@ test_help_exits_zero() {
   assert_not_contains "$output" "obsidian-config"
 }
 
+test_dotfiles_dir_override_controls_unix_entrypoint() {
+  local launcher="$TEST_HOME/dotfile-copy"
+  cp "$DOTFILE_CMD" "$launcher"
+
+  local output exit_code
+  set +e
+  output=$(DOTFILES_DIR="$REPO_DIR" bash "$launcher" --help 2>&1)
+  exit_code=$?
+  set -e
+
+  assert_equals "0" "$exit_code"
+  assert_contains "$output" "Usage"
+  assert_not_contains "$output" "scripts/utils.sh"
+}
+
 test_doctor_command_runs_with_health_checks() {
   mock_uname Linux
   local osrel="$TEST_HOME/os-release"

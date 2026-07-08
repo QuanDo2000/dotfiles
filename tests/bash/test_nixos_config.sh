@@ -293,6 +293,15 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "pkgs.stdenv.isDarwin"
 }
 
+test_claude_settings_do_not_track_machine_cache_paths() {
+  local claude_text
+  claude_text="$(<"$REPO_DIR/config/shared/ai/claude/settings.json")"
+
+  assert_not_contains "$claude_text" "/home/quando"
+  assert_not_contains "$claude_text" "/Users/quando"
+  assert_not_contains "$claude_text" "plugins/cache"
+}
+
 test_darwin_config_manages_core_packages() {
   local darwin_text
   darwin_text="$(<"$REPO_DIR/config/darwin.nix")"
