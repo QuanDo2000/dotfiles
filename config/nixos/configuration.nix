@@ -30,7 +30,6 @@ in
   i18n.defaultLocale = "en_US.UTF-8";
   networking.hostName = machine.hostName;
   networking.networkmanager.enable = true;
-  networking.firewall.allowedTCPPorts = [ 22 ];
 
   services.openssh = {
     enable = true;

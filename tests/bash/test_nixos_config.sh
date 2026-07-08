@@ -58,6 +58,15 @@ test_nixos_uses_tracked_host_config() {
   assert_not_contains "$configuration_text" "/etc/nixos/machine.nix"
 }
 
+test_nixos_opens_ssh_firewall_through_openssh() {
+  local configuration_text
+  configuration_text="$(<"$REPO_DIR/config/nixos/configuration.nix")"
+
+  assert_contains "$configuration_text" "services.openssh = {"
+  assert_contains "$configuration_text" "openFirewall = true"
+  assert_not_contains "$configuration_text" "networking.firewall.allowedTCPPorts = [ 22 ];"
+}
+
 test_darwin_uses_tracked_host_username() {
   local darwin_text
   darwin_text="$(<"$REPO_DIR/config/darwin.nix")"
