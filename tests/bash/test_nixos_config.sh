@@ -271,7 +271,6 @@ test_darwin_config_manages_core_packages() {
   assert_contains "$darwin_text" "nixpkgs.config.allowUnfree = true"
   assert_contains "$darwin_text" "environment.systemPackages"
   assert_contains "$darwin_text" "bash"
-  assert_contains "$darwin_text" "git"
   assert_contains "$darwin_text" "programs.zsh.enable = true"
   assert_contains "$darwin_text" "system.primaryUser = machine.username"
 }
@@ -281,7 +280,7 @@ test_darwin_system_packages_leave_user_tools_to_home_manager() {
   packages_text="$(sed -n '/environment.systemPackages =/,/\];/p' "$REPO_DIR/config/darwin.nix")"
 
   assert_contains "$packages_text" "bash"
-  assert_contains "$packages_text" "git"
+  assert_not_contains "$packages_text" "    git"
   for pkg in tmux neovim fzf fd ripgrep gnupg lazygit zoxide jujutsu starship nodejs ast-grep; do
     assert_not_contains "$packages_text" "    $pkg"
   done

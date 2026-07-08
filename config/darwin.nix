@@ -18,7 +18,6 @@ in
 
   environment.systemPackages = with pkgs; [
     bash
-    git
   ];
 
   home-manager.useGlobalPkgs = true;
