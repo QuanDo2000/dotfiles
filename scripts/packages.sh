@@ -112,7 +112,10 @@ function _darwin_flake_target {
 }
 
 function _nixos_flake_target {
-  echo "$DOTFILES_DIR#$(_host_config_value hostName)"
+  local host_name
+  host_name="$(_host_config_value hostName)" \
+    || fail "Failed to resolve NixOS host name"
+  echo "$DOTFILES_DIR#$host_name"
 }
 
 function _dry_run_nix_managed_switch {

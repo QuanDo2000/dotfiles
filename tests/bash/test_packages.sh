@@ -183,6 +183,23 @@ test_update_nixos_dry_run() {
   assert_contains "$output" "sudo nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#testhost"
 }
 
+test_nixos_flake_target_fails_when_hostname_missing() {
+  nix() {
+    if [[ "${1:-}" == "eval" && "${2:-}" == "--raw" && "${3:-}" == "--file" && "${4:-}" == "$DOTFILES_DIR/config/host.nix" && "${5:-}" == "hostName" ]]; then
+      return 1
+    fi
+  }
+
+  local output exit_code=0
+  output=$(_nixos_flake_target 2>&1) || exit_code=$?
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "Failed to resolve NixOS host name"
+  assert_not_contains "$output" "$DOTFILES_DIR#"
+
+  unset -f nix
+}
+
 test_install_nixos_uses_flake_switch() {
   local calls="$TEST_TMPDIR/sudo.log"
   sudo() { printf '%s\n' "$*" >> "$calls"; }
