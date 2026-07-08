@@ -29,7 +29,11 @@ function test_update_packages_dry_run_does_not_call_winget {
 
 function test_update_packages_fails_when_winget_upgrade_fails {
     $script:Dry = $false
-    Set-CommandMock 'winget' { $global:LASTEXITCODE = 1 }
+    $script:WingetCalls = @()
+    Set-CommandMock 'winget' {
+        $script:WingetCalls += ,($args -join ' ')
+        $global:LASTEXITCODE = 1
+    }
     $originalInstallAi = (Get-Command InstallAi).ScriptBlock
     Set-Item -Path function:global:InstallAi -Value { }
 
@@ -44,6 +48,7 @@ function test_update_packages_fails_when_winget_upgrade_fails {
     }
 
     Assert-True $failed 'Update-Packages should fail when winget upgrade fails'
+    Assert-Contains $script:WingetCalls[0] '--accept-source-agreements'
 }
 
 # ---------------------------------------------------------------------------
@@ -101,7 +106,9 @@ function test_installpackages_installs_missing_winget_packages_individually {
 
     Assert-Equals 2 $script:InstallCalls.Count
     Assert-Contains $script:InstallCalls[0] 'install --id Git.Git --exact'
+    Assert-Contains $script:InstallCalls[0] '--accept-source-agreements'
     Assert-Contains $script:InstallCalls[1] 'install --id Neovim.Neovim --exact'
+    Assert-Contains $script:InstallCalls[1] '--accept-source-agreements'
 }
 
 function test_installfont_fails_when_scoop_install_fails {

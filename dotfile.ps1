@@ -214,14 +214,14 @@ function InstallPackages {
     if ($missing.Count -gt 0) {
         Info "Installing $($missing.Count) missing winget package(s): $($missing -join ', ')"
         foreach ($pkg in $missing) {
-            Invoke-NativeChecked "winget install $pkg failed" { winget install --id $pkg --exact --disable-interactivity --accept-package-agreements }
+            Invoke-NativeChecked "winget install $pkg failed" { winget install --id $pkg --exact --disable-interactivity --accept-package-agreements --accept-source-agreements }
         }
     } else {
         Success "All winget packages already installed"
     }
 
     Info "Upgrading all winget packages..."
-    Invoke-NativeChecked "winget upgrade failed" { winget upgrade --all --disable-interactivity --accept-package-agreements }
+    Invoke-NativeChecked "winget upgrade failed" { winget upgrade --all --disable-interactivity --accept-package-agreements --accept-source-agreements }
 
     Success "Finished installing packages"
 }
@@ -321,7 +321,7 @@ function Update-Packages {
     if ($script:Dry) {
         Success "Would run: winget upgrade --all"
     } else {
-        Invoke-NativeChecked "winget upgrade failed" { winget upgrade --all --disable-interactivity --accept-package-agreements }
+        Invoke-NativeChecked "winget upgrade failed" { winget upgrade --all --disable-interactivity --accept-package-agreements --accept-source-agreements }
     }
     InstallAi -Update
     Success "Finished updating packages"
