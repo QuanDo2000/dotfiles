@@ -134,6 +134,7 @@ test_agents_describes_windows_core_public_commands() {
   local agents_text
   agents_text="$(<"$REPO_DIR/AGENTS.md")"
   assert_contains "$agents_text" 'Windows keeps its own `verify` command'
+  assert_contains "$agents_text" "existing nix-darwin or pinned nix-darwin bootstrap"
   assert_not_contains "$agents_text" "Same subcommand structure"
 }
 
