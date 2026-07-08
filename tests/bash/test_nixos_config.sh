@@ -53,7 +53,7 @@ test_nixos_uses_tracked_host_config() {
   assert_contains "$host_text" 'hostName = "nixos"'
   assert_contains "$host_text" 'timeZone = "America/Los_Angeles"'
   assert_contains "$host_text" 'stateVersion = "26.05"'
-  assert_contains "$flake_text" 'nixosConfigurations = {'
+  assert_contains "$flake_text" 'nixosConfigurations."${machine.hostName}"'
   assert_contains "$configuration_text" "import ../host.nix"
   assert_not_contains "$configuration_text" "/etc/nixos/machine.nix"
 }
