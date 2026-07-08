@@ -195,10 +195,12 @@ function _nixos_rebuild_switch {
     fail_message="nixos-rebuild switch --upgrade failed"
   fi
 
-  [[ "$DRY" == "true" ]] && _dry_run_nix_managed_switch sudo nixos-rebuild "${args[@]}" --flake "$target"
-  if [[ "$DRY" == "false" ]]; then
-    _run_nix_managed_switch "$fail_message" sudo nixos-rebuild "${args[@]}" --flake "$target"
+  if [[ "$DRY" == "true" ]]; then
+    _dry_run_nix_managed_switch sudo nixos-rebuild "${args[@]}" --flake "$target"
+    return
   fi
+
+  _run_nix_managed_switch "$fail_message" sudo nixos-rebuild "${args[@]}" --flake "$target"
 }
 
 # Reprovision NixOS from this repo's flake. System packages come from the
