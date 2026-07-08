@@ -419,7 +419,7 @@ test_home_config_owns_existing_xdg_configs() {
 }
 
 test_doctor_paths_cover_home_manager_managed_paths() {
-  local doctor_text home_text manifest_text path
+  local doctor_text home_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
   doctor_text="$(<"$REPO_DIR/scripts/doctor.sh")"
   if [[ -e "$REPO_DIR/config/home-manager-managed-paths" ]]; then
