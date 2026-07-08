@@ -7,9 +7,7 @@ DEBIAN_PACKAGES=(
 
 function update_debian {
   info "Updating packages for Debian..."
-  if [[ "$DRY" == "false" ]]; then
-    _home_manager_switch
-  fi
+  _home_manager_switch
   success "Finished update for Debian"
 }
 
@@ -29,9 +27,7 @@ ARCH_PACKAGES=(
 
 function update_arch {
   info "Updating packages for Arch Linux..."
-  if [[ "$DRY" == "false" ]]; then
-    _home_manager_switch
-  fi
+  _home_manager_switch
   success "Finished update for Arch Linux"
 }
 
@@ -84,8 +80,14 @@ function _ensure_nix {
 }
 
 function _home_manager_switch {
-  _ensure_nix
   local target
+  if [[ "$DRY" == "true" ]]; then
+    target="$(_linux_home_manager_target)"
+    _dry_run_nix_managed_switch home-manager switch --flake "$target"
+    return
+  fi
+
+  _ensure_nix
   target="$(_linux_home_manager_target)"
   if command -v home-manager >/dev/null 2>&1; then
     _run_nix_managed_switch "home-manager switch failed" \

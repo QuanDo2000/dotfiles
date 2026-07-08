@@ -119,6 +119,15 @@ test_update_arch_bootstraps_home_manager_when_missing() {
   unset -f command sudo _load_nix_profile
 }
 
+test_update_arch_dry_run_shows_home_manager_switch() {
+  DRY=true
+
+  local output
+  output=$(update_arch 2>&1)
+
+  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
+}
+
 test_debian_packages_are_bootstrap_only() {
   for pkg in curl git zsh procps file; do
     assert_contains "${DEBIAN_PACKAGES[*]}" "$pkg"
@@ -208,6 +217,15 @@ test_update_debian_bootstraps_home_manager_when_missing() {
   assert_not_contains "$output" "@linux@linux"
 
   unset -f command sudo _load_nix_profile
+}
+
+test_update_debian_dry_run_shows_home_manager_switch() {
+  DRY=true
+
+  local output
+  output=$(update_debian 2>&1)
+
+  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
 }
 
 # ---------------------------------------------------------------------------
