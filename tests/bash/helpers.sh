@@ -85,8 +85,3 @@ with_nix_agent_tools() {
   }
   export -f command
 }
-
-# Create the standard dotfiles/config/{shared,unix,mac} directories under DOTFILES_DIR.
-create_dotfiles_dirs() {
-  mkdir -p "$DOTFILES_DIR/config/shared" "$DOTFILES_DIR/config/unix" "$DOTFILES_DIR/config/mac"
-}
