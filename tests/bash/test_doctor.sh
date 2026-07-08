@@ -12,6 +12,12 @@ teardown() {
   cleanup_test_env
 }
 
+link_valid_core_dotfiles() {
+  local root="${1:-$DOTFILES_DIR}"
+  ln -s "$root/.zshrc" "$HOME/.zshrc"
+  ln -s "$root/bin/dotfile" "$HOME/.local/bin/dotfile"
+}
+
 test_doctor_symlink_valid() {
   mkdir -p "$DOTFILES_DIR"
   echo "content" > "$DOTFILES_DIR/.zshrc"
@@ -89,9 +95,7 @@ test_doctor_accepts_home_manager_store_targets_on_nixos() {
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$osrel"
-  mkdir -p "$DOTFILES_DIR"
-  ln -s "/nix/store/example-dotfiles/.zshrc" "$HOME/.zshrc"
-  ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
+  link_valid_core_dotfiles "/nix/store/example-dotfiles"
 
   local output
   output=$(OS_RELEASE="$osrel" doctor 2>&1) || true
@@ -101,9 +105,7 @@ test_doctor_accepts_home_manager_store_targets_on_nixos() {
 
 test_doctor_accepts_home_manager_store_targets_on_mac() {
   mock_uname Darwin
-  mkdir -p "$DOTFILES_DIR"
-  ln -s "/nix/store/example-dotfiles/.zshrc" "$HOME/.zshrc"
-  ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
+  link_valid_core_dotfiles "/nix/store/example-dotfiles"
 
   local output
   output=$(doctor 2>&1) || true
@@ -117,8 +119,7 @@ test_doctor_accepts_home_manager_store_targets_on_arch() {
   printf 'ID=arch\n' > "$os_release"
 
   local hm_dir="/nix/store/test-home-manager-files"
-  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
-  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
+  link_valid_core_dotfiles "$hm_dir"
 
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1) || true
@@ -131,8 +132,7 @@ test_doctor_accepts_home_manager_store_targets_on_debian() {
   printf 'ID=debian\n' > "$os_release"
 
   local hm_dir="/nix/store/test-home-manager-files"
-  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
-  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
+  link_valid_core_dotfiles "$hm_dir"
 
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1) || true
@@ -160,8 +160,7 @@ test_doctor_passes_with_home_manager_store_targets() {
   local os_release="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$os_release"
   local hm_dir="/nix/store/test-home-files"
-  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
-  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
+  link_valid_core_dotfiles "$hm_dir"
 
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1)
@@ -174,8 +173,7 @@ test_doctor_skips_nix_eval_in_dry_mode() {
   local os_release="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$os_release"
   local hm_dir="/nix/store/test-home-files"
-  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
-  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
+  link_valid_core_dotfiles "$hm_dir"
 
   local command_calls="$TEST_TMPDIR/command-calls.log"
   command() {
@@ -209,8 +207,7 @@ test_doctor_retries_nix_eval_with_temp_cache_after_fetcher_cache_failure() {
   touch "$DOTFILES_DIR/flake.nix"
 
   local hm_dir="/nix/store/test-home-files"
-  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
-  ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
+  link_valid_core_dotfiles "$hm_dir"
 
   local calls="$TEST_TMPDIR/nix-calls.log"
   nix() {
