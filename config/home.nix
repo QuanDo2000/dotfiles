@@ -3,6 +3,7 @@
 let
   machine = import ./host.nix;
   nixosSystem = pkgs.stdenv.isLinux && osConfig != null;
+  standaloneLinux = pkgs.stdenv.isLinux && !nixosSystem;
   homeDir =
     if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
   forceSource = source: {
@@ -63,8 +64,9 @@ in
     beamPackages.erlang
     jq
   ] ++ lib.optionals (!nixosSystem) [
-    fontconfig
     nerd-fonts.fira-code
+  ] ++ lib.optionals standaloneLinux [
+    fontconfig
     openssh
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     wl-clipboard

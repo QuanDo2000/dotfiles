@@ -121,8 +121,10 @@ test_home_config_manages_obsidian_sync_service() {
 }
 
 test_home_config_puts_shared_user_tools_in_common_packages() {
-  local common_packages linux_packages
-  common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
+  local common_packages non_nixos_packages standalone_linux_packages linux_packages
+  common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals (!nixosSystem) \[/p' "$REPO_DIR/config/home.nix")"
+  non_nixos_packages="$(sed -n '/\] ++ lib.optionals (!nixosSystem) \[/,/\] ++ lib.optionals standaloneLinux \[/p' "$REPO_DIR/config/home.nix")"
+  standalone_linux_packages="$(sed -n '/\] ++ lib.optionals standaloneLinux \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
   linux_packages="$(sed -n '/\] ++ lib.optionals pkgs.stdenv.isLinux \[/,/  \];/p' "$REPO_DIR/config/home.nix")"
 
   for pkg in ast-grep zig odin gleam erlang jq; do
@@ -134,10 +136,13 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   assert_not_contains "$(<"$REPO_DIR/config/home.nix")" "PNPM_HOME"
   assert_not_contains "$(<"$REPO_DIR/config/home.nix")" ".local/share/pnpm"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "nixosSystem = pkgs.stdenv.isLinux && osConfig != null"
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "standaloneLinux = pkgs.stdenv.isLinux && !nixosSystem"
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "lib.optionals (!nixosSystem)"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "nerd-fonts.fira-code"
-  assert_contains "$common_packages" "fontconfig"
-  assert_contains "$common_packages" "openssh"
+  assert_contains "$non_nixos_packages" "nerd-fonts.fira-code"
+  assert_not_contains "$non_nixos_packages" "fontconfig"
+  assert_not_contains "$non_nixos_packages" "openssh"
+  assert_contains "$standalone_linux_packages" "fontconfig"
+  assert_contains "$standalone_linux_packages" "openssh"
   assert_not_contains "$common_packages" "neovim"
   assert_not_contains "$common_packages" "gnupg"
   assert_not_contains "$common_packages" "fd"
