@@ -35,6 +35,15 @@ function CommandNeedsAdmin($Command) {
     return ($Command -in "all", "packages", "update")
 }
 
+function Resolve-DotfilesDir($Override, $ScriptPath) {
+    if ($Override) {
+        return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Override)
+    }
+    $scriptItem = Get-Item -LiteralPath $ScriptPath
+    $scriptReal = if ($scriptItem.Target) { $scriptItem.Target } else { $ScriptPath }
+    return (Resolve-Path (Split-Path $scriptReal -Parent)).Path
+}
+
 # Self-elevate to admin (required for symlink creation)
 if (-not $NoMain) {
     $initialCommand = Get-InitialCommand $RemainingArgs ([bool]$Help)
@@ -62,13 +71,7 @@ if (-not $NoMain) {
 # already default to $false, which is all the reset was ever providing.
 # Resolve symlink so invoking via ~\.local\bin points back to the real repo.
 # Allow override via $env:DOTFILES_DIR so the install path is not hardcoded.
-if ($env:DOTFILES_DIR -and (Test-Path $env:DOTFILES_DIR)) {
-    $script:DotfilesDir = (Resolve-Path $env:DOTFILES_DIR).Path
-} else {
-    $scriptItem = Get-Item -LiteralPath $PSCommandPath
-    $scriptReal = if ($scriptItem.Target) { $scriptItem.Target } else { $PSCommandPath }
-    $script:DotfilesDir = (Resolve-Path (Split-Path $scriptReal -Parent)).Path
-}
+$script:DotfilesDir = Resolve-DotfilesDir $env:DOTFILES_DIR $PSCommandPath
 $script:RepoUrl = "https://github.com/QuanDo2000/dotfiles.git"
 
 # Logging helpers
@@ -163,7 +166,7 @@ function LinkDir($source, $destination) {
 
 # Ensure repo exists
 function EnsureRepo {
-    if (-not (Test-Path $script:DotfilesDir)) {
+    if (-not (Test-Path (Join-Path $script:DotfilesDir 'dotfile.ps1'))) {
         Info "Cloning dotfiles repo..."
         git clone $script:RepoUrl $script:DotfilesDir
         if ($LASTEXITCODE -ne 0) { Fail "Failed to clone dotfiles repo" }
