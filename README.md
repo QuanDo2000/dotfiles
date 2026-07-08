@@ -105,6 +105,8 @@ Options:
 
 Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` is generated from `config/unix/.zshrc.base`.
 
+Run `./scripts/check.sh` from the repo root before pushing changes.
+
 Note: Home Manager seeds `~/.codex/config.toml` as a writable file for Codex
 runtime preferences and owns the pinned `~/.codex/skills/caveman/` skill.
 Generated Codex/plugin state such as `.agents/`, `skills-lock.json`, caches,

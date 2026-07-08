@@ -68,6 +68,7 @@
           git
           gh
           powershell
+          shellcheck
         ];
       };
     };

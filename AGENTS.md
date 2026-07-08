@@ -63,6 +63,7 @@ bash tests/bash/runner.sh                  # all bash tests (runs in Docker by d
 bash tests/bash/runner.sh --no-docker      # all bash tests on host (faster while iterating)
 bash tests/bash/runner.sh test_packages.sh # single file
 pwsh tests/powershell/runner.ps1           # PowerShell tests (Windows / pwsh)
+./scripts/check.sh                         # local full check: bash, pwsh if present, Nix flake, ShellCheck via Nix
 ```
 
 ### Bash test pattern
