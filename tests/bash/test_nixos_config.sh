@@ -268,7 +268,7 @@ test_darwin_config_manages_core_packages() {
   darwin_text="$(<"$REPO_DIR/config/darwin.nix")"
 
   assert_contains "$darwin_text" "nix.settings.experimental-features"
-  assert_contains "$darwin_text" "nixpkgs.config.allowUnfree = true"
+  assert_not_contains "$darwin_text" "nixpkgs.config.allowUnfree"
   assert_contains "$darwin_text" "programs.zsh.enable = true"
   assert_contains "$darwin_text" "system.primaryUser = machine.username"
 }

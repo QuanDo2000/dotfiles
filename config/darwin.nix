@@ -8,7 +8,6 @@ in
   system.primaryUser = machine.username;
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  nixpkgs.config.allowUnfree = true;
 
   users.users.${machine.username} = {
     home = "/Users/${machine.username}";
