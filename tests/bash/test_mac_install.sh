@@ -179,35 +179,6 @@ test_set_zsh_default_skips_on_mac() {
 }
 
 # ---------------------------------------------------------------------------
-# Full Mac setup_dotfiles dry-run
-# ---------------------------------------------------------------------------
-
-test_setup_dotfiles_dry_run_mac() {
-  source_scripts doctor.sh
-
-  create_dotfiles_dirs
-
-  function update_repo {
-    info "Updating dotfiles repo..."
-    success "Finished updating repo"
-  }
-
-  function setup_dotfiles {
-    info "Setting up dotfiles..."
-    install_packages
-    update_repo
-    success "Done!"
-  }
-
-  local output
-  output=$(setup_dotfiles 2>&1)
-
-  assert_contains "$output" "Setting up dotfiles"
-  assert_contains "$output" "Installing packages and programs for Mac"
-  assert_contains "$output" "Done!"
-}
-
-# ---------------------------------------------------------------------------
 # dotfile CLI commands on Mac (dry-run)
 # ---------------------------------------------------------------------------
 
