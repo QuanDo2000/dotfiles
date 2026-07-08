@@ -422,7 +422,7 @@ test_doctor_paths_cover_home_manager_managed_paths() {
   assert_not_contains "$doctor_text" "  .vimrc"
   assert_not_contains "$doctor_text" "  .zprofile"
   assert_not_contains "$doctor_text" "  .zshrc.base"
-  assert_not_contains "$doctor_text" "REQUIRED_SYMLINKS=(.zshrc .zshrc.base .tmux.conf .vimrc .gitconfig .zprofile)"
+  assert_not_contains "$doctor_text" "REQUIRED_SYMLINKS"
   assert_not_contains "$doctor_text" "_doctor_check_managed_paths"
   assert_not_contains "$home_text" 'home.file.".codex/config.toml"'
 }

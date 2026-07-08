@@ -2,9 +2,6 @@
 set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
-REQUIRED_SYMLINKS=(
-  .zshrc
-)
 
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {
@@ -135,10 +132,7 @@ function doctor {
   platform="$(detect_platform)"
 
   info "Verifying symlinks..."
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    _check_symlink "$f" "$platform"
-  done
+  _check_symlink .zshrc "$platform"
   _check_dotfile_command
   _check_nix_config "$platform"
 

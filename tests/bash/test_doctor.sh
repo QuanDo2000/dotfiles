@@ -62,12 +62,8 @@ test_doctor_symlink_wrong_target() {
 
 test_doctor_requires_dotfile_command_link() {
   mkdir -p "$DOTFILES_DIR"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    echo "content" > "$DOTFILES_DIR/$f"
-    mkdir -p "$(dirname "$HOME/$f")"
-    ln -s "$DOTFILES_DIR/$f" "$HOME/$f"
-  done
+  echo "content" > "$DOTFILES_DIR/.zshrc"
+  ln -s "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
   rm -f "$HOME/.local/bin/dotfile"
 
   local output
@@ -78,12 +74,8 @@ test_doctor_requires_dotfile_command_link() {
 
 test_doctor_accepts_repo_dotfile_command_link() {
   mkdir -p "$DOTFILES_DIR"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    echo "content" > "$DOTFILES_DIR/$f"
-    mkdir -p "$(dirname "$HOME/$f")"
-    ln -s "$DOTFILES_DIR/$f" "$HOME/$f"
-  done
+  echo "content" > "$DOTFILES_DIR/.zshrc"
+  ln -s "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
   echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
 
@@ -98,10 +90,7 @@ test_doctor_accepts_home_manager_store_targets_on_nixos() {
   local osrel="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$osrel"
   mkdir -p "$DOTFILES_DIR"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
-  done
+  ln -s "/nix/store/example-dotfiles/.zshrc" "$HOME/.zshrc"
   ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
 
   local output
@@ -113,10 +102,7 @@ test_doctor_accepts_home_manager_store_targets_on_nixos() {
 test_doctor_accepts_home_manager_store_targets_on_mac() {
   mock_uname Darwin
   mkdir -p "$DOTFILES_DIR"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
-  done
+  ln -s "/nix/store/example-dotfiles/.zshrc" "$HOME/.zshrc"
   ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
 
   local output
@@ -131,9 +117,7 @@ test_doctor_accepts_home_manager_store_targets_on_arch() {
   printf 'ID=arch\n' > "$os_release"
 
   local hm_dir="/nix/store/test-home-manager-files"
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
+  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
 
   local output
@@ -147,9 +131,7 @@ test_doctor_accepts_home_manager_store_targets_on_debian() {
   printf 'ID=debian\n' > "$os_release"
 
   local hm_dir="/nix/store/test-home-manager-files"
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
+  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
 
   local output
@@ -178,10 +160,7 @@ test_doctor_passes_with_home_manager_store_targets() {
   local os_release="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$os_release"
   local hm_dir="/nix/store/test-home-files"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
+  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
 
   local output
@@ -195,10 +174,7 @@ test_doctor_skips_nix_eval_in_dry_mode() {
   local os_release="$TEST_TMPDIR/os-release"
   printf 'ID=nixos\n' > "$os_release"
   local hm_dir="/nix/store/test-home-files"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
+  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
 
   local command_calls="$TEST_TMPDIR/command-calls.log"
@@ -233,10 +209,7 @@ test_doctor_retries_nix_eval_with_temp_cache_after_fetcher_cache_failure() {
   touch "$DOTFILES_DIR/flake.nix"
 
   local hm_dir="/nix/store/test-home-files"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
+  ln -s "$hm_dir/.zshrc" "$HOME/.zshrc"
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
 
   local calls="$TEST_TMPDIR/nix-calls.log"
