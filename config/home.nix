@@ -10,6 +10,7 @@ let
     inherit source;
     force = true;
   };
+  linuxConfig = source: lib.mkIf pkgs.stdenv.isLinux (forceSource source);
   cavemanSrc = pkgs.fetchFromGitHub {
     owner = "JuliusBrussee";
     repo = "caveman";
@@ -268,12 +269,12 @@ in
 
   xdg.configFile."nvim" = forceSource ./shared/config/nvim;
 
-  xdg.configFile."fcitx5" = forceSource ./unix/config/fcitx5;
+  xdg.configFile."fcitx5" = linuxConfig ./unix/config/fcitx5;
 
   xdg.configFile."ghostty/config" = forceSource ./unix/config/ghostty/config;
 
-  xdg.configFile."hypr" = forceSource ./unix/config/hypr;
+  xdg.configFile."hypr" = linuxConfig ./unix/config/hypr;
 
-  xdg.configFile."waybar" = forceSource ./unix/config/waybar;
+  xdg.configFile."waybar" = linuxConfig ./unix/config/waybar;
 
 }
