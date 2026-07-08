@@ -48,8 +48,9 @@ function update_repo {
 
 function run_checked_flow {
   local pull_repo="$1"
-  shift
-  doctor
+  local precheck="$2"
+  shift 2
+  [[ "$precheck" == "true" ]] && doctor
   [[ "$pull_repo" == "true" ]] && update_repo
   "$@"
   DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
@@ -57,7 +58,7 @@ function run_checked_flow {
 
 function setup_dotfiles {
   info "Setting up dotfiles..."
-  run_checked_flow true install_packages
+  run_checked_flow true false install_packages
   success "Done!"
 }
 
@@ -109,8 +110,8 @@ done
 # Run command
 case "${1:-all}" in
 all) setup_dotfiles ;;
-update) run_checked_flow true update_packages ;;
-packages) run_checked_flow false install_packages ;;
+update) run_checked_flow true true update_packages ;;
+packages) run_checked_flow false false install_packages ;;
 obsidian) setup_obsidian ;;
 doctor)
   case "${2:-}" in

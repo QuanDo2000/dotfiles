@@ -28,8 +28,9 @@ link_core_dotfiles() {
 assert_checked_flow() {
   local output="$1"
   local pulls_repo="$2"
+  local expected_checks="${3:-2}"
 
-  assert_equals "2" "$(grep -c "Verifying symlinks" <<<"$output")"
+  assert_equals "$expected_checks" "$(grep -c "Verifying symlinks" <<<"$output")"
   assert_equals "1" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
   if [[ "$pulls_repo" == "true" ]]; then
     assert_contains "$output" "Updating dotfiles repo"
@@ -83,9 +84,13 @@ test_dry_run_default_command() {
   link_core_dotfiles
   with_nix_agent_tools
 
-  local output
+  local output exit_code
+  set +e
   output=$(bash "$DOTFILE_CMD" --dry all 2>&1)
-  assert_checked_flow "$output" true
+  exit_code=$?
+  set -e
+
+  assert_equals "0" "$exit_code"
   assert_contains "$output" "Installing packages"
   local repo_line packages_line
   repo_line="$(grep -n "Updating dotfiles repo" <<<"$output" | head -n1 | cut -d: -f1)"
@@ -169,12 +174,11 @@ test_update_runs_doctor_before_package_update() {
   assert_not_contains "$output" "Updating packages"
 }
 
-test_packages_runs_doctor_before_package_install() {
+test_packages_allows_fresh_home_before_package_install() {
   is_windows_bash && return 0
   mock_uname Linux
   local osrel="$TEST_HOME/os-release"
   printf 'ID=nixos\n' > "$osrel"
-  printf 'local shell edits\n' > "$HOME/.zshrc"
 
   local output exit_code
   set +e
@@ -183,8 +187,8 @@ test_packages_runs_doctor_before_package_install() {
   set -e
 
   assert_equals "1" "$exit_code"
-  assert_contains "$output" ".zshrc exists but is not a symlink"
-  assert_not_contains "$output" "Installing packages"
+  assert_contains "$output" "Installing packages"
+  assert_contains "$output" ".zshrc not found"
 }
 
 test_packages_nixos_dry() {
@@ -196,13 +200,20 @@ test_packages_nixos_dry() {
 
   local output
   output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry packages 2>&1)
-  assert_checked_flow "$output" false
+  assert_checked_flow "$output" false 1
   assert_contains "$output" "NixOS"
   assert_not_contains "$output" "Updating packages"
 
   # Don't leak the uname mock into later tests in this file.
   unset -f uname 2>/dev/null || true
   unset __MOCK_UNAME
+}
+
+test_readme_nixos_fresh_install_does_not_sudo_dotfile_script() {
+  local readme_text
+  readme_text="$(<"$REPO_DIR/README.md")"
+  assert_not_contains "$readme_text" "sudo bash ./dotfile packages"
+  assert_not_contains "$readme_text" "sudo bash ./dotfile all"
 }
 
 test_help_has_no_removed_commands() {

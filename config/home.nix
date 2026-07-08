@@ -36,8 +36,8 @@ let
     "templates.json"
   ];
   obsidianFiles = lib.genAttrs
-    (map (name: "documents/Sync/.obsidian/${name}") obsidianSettings)
-    (path: forceSource (./shared/obsidian + "/${lib.removePrefix "documents/Sync/.obsidian/" path}"));
+    (map (name: "documents/obsidian/Sync/.obsidian/${name}") obsidianSettings)
+    (path: forceSource (./shared/obsidian + "/${lib.removePrefix "documents/obsidian/Sync/.obsidian/" path}"));
   obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
     set -euo pipefail
     export PATH="${lib.makeBinPath [ pkgs.obsidian-headless pkgs.nodejs ]}:$PATH"

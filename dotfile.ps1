@@ -29,9 +29,9 @@ if (-not $NoMain) {
         if ($Force) { $forwardedFlags += '-f' }
         if ($Quiet) { $forwardedFlags += '-q' }
         if ($Help)  { $forwardedFlags += '-h' }
-        $argList = @("-NoExit", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) + $forwardedFlags + $RemainingArgs
-        Start-Process -FilePath $pwsh -ArgumentList $argList -Verb RunAs -Wait
-        exit $LASTEXITCODE
+        $argList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) + $forwardedFlags + $RemainingArgs
+        $elevated = Start-Process -FilePath $pwsh -ArgumentList $argList -Verb RunAs -Wait -PassThru
+        exit $elevated.ExitCode
     }
 }
 
@@ -162,6 +162,11 @@ function WingetHas($id) {
     return ($LASTEXITCODE -eq 0)
 }
 
+function Invoke-NativeChecked($FailureMessage, [scriptblock]$Command) {
+    & $Command
+    if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
+}
+
 function InstallPackages {
     Info "Installing packages..."
     if ($script:Dry) { return }
@@ -181,13 +186,15 @@ function InstallPackages {
     }
     if ($missing.Count -gt 0) {
         Info "Installing $($missing.Count) missing winget package(s): $($missing -join ', ')"
-        winget install @missing --disable-interactivity --accept-package-agreements
+        foreach ($pkg in $missing) {
+            Invoke-NativeChecked "winget install $pkg failed" { winget install --id $pkg --exact --disable-interactivity --accept-package-agreements }
+        }
     } else {
         Success "All winget packages already installed"
     }
 
     Info "Upgrading all winget packages..."
-    winget upgrade --all --disable-interactivity --accept-package-agreements
+    Invoke-NativeChecked "winget upgrade failed" { winget upgrade --all --disable-interactivity --accept-package-agreements }
 
     Success "Finished installing packages"
 }
@@ -200,8 +207,12 @@ function InstallFont {
         Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
         Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
     }
-    scoop bucket add nerd-fonts
-    scoop install FiraCode
+    $buckets = scoop bucket list
+    if ($LASTEXITCODE -ne 0) { throw "scoop bucket list failed" }
+    if ((($buckets -join "`n") -notmatch "(?m)^\s*nerd-fonts(\s|$)")) {
+        Invoke-NativeChecked "scoop bucket add nerd-fonts failed" { scoop bucket add nerd-fonts }
+    }
+    Invoke-NativeChecked "scoop install FiraCode failed" { scoop install FiraCode }
 
     Success "Finished installing font"
 }
@@ -221,9 +232,9 @@ function InstallFnm {
     }
 
     fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
-    fnm install --lts
-    fnm use lts-latest
-    fnm default lts-latest
+    Invoke-NativeChecked "fnm install --lts failed" { fnm install --lts }
+    Invoke-NativeChecked "fnm use lts-latest failed" { fnm use lts-latest }
+    Invoke-NativeChecked "fnm default lts-latest failed" { fnm default lts-latest }
 
     Success "Finished installing Node.js LTS"
 }
@@ -279,7 +290,11 @@ function InstallAi {
 
 function Update-Packages {
     Info "Updating packages..."
-    if ($script:Dry) { Success "Would run: winget upgrade --all" } else { winget upgrade --all --disable-interactivity --accept-package-agreements }
+    if ($script:Dry) {
+        Success "Would run: winget upgrade --all"
+    } else {
+        Invoke-NativeChecked "winget upgrade failed" { winget upgrade --all --disable-interactivity --accept-package-agreements }
+    }
     InstallAi -Update
     Success "Finished updating packages"
 }
@@ -458,8 +473,10 @@ function Verify {
 
     Write-Host ""
     if ($errors -eq 0) {
+        $script:VerifyFailed = $false
         Success "All checks passed!"
     } else {
+        $script:VerifyFailed = $true
         Info "$errors issue(s) found"
     }
 }
@@ -526,7 +543,7 @@ if (-not $NoMain) {
         "all"       { SetupDotfiles }
         "update"    { Update-Packages }
         "packages"  { InstallPackages }
-        "verify"    { Verify }
+        "verify"    { Verify; if ($script:VerifyFailed) { exit 1 } }
         default     { Fail "Unknown command: $command"; ShowUsage }
     }
 }

@@ -116,7 +116,7 @@ and generated lockfiles such as `lazy-lock.json` stay out of the repo.
 Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
 
 Note: Home Manager owns tracked Obsidian settings from `config/shared/obsidian`
-under `~/documents/Sync/.obsidian`. Plugin bundles, themes, workspace state,
+under `~/documents/obsidian/Sync/.obsidian`. Plugin bundles, themes, workspace state,
 bookmarks, starred files, recent files, and Electron app state stay out of the
 repo.
 
@@ -125,13 +125,13 @@ repo.
 On a freshly-installed NixOS box:
 
 ```bash
-nix-shell -p git --run 'git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles && cd ~/dotfiles && sudo bash ./dotfile packages'
+nix-shell -p git --run 'git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles && cd ~/dotfiles && bash ./dotfile packages'
 ```
 
 Per-machine values live in tracked `config/host.nix`; hardware settings live in
 tracked `config/hardware-configuration.nix`. Edit those files before the first
 rebuild if the username, hostname, timezone, NixOS stateVersion, disks, or CPU
-settings differ. Then `sudo bash ./dotfile all` for the rest of the dotfiles.
+settings differ. Then `bash ./dotfile all` for the rest of the dotfiles.
 The NixOS flake target is `#${hostName}` from `config/host.nix`; the current
 tracked host uses `#nixos`.
 

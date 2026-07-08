@@ -119,6 +119,7 @@ test_home_config_manages_obsidian_sync_service() {
   assert_contains "$home_text" "pkgs.stdenv.isLinux"
   assert_contains "$home_text" "ob sync-status --path"
   assert_contains "$home_text" "ob sync --path"
+  assert_contains "$home_text" 'for vault in "$HOME"/documents/obsidian/*'
   assert_contains "$home_text" "pkgs.obsidian-headless"
   assert_contains "$home_text" "pkgs.nodejs"
   assert_contains "$home_text" "ob not found; run dotfile update"
@@ -127,6 +128,18 @@ test_home_config_manages_obsidian_sync_service() {
   assert_contains "$home_text" "WantedBy = [ \"default.target\" ]"
   assert_not_contains "$home_text" "home.activation.removeLegacyObsidianSyncService"
   assert_not_contains "$home_text" "rm -f \"\$HOME/.config/systemd/user/obsidian-sync.service\""
+}
+
+test_home_config_manages_obsidian_settings_in_synced_vault_base() {
+  local home_text readme_text agents_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+  readme_text="$(<"$REPO_DIR/README.md")"
+  agents_text="$(<"$REPO_DIR/AGENTS.md")"
+
+  assert_contains "$home_text" "\"documents/obsidian/Sync/.obsidian/\${name}\""
+  assert_not_contains "$home_text" "documents/Sync/.obsidian"
+  assert_not_contains "$readme_text" "~/documents/Sync/.obsidian"
+  assert_not_contains "$agents_text" "~/documents/Sync/.obsidian"
 }
 
 test_home_config_puts_shared_user_tools_in_common_packages() {
@@ -266,9 +279,9 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "\"app.json\""
   assert_contains "$home_text" "obsidianFiles = lib.genAttrs"
   assert_not_contains "$home_text" "builtins.listToAttrs (map"
-  assert_contains "$home_text" "\"documents/Sync/.obsidian/\${name}\""
+  assert_contains "$home_text" "\"documents/obsidian/Sync/.obsidian/\${name}\""
   assert_contains "$home_text" "\"plugins/calendar/data.json\""
-  assert_contains "$home_text" "forceSource (./shared/obsidian + \"/\${lib.removePrefix \"documents/Sync/.obsidian/\" path}\")"
+  assert_contains "$home_text" "forceSource (./shared/obsidian + \"/\${lib.removePrefix \"documents/obsidian/Sync/.obsidian/\" path}\")"
   assert_contains "$home_text" "\".local/bin/dotfile\" = {"
   assert_not_contains "$home_text" "\".local/bin/dotfile\" = lib.mkIf pkgs.stdenv.isLinux"
   assert_contains "$home_text" "dotfiles_dir=\"''\${DOTFILES_DIR:-\$HOME/dotfiles}\""

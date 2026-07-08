@@ -207,8 +207,8 @@ test_setup_obsidian_skips_reconfiguring_existing_sync() {
   assert_contains "$output" "managed by Home Manager"
 }
 
-test_setup_obsidian_does_not_apply_general_app_config() {
-  local vault_path="$HOME/documents/obsidian/test-vault"
+test_setup_obsidian_uses_home_manager_vault_base() {
+  local vault_path="$HOME/documents/obsidian/Sync"
   mkdir -p "$vault_path"
   mock_cmd ob 'case "$1" in
     sync-status) exit 0 ;;
@@ -225,8 +225,8 @@ test_setup_obsidian_does_not_apply_general_app_config() {
   if [ "$exit_code" -ne 0 ]; then
     echo "  FAILED: setup_obsidian should skip reconfiguring existing sync ($output)" >> "$ERROR_FILE"
   fi
-  if [ -e "$vault_path/.obsidian/app.json" ]; then
-    echo "  FAILED: setup_obsidian should not apply general Obsidian app config" >> "$ERROR_FILE"
+  if [[ "$OBSIDIAN_VAULT_BASE" != "$HOME/documents/obsidian" ]]; then
+    echo "  FAILED: Obsidian setup should use the same base as Home Manager-managed settings" >> "$ERROR_FILE"
   fi
 }
 

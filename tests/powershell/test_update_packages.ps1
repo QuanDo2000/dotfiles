@@ -27,6 +27,25 @@ function test_update_packages_dry_run_does_not_call_winget {
     Assert-False $called 'winget should not be invoked in dry run'
 }
 
+function test_update_packages_fails_when_winget_upgrade_fails {
+    $script:Dry = $false
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = 1 }
+    $originalInstallAi = (Get-Command InstallAi).ScriptBlock
+    Set-Item -Path function:global:InstallAi -Value { }
+
+    $failed = $false
+    try {
+        Update-Packages 6>&1 | Out-Null
+    } catch {
+        $failed = $true
+    } finally {
+        Clear-CommandMock 'winget'
+        Set-Item -Path function:global:InstallAi -Value $originalInstallAi
+    }
+
+    Assert-True $failed 'Update-Packages should fail when winget upgrade fails'
+}
+
 # ---------------------------------------------------------------------------
 # Package list
 # ---------------------------------------------------------------------------
@@ -40,4 +59,119 @@ function test_windows_installs_codex_cli_with_official_installer {
     $text = Get-Content -Raw $script:DotfileScript
     Assert-Contains $text 'https://chatgpt.com/codex/install.ps1'
     Assert-Contains $text 'CODEX_NON_INTERACTIVE'
+}
+
+function test_installpackages_fails_when_winget_install_fails {
+    $script:Dry = $false
+    $originalWingetHas = (Get-Command WingetHas).ScriptBlock
+    Set-Item -Path function:global:WingetHas -Value { return $false }
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = 1 }
+
+    $failed = $false
+    try {
+        InstallPackages 6>&1 | Out-Null
+    } catch {
+        $failed = $true
+    } finally {
+        Clear-CommandMock 'winget'
+        Set-Item -Path function:global:WingetHas -Value $originalWingetHas
+    }
+
+    Assert-True $failed 'InstallPackages should fail when winget install fails'
+}
+
+function test_installpackages_installs_missing_winget_packages_individually {
+    $script:Dry = $false
+    $script:MissingWingetPackages = @('Git.Git', 'Neovim.Neovim')
+    $script:InstallCalls = @()
+    $originalWingetHas = (Get-Command WingetHas).ScriptBlock
+    Set-Item -Path function:global:WingetHas -Value { param($id) return ($script:MissingWingetPackages -notcontains $id) }
+    Set-CommandMock 'winget' {
+        if ($args[0] -eq 'install') { $script:InstallCalls += ,($args -join ' ') }
+        $global:LASTEXITCODE = 0
+    }
+
+    try {
+        InstallPackages 6>&1 | Out-Null
+    } finally {
+        Clear-CommandMock 'winget'
+        Set-Item -Path function:global:WingetHas -Value $originalWingetHas
+        Remove-Variable -Name MissingWingetPackages -Scope Script -ErrorAction SilentlyContinue
+    }
+
+    Assert-Equals 2 $script:InstallCalls.Count
+    Assert-Contains $script:InstallCalls[0] 'install --id Git.Git --exact'
+    Assert-Contains $script:InstallCalls[1] 'install --id Neovim.Neovim --exact'
+}
+
+function test_installfont_fails_when_scoop_install_fails {
+    $script:Dry = $false
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'scoop') { return [pscustomobject]@{ Source = 'mock-scoop' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'scoop' { $global:LASTEXITCODE = 1 }
+
+    $failed = $false
+    try {
+        InstallFont 6>&1 | Out-Null
+    } catch {
+        $failed = $true
+    } finally {
+        Clear-CommandMock 'scoop'
+        Clear-CommandMock 'Get-Command'
+    }
+
+    Assert-True $failed 'InstallFont should fail when scoop install fails'
+}
+
+function test_installfont_skips_existing_nerd_fonts_bucket {
+    $script:Dry = $false
+    $script:ScoopCalls = @()
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'scoop') { return [pscustomobject]@{ Source = 'mock-scoop' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'scoop' {
+        $script:ScoopCalls += ,($args -join ' ')
+        if ($args[0] -eq 'bucket' -and $args[1] -eq 'list') {
+            'main'
+            'nerd-fonts'
+        }
+        $global:LASTEXITCODE = 0
+    }
+
+    try {
+        InstallFont 6>&1 | Out-Null
+    } finally {
+        Clear-CommandMock 'scoop'
+        Clear-CommandMock 'Get-Command'
+    }
+
+    Assert-False ($script:ScoopCalls -contains 'bucket add nerd-fonts') 'existing nerd-fonts bucket should not be added again'
+    Assert-True ($script:ScoopCalls -contains 'install FiraCode') 'font install should still run'
+}
+
+function test_installfnm_fails_when_fnm_command_fails {
+    $script:Dry = $false
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'fnm') { return [pscustomobject]@{ Source = 'mock-fnm' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'fnm' { $global:LASTEXITCODE = 1 }
+
+    $failed = $false
+    try {
+        InstallFnm 6>&1 | Out-Null
+    } catch {
+        $failed = $true
+    } finally {
+        Clear-CommandMock 'fnm'
+        Clear-CommandMock 'Get-Command'
+    }
+
+    Assert-True $failed 'InstallFnm should fail when fnm install/use/default fails'
 }

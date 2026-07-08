@@ -72,3 +72,11 @@ function test_script_declares_flag_params_with_short_aliases {
         }
     }
 }
+
+function test_self_elevation_exits_with_child_process_status {
+    $text = Get-Content -Raw $script:DotfileScript
+    Assert-Contains $text 'Start-Process'
+    Assert-Contains $text '-PassThru'
+    Assert-Contains $text 'exit $elevated.ExitCode'
+    Assert-False ($text -like '*"-NoExit"*') 'self-elevation should not wait for a manually closed shell'
+}

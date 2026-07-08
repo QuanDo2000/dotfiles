@@ -44,6 +44,7 @@ function Reset-DotfileState {
     $script:Dry = $false
     $script:Quiet = $false
     $script:Force = $false
+    $script:VerifyFailed = $false
     $script:OverwriteAll = $false
     $script:BackupAll = $false
     $script:SkipAll = $false

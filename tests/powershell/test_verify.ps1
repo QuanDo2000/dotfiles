@@ -58,6 +58,7 @@ function test_verify_reports_issues_when_tools_absent {
     # At least the six tool lookups should come back missing.
     Assert-Contains $output 'not found'
     Assert-Contains $output 'issue'
+    Assert-True $script:VerifyFailed 'verify command dispatch should be able to exit nonzero'
 }
 
 function test_verify_reports_tools_found_when_mocks_return_objects {
