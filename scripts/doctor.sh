@@ -28,11 +28,11 @@ _check_symlink() {
 }
 
 _check_dotfile_command() {
+  local platform="${1:-$(detect_platform)}"
   local target="$HOME/.local/bin/dotfile"
   if [ -L "$target" ]; then
-    local link_target platform
+    local link_target
     link_target="$(resolve_symlink "$target")"
-    platform="$(detect_platform)"
     if [[ "$link_target" == "$DOTFILES_DIR/dotfile" ]] \
       || { is_home_manager_platform "$platform" && [[ "$link_target" == /nix/store/* ]]; }; then
       success ".local/bin/dotfile -> $link_target"
@@ -133,7 +133,7 @@ function doctor {
 
   info "Verifying symlinks..."
   _check_symlink .zshrc "$platform"
-  _check_dotfile_command
+  _check_dotfile_command "$platform"
   _check_nix_config "$platform"
 
   echo ""
