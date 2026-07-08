@@ -95,6 +95,31 @@ test_update_mac_switches_existing_darwin_rebuild() {
   unset -f command _load_nix_profile sudo
 }
 
+test_update_mac_bootstraps_nix_darwin_when_missing() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix) return 0 ;;
+        darwin-rebuild) return 1 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  _load_nix_profile() { :; }
+  sudo() { printf '%s\n' "$*" >> "$calls"; }
+
+  update_mac >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "HOME=/var/root nix run $DOTFILES_DIR#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
+  assert_not_contains "$output" "brew"
+
+  unset -f command _load_nix_profile sudo
+}
+
 test_ensure_nix_loads_profile_before_installing() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"
