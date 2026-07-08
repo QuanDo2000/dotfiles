@@ -1,4 +1,6 @@
-Invoke-Expression (&starship init powershell)
+if (Get-Command starship -ErrorAction SilentlyContinue) {
+    Invoke-Expression (&starship init powershell)
+}
 
 # Aliases (parity with .zshrc.base)
 . "$PSScriptRoot\aliases.ps1"
@@ -13,7 +15,9 @@ Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
 Set-PSReadLineKeyHandler -Key Tab -Function Complete
 
 # fnm
-fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
+if (Get-Command fnm -ErrorAction SilentlyContinue) {
+    fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
+}
 
 # zoxide — bind it to `cd` (mirrors the unix .zshrc)
 if (Get-Command zoxide -ErrorAction SilentlyContinue) {
