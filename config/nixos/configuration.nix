@@ -18,7 +18,7 @@ in
   # --- System core ---------------------------------------------------------
   system.stateVersion = machine.stateVersion;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  nixpkgs.config.allowUnfree = true;   # google-chrome, etc.
+  nixpkgs.config.allowUnfree = true;   # Home Manager uses google-chrome.
   # Keep /nix/store bounded: dedup identical files and prune old generations.
   nix.settings.auto-optimise-store = true;
   nix.gc = {
