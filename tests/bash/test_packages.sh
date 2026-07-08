@@ -93,6 +93,32 @@ test_update_arch_uses_existing_home_manager() {
   unset -f command sudo _load_nix_profile home-manager
 }
 
+test_update_arch_bootstraps_home_manager_when_missing() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix) return 0 ;;
+        home-manager) return 1 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
+  _load_nix_profile() { :; }
+
+  update_arch >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_not_contains "$output" "sudo pacman"
+  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_not_contains "$output" "@linux@linux"
+
+  unset -f command sudo _load_nix_profile
+}
+
 test_debian_packages_are_bootstrap_only() {
   for pkg in curl git zsh procps file; do
     assert_contains "${DEBIAN_PACKAGES[*]}" "$pkg"
