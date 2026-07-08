@@ -52,31 +52,6 @@ _check_dotfile_command() {
   fi
 }
 
-_check_nix_tool() {
-  local name="$1"
-  local platform="${2:-$(detect_platform)}"
-  is_home_manager_platform "$platform" || return 0
-
-  local target
-  if ! target="$(command -v "$name" 2>/dev/null)"; then
-    fail_soft "$name not found (expected /nix/store/...)"
-    errors=$((errors + 1))
-    return
-  fi
-
-  local link_target="$target"
-  if [ -L "$target" ]; then
-    link_target="$(resolve_symlink "$target")"
-  fi
-
-  if [[ "$link_target" == /nix/store/* ]]; then
-    success "$name -> $link_target"
-  else
-    fail_soft "$name points to $link_target (expected /nix/store/...)"
-    errors=$((errors + 1))
-  fi
-}
-
 _check_nix_eval() {
   local label="$1"
   local target="$2"
@@ -165,8 +140,6 @@ function doctor {
     _check_symlink "$f" "$platform"
   done
   _check_dotfile_command
-  _check_nix_tool codex "$platform"
-  _check_nix_tool codebase-memory-mcp "$platform"
   _check_nix_config "$platform"
 
   echo ""

@@ -110,7 +110,6 @@ test_doctor_accepts_repo_dotfile_command_link() {
   done
   echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
 
   local output
   output=$(doctor 2>&1) || true
@@ -128,7 +127,6 @@ test_doctor_accepts_home_manager_store_targets_on_nixos() {
     ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
   done
   ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
 
   local output
   output=$(OS_RELEASE="$osrel" doctor 2>&1) || true
@@ -144,7 +142,6 @@ test_doctor_accepts_home_manager_store_targets_on_mac() {
     ln -s "/nix/store/example-dotfiles/$f" "$HOME/$f"
   done
   ln -s "/nix/store/example-dotfiles/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
 
   local output
   output=$(doctor 2>&1) || true
@@ -162,7 +159,6 @@ test_doctor_accepts_home_manager_store_targets_on_arch() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
 
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1) || true
@@ -179,75 +175,9 @@ test_doctor_accepts_home_manager_store_targets_on_debian() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
 
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1) || true
-  assert_contains "$output" "All checks passed"
-}
-
-test_doctor_requires_nix_agent_tools_on_arch() {
-  mock_uname Linux
-  local os_release="$TEST_TMPDIR/os-release"
-  printf 'ID=arch\n' > "$os_release"
-
-  local hm_dir="/nix/store/test-home-manager-files"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
-  ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-
-  local bin_dir="$TEST_TMPDIR/bin"
-  mkdir -p "$bin_dir"
-  printf '#!/usr/bin/env bash\n' > "$bin_dir/codex"
-  printf '#!/usr/bin/env bash\n' > "$bin_dir/codebase-memory-mcp"
-  chmod +x "$bin_dir/codex" "$bin_dir/codebase-memory-mcp"
-
-  local output
-  output=$(PATH="$bin_dir:$PATH" OS_RELEASE="$os_release" doctor 2>&1) || true
-  assert_contains "$output" "codex points to"
-  assert_contains "$output" "codebase-memory-mcp points to"
-  assert_contains "$output" "expected /nix/store"
-}
-
-test_doctor_requires_nix_agent_tools_on_debian() {
-  mock_uname Linux
-  local os_release="$TEST_TMPDIR/os-release"
-  printf 'ID=debian\n' > "$os_release"
-
-  local hm_dir="/nix/store/test-home-manager-files"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
-  ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-
-  local bin_dir="$TEST_TMPDIR/bin"
-  mkdir -p "$bin_dir"
-  printf '#!/usr/bin/env bash\n' > "$bin_dir/codex"
-  printf '#!/usr/bin/env bash\n' > "$bin_dir/codebase-memory-mcp"
-  chmod +x "$bin_dir/codex" "$bin_dir/codebase-memory-mcp"
-
-  local output
-  output=$(PATH="$bin_dir:$PATH" OS_RELEASE="$os_release" doctor 2>&1) || true
-  assert_contains "$output" "codex points to"
-  assert_contains "$output" "codebase-memory-mcp points to"
-  assert_contains "$output" "expected /nix/store"
-}
-
-test_doctor_accepts_nix_agent_tools_on_mac() {
-  mock_uname Darwin
-  local hm_dir="/nix/store/test-home-manager-files"
-  local f
-  for f in "${REQUIRED_SYMLINKS[@]}"; do
-    ln -s "$hm_dir/$f" "$HOME/$f"
-  done
-  ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
-
-  local output
-  output=$(doctor 2>&1) || true
   assert_contains "$output" "All checks passed"
 }
 
@@ -277,7 +207,6 @@ test_doctor_passes_with_home_manager_store_targets() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
 
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1)
@@ -295,7 +224,6 @@ test_doctor_skips_nix_eval_in_dry_mode() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
 
   local command_calls="$TEST_TMPDIR/command-calls.log"
   command() {
@@ -334,7 +262,6 @@ test_doctor_retries_nix_eval_with_temp_cache_after_fetcher_cache_failure() {
     ln -s "$hm_dir/$f" "$HOME/$f"
   done
   ln -s "$hm_dir/bin/dotfile" "$HOME/.local/bin/dotfile"
-  with_nix_agent_tools
 
   local calls="$TEST_TMPDIR/nix-calls.log"
   nix() {
