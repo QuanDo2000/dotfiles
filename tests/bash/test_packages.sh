@@ -158,6 +158,32 @@ test_update_debian_uses_existing_home_manager() {
   unset -f command sudo _load_nix_profile home-manager
 }
 
+test_update_debian_bootstraps_home_manager_when_missing() {
+  DRY=false
+  local calls="$TEST_TMPDIR/calls.log"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix) return 0 ;;
+        home-manager) return 1 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
+  _load_nix_profile() { :; }
+
+  update_debian >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_not_contains "$output" "sudo apt"
+  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_not_contains "$output" "@linux@linux"
+
+  unset -f command sudo _load_nix_profile
+}
+
 # ---------------------------------------------------------------------------
 # NixOS package flow
 # ---------------------------------------------------------------------------
