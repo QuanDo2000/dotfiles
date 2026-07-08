@@ -175,3 +175,54 @@ function test_installfnm_fails_when_fnm_command_fails {
 
     Assert-True $failed 'InstallFnm should fail when fnm install/use/default fails'
 }
+
+function test_installai_fails_when_codebase_memory_update_fails {
+    $script:Dry = $false
+    $originalInstallCodex = (Get-Command InstallCodex).ScriptBlock
+    Set-Item -Path function:global:InstallCodex -Value { }
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'mock-codebase-memory-mcp' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'codebase-memory-mcp' { $global:LASTEXITCODE = 1 }
+
+    $failed = $false
+    try {
+        InstallAi -Update 6>&1 | Out-Null
+    } catch {
+        $failed = $true
+    } finally {
+        Clear-CommandMock 'codebase-memory-mcp'
+        Clear-CommandMock 'Get-Command'
+        Set-Item -Path function:global:InstallCodex -Value $originalInstallCodex
+    }
+
+    Assert-True $failed 'InstallAi should fail when codebase-memory-mcp update fails'
+}
+
+function test_installai_fails_when_codebase_memory_install_fails {
+    $script:Dry = $false
+    $originalInstallCodex = (Get-Command InstallCodex).ScriptBlock
+    Set-Item -Path function:global:InstallCodex -Value { }
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'codebase-memory-mcp') { return $null }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'irm' { 'function global:codebase-memory-mcp { $global:LASTEXITCODE = 1 }; codebase-memory-mcp install' }
+
+    $failed = $false
+    try {
+        InstallAi 6>&1 | Out-Null
+    } catch {
+        $failed = $true
+    } finally {
+        Clear-CommandMock 'irm'
+        Clear-CommandMock 'Get-Command'
+        Clear-CommandMock 'codebase-memory-mcp'
+        Set-Item -Path function:global:InstallCodex -Value $originalInstallCodex
+    }
+
+    Assert-True $failed 'InstallAi should fail when codebase-memory-mcp install script fails'
+}

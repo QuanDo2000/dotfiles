@@ -16,10 +16,30 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Get-InitialCommand([string[]]$Arguments, [bool]$HelpRequested) {
+    if ($HelpRequested) { return '__help__' }
+    $command = "all"
+    foreach ($arg in $Arguments) {
+        switch ($arg) {
+            { $_ -in "-d", "--dry", "-f", "--force", "-q", "--quiet" } { continue }
+            { $_ -in "-h", "--help" } { return '__help__' }
+            default {
+                if ($command -eq "all") { $command = $arg }
+            }
+        }
+    }
+    return $command
+}
+
+function CommandNeedsAdmin($Command) {
+    return ($Command -in "all", "packages", "update")
+}
+
 # Self-elevate to admin (required for symlink creation)
 if (-not $NoMain) {
+    $initialCommand = Get-InitialCommand $RemainingArgs ([bool]$Help)
     $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if (-not $isAdmin) {
+    if ((CommandNeedsAdmin $initialCommand) -and -not $isAdmin) {
         Write-Host "  [ .. ] Elevating to Administrator..."
         $pwsh = (Get-Process -Id $PID).Path
         # Flags were bound to named params, so re-emit them explicitly —
@@ -277,10 +297,10 @@ function InstallAi {
     InstallCodex -Update:$Update
 
     if ($Update -and (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
-        codebase-memory-mcp update
-        if ($LASTEXITCODE -ne 0) { FailSoft "codebase-memory-mcp update failed with exit code $LASTEXITCODE" }
+        Invoke-NativeChecked "codebase-memory-mcp update failed" { codebase-memory-mcp update }
     } elseif (-not (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
         irm https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 | iex
+        if ($LASTEXITCODE -ne 0) { throw "codebase-memory-mcp install failed" }
     } else {
         Info "Already installed codebase-memory-mcp"
     }

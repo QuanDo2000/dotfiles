@@ -80,3 +80,12 @@ function test_self_elevation_exits_with_child_process_status {
     Assert-Contains $text 'exit $elevated.ExitCode'
     Assert-False ($text -like '*"-NoExit"*') 'self-elevation should not wait for a manually closed shell'
 }
+
+function test_help_and_verify_do_not_require_self_elevation {
+    Assert-Equals '__help__' (Get-InitialCommand @('verify', '--help') $false)
+    Assert-Equals '__help__' (Get-InitialCommand @() $true)
+    Assert-Equals 'verify' (Get-InitialCommand @('verify') $false)
+    Assert-False (CommandNeedsAdmin 'verify') 'verify should not trigger UAC'
+    Assert-False (CommandNeedsAdmin '__help__') 'help should not trigger UAC'
+    Assert-True (CommandNeedsAdmin 'all') 'full setup still needs admin'
+}
