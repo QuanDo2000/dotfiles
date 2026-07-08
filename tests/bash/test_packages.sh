@@ -253,6 +253,23 @@ test_update_nixos_dry_run() {
   assert_contains "$output" "sudo nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#testhost"
 }
 
+test_nixos_flake_target_reads_host_config_when_nix_is_missing() {
+  mkdir -p "$DOTFILES_DIR/config"
+  cat > "$DOTFILES_DIR/config/host.nix" <<'EOF'
+{
+  username = "testuser";
+  hostName = "fallbackhost";
+}
+EOF
+  nix() { return 127; }
+
+  local output
+  output=$(_nixos_flake_target 2>&1)
+
+  assert_equals "$DOTFILES_DIR#fallbackhost" "$output"
+  unset -f nix
+}
+
 test_nixos_flake_target_fails_when_hostname_missing() {
   nix() {
     if [[ "${1:-}" == "eval" && "${2:-}" == "--raw" && "${3:-}" == "--file" && "${4:-}" == "$DOTFILES_DIR/config/host.nix" && "${5:-}" == "hostName" ]]; then

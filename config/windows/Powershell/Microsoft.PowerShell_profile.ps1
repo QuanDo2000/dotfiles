@@ -6,13 +6,16 @@ if (Get-Command starship -ErrorAction SilentlyContinue) {
 . "$PSScriptRoot\aliases.ps1"
 
 # PSReadLine Options (PSReadLine auto-loads in interactive pwsh)
-Set-PSReadLineOption -EditMode Vi
-Set-PSReadLineOption -PredictionSource History
-Set-PSReadLineOption -PredictionViewStyle ListView
-Set-PSReadLineOption -HistorySearchCursorMovesToEnd
-Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
-Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
-Set-PSReadLineKeyHandler -Key Tab -Function Complete
+try {
+    Set-PSReadLineOption -EditMode Vi
+    Set-PSReadLineOption -PredictionSource History
+    Set-PSReadLineOption -PredictionViewStyle ListView
+    Set-PSReadLineOption -HistorySearchCursorMovesToEnd
+    Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+    Set-PSReadLineKeyHandler -Key Tab -Function Complete
+} catch {
+}
 
 # fnm
 if (Get-Command fnm -ErrorAction SilentlyContinue) {

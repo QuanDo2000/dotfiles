@@ -35,7 +35,7 @@ function test_update_packages_fails_when_winget_upgrade_fails {
         $global:LASTEXITCODE = 1
     }
     $originalInstallAi = (Get-Command InstallAi).ScriptBlock
-    Set-Item -Path function:global:InstallAi -Value { }
+    Set-Item -Path function:InstallAi -Value { }
 
     $failed = $false
     try {
@@ -44,7 +44,7 @@ function test_update_packages_fails_when_winget_upgrade_fails {
         $failed = $true
     } finally {
         Clear-CommandMock 'winget'
-        Set-Item -Path function:global:InstallAi -Value $originalInstallAi
+        Set-Item -Path function:InstallAi -Value $originalInstallAi
     }
 
     Assert-True $failed 'Update-Packages should fail when winget upgrade fails'
@@ -75,7 +75,7 @@ function test_winget_commands_use_shared_helper {
 function test_installpackages_fails_when_winget_install_fails {
     $script:Dry = $false
     $originalWingetHas = (Get-Command WingetHas).ScriptBlock
-    Set-Item -Path function:global:WingetHas -Value { return $false }
+    Set-Item -Path function:WingetHas -Value { return $false }
     Set-CommandMock 'winget' { $global:LASTEXITCODE = 1 }
 
     $failed = $false
@@ -85,7 +85,7 @@ function test_installpackages_fails_when_winget_install_fails {
         $failed = $true
     } finally {
         Clear-CommandMock 'winget'
-        Set-Item -Path function:global:WingetHas -Value $originalWingetHas
+        Set-Item -Path function:WingetHas -Value $originalWingetHas
     }
 
     Assert-True $failed 'InstallPackages should fail when winget install fails'
@@ -96,7 +96,7 @@ function test_installpackages_installs_missing_winget_packages_individually {
     $script:MissingWingetPackages = @('Git.Git', 'Neovim.Neovim')
     $script:InstallCalls = @()
     $originalWingetHas = (Get-Command WingetHas).ScriptBlock
-    Set-Item -Path function:global:WingetHas -Value { param($id) return ($script:MissingWingetPackages -notcontains $id) }
+    Set-Item -Path function:WingetHas -Value { param($id) return ($script:MissingWingetPackages -notcontains $id) }
     Set-CommandMock 'winget' {
         if ($args[0] -eq 'install') { $script:InstallCalls += ,($args -join ' ') }
         $global:LASTEXITCODE = 0
@@ -106,7 +106,7 @@ function test_installpackages_installs_missing_winget_packages_individually {
         InstallPackages 6>&1 | Out-Null
     } finally {
         Clear-CommandMock 'winget'
-        Set-Item -Path function:global:WingetHas -Value $originalWingetHas
+        Set-Item -Path function:WingetHas -Value $originalWingetHas
         Remove-Variable -Name MissingWingetPackages -Scope Script -ErrorAction SilentlyContinue
     }
 
