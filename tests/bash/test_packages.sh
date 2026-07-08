@@ -88,6 +88,7 @@ test_update_arch_uses_existing_home_manager() {
   output="$(<"$calls")"
   assert_not_contains "$output" "sudo pacman"
   assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_not_contains "$output" "@linux@linux"
 
   unset -f command sudo _load_nix_profile home-manager
 }
@@ -125,6 +126,7 @@ test_install_debian_bootstraps_nix_and_switches_home_manager() {
   assert_contains "$output" "sudo apt install -y"
   assert_contains "$output" "install-lix"
   assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_not_contains "$output" "@linux@linux"
   assert_not_contains "$output" "neovim"
 
   unset -f command sudo _install_lix _load_nix_profile
@@ -151,6 +153,7 @@ test_update_debian_uses_existing_home_manager() {
   output="$(<"$calls")"
   assert_not_contains "$output" "sudo apt"
   assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_not_contains "$output" "@linux@linux"
 
   unset -f command sudo _load_nix_profile home-manager
 }
