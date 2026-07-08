@@ -66,6 +66,12 @@ function test_windows_installs_codex_cli_with_official_installer {
     Assert-Contains $text 'CODEX_NON_INTERACTIVE'
 }
 
+function test_winget_commands_use_shared_helper {
+    $text = Get-Content -Raw $script:DotfileScript
+    Assert-Contains $text 'function Invoke-Winget'
+    Assert-False ($text -match '\{ winget (install|upgrade)') 'raw winget install/upgrade calls should go through Invoke-Winget'
+}
+
 function test_installpackages_fails_when_winget_install_fails {
     $script:Dry = $false
     $originalWingetHas = (Get-Command WingetHas).ScriptBlock

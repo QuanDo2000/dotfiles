@@ -28,3 +28,13 @@ jobs:
       - name: Run PowerShell tests (Windows)
         shell: pwsh
         run: ./tests/powershell/runner.ps1
+
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Run flake checks
+        run: nix flake check --no-build --all-systems

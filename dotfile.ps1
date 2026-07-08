@@ -88,6 +88,24 @@ function PromptAction($destination, $sourceName) {
     return $key
 }
 
+function Get-LinkConflict($source, $destination) {
+    if (-not (Test-Path $destination)) { return $null }
+
+    $current = Get-Item $destination -ErrorAction SilentlyContinue
+    [pscustomobject]@{
+        Item = $current
+        AlreadyLinked = ($current.Target -eq $source)
+    }
+}
+
+function New-Symlink($source, $destination) {
+    $parent = Split-Path $destination -Parent
+    if ($parent -and -not (Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+    New-Item -ItemType SymbolicLink -Path $destination -Target $source | Out-Null
+}
+
 function LinkFile($source, $destination) {
     Info "Linking $source to $destination"
     if ($script:Dry) { return }
@@ -95,9 +113,9 @@ function LinkFile($source, $destination) {
     $skip = $false
     $overwrite = $false
     $backup = $false
-    if (Test-Path $destination) {
-        $current = (Get-Item $destination -ErrorAction SilentlyContinue)
-        if ($current.Target -eq $source) {
+    $conflict = Get-LinkConflict $source $destination
+    if ($conflict) {
+        if ($conflict.AlreadyLinked) {
             $skip = $true
         } elseif (-not $script:OverwriteAll -and -not $script:BackupAll -and -not $script:SkipAll) {
             $action = PromptAction $destination (Split-Path $source -Leaf)
@@ -126,11 +144,7 @@ function LinkFile($source, $destination) {
         }
     }
 
-    $parent = Split-Path $destination -Parent
-    if ($parent -and -not (Test-Path $parent)) {
-        New-Item -ItemType Directory -Path $parent -Force | Out-Null
-    }
-    New-Item -ItemType SymbolicLink -Path $destination -Target $source | Out-Null
+    New-Symlink $source $destination
     Success "Linked $source to $destination"
 }
 
@@ -138,12 +152,13 @@ function LinkDir($source, $destination) {
     Info "Linking directory $source to $destination"
     if ($script:Dry) { return }
 
-    if (Test-Path $destination) {
-        $current = Get-Item $destination -ErrorAction SilentlyContinue
-        if ($current.Target -eq $source) {
+    $conflict = Get-LinkConflict $source $destination
+    if ($conflict) {
+        if ($conflict.AlreadyLinked) {
             Success "Skipped $destination (already linked)"
             return
         }
+        $current = $conflict.Item
         if ($script:Force) {
             if ($current.PSIsContainer -and -not $current.LinkType) {
                 Remove-Item $destination -Recurse -Force
@@ -156,12 +171,14 @@ function LinkDir($source, $destination) {
         }
     }
 
-    $parent = Split-Path $destination -Parent
-    if ($parent -and -not (Test-Path $parent)) {
-        New-Item -ItemType Directory -Path $parent -Force | Out-Null
-    }
-    New-Item -ItemType SymbolicLink -Path $destination -Target $source | Out-Null
+    New-Symlink $source $destination
     Success "Linked $source to $destination"
+}
+
+function Invoke-Winget($FailureMessage, [string[]]$Arguments) {
+    Invoke-NativeChecked $FailureMessage {
+        winget @Arguments --disable-interactivity --accept-package-agreements --accept-source-agreements
+    }
 }
 
 # Ensure repo exists
@@ -214,14 +231,14 @@ function InstallPackages {
     if ($missing.Count -gt 0) {
         Info "Installing $($missing.Count) missing winget package(s): $($missing -join ', ')"
         foreach ($pkg in $missing) {
-            Invoke-NativeChecked "winget install $pkg failed" { winget install --id $pkg --exact --disable-interactivity --accept-package-agreements --accept-source-agreements }
+            Invoke-Winget "winget install $pkg failed" @('install', '--id', $pkg, '--exact')
         }
     } else {
         Success "All winget packages already installed"
     }
 
     Info "Upgrading all winget packages..."
-    Invoke-NativeChecked "winget upgrade failed" { winget upgrade --all --disable-interactivity --accept-package-agreements --accept-source-agreements }
+    Invoke-Winget "winget upgrade failed" @('upgrade', '--all')
 
     Success "Finished installing packages"
 }
@@ -321,7 +338,7 @@ function Update-Packages {
     if ($script:Dry) {
         Success "Would run: winget upgrade --all"
     } else {
-        Invoke-NativeChecked "winget upgrade failed" { winget upgrade --all --disable-interactivity --accept-package-agreements --accept-source-agreements }
+        Invoke-Winget "winget upgrade failed" @('upgrade', '--all')
     }
     InstallAi -Update
     Success "Finished updating packages"
@@ -353,11 +370,17 @@ function EnsureDir($dir) {
     }
 }
 
-function SetupSymlinks {
-    Info "Setting up symlinks..."
-    $script:OverwriteAll = $script:Force
-    $script:BackupAll = $false
-    $script:SkipAll = $false
+function New-LinkSpec($Kind, $Source, $Destination, [bool]$Verify = $false, [bool]$AddToPath = $false) {
+    [pscustomobject]@{
+        Kind = $Kind
+        Source = $Source
+        Destination = $Destination
+        Verify = $Verify
+        AddToPath = $AddToPath
+    }
+}
+
+function Get-WindowsLinkSpecs {
     $configPath = Join-Path $script:DotfilesDir "config\windows"
     $sharedPath = Join-Path $script:DotfilesDir "config\shared"
 
@@ -366,6 +389,7 @@ function SetupSymlinks {
     # variable is read-only and frozen at session start, so $HOME would always
     # resolve to the real home — leaking test artifacts into ~/Documents etc.
     $userHome = $env:USERPROFILE
+    $specs = @()
 
     # PowerShell profiles (link each file into the target dir).
     # Lowercase "documents" works on Windows (case-insensitive) and matches
@@ -375,60 +399,67 @@ function SetupSymlinks {
         "$userHome\documents\WindowsPowerShell"
         "$userHome\documents\PowerShell"
     )
-    foreach ($target in $targets) {
-        EnsureDir $target
-        Get-ChildItem $psSource -File | ForEach-Object {
-            LinkFile -source $_.FullName -destination (Join-Path $target $_.Name)
+    if (Test-Path $psSource) {
+        foreach ($target in $targets) {
+            Get-ChildItem $psSource -File | ForEach-Object {
+                $specs += New-LinkSpec 'File' $_.FullName (Join-Path $target $_.Name)
+            }
         }
     }
 
     # Windows Terminal settings
-    $terminalSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-    $terminalSettingsSource = Join-Path $configPath "Terminal\settings.json"
-    LinkFile -source $terminalSettingsSource -destination $terminalSettingsPath
+    $specs += New-LinkSpec 'File' `
+        (Join-Path $configPath "Terminal\settings.json") `
+        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
 
     # Git config
-    LinkFile -source (Join-Path $sharedPath ".gitconfig") -destination "$userHome\.gitconfig"
-    LinkFile -source (Join-Path $configPath ".gitconfig") -destination "$userHome\.gitconfig.windows"
+    $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".gitconfig") "$userHome\.gitconfig" $true
+    $specs += New-LinkSpec 'File' (Join-Path $configPath ".gitconfig") "$userHome\.gitconfig.windows"
 
     # SSH config
-    $sshDest = "$userHome\.ssh"
-    EnsureDir $sshDest
-    LinkFile -source (Join-Path $sharedPath ".ssh\config") -destination (Join-Path $sshDest "config")
+    $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".ssh\config") "$userHome\.ssh\config" $true
 
     # Neovim settings (symlink the whole dir)
-    $nvimSettingsPath = "$env:LOCALAPPDATA\nvim"
-    LinkDir -source (Join-Path $sharedPath "config\nvim") -destination $nvimSettingsPath
+    $specs += New-LinkSpec 'Dir' (Join-Path $sharedPath "config\nvim") "$env:LOCALAPPDATA\nvim"
 
     # Jujutsu config (lives at %APPDATA%\jj\config.toml on Windows)
-    LinkDir -source (Join-Path $sharedPath "config\jj") -destination "$env:APPDATA\jj"
+    $specs += New-LinkSpec 'Dir' (Join-Path $sharedPath "config\jj") "$env:APPDATA\jj"
 
     # starship prompt config — shared with zsh, read from ~/.config/starship.toml.
-    $starshipConfigDir = "$userHome\.config"
-    EnsureDir $starshipConfigDir
-    LinkFile -source (Join-Path $sharedPath "config\starship.toml") -destination (Join-Path $starshipConfigDir "starship.toml")
+    $specs += New-LinkSpec 'File' (Join-Path $sharedPath "config\starship.toml") (Join-Path $userHome ".config\starship.toml") $true
 
     # AI tool configs live in their own dotfolders (not ~/.config) alongside
     # runtime state we don't track, so link only the tracked files.
-    $aiPath = Join-Path $sharedPath "ai"
-    $aiLinks = @(
-        @{ Src = "claude\settings.json";        Dst = "$userHome\.claude\settings.json" }
-    )
-    foreach ($link in $aiLinks) {
-        $src = Join-Path $aiPath $link.Src
-        if (-not (Test-Path $src)) { continue }
-        $parent = Split-Path $link.Dst -Parent
-        if (-not $script:Dry) { EnsureDir $parent }
-        LinkFile -source $src -destination $link.Dst
+    $claudeSettings = Join-Path $sharedPath "ai\claude\settings.json"
+    if (Test-Path $claudeSettings) {
+        $specs += New-LinkSpec 'File' $claudeSettings "$userHome\.claude\settings.json"
     }
 
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
     $dotfileSource = Join-Path $script:DotfilesDir "dotfile.ps1"
     if (Test-Path $dotfileSource) {
         $binDest = "$userHome\.local\bin"
-        EnsureDir $binDest
-        AddToUserPath $binDest
-        LinkFile -source $dotfileSource -destination (Join-Path $binDest "dotfile.ps1")
+        $specs += New-LinkSpec 'File' $dotfileSource (Join-Path $binDest "dotfile.ps1") $false $true
+    }
+
+    return $specs
+}
+
+function SetupSymlinks {
+    Info "Setting up symlinks..."
+    $script:OverwriteAll = $script:Force
+    $script:BackupAll = $false
+    $script:SkipAll = $false
+
+    foreach ($spec in Get-WindowsLinkSpecs) {
+        if ($spec.AddToPath) {
+            AddToUserPath (Split-Path $spec.Destination -Parent)
+        }
+        if ($spec.Kind -eq 'Dir') {
+            LinkDir -source $spec.Source -destination $spec.Destination
+        } else {
+            LinkFile -source $spec.Source -destination $spec.Destination
+        }
     }
 
     Success "Finished setting up symlinks"
@@ -468,25 +499,18 @@ function Verify {
     }
 
     Info "Verifying copied files..."
-    $sharedPath = Join-Path $script:DotfilesDir "config\shared"
-
-    # Match SetupSymlinks: use $env:USERPROFILE so test fixtures can override.
-    $userHome = $env:USERPROFILE
-    $filesToCheck = @(
-        @{ Source = (Join-Path $sharedPath ".gitconfig"); Dest = "$userHome\.gitconfig" }
-        @{ Source = (Join-Path $sharedPath "config\starship.toml"); Dest = "$userHome\.config\starship.toml" }
-    )
+    $filesToCheck = Get-WindowsLinkSpecs | Where-Object { $_.Verify }
     foreach ($file in $filesToCheck) {
-        if (Test-Path $file.Dest) {
-            $diff = Compare-Object (Get-Content $file.Source) (Get-Content $file.Dest) -ErrorAction SilentlyContinue
+        if (Test-Path $file.Destination) {
+            $diff = Compare-Object (Get-Content $file.Source) (Get-Content $file.Destination) -ErrorAction SilentlyContinue
             if (-not $diff) {
-                Success "$($file.Dest) matches source"
+                Success "$($file.Destination) matches source"
             } else {
-                FailSoft "$($file.Dest) exists but differs from source"
+                FailSoft "$($file.Destination) exists but differs from source"
                 $errors++
             }
         } else {
-            FailSoft "$($file.Dest) not found"
+            FailSoft "$($file.Destination) not found"
             $errors++
         }
     }

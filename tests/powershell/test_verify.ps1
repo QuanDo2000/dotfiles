@@ -11,6 +11,8 @@ function TestSetup {
     # Create stub source files so Verify's Compare-Object call never throws on
     # missing sources when the real $HOME happens to contain matching dests.
     'g' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\.ssh') -Force | Out-Null
+    'ssh' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.ssh\config')
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\config') -Force | Out-Null
     's' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\config\starship.toml')
     # Verify's informational output flows through Info/Success, which are
@@ -67,6 +69,23 @@ function test_verify_fails_when_tracked_config_differs {
 
     Assert-Contains $output 'differs from source'
     Assert-True $script:VerifyFailed 'verify should fail when tracked config differs'
+}
+
+function test_verify_checks_shared_link_specs {
+    Set-CommandMock 'Get-Command' {
+        [pscustomobject]@{ Source = 'C:\fake\tool.exe' }
+    }
+    Set-CommandMock 'Get-Module' {
+        [pscustomobject]@{ Name = 'FakeModule' }
+    }
+    New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE '.ssh') -Force | Out-Null
+    'different ssh' | Set-Content (Join-Path $env:USERPROFILE '.ssh\config')
+
+    $output = Verify 6>&1 | Out-String
+
+    Assert-Contains $output '.ssh'
+    Assert-Contains $output 'differs from source'
+    Assert-True $script:VerifyFailed 'verify should check shared file link specs'
 }
 
 function test_verify_reports_issues_when_tools_absent {
