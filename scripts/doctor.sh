@@ -3,6 +3,11 @@ set -eo pipefail
 
 : "${DOTFILES_DIR:=$HOME/dotfiles}"
 
+if ! declare -F host_config_value >/dev/null; then
+  # shellcheck source=scripts/host_config.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/host_config.sh"
+fi
+
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {
   local name="$1"
@@ -100,8 +105,8 @@ _check_nix_config() {
   fi
 
   local username host_name
-  username="$(nix eval --raw --file "$DOTFILES_DIR/config/host.nix" username 2>/dev/null || true)"
-  host_name="$(nix eval --raw --file "$DOTFILES_DIR/config/host.nix" hostName 2>/dev/null || true)"
+  username="$(host_config_value username 2>/dev/null || true)"
+  host_name="$(host_config_value hostName 2>/dev/null || true)"
 
   case "$platform" in
     nixos)

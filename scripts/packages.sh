@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+if ! declare -F host_config_value >/dev/null; then
+  # shellcheck source=scripts/host_config.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/host_config.sh"
+fi
+
 DEBIAN_PACKAGES=(
   curl git zsh procps file
 )
@@ -98,40 +103,9 @@ function _home_manager_switch {
   fi
 }
 
-_host_config_value_from_file() {
-  local key="$1"
-  local host_config="$DOTFILES_DIR/config/host.nix"
-  local pattern="^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"([^\"]*)\"[[:space:]]*;"
-  local line
-
-  [[ -f "$host_config" ]] || return 1
-  while IFS= read -r line; do
-    if [[ "$line" =~ $pattern ]]; then
-      printf '%s\n' "${BASH_REMATCH[1]}"
-      return 0
-    fi
-  done < "$host_config"
-  return 1
-}
-
-_host_config_value() {
-  local output status=0
-  output="$(nix eval --raw --file "$DOTFILES_DIR/config/host.nix" "$1" 2>/dev/null)" || status=$?
-  if [[ "$status" -eq 0 ]]; then
-    printf '%s\n' "$output"
-    return 0
-  fi
-
-  if [[ "$status" -eq 127 ]]; then
-    _host_config_value_from_file "$1"
-    return
-  fi
-  return "$status"
-}
-
 function _linux_home_manager_target {
   local username
-  username="$(_host_config_value username)" \
+  username="$(host_config_value username)" \
     || fail "Failed to resolve Linux Home Manager username"
   echo "$DOTFILES_DIR#${username}@linux"
 }
@@ -142,7 +116,7 @@ function _darwin_flake_target {
 
 function _nixos_flake_target {
   local host_name
-  host_name="$(_host_config_value hostName)" \
+  host_name="$(host_config_value hostName)" \
     || fail "Failed to resolve NixOS host name"
   echo "$DOTFILES_DIR#$host_name"
 }

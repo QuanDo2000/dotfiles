@@ -48,20 +48,20 @@ function test_setupdotfiles_updates_repo_before_installing_packages {
     $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
     $originalInstallAi = (Get-Command InstallAi).ScriptBlock
     $originalSetupSymlinks = (Get-Command SetupSymlinks).ScriptBlock
-    Set-Item -Path function:InstallPackages -Value { $script:Calls += 'InstallPackages' }
-    Set-Item -Path function:UpdateRepo -Value { $script:Calls += 'UpdateRepo' }
-    Set-Item -Path function:InstallExtras -Value { $script:Calls += 'InstallExtras' }
-    Set-Item -Path function:InstallAi -Value { $script:Calls += 'InstallAi' }
-    Set-Item -Path function:SetupSymlinks -Value { $script:Calls += 'SetupSymlinks' }
+    Set-FunctionMock 'InstallPackages' { $script:Calls += 'InstallPackages' }
+    Set-FunctionMock 'UpdateRepo' { $script:Calls += 'UpdateRepo' }
+    Set-FunctionMock 'InstallExtras' { $script:Calls += 'InstallExtras' }
+    Set-FunctionMock 'InstallAi' { $script:Calls += 'InstallAi' }
+    Set-FunctionMock 'SetupSymlinks' { $script:Calls += 'SetupSymlinks' }
 
     try {
         SetupDotfiles
     } finally {
-        Set-Item -Path function:InstallPackages -Value $originalInstallPackages
-        Set-Item -Path function:UpdateRepo -Value $originalUpdateRepo
-        Set-Item -Path function:InstallExtras -Value $originalInstallExtras
-        Set-Item -Path function:InstallAi -Value $originalInstallAi
-        Set-Item -Path function:SetupSymlinks -Value $originalSetupSymlinks
+        Set-FunctionMock 'InstallPackages' $originalInstallPackages
+        Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
+        Set-FunctionMock 'InstallExtras' $originalInstallExtras
+        Set-FunctionMock 'InstallAi' $originalInstallAi
+        Set-FunctionMock 'SetupSymlinks' $originalSetupSymlinks
     }
 
     Assert-Equals 'UpdateRepo' $script:Calls[0]

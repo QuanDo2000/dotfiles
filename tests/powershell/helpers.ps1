@@ -74,6 +74,14 @@ function Set-CommandMock {
     Set-Item -Path "function:global:$Name" -Value $ScriptBlock
 }
 
+function Set-FunctionMock {
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][scriptblock]$ScriptBlock
+    )
+    Set-Item -Path "function:$Name" -Value $ScriptBlock
+}
+
 function Clear-CommandMock {
     param([Parameter(Mandatory)][string]$Name)
     Remove-Item "function:$Name" -ErrorAction SilentlyContinue

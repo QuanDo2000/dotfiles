@@ -247,3 +247,27 @@ test_doctor_retries_nix_eval_with_temp_cache_after_fetcher_cache_failure() {
   assert_contains "$output" "All checks passed"
   assert_contains "$(tail -n 1 "$calls")" "dotfile-nix-cache."
 }
+
+test_doctor_reads_host_config_when_nix_file_eval_is_unavailable() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$os_release"
+  mkdir -p "$DOTFILES_DIR/config"
+  printf '{ username = "quando"; hostName = "fallbackhost"; }\n' > "$DOTFILES_DIR/config/host.nix"
+  touch "$DOTFILES_DIR/flake.nix"
+  link_valid_core_dotfiles "/nix/store/test-home-files"
+
+  nix() {
+    if [[ "$*" == *"--file"* ]]; then
+      return 127
+    fi
+    printf '/nix/store/test-system.drv\n'
+  }
+  export -f nix
+
+  local output
+  output=$(OS_RELEASE="$os_release" doctor 2>&1)
+
+  assert_contains "$output" "NixOS configuration fallbackhost evaluates"
+  assert_contains "$output" "All checks passed"
+}
