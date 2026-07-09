@@ -67,10 +67,6 @@ in
   ];
   home.packages = with pkgs; [
     ast-grep
-    zig
-    odin
-    gleam
-    beamPackages.erlang
     jq
   ] ++ lib.optionals (!nixosSystem) [
     nerd-fonts.fira-code

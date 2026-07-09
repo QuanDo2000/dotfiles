@@ -149,7 +149,7 @@ test_home_config_puts_shared_user_tools_in_common_packages() {
   standalone_linux_packages="$(sed -n '/\] ++ lib.optionals standaloneLinux \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
   linux_packages="$(sed -n '/\] ++ lib.optionals pkgs.stdenv.isLinux \[/,/  \];/p' "$REPO_DIR/config/home.nix")"
 
-  for pkg in ast-grep zig odin gleam erlang jq; do
+  for pkg in ast-grep jq; do
     assert_contains "$common_packages" "$pkg"
   done
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "\"\${homeDir}/.local/bin\""
