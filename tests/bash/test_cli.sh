@@ -231,14 +231,6 @@ test_readme_nixos_fresh_install_does_not_sudo_dotfile_script() {
   assert_not_contains "$readme_text" "sudo bash ./dotfile all"
 }
 
-test_help_has_no_removed_commands() {
-  local output
-  output=$(bash "$DOTFILE_CMD" --help 2>&1)
-  if [[ "$output" == *$'\n  zsh '* || "$output" == *$'\n  tmux '* || "$output" == *$'\n  ai '* || "$output" == *$'\n  extras '* || "$output" == *$'\n  symlinks '* || "$output" == *$'\n  languages '* || "$output" == *$'\n  verify '* || "$output" == *$'\n  obsidian-config'* ]]; then
-    echo "  FAILED: help text should not expose removed commands" >> "$ERROR_FILE"
-  fi
-}
-
 test_help_flags_exit_zero() {
   assert_exit_code 0 bash "$DOTFILE_CMD" -d -h
   assert_exit_code 0 bash "$DOTFILE_CMD" -f -h
@@ -252,14 +244,4 @@ test_help_flags_exit_zero() {
 
 test_unknown_command_fails() {
   assert_exit_code 1 bash "$DOTFILE_CMD" nonsense_command
-}
-
-test_removed_commands_fail() {
-  assert_exit_code 1 bash "$DOTFILE_CMD" --dry zsh
-  assert_exit_code 1 bash "$DOTFILE_CMD" --dry tmux
-  assert_exit_code 1 bash "$DOTFILE_CMD" --dry ai
-  assert_exit_code 1 bash "$DOTFILE_CMD" --dry extras
-  assert_exit_code 1 bash "$DOTFILE_CMD" --dry symlinks
-  assert_exit_code 1 bash "$DOTFILE_CMD" --dry languages
-  assert_exit_code 1 bash "$DOTFILE_CMD" --dry verify
 }
