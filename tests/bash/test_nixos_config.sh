@@ -221,6 +221,14 @@ test_home_config_uses_tracked_host_username() {
   assert_not_contains "$home_text" '"/home/quando"'
 }
 
+test_zsh_completion_cache_uses_glob_qualifiers() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home_text" "setopt local_options extended_glob"
+  assert_contains "$home_text" "compinit -C -d"
+}
+
 test_home_config_manages_gitconfig_and_starship_config() {
   local home_text zsh_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
