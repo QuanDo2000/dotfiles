@@ -448,6 +448,14 @@ test_home_config_owns_existing_xdg_configs() {
   assert_contains "$home_text" "force = true"
 }
 
+test_waybar_cpu_does_not_poll_every_second() {
+  local waybar_text
+  waybar_text="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
+
+  assert_contains "$waybar_text" '"cpu": {'
+  assert_contains "$waybar_text" '"interval": 5'
+}
+
 test_doctor_paths_cover_home_manager_managed_paths() {
   local doctor_text home_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
