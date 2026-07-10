@@ -131,6 +131,60 @@ function _run_nix_managed_switch {
   "$@" || fail "$fail_message"
 }
 
+function _latest_codex_release_tag {
+  local release_url tag
+  release_url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/openai/codex/releases/latest)" \
+    || fail "Failed to check latest Codex release"
+  tag="${release_url##*/}"
+  [[ "$tag" == rust-v* ]] || fail "Unexpected Codex release tag: $tag"
+  printf '%s\n' "$tag"
+}
+
+function _codex_release_archive_url {
+  printf 'https://github.com/openai/codex/releases/download/%s/codex-package-x86_64-unknown-linux-musl.tar.gz\n' "$1"
+}
+
+function _prefetch_codex_release_hash {
+  local tag url output hash
+  tag="$1"
+  url="$(_codex_release_archive_url "$tag")"
+  output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
+    || fail "Failed to prefetch Codex release archive"
+  hash="$(printf '%s\n' "$output" | sed -n 's/.*"hash":"\([^"]*\)".*/\1/p')"
+  [[ -n "$hash" ]] || fail "Failed to parse Codex release archive hash"
+  printf '%s\n' "$hash"
+}
+
+function _write_codex_release_package {
+  local tag hash version package_file tmp
+  tag="$1"
+  hash="$2"
+  version="${tag#rust-v}"
+  package_file="$DOTFILES_DIR/packages/codex-release.nix"
+  [[ -f "$package_file" ]] || fail "Missing Codex package file: $package_file"
+
+  tmp="$(mktemp)" || fail "Failed to create temp file"
+  sed -E \
+    -e 's#version = "[^"]+";#version = "'"$version"'";#' \
+    -e 's#hash = "[^"]+";#hash = "'"$hash"'";#' \
+    "$package_file" > "$tmp" \
+    && mv "$tmp" "$package_file" \
+    || fail "Failed to update Codex package file"
+}
+
+function _update_codex_release_package {
+  if [[ "$DRY" == "true" ]]; then
+    info "Would update Codex package from the latest GitHub release"
+    return
+  fi
+
+  local tag hash
+  tag="$(_latest_codex_release_tag)"
+  info "Updating Codex package to $tag..."
+  hash="$(_prefetch_codex_release_hash "$tag")"
+  _write_codex_release_package "$tag" "$hash"
+}
+
 function _darwin_rebuild_switch {
   local target
   target="$(_darwin_flake_target)"
@@ -225,6 +279,7 @@ function update_nixos {
 
 function update_packages {
   info "Updating packages..."
+  _update_codex_release_package
   case "$(detect_platform)" in
     nixos)   update_nixos ;;
     debian)  update_debian ;;

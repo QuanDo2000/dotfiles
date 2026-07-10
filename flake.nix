@@ -18,6 +18,7 @@
       machine = import ./config/host.nix;
       overlays = [
         (final: _prev: {
+          codex = final.callPackage ./packages/codex-release.nix { };
           obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
         })
       ];
@@ -28,6 +29,7 @@
       };
     in
     {
+      packages.x86_64-linux.codex = linuxPkgs.codex;
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
 
       nixosConfigurations."${machine.hostName}" = nixpkgs.lib.nixosSystem {

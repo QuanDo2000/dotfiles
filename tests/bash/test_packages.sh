@@ -228,6 +228,61 @@ test_update_debian_dry_run_shows_home_manager_switch() {
   assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
 }
 
+test_latest_codex_release_tag_reads_github_redirect() {
+  curl() {
+    printf 'https://github.com/openai/codex/releases/tag/rust-v0.144.1'
+  }
+
+  local output
+  output=$(_latest_codex_release_tag 2>&1)
+
+  assert_equals "rust-v0.144.1" "$output"
+
+  unset -f curl
+}
+
+test_update_codex_release_package_pins_latest_binary() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages"
+  cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
+{
+  version = "0.0.0";
+  hash = "sha256-old";
+}
+EOF
+  curl() {
+    printf 'https://github.com/openai/codex/releases/tag/rust-v0.144.1'
+  }
+  nix() {
+    assert_contains "$*" "store prefetch-file --json --hash-type sha256 https://github.com/openai/codex/releases/download/rust-v0.144.1/codex-package-x86_64-unknown-linux-musl.tar.gz"
+    printf '{"hash":"sha256-new"}\n'
+  }
+
+  _update_codex_release_package >/dev/null 2>&1
+
+  local output
+  output="$(<"$DOTFILES_DIR/packages/codex-release.nix")"
+  assert_contains "$output" 'version = "0.144.1";'
+  assert_contains "$output" 'hash = "sha256-new";'
+
+  unset -f curl nix
+}
+
+test_update_codex_release_package_dry_run_skips_network() {
+  DRY=true
+  curl() {
+    echo "curl should not run in dry-run mode" >> "$ERROR_FILE"
+    return 1
+  }
+
+  local output
+  output=$(_update_codex_release_package 2>&1)
+
+  assert_contains "$output" "Would update Codex package from the latest GitHub release"
+
+  unset -f curl
+}
+
 # ---------------------------------------------------------------------------
 # NixOS package flow
 # ---------------------------------------------------------------------------
