@@ -366,6 +366,25 @@ EOF
   unset -f command _ensure_nix _latest_codex_release_tag _prefetch_codex_release_hash _write_codex_release_package home-manager
 }
 
+test_update_packages_fails_unsupported_before_codex_update() {
+  DRY=false
+  mock_uname FreeBSD
+  local calls="$TEST_TMPDIR/calls.log"
+  : > "$calls"
+  _update_codex_release_package() {
+    printf 'codex-update\n' >> "$calls"
+  }
+
+  local output exit_code=0
+  output=$(update_packages 2>&1) || exit_code=$?
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "Unsupported system: FreeBSD"
+  assert_equals "" "$(<"$calls")"
+
+  unset -f _update_codex_release_package
+}
+
 # ---------------------------------------------------------------------------
 # NixOS package flow
 # ---------------------------------------------------------------------------
