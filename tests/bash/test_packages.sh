@@ -268,6 +268,40 @@ EOF
   unset -f curl nix
 }
 
+test_update_codex_release_package_skips_current_version() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages"
+  cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
+{
+  version = "0.144.1";
+  hash = "sha256-current";
+}
+EOF
+  local calls="$TEST_TMPDIR/calls.log"
+  _latest_codex_release_tag() {
+    printf 'latest\n' >> "$calls"
+    printf 'rust-v0.144.1\n'
+  }
+  _ensure_nix() {
+    printf 'ensure-nix\n' >> "$calls"
+  }
+  _prefetch_codex_release_hash() {
+    printf 'prefetch\n' >> "$calls"
+    printf 'sha256-new\n'
+  }
+  _write_codex_release_package() {
+    printf 'write\n' >> "$calls"
+  }
+
+  local output
+  output=$(_update_codex_release_package 2>&1)
+
+  assert_contains "$output" "Codex package already at rust-v0.144.1"
+  assert_equals "latest" "$(<"$calls")"
+
+  unset -f _latest_codex_release_tag _ensure_nix _prefetch_codex_release_hash _write_codex_release_package
+}
+
 test_update_codex_release_package_dry_run_skips_network() {
   DRY=true
   curl() {
@@ -281,6 +315,55 @@ test_update_codex_release_package_dry_run_skips_network() {
   assert_contains "$output" "Would update Codex package from the latest GitHub release"
 
   unset -f curl
+}
+
+test_update_packages_updates_codex_before_platform_update() {
+  DRY=false
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  local calls="$TEST_TMPDIR/calls.log"
+  printf 'ID=arch\n' > "$osrel"
+  mkdir -p "$DOTFILES_DIR/packages"
+  cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
+{
+  version = "0.0.0";
+  hash = "sha256-old";
+}
+EOF
+
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|home-manager) return 0 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  _ensure_nix() {
+    printf 'ensure-nix\n' >> "$calls"
+  }
+  _latest_codex_release_tag() {
+    printf 'codex-release\n' >> "$calls"
+    printf 'rust-v0.144.1\n'
+  }
+  _prefetch_codex_release_hash() {
+    printf 'codex-prefetch\n' >> "$calls"
+    printf 'sha256-new\n'
+  }
+  _write_codex_release_package() {
+    printf 'codex-write\n' >> "$calls"
+  }
+  home-manager() {
+    printf 'home-manager-switch\n' >> "$calls"
+  }
+
+  OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
+
+  local output
+  output="$(<"$calls")"
+  assert_equals $'codex-release\nensure-nix\ncodex-prefetch\ncodex-write\nensure-nix\nhome-manager-switch' "$output"
+
+  unset -f command _ensure_nix _latest_codex_release_tag _prefetch_codex_release_hash _write_codex_release_package home-manager
 }
 
 # ---------------------------------------------------------------------------

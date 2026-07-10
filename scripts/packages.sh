@@ -178,9 +178,19 @@ function _update_codex_release_package {
     return
   fi
 
-  local tag hash
+  local tag hash version package_file current_version
+  package_file="$DOTFILES_DIR/packages/codex-release.nix"
+  [[ -f "$package_file" ]] || fail "Missing Codex package file: $package_file"
   tag="$(_latest_codex_release_tag)"
+  version="${tag#rust-v}"
+  current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
+  if [[ "$current_version" == "$version" ]]; then
+    info "Codex package already at $tag"
+    return
+  fi
+
   info "Updating Codex package to $tag..."
+  _ensure_nix
   hash="$(_prefetch_codex_release_hash "$tag")"
   _write_codex_release_package "$tag" "$hash"
 }
@@ -279,13 +289,18 @@ function update_nixos {
 
 function update_packages {
   info "Updating packages..."
+  local platform
+  platform="$(detect_platform)"
+  case "$platform" in
+    nixos|debian|arch|mac) ;;
+    unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
+  esac
   _update_codex_release_package
-  case "$(detect_platform)" in
+  case "$platform" in
     nixos)   update_nixos ;;
     debian)  update_debian ;;
     arch)    update_arch ;;
     mac)     update_mac ;;
-    unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
   esac
   success "Finished update"
 }
