@@ -150,7 +150,7 @@ function _prefetch_codex_release_hash {
   url="$(_codex_release_archive_url "$tag")"
   output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
     || fail "Failed to prefetch Codex release archive"
-  hash="$(printf '%s\n' "$output" | sed -n 's/.*"hash":"\([^"]*\)".*/\1/p')"
+  hash="$(printf '%s\n' "$output" | sed -n 's/.*"hash"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
   [[ -n "$hash" ]] || fail "Failed to parse Codex release archive hash"
   printf '%s\n' "$hash"
 }

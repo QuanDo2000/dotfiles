@@ -268,6 +268,31 @@ EOF
   unset -f curl nix
 }
 
+test_update_codex_release_package_parses_spaced_prefetch_json() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages"
+  cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
+{
+  version = "0.0.0";
+  hash = "sha256-old";
+}
+EOF
+  curl() {
+    printf 'https://github.com/openai/codex/releases/tag/rust-v0.144.1'
+  }
+  nix() {
+    printf '{ "hash": "sha256-new" }\n'
+  }
+
+  _update_codex_release_package >/dev/null 2>&1
+
+  local output
+  output="$(<"$DOTFILES_DIR/packages/codex-release.nix")"
+  assert_contains "$output" 'hash = "sha256-new";'
+
+  unset -f curl nix
+}
+
 test_update_codex_release_package_skips_current_version() {
   DRY=false
   mkdir -p "$DOTFILES_DIR/packages"
