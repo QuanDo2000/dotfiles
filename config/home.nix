@@ -255,6 +255,8 @@ in
   home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     target="$HOME/.codex/config.toml"
     source="${./shared/ai/codex/config.toml}"
+    repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/codex/config.toml"
+    apply_seed=
     replace=false
 
     if [ ! -e "$target" ]; then
@@ -263,6 +265,138 @@ in
       case "$(readlink "$target")" in
         /nix/store/*) replace=true ;;
       esac
+    fi
+
+    if [ -f "$target" ] && [ ! -L "$target" ]; then
+      if [ -w "$repo_seed" ]; then
+        apply_seed="$repo_seed"
+      fi
+
+      "${pkgs.python3}/bin/python3" - "$target" "$source" "$apply_seed" <<'PY' || true
+import math
+import re
+import sys
+import tomllib
+
+live_path, seed_path, apply_path = sys.argv[1:]
+
+
+def load(path):
+    with open(path, "rb") as f:
+        return tomllib.load(f)
+
+
+def missing_from_seed(live, seed):
+    missing = {}
+    for key, value in live.items():
+        if key not in seed:
+            missing[key] = value
+        elif isinstance(value, dict) and isinstance(seed[key], dict):
+            nested = missing_from_seed(value, seed[key])
+            if nested:
+                missing[key] = nested
+    return missing
+
+
+def quote(value):
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def toml_value(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float):
+        return str(value) if math.isfinite(value) else quote(str(value))
+    if isinstance(value, str):
+        return quote(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(toml_value(item) for item in value) + "]"
+    if isinstance(value, dict):
+        return "{ " + ", ".join(f"{toml_key(key)} = {toml_value(item)}" for key, item in value.items()) + " }"
+    return quote(str(value))
+
+
+def toml_key(key):
+    return key if re.fullmatch(r"[A-Za-z0-9_-]+", key) else quote(key)
+
+
+def table_name(path):
+    return ".".join(toml_key(part) for part in path)
+
+
+def emit_table(table, path=()):
+    scalar_lines = []
+    child_tables = []
+    for key, value in table.items():
+        if isinstance(value, dict):
+            child_tables.append((key, value))
+        else:
+            scalar_lines.append(f"{toml_key(key)} = {toml_value(value)}")
+
+    if scalar_lines:
+        if path:
+            print(f"[{table_name(path)}]")
+        print("\n".join(scalar_lines))
+        print()
+
+    for key, value in child_tables:
+        emit_table(value, (*path, key))
+
+
+def render(table):
+    lines = []
+
+    def write(line=""):
+        lines.append(line)
+
+    def render_table(current, path=()):
+        scalar_lines = []
+        child_tables = []
+        for key, value in current.items():
+            if isinstance(value, dict):
+                child_tables.append((key, value))
+            else:
+                scalar_lines.append(f"{toml_key(key)} = {toml_value(value)}")
+
+        if scalar_lines:
+            if path:
+                write(f"[{table_name(path)}]")
+            lines.extend(scalar_lines)
+            write()
+
+        for key, value in child_tables:
+            render_table(value, (*path, key))
+
+    render_table(table)
+    while lines and lines[-1] == "":
+        lines.pop()
+    return "\n".join(lines) + "\n"
+
+
+try:
+    seed_compare_path = apply_path or seed_path
+    missing = missing_from_seed(load(live_path), load(seed_compare_path))
+except Exception as exc:
+    print(f"Warning: failed to compare Codex config with tracked seed: {exc}", file=sys.stderr)
+    sys.exit(0)
+
+if missing:
+    if apply_path:
+        addition = render(missing)
+        with open(apply_path, "a", encoding="utf-8") as f:
+            if open(apply_path, "rb").read()[-1:] != b"\n":
+                f.write("\n")
+            f.write("\n")
+            f.write(addition)
+        print(f"Applied Codex live config additions to tracked seed: {apply_path}")
+    else:
+        print("Codex live config has settings missing from the tracked seed.")
+        print("Review these additions for config/shared/ai/codex/config.toml:")
+        print()
+        emit_table(missing)
+PY
     fi
 
     if [ "$replace" = true ]; then

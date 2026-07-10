@@ -277,6 +277,8 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "forceSource ./shared/ai/claude/settings.json"
   assert_not_contains "$home_text" "home.file.\".codex/config.toml\""
   assert_contains "$home_text" "home.activation.seedCodexConfig"
+  assert_contains "$home_text" "import tomllib"
+  assert_contains "$home_text" "Codex live config has settings missing from the tracked seed"
   assert_contains "$home_text" "cp \"\$source\" \"\$target\""
   assert_contains "$home_text" "cavemanSrc = pkgs.fetchFromGitHub"
   assert_contains "$home_text" "owner = \"JuliusBrussee\""
@@ -299,6 +301,51 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "\".local/bin/caf\" = lib.mkIf pkgs.stdenv.isDarwin"
   assert_contains "$home_text" "forceSource ./mac/bin/caf"
   assert_contains "$home_text" "pkgs.stdenv.isDarwin"
+}
+
+test_codex_seed_merge_engine_applies_live_only_nested_toml() {
+  local tmp script live seed output
+  tmp="$(mktemp -d)"
+  script="$tmp/codex_seed_merge.py"
+  live="$tmp/live.toml"
+  seed="$tmp/seed.toml"
+
+  awk '/<<'\''PY'\''/{found=1; next} found && /^PY$/{exit} found {print}' \
+    "$REPO_DIR/config/home.nix" > "$script"
+
+  cat > "$live" <<'EOF'
+model = "gpt-5.5"
+approval_policy = "on-request"
+
+[features]
+memories = true
+multi_agent = true
+
+[projects."/home/quando/dotfiles"]
+trust_level = "trusted"
+
+[hooks]
+SessionStart = [{ matcher = "startup", hooks = [{ type = "command", command = "echo hi" }] }]
+EOF
+
+  cat > "$seed" <<'EOF'
+model = "gpt-5.5"
+
+[features]
+memories = true
+EOF
+
+  output="$(python3 "$script" "$live" "$seed" "$seed")"
+
+  assert_contains "$output" "Applied Codex live config additions to tracked seed"
+  assert_contains "$(<"$seed")" 'approval_policy = "on-request"'
+  assert_contains "$(<"$seed")" '[features]'
+  assert_contains "$(<"$seed")" "multi_agent = true"
+  assert_contains "$(<"$seed")" '[projects."/home/quando/dotfiles"]'
+  assert_contains "$(<"$seed")" 'trust_level = "trusted"'
+  assert_contains "$(<"$seed")" 'SessionStart = [{ matcher = "startup"'
+  assert_contains "$(<"$seed")" 'command = "echo hi"'
+  rm -rf "$tmp"
 }
 
 test_claude_settings_do_not_track_machine_cache_paths() {

@@ -1,5 +1,12 @@
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
+personality = "pragmatic"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
+
+[notice]
+hide_rate_limit_model_nudge = true
 
 [tui]
 vim_mode_default = true
@@ -51,6 +58,9 @@ approval_mode = "approve"
 approval_mode = "approve"
 
 [mcp_servers.codebase-memory-mcp.tools.get_code_snippet]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.get_graph_schema]
 approval_mode = "approve"
 
 [mcp_servers.codebase-memory-mcp.tools.get_architecture]
