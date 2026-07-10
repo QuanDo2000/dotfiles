@@ -298,6 +298,15 @@ def missing_from_seed(live, seed):
     return missing
 
 
+def merge_missing(seed, missing):
+    for key, value in missing.items():
+        if isinstance(value, dict) and isinstance(seed.get(key), dict):
+            merge_missing(seed[key], value)
+        else:
+            seed[key] = value
+    return seed
+
+
 def quote(value):
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -377,19 +386,18 @@ def render(table):
 
 try:
     seed_compare_path = apply_path or seed_path
-    missing = missing_from_seed(load(live_path), load(seed_compare_path))
+    live_config = load(live_path)
+    seed_config = load(seed_compare_path)
+    missing = missing_from_seed(live_config, seed_config)
 except Exception as exc:
     print(f"Warning: failed to compare Codex config with tracked seed: {exc}", file=sys.stderr)
     sys.exit(0)
 
 if missing:
     if apply_path:
-        addition = render(missing)
-        with open(apply_path, "a", encoding="utf-8") as f:
-            if open(apply_path, "rb").read()[-1:] != b"\n":
-                f.write("\n")
-            f.write("\n")
-            f.write(addition)
+        merged = merge_missing(seed_config, missing)
+        with open(apply_path, "w", encoding="utf-8") as f:
+            f.write(render(merged))
         print(f"Applied Codex live config additions to tracked seed: {apply_path}")
     else:
         print("Codex live config has settings missing from the tracked seed.")

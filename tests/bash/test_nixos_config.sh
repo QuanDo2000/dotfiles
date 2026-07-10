@@ -345,6 +345,7 @@ EOF
   assert_contains "$(<"$seed")" 'trust_level = "trusted"'
   assert_contains "$(<"$seed")" 'SessionStart = [{ matcher = "startup"'
   assert_contains "$(<"$seed")" 'command = "echo hi"'
+  assert_exit_code 0 python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$seed"
   rm -rf "$tmp"
 }
 
