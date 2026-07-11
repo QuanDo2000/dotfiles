@@ -439,6 +439,14 @@ test_zsh_arrow_keys_search_history_by_prefix() {
   assert_contains "$zsh_text" "bindkey -M viins '^[OB' history-beginning-search-forward"
 }
 
+test_zsh_keytimeout_allows_bracketed_paste_sequences() {
+  local zsh_text
+  zsh_text="$(<"$REPO_DIR/config/unix/.zshrc.base")"
+
+  assert_not_contains "$zsh_text" $'\nexport KEYTIMEOUT=1\n'
+  assert_contains "$zsh_text" $'\nexport KEYTIMEOUT=10\n'
+}
+
 test_home_config_uses_home_manager_tmux_plugins() {
   local home_text tmux_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
