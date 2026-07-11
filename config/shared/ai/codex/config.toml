@@ -27,9 +27,6 @@ source = "https://github.com/DietrichGebert/ponytail.git"
 [plugins."ponytail@ponytail"]
 enabled = true
 
-[plugins."superpowers@openai-curated"]
-enabled = true
-
 [projects."/home/quando/dotfiles"]
 trust_level = "trusted"
 

@@ -17,6 +17,12 @@ let
     rev = "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0";
     hash = "sha256-VqRHx3/4SSCnEh3cUJ/he5saIfwNhS0hOzoH/wwtU2o=";
   };
+  superpowersSrc = pkgs.fetchFromGitHub {
+    owner = "obra";
+    repo = "superpowers";
+    rev = "c984ea2e7aeffdcc865784fd6c5e3ab75da0209a";
+    hash = "sha256-kHdQ9e44doBk2yYW88tMSCqVG8ycYcvJSZlrIziXhpA=";
+  };
   obsidianSettings = [
     "app.json"
     "appearance.json"
@@ -97,6 +103,9 @@ in
     ".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
     ".codex/skills/caveman/README.md" = forceSource "${cavemanSrc}/skills/caveman/README.md";
     ".codex/skills/caveman/SKILL.md" = forceSource "${cavemanSrc}/skills/caveman/SKILL.md";
+    ".codex/skills/systematic-debugging" = forceSource "${superpowersSrc}/skills/systematic-debugging";
+    ".codex/skills/test-driven-development" = forceSource "${superpowersSrc}/skills/test-driven-development";
+    ".codex/skills/verification-before-completion" = forceSource "${superpowersSrc}/skills/verification-before-completion";
     ".local/bin/dotfile" = {
       text = ''
         #!/usr/bin/env bash
