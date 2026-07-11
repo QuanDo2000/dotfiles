@@ -380,19 +380,8 @@ EOF
     esac
   }
   tar() {
-    local out_dir=""
     assert_contains "$*" "package/package-lock.json"
-    while (($#)); do
-      case "$1" in
-        -C)
-          out_dir="$2"
-          shift 2
-          ;;
-        *) shift ;;
-      esac
-    done
-    mkdir -p "$out_dir/package"
-    printf '{"new":true}\n' > "$out_dir/package/package-lock.json"
+    printf '{"new":true}\n'
   }
 
   _update_obsidian_headless_package >/dev/null 2>&1
@@ -403,6 +392,62 @@ EOF
   assert_contains "$package_text" 'hash = "sha256-new-src";'
   assert_contains "$package_text" 'npmDepsHash = "sha256-new-deps";'
   assert_equals '{"new":true}' "$(<"$DOTFILES_DIR/packages/obsidian-headless-package-lock.json")"
+
+  unset -f curl nix tar
+}
+
+test_update_obsidian_headless_package_keeps_old_files_when_deps_prefetch_fails() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages"
+  cat > "$DOTFILES_DIR/packages/obsidian-headless.nix" <<'EOF'
+{
+  buildNpmPackage,
+  fetchurl,
+}:
+
+buildNpmPackage rec {
+  pname = "obsidian-headless";
+  version = "0.0.0";
+
+  src = fetchurl {
+    url = "https://registry.npmjs.org/obsidian-headless/-/obsidian-headless-${version}.tgz";
+    hash = "sha256-old-src";
+  };
+
+  npmDepsHash = "sha256-old-deps";
+}
+EOF
+  printf '{"old":true}\n' > "$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
+
+  curl() {
+    case "$*" in
+      *registry.npmjs.org/obsidian-headless/latest*) printf '{"version":"0.0.13"}' ;;
+      *obsidian-headless-0.0.13.tgz*) printf '{"new":true}\n' > "$4" ;;
+      *) echo "unexpected curl: $*" >> "$ERROR_FILE"; return 1 ;;
+    esac
+  }
+  nix() {
+    case "$*" in
+      *prefetch-file*obsidian-headless-0.0.13.tgz*) printf '{ "hash": "sha256-new-src" }\n' ;;
+      *prefetch-npm-deps*) return 1 ;;
+      *) echo "unexpected nix: $*" >> "$ERROR_FILE"; return 1 ;;
+    esac
+  }
+  tar() {
+    printf '{"new":true}\n'
+  }
+
+  local output exit_code package_text
+  exit_code=0
+  output=$(_update_obsidian_headless_package 2>&1) || exit_code=$?
+  package_text="$(<"$DOTFILES_DIR/packages/obsidian-headless.nix")"
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "Failed to prefetch Obsidian Headless npm deps"
+  assert_contains "$package_text" 'version = "0.0.0";'
+  assert_contains "$package_text" 'hash = "sha256-old-src";'
+  assert_contains "$package_text" 'npmDepsHash = "sha256-old-deps";'
+  assert_equals '{"old":true}' "$(<"$DOTFILES_DIR/packages/obsidian-headless-package-lock.json")"
 
   unset -f curl nix tar
 }

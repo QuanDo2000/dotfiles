@@ -225,41 +225,52 @@ function _prefetch_obsidian_headless_src_hash {
 }
 
 function _download_obsidian_headless_package_lock {
-  local version url lock_file tmp_dir tarball old_return_trap
+  local version url lock_file tmp_dir tarball
   version="$1"
+  lock_file="${2:-$DOTFILES_DIR/packages/obsidian-headless-package-lock.json}"
   url="$(_obsidian_headless_archive_url "$version")"
-  lock_file="$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
   tmp_dir="$(mktemp -d)" || fail "Failed to create temp dir"
-  old_return_trap="$(trap -p RETURN)"
-  trap 'rm -rf "$tmp_dir"; if [[ -n "$old_return_trap" ]]; then eval "$old_return_trap"; else trap - RETURN; fi' RETURN
   tarball="$tmp_dir/obsidian-headless.tgz"
-  curl -fsSL "$url" -o "$tarball" || fail "Failed to download Obsidian Headless archive"
-  tar -xzf "$tarball" -C "$tmp_dir" package/package-lock.json \
-    || fail "Failed to extract Obsidian Headless package lock"
-  cp "$tmp_dir/package/package-lock.json" "$lock_file" \
-    || fail "Failed to update Obsidian Headless package lock"
+  curl -fsSL "$url" -o "$tarball" \
+    || { rm -rf "$tmp_dir"; fail "Failed to download Obsidian Headless archive"; }
+  tar -xOzf "$tarball" package/package-lock.json > "$lock_file" \
+    || { rm -rf "$tmp_dir"; fail "Failed to extract Obsidian Headless package lock"; }
+  rm -rf "$tmp_dir"
 }
 
 function _prefetch_obsidian_headless_npm_deps_hash {
-  nix run nixpkgs#prefetch-npm-deps -- "$DOTFILES_DIR/packages/obsidian-headless-package-lock.json" \
+  local lock_file
+  lock_file="${1:-$DOTFILES_DIR/packages/obsidian-headless-package-lock.json}"
+  nix run nixpkgs#prefetch-npm-deps -- "$lock_file" \
     || fail "Failed to prefetch Obsidian Headless npm deps"
 }
 
 function _write_obsidian_headless_package {
-  local version src_hash deps_hash package_file tmp
+  local version src_hash deps_hash package_file output_file tmp
   version="$1"
   src_hash="$2"
   deps_hash="$3"
   package_file="$DOTFILES_DIR/packages/obsidian-headless.nix"
+  output_file="${4:-$package_file}"
   [[ -f "$package_file" ]] || fail "Missing Obsidian Headless package file: $package_file"
 
-  tmp="$(mktemp)" || fail "Failed to create temp file"
+  if [[ "$output_file" == "$package_file" ]]; then
+    tmp="$(mktemp)" || fail "Failed to create temp file"
+    sed -E \
+      -e 's#version = "[^"]+";#version = "'"$version"'";#' \
+      -e 's#^([[:space:]]*hash = ")[^"]+(";)$#\1'"$src_hash"'\2#' \
+      -e 's#npmDepsHash = "[^"]+";#npmDepsHash = "'"$deps_hash"'";#' \
+      "$package_file" > "$tmp" \
+      && mv "$tmp" "$package_file" \
+      || fail "Failed to update Obsidian Headless package file"
+    return
+  fi
+
   sed -E \
     -e 's#version = "[^"]+";#version = "'"$version"'";#' \
     -e 's#^([[:space:]]*hash = ")[^"]+(";)$#\1'"$src_hash"'\2#' \
     -e 's#npmDepsHash = "[^"]+";#npmDepsHash = "'"$deps_hash"'";#' \
-    "$package_file" > "$tmp" \
-    && mv "$tmp" "$package_file" \
+    "$package_file" > "$output_file" \
     || fail "Failed to update Obsidian Headless package file"
 }
 
@@ -269,8 +280,9 @@ function _update_obsidian_headless_package {
     return
   fi
 
-  local version current_version package_file src_hash deps_hash
+  local version current_version package_file lock_file src_hash deps_hash tmp_package tmp_lock
   package_file="$DOTFILES_DIR/packages/obsidian-headless.nix"
+  lock_file="$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
   [[ -f "$package_file" ]] || fail "Missing Obsidian Headless package file: $package_file"
   version="$(_latest_npm_package_version obsidian-headless)"
   current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
@@ -281,10 +293,25 @@ function _update_obsidian_headless_package {
 
   info "Updating Obsidian Headless package to $version..."
   _ensure_nix
-  src_hash="$(_prefetch_obsidian_headless_src_hash "$version")"
-  _download_obsidian_headless_package_lock "$version"
-  deps_hash="$(_prefetch_obsidian_headless_npm_deps_hash)"
-  _write_obsidian_headless_package "$version" "$src_hash" "$deps_hash"
+  tmp_package="$(mktemp)" || fail "Failed to create temp file"
+  tmp_lock="$(mktemp)" || fail "Failed to create temp file"
+
+  if ! src_hash="$(_prefetch_obsidian_headless_src_hash "$version")"; then
+    printf '%s\n' "$src_hash"
+    rm -f "$tmp_package" "$tmp_lock"
+    return 1
+  fi
+  _download_obsidian_headless_package_lock "$version" "$tmp_lock"
+  if ! deps_hash="$(_prefetch_obsidian_headless_npm_deps_hash "$tmp_lock")"; then
+    printf '%s\n' "$deps_hash"
+    rm -f "$tmp_package" "$tmp_lock"
+    return 1
+  fi
+
+  _write_obsidian_headless_package "$version" "$src_hash" "$deps_hash" "$tmp_package"
+  mv "$tmp_package" "$package_file" \
+    && mv "$tmp_lock" "$lock_file" \
+    || fail "Failed to install updated Obsidian Headless package files"
 }
 
 function _darwin_rebuild_switch {
