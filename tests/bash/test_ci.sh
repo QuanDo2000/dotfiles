@@ -11,11 +11,13 @@ teardown() {
   cleanup_test_env
 }
 
-test_ci_runs_flake_check() {
+test_ci_runs_direct_nix_checks() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
-  assert_contains "$workflow" "run: ./scripts/check.sh"
+  assert_not_contains "$workflow" "run: ./scripts/check.sh"
+  assert_contains "$workflow" "nix flake check --no-build --all-systems"
+  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless --no-link'
 }
 
 test_ci_pins_nix_installer_action() {

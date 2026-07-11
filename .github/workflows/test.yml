@@ -36,5 +36,8 @@ jobs:
 
       - uses: DeterminateSystems/nix-installer-action@v22
 
-      - name: Run local checks
-        run: ./scripts/check.sh
+      - name: Run flake check
+        run: nix flake check --no-build --all-systems
+
+      - name: Build custom packages
+        run: nix build .#codex .#obsidian-headless --no-link

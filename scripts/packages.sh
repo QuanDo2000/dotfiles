@@ -295,7 +295,6 @@ function update_packages {
     nixos|debian|arch|mac) ;;
     unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
   esac
-  _update_codex_release_package
   case "$platform" in
     nixos)   update_nixos ;;
     debian)  update_debian ;;
@@ -303,6 +302,12 @@ function update_packages {
     mac)     update_mac ;;
   esac
   success "Finished update"
+}
+
+function update_codex_release {
+  info "Updating pinned Codex release package..."
+  _update_codex_release_package
+  success "Finished updating pinned Codex release package"
 }
 
 function install_packages {

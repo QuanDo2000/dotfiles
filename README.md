@@ -75,6 +75,7 @@ Commands:
   update      Update Nix-managed packages
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
+  codex       Update pinned Codex release package
   doctor [--fast]
               Detect dotfile and Nix issues
 

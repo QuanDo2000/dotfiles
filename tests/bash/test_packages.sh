@@ -342,7 +342,7 @@ test_update_codex_release_package_dry_run_skips_network() {
   unset -f curl
 }
 
-test_update_packages_updates_codex_before_platform_update() {
+test_update_packages_does_not_update_codex_release_pin() {
   DRY=false
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"
@@ -364,19 +364,8 @@ EOF
     fi
     builtin command "$@"
   }
-  _ensure_nix() {
-    printf 'ensure-nix\n' >> "$calls"
-  }
-  _latest_codex_release_tag() {
-    printf 'codex-release\n' >> "$calls"
-    printf 'rust-v0.144.1\n'
-  }
-  _prefetch_codex_release_hash() {
-    printf 'codex-prefetch\n' >> "$calls"
-    printf 'sha256-new\n'
-  }
-  _write_codex_release_package() {
-    printf 'codex-write\n' >> "$calls"
+  _update_codex_release_package() {
+    printf 'codex-update\n' >> "$calls"
   }
   home-manager() {
     printf 'home-manager-switch\n' >> "$calls"
@@ -386,9 +375,9 @@ EOF
 
   local output
   output="$(<"$calls")"
-  assert_equals $'codex-release\nensure-nix\ncodex-prefetch\ncodex-write\nensure-nix\nhome-manager-switch' "$output"
+  assert_equals "home-manager-switch" "$output"
 
-  unset -f command _ensure_nix _latest_codex_release_tag _prefetch_codex_release_hash _write_codex_release_package home-manager
+  unset -f command _update_codex_release_package home-manager
 }
 
 test_update_packages_fails_unsupported_before_codex_update() {

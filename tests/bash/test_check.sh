@@ -19,7 +19,7 @@ test_check_script_runs_repo_verification() {
   assert_contains "$check_text" 'bash "$repo_dir/tests/bash/runner.sh" --no-docker'
   assert_contains "$check_text" 'pwsh "$repo_dir/tests/powershell/runner.ps1"'
   assert_contains "$check_text" 'nix flake check --no-build --all-systems'
+  assert_contains "$check_text" 'nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" --no-link'
   assert_contains "$check_text" 'nix develop "$repo_dir" -c shellcheck'
   assert_contains "$flake_text" "shellcheck"
 }
-

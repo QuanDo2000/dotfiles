@@ -258,8 +258,13 @@ test_home_config_manages_gitconfig_and_starship_config() {
 }
 
 test_home_config_owns_remaining_dotfiles() {
-  local home_text
+  local home_text codex_merge_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
+  if [[ -f "$REPO_DIR/scripts/codex_seed_merge.py" ]]; then
+    codex_merge_text="$(<"$REPO_DIR/scripts/codex_seed_merge.py")"
+  else
+    codex_merge_text=""
+  fi
 
   assert_not_contains "$home_text" "home.file.\".vimrc\""
   assert_not_contains "$home_text" "forceSource ./shared/.vimrc"
@@ -277,8 +282,9 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "forceSource ./shared/ai/claude/settings.json"
   assert_not_contains "$home_text" "home.file.\".codex/config.toml\""
   assert_contains "$home_text" "home.activation.seedCodexConfig"
-  assert_contains "$home_text" "import tomllib"
-  assert_contains "$home_text" "Codex live config has settings missing from the tracked seed"
+  assert_contains "$home_text" "\${../scripts/codex_seed_merge.py}"
+  assert_not_contains "$home_text" "import tomllib"
+  assert_contains "$codex_merge_text" "Codex live config has settings missing from the tracked seed"
   assert_contains "$home_text" "cp \"\$source\" \"\$target\""
   assert_contains "$home_text" "cavemanSrc = pkgs.fetchFromGitHub"
   assert_contains "$home_text" "owner = \"JuliusBrussee\""
@@ -310,8 +316,8 @@ test_codex_seed_merge_engine_applies_live_only_nested_toml() {
   live="$tmp/live.toml"
   seed="$tmp/seed.toml"
 
-  awk '/<<'\''PY'\''/{found=1; next} found && /^PY$/{exit} found {print}' \
-    "$REPO_DIR/config/home.nix" > "$script"
+  script="$REPO_DIR/scripts/codex_seed_merge.py"
+  assert_file_exists "$script"
 
   cat > "$live" <<'EOF'
 model = "gpt-5.5"
