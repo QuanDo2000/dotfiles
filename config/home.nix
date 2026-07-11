@@ -60,10 +60,10 @@ let
   devTerminalPackages = with pkgs; [
     ast-grep
     codex
+    codebase-memory-mcp
     jq
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     gcc
-    codebase-memory-mcp
   ];
   standaloneLinuxPackages = with pkgs; [
     fontconfig

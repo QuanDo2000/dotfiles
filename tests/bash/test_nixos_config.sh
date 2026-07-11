@@ -165,6 +165,7 @@ test_home_config_manages_shared_user_tools() {
   assert_contains "$home_text" "standaloneLinuxPackages = with pkgs; ["
   assert_contains "$home_text" "linuxDesktopPackages = with pkgs; ["
   assert_contains "$home_text" "home.packages = devTerminalPackages"
+  assert_contains "$home_text" $'    codex\n    codebase-memory-mcp\n    jq'
   assert_contains "$home_text" "\"\${homeDir}/.local/bin\""
   assert_contains "$home_text" "nixosSystem = pkgs.stdenv.isLinux && osConfig != null"
   assert_contains "$home_text" "standaloneLinux = pkgs.stdenv.isLinux && !nixosSystem"
