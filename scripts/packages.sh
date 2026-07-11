@@ -202,7 +202,7 @@ function _codex_model_cache_version {
   codex_home="${CODEX_HOME:-$HOME/.codex}"
   cache_file="$codex_home/models_cache.json"
   [[ -f "$cache_file" ]] || return 0
-  sed -n 's/.*"client_version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$cache_file"
+  jq -r '.client_version // empty' "$cache_file" 2>/dev/null || true
 }
 
 function _cleanup_stale_codex_runtime {
