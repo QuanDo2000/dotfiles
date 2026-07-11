@@ -16,6 +16,7 @@ clear_terminal = []
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
+"gpt-5.6-sol" = 1
 
 [marketplaces.ponytail]
 last_updated = "2026-07-05T09:22:34Z"
@@ -78,15 +79,8 @@ approval_mode = "approve"
 [features]
 memories = true
 
-# >>> codebase-memory-mcp SessionStart >>>
-[[hooks.SessionStart]]
-matcher = "startup|resume|clear|compact"
-
-[[hooks.SessionStart.hooks]]
-type = "command"
-command = 'echo "Code discovery: prefer codebase-memory-mcp (search_graph, trace_path, get_code_snippet, query_graph, search_code) over grep/file-read; run index_repository first if the project is not indexed."'
-
-[hooks.state]
+[hooks]
+SessionStart = [{ matcher = "startup|resume|clear|compact", hooks = [{ type = "command", command = "echo \"Code discovery: prefer codebase-memory-mcp (search_graph, trace_path, get_code_snippet, query_graph, search_code) over grep/file-read; run index_repository first if the project is not indexed.\"" }] }]
 
 [hooks.state."/home/quando/.codex/config.toml:session_start:0:0"]
 trusted_hash = "sha256:ed997f3f9766959ba56dc2243cd02468d6eadad80d92b7f5a650e6fc0fb0c050"
@@ -102,4 +96,3 @@ trusted_hash = "sha256:4765354e31cc783c9cc7379f8beac7ac7ff68743c3cd7dad333d1f6a6
 
 [hooks.state."/Users/quando/.codex/config.toml:session_start:0:0"]
 trusted_hash = "sha256:ed997f3f9766959ba56dc2243cd02468d6eadad80d92b7f5a650e6fc0fb0c050"
-# <<< codebase-memory-mcp SessionStart <<<
