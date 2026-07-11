@@ -12,12 +12,12 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # Argument parsing
 # ---------------------------------------------------------------------------
 NO_DOCKER=false
-TEST_FILE=""
+TEST_FILES=()
 
 for arg in "$@"; do
     case "$arg" in
         --no-docker) NO_DOCKER=true ;;
-        *)           TEST_FILE="$arg" ;;
+        *)           TEST_FILES+=("$arg") ;;
     esac
 done
 
@@ -49,9 +49,7 @@ DOCKERFILE
         "$image_name"
         bash /home/testuser/dotfiles/tests/bash/runner.sh --no-docker
     )
-    if [ -n "$TEST_FILE" ]; then
-        docker_args+=("$TEST_FILE")
-    fi
+    docker_args+=("${TEST_FILES[@]}")
     "${docker_args[@]}"
 }
 
@@ -191,8 +189,15 @@ run_test_file() {
 run_tests() {
     local files=()
 
-    if [ -n "$TEST_FILE" ]; then
-        files=("$SCRIPT_DIR/$TEST_FILE")
+    if [ ${#TEST_FILES[@]} -gt 0 ]; then
+        local test_file
+        for test_file in "${TEST_FILES[@]}"; do
+            if [[ "$test_file" == /* ]]; then
+                files+=("$test_file")
+            else
+                files+=("$SCRIPT_DIR/$test_file")
+            fi
+        done
     else
         for f in "$SCRIPT_DIR"/test_*.sh; do
             [ -f "$f" ] && files+=("$f")

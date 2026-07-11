@@ -76,6 +76,8 @@ Commands:
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package
+  obsidian-headless
+              Update pinned Obsidian Headless package
   doctor [--fast]
               Detect dotfile and Nix issues
 

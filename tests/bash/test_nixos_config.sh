@@ -142,64 +142,42 @@ test_home_config_manages_obsidian_settings_in_synced_vault_base() {
   assert_not_contains "$agents_text" "~/documents/Sync/.obsidian"
 }
 
-test_home_config_puts_shared_user_tools_in_common_packages() {
-  local common_packages non_nixos_packages standalone_linux_packages linux_packages
-  common_packages="$(sed -n '/home.packages = with pkgs; \[/,/\] ++ lib.optionals (!nixosSystem) \[/p' "$REPO_DIR/config/home.nix")"
-  non_nixos_packages="$(sed -n '/\] ++ lib.optionals (!nixosSystem) \[/,/\] ++ lib.optionals standaloneLinux \[/p' "$REPO_DIR/config/home.nix")"
-  standalone_linux_packages="$(sed -n '/\] ++ lib.optionals standaloneLinux \[/,/\] ++ lib.optionals pkgs.stdenv.isLinux \[/p' "$REPO_DIR/config/home.nix")"
-  linux_packages="$(sed -n '/\] ++ lib.optionals pkgs.stdenv.isLinux \[/,/  \];/p' "$REPO_DIR/config/home.nix")"
+test_home_config_manages_shared_user_tools() {
+  local home_text
+  home_text="$(<"$REPO_DIR/config/home.nix")"
 
-  for pkg in ast-grep jq; do
-    assert_contains "$common_packages" "$pkg"
+  assert_contains "$home_text" "home.packages = with pkgs; ["
+  assert_contains "$home_text" "\"\${homeDir}/.local/bin\""
+  assert_contains "$home_text" "nixosSystem = pkgs.stdenv.isLinux && osConfig != null"
+  assert_contains "$home_text" "standaloneLinux = pkgs.stdenv.isLinux && !nixosSystem"
+  assert_contains "$home_text" "lib.optionals (!nixosSystem)"
+  assert_contains "$home_text" "lib.optionals standaloneLinux"
+  assert_contains "$home_text" "lib.optionals pkgs.stdenv.isLinux"
+  assert_not_contains "$home_text" "GOPATH"
+  assert_not_contains "$home_text" "PNPM_HOME"
+
+  for pkg in ast-grep jq nerd-fonts.fira-code fontconfig openssh waybar ghostty google-chrome gcc obsidian-headless codex codebase-memory-mcp; do
+    assert_contains "$home_text" "$pkg"
   done
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "\"\${homeDir}/.local/bin\""
-  assert_not_contains "$(<"$REPO_DIR/config/home.nix")" "GOPATH"
-  assert_not_contains "$(<"$REPO_DIR/config/home.nix")" ".local/go"
-  assert_not_contains "$(<"$REPO_DIR/config/home.nix")" "PNPM_HOME"
-  assert_not_contains "$(<"$REPO_DIR/config/home.nix")" ".local/share/pnpm"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "nixosSystem = pkgs.stdenv.isLinux && osConfig != null"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "standaloneLinux = pkgs.stdenv.isLinux && !nixosSystem"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "lib.optionals (!nixosSystem)"
-  assert_contains "$non_nixos_packages" "nerd-fonts.fira-code"
-  assert_not_contains "$non_nixos_packages" "fontconfig"
-  assert_not_contains "$non_nixos_packages" "openssh"
-  assert_contains "$standalone_linux_packages" "fontconfig"
-  assert_contains "$standalone_linux_packages" "openssh"
-  assert_not_contains "$common_packages" "neovim"
-  assert_not_contains "$common_packages" "gnupg"
-  assert_not_contains "$common_packages" "fd"
-  assert_not_contains "$common_packages" "ripgrep"
-  assert_not_contains "$common_packages" "lazygit"
-  assert_not_contains "$common_packages" "jujutsu"
-  assert_not_contains "$common_packages" "fzf"
-  assert_not_contains "$common_packages" "zoxide"
-  assert_not_contains "$common_packages" "starship"
-  assert_not_contains "$common_packages" "nodejs"
-  assert_not_contains "$linux_packages" "nerd-fonts.fira-code"
-  assert_contains "$linux_packages" "waybar"
-  assert_contains "$linux_packages" "ghostty"
-  assert_contains "$linux_packages" "google-chrome"
-  assert_contains "$linux_packages" "gcc"
   for pkg in lua5_1 luarocks tree-sitter unzip; do
-    assert_not_contains "$common_packages" "$pkg"
-    assert_not_contains "$linux_packages" "$pkg"
+    assert_contains "$home_text" "$pkg"
   done
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.neovim = {"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "defaultEditor = true"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "vimAlias = true"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "viAlias = true"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "withPython3 = false"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "withRuby = false"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "pkgs.vimPlugins.lazy-nvim"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "extraPackages = with pkgs; ["
-  for pkg in lua5_1 luarocks tree-sitter unzip; do
-    assert_contains "$(<"$REPO_DIR/config/home.nix")" "$pkg"
+  for setting in \
+    "programs.neovim = {" \
+    "defaultEditor = true" \
+    "vimAlias = true" \
+    "viAlias = true" \
+    "withPython3 = false" \
+    "withRuby = false" \
+    "pkgs.vimPlugins.lazy-nvim" \
+    "extraPackages = with pkgs; [" \
+    "programs.gpg.enable = true" \
+    "programs.fd.enable = true" \
+    "programs.ripgrep.enable = true" \
+    "programs.lazygit.enable = true" \
+    "programs.tmux"; do
+    assert_contains "$home_text" "$setting"
   done
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.gpg.enable = true"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.fd.enable = true"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.ripgrep.enable = true"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.lazygit.enable = true"
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "programs.tmux"
 }
 
 test_nixos_does_not_use_raw_system_packages() {

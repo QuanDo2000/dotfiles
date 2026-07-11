@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 $SCRIPT_DIR = $PSScriptRoot
 . (Join-Path $SCRIPT_DIR 'helpers.ps1')
 
-$TestFile = if ($args.Count -gt 0) { $args[0] } else { $null }
+$TestFiles = @($args)
 
 $Total = 0
 $Passed = 0
@@ -74,8 +74,14 @@ function Run-TestFile($file) {
     Remove-Item 'function:\TestTeardown' -ErrorAction SilentlyContinue
 }
 
-$files = if ($TestFile) {
-    @(Join-Path $SCRIPT_DIR $TestFile)
+$files = if ($TestFiles.Count -gt 0) {
+    foreach ($testFile in $TestFiles) {
+        if ([System.IO.Path]::IsPathRooted($testFile)) {
+            $testFile
+        } else {
+            Join-Path $SCRIPT_DIR $testFile
+        }
+    }
 } else {
     Get-ChildItem -Path $SCRIPT_DIR -Filter 'test_*.ps1' | Sort-Object Name | ForEach-Object { $_.FullName }
 }

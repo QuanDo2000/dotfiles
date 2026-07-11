@@ -342,6 +342,86 @@ test_update_codex_release_package_dry_run_skips_network() {
   unset -f curl
 }
 
+test_update_obsidian_headless_package_pins_latest_release() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages"
+  cat > "$DOTFILES_DIR/packages/obsidian-headless.nix" <<'EOF'
+{
+  buildNpmPackage,
+  fetchurl,
+}:
+
+buildNpmPackage rec {
+  pname = "obsidian-headless";
+  version = "0.0.0";
+
+  src = fetchurl {
+    url = "https://registry.npmjs.org/obsidian-headless/-/obsidian-headless-${version}.tgz";
+    hash = "sha256-old-src";
+  };
+
+  npmDepsHash = "sha256-old-deps";
+}
+EOF
+  printf '{"old":true}\n' > "$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
+
+  curl() {
+    case "$*" in
+      *registry.npmjs.org/obsidian-headless/latest*) printf '{"version":"0.0.13"}' ;;
+      *obsidian-headless-0.0.13.tgz*) printf '{"new":true}\n' > "$4" ;;
+      *) echo "unexpected curl: $*" >> "$ERROR_FILE"; return 1 ;;
+    esac
+  }
+  nix() {
+    case "$*" in
+      *prefetch-file*obsidian-headless-0.0.13.tgz*) printf '{ "hash": "sha256-new-src" }\n' ;;
+      *prefetch-npm-deps*) printf 'sha256-new-deps\n' ;;
+      *) echo "unexpected nix: $*" >> "$ERROR_FILE"; return 1 ;;
+    esac
+  }
+  tar() {
+    local out_dir=""
+    assert_contains "$*" "package/package-lock.json"
+    while (($#)); do
+      case "$1" in
+        -C)
+          out_dir="$2"
+          shift 2
+          ;;
+        *) shift ;;
+      esac
+    done
+    mkdir -p "$out_dir/package"
+    printf '{"new":true}\n' > "$out_dir/package/package-lock.json"
+  }
+
+  _update_obsidian_headless_package >/dev/null 2>&1
+
+  local package_text
+  package_text="$(<"$DOTFILES_DIR/packages/obsidian-headless.nix")"
+  assert_contains "$package_text" 'version = "0.0.13";'
+  assert_contains "$package_text" 'hash = "sha256-new-src";'
+  assert_contains "$package_text" 'npmDepsHash = "sha256-new-deps";'
+  assert_equals '{"new":true}' "$(<"$DOTFILES_DIR/packages/obsidian-headless-package-lock.json")"
+
+  unset -f curl nix tar
+}
+
+test_update_obsidian_headless_package_dry_run_skips_network() {
+  DRY=true
+  curl() {
+    echo "curl should not run in dry-run mode" >> "$ERROR_FILE"
+    return 1
+  }
+
+  local output
+  output=$(_update_obsidian_headless_package 2>&1)
+
+  assert_contains "$output" "Would update Obsidian Headless package from the latest npm release"
+
+  unset -f curl
+}
+
 test_update_packages_does_not_update_codex_release_pin() {
   DRY=false
   mock_uname Linux

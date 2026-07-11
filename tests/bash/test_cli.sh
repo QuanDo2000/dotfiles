@@ -50,6 +50,8 @@ test_help_exits_zero() {
   assert_contains "$output" "Update Nix-managed packages"
   assert_contains "$output" "codex"
   assert_contains "$output" "Update pinned Codex release package"
+  assert_contains "$output" "obsidian-headless"
+  assert_contains "$output" "Update pinned Obsidian Headless package"
   assert_contains "$output" "doctor"
   assert_contains "$output" "Detect dotfile and Nix issues"
   assert_contains "$output" "Bootstrap Obsidian Sync login and vault setup"
@@ -141,6 +143,8 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "### Unix Commands"
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
   assert_contains "$readme_text" "codex       Update pinned Codex release package"
+  assert_contains "$readme_text" "obsidian-headless"
+  assert_contains "$readme_text" "Update pinned Obsidian Headless package"
   assert_contains "$readme_text" "doctor [--fast]"
   assert_contains "$readme_text" "Detect dotfile and Nix issues"
   assert_contains "$readme_text" "Home Manager owns tracked Obsidian settings"
@@ -182,6 +186,18 @@ test_dry_run_codex_command_updates_release_pin_only() {
 
   assert_contains "$output" "Updating pinned Codex release package"
   assert_contains "$output" "Would update Codex package from the latest GitHub release"
+  assert_not_contains "$output" "Verifying symlinks"
+  assert_not_contains "$output" "Updating packages"
+}
+
+test_dry_run_obsidian_headless_command_updates_release_pin_only() {
+  is_windows_bash && return 0
+
+  local output
+  output=$(bash "$DOTFILE_CMD" --dry obsidian-headless 2>&1)
+
+  assert_contains "$output" "Updating pinned Obsidian Headless package"
+  assert_contains "$output" "Would update Obsidian Headless package from the latest npm release"
   assert_not_contains "$output" "Verifying symlinks"
   assert_not_contains "$output" "Updating packages"
 }

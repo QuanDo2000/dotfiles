@@ -23,3 +23,11 @@ test_check_script_runs_repo_verification() {
   assert_contains "$check_text" 'nix develop "$repo_dir" -c shellcheck'
   assert_contains "$flake_text" "shellcheck"
 }
+
+test_bash_runner_accepts_multiple_test_files() {
+  local output
+  output="$(bash "$REPO_DIR/tests/bash/runner.sh" --no-docker test_utils.sh test_platform.sh 2>&1)"
+
+  assert_contains "$output" "--- test_utils.sh ---"
+  assert_contains "$output" "--- test_platform.sh ---"
+}

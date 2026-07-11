@@ -27,3 +27,11 @@ test_ci_pins_nix_installer_action() {
   assert_contains "$workflow" "DeterminateSystems/nix-installer-action@v"
   assert_not_contains "$workflow" "DeterminateSystems/nix-installer-action@main"
 }
+
+test_lint_ci_uses_pinned_nix_shellcheck() {
+  local workflow
+  workflow="$(<"$REPO_DIR/.github/workflows/lint.yml")"
+
+  assert_contains "$workflow" "DeterminateSystems/nix-installer-action@v"
+  assert_contains "$workflow" "nix develop . -c shellcheck"
+}

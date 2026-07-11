@@ -76,6 +76,8 @@ Commands:
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package
+  obsidian-headless
+              Update pinned Obsidian Headless package
   doctor [--fast]
               Detect dotfile and Nix issues
 
@@ -119,6 +121,7 @@ update) run_checked_flow true true update_packages ;;
 packages) run_checked_flow false false install_packages ;;
 obsidian) setup_obsidian ;;
 codex) update_codex_release ;;
+obsidian-headless) update_obsidian_headless_release ;;
 doctor)
   case "${2:-}" in
     "") ;;

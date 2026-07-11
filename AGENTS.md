@@ -15,6 +15,7 @@ dotfile doctor               # Detect dotfile and Nix issues
 dotfile update               # Update Nix-managed packages
 dotfile obsidian             # Bootstrap Obsidian Sync login and vault setup
 dotfile codex                # Update pinned Codex release package
+dotfile obsidian-headless    # Update pinned Obsidian Headless package
 dotfile -d <command>         # Dry run
 dotfile -f <command>         # Force overwrite existing files
 ```

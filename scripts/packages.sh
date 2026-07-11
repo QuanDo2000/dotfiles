@@ -144,13 +144,17 @@ function _codex_release_archive_url {
   printf 'https://github.com/openai/codex/releases/download/%s/codex-package-x86_64-unknown-linux-musl.tar.gz\n' "$1"
 }
 
+function _parse_nix_hash {
+  sed -n 's/.*"hash"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+}
+
 function _prefetch_codex_release_hash {
   local tag url output hash
   tag="$1"
   url="$(_codex_release_archive_url "$tag")"
   output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
     || fail "Failed to prefetch Codex release archive"
-  hash="$(printf '%s\n' "$output" | sed -n 's/.*"hash"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+  hash="$(printf '%s\n' "$output" | _parse_nix_hash)"
   [[ -n "$hash" ]] || fail "Failed to parse Codex release archive hash"
   printf '%s\n' "$hash"
 }
@@ -193,6 +197,94 @@ function _update_codex_release_package {
   _ensure_nix
   hash="$(_prefetch_codex_release_hash "$tag")"
   _write_codex_release_package "$tag" "$hash"
+}
+
+function _latest_npm_package_version {
+  local package metadata version
+  package="$1"
+  metadata="$(curl -fsSL "https://registry.npmjs.org/$package/latest")" \
+    || fail "Failed to check latest $package release"
+  version="$(printf '%s\n' "$metadata" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+  [[ -n "$version" ]] || fail "Failed to parse latest $package version"
+  printf '%s\n' "$version"
+}
+
+function _obsidian_headless_archive_url {
+  printf 'https://registry.npmjs.org/obsidian-headless/-/obsidian-headless-%s.tgz\n' "$1"
+}
+
+function _prefetch_obsidian_headless_src_hash {
+  local version url output hash
+  version="$1"
+  url="$(_obsidian_headless_archive_url "$version")"
+  output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
+    || fail "Failed to prefetch Obsidian Headless archive"
+  hash="$(printf '%s\n' "$output" | _parse_nix_hash)"
+  [[ -n "$hash" ]] || fail "Failed to parse Obsidian Headless archive hash"
+  printf '%s\n' "$hash"
+}
+
+function _download_obsidian_headless_package_lock {
+  local version url lock_file tmp_dir tarball old_return_trap
+  version="$1"
+  url="$(_obsidian_headless_archive_url "$version")"
+  lock_file="$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
+  tmp_dir="$(mktemp -d)" || fail "Failed to create temp dir"
+  old_return_trap="$(trap -p RETURN)"
+  trap 'rm -rf "$tmp_dir"; if [[ -n "$old_return_trap" ]]; then eval "$old_return_trap"; else trap - RETURN; fi' RETURN
+  tarball="$tmp_dir/obsidian-headless.tgz"
+  curl -fsSL "$url" -o "$tarball" || fail "Failed to download Obsidian Headless archive"
+  tar -xzf "$tarball" -C "$tmp_dir" package/package-lock.json \
+    || fail "Failed to extract Obsidian Headless package lock"
+  cp "$tmp_dir/package/package-lock.json" "$lock_file" \
+    || fail "Failed to update Obsidian Headless package lock"
+}
+
+function _prefetch_obsidian_headless_npm_deps_hash {
+  nix run nixpkgs#prefetch-npm-deps -- "$DOTFILES_DIR/packages/obsidian-headless-package-lock.json" \
+    || fail "Failed to prefetch Obsidian Headless npm deps"
+}
+
+function _write_obsidian_headless_package {
+  local version src_hash deps_hash package_file tmp
+  version="$1"
+  src_hash="$2"
+  deps_hash="$3"
+  package_file="$DOTFILES_DIR/packages/obsidian-headless.nix"
+  [[ -f "$package_file" ]] || fail "Missing Obsidian Headless package file: $package_file"
+
+  tmp="$(mktemp)" || fail "Failed to create temp file"
+  sed -E \
+    -e 's#version = "[^"]+";#version = "'"$version"'";#' \
+    -e 's#^([[:space:]]*hash = ")[^"]+(";)$#\1'"$src_hash"'\2#' \
+    -e 's#npmDepsHash = "[^"]+";#npmDepsHash = "'"$deps_hash"'";#' \
+    "$package_file" > "$tmp" \
+    && mv "$tmp" "$package_file" \
+    || fail "Failed to update Obsidian Headless package file"
+}
+
+function _update_obsidian_headless_package {
+  if [[ "$DRY" == "true" ]]; then
+    info "Would update Obsidian Headless package from the latest npm release"
+    return
+  fi
+
+  local version current_version package_file src_hash deps_hash
+  package_file="$DOTFILES_DIR/packages/obsidian-headless.nix"
+  [[ -f "$package_file" ]] || fail "Missing Obsidian Headless package file: $package_file"
+  version="$(_latest_npm_package_version obsidian-headless)"
+  current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
+  if [[ "$current_version" == "$version" ]]; then
+    info "Obsidian Headless package already at $version"
+    return
+  fi
+
+  info "Updating Obsidian Headless package to $version..."
+  _ensure_nix
+  src_hash="$(_prefetch_obsidian_headless_src_hash "$version")"
+  _download_obsidian_headless_package_lock "$version"
+  deps_hash="$(_prefetch_obsidian_headless_npm_deps_hash)"
+  _write_obsidian_headless_package "$version" "$src_hash" "$deps_hash"
 }
 
 function _darwin_rebuild_switch {
@@ -308,6 +400,12 @@ function update_codex_release {
   info "Updating pinned Codex release package..."
   _update_codex_release_package
   success "Finished updating pinned Codex release package"
+}
+
+function update_obsidian_headless_release {
+  info "Updating pinned Obsidian Headless package..."
+  _update_obsidian_headless_package
+  success "Finished updating pinned Obsidian Headless package"
 }
 
 function install_packages {
