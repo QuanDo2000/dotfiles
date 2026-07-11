@@ -188,6 +188,54 @@ function _write_codex_release_package {
     || fail "Failed to update Codex package file"
 }
 
+function _codex_version {
+  command -v codex >/dev/null 2>&1 || return 0
+  codex --version 2>/dev/null || true
+}
+
+function _codex_version_number {
+  printf '%s\n' "$1" | sed -n 's/.* \([0-9][^[:space:]]*\)$/\1/p'
+}
+
+function _codex_model_cache_version {
+  local codex_home cache_file
+  codex_home="${CODEX_HOME:-$HOME/.codex}"
+  cache_file="$codex_home/models_cache.json"
+  [[ -f "$cache_file" ]] || return 0
+  sed -n 's/.*"client_version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$cache_file"
+}
+
+function _cleanup_stale_codex_runtime {
+  local codex_home
+  codex_home="${CODEX_HOME:-$HOME/.codex}"
+  codex app-server daemon stop >/dev/null 2>&1 || true
+  rm -f "$codex_home/models_cache.json" "$codex_home/app-server-control/app-server-control.sock"
+}
+
+function _cleanup_codex_runtime_after_update {
+  local before after after_number cache_version reason
+  [[ "$DRY" == "true" ]] && return 0
+  before="$1"
+  reason=""
+  after="$(_codex_version)"
+  if [[ -n "$before" && -n "$after" && "$before" != "$after" ]]; then
+    reason="Codex version changed"
+  else
+    after_number="$(_codex_version_number "$after" || true)"
+    cache_version="$(_codex_model_cache_version || true)"
+    if [[ -n "$after_number" && -n "$cache_version" && "$after_number" != "$cache_version" ]]; then
+      reason="Codex model cache is stale"
+    fi
+  fi
+
+  if [[ -n "$reason" ]]; then
+    info "$reason; clearing stale runtime cache..."
+    _cleanup_stale_codex_runtime
+    info "Restart any open Codex sessions to use the new version"
+  fi
+  return 0
+}
+
 function _update_codex_release_package {
   if [[ "$DRY" == "true" ]]; then
     info "Would update Codex package from the latest GitHub release"
@@ -421,7 +469,8 @@ function update_nixos {
 
 function update_packages {
   info "Updating packages..."
-  local platform
+  local platform codex_version_before
+  codex_version_before="$(_codex_version)"
   platform="$(detect_platform)"
   case "$platform" in
     nixos|debian|arch|mac) ;;
@@ -433,6 +482,7 @@ function update_packages {
     arch)    update_arch ;;
     mac)     update_mac ;;
   esac
+  _cleanup_codex_runtime_after_update "$codex_version_before"
   success "Finished update"
 }
 
