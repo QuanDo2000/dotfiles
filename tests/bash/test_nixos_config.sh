@@ -36,11 +36,26 @@ test_flake_uses_flat_nix_config_files() {
   assert_contains "$flake_text" "config.allowUnfree = true"
   assert_contains "$flake_text" "apps.x86_64-linux.home-manager"
   assert_contains "$flake_text" "apps.aarch64-darwin.darwin-rebuild"
+  assert_contains "$flake_text" "darwinPkgs = import nixpkgs"
+  assert_contains "$flake_text" "packages.aarch64-darwin.codex"
   assert_contains "$flake_text" "packages.x86_64-linux.obsidian-headless"
   assert_contains "$flake_text" "devShells.x86_64-linux.default"
   assert_contains "$flake_text" "gh"
   assert_contains "$flake_text" "powershell"
   assert_not_contains "$flake_text" "config/nix/"
+}
+
+test_codex_package_supports_darwin_release_wheel() {
+  local codex_text
+  codex_text="$(<"$REPO_DIR/packages/codex-release.nix")"
+
+  assert_contains "$codex_text" "linuxHash"
+  assert_contains "$codex_text" "darwinHash"
+  assert_contains "$codex_text" "codex-package-x86_64-unknown-linux-musl.tar.gz"
+  assert_contains "$codex_text" "openai_codex_cli_bin-\${version}-py3-none-macosx_11_0_arm64.whl"
+  assert_contains "$codex_text" "codex_cli_bin"
+  assert_contains "$codex_text" "aarch64-darwin"
+  assert_contains "$codex_text" "unzip"
 }
 
 test_nixos_uses_tracked_host_config() {
@@ -146,7 +161,10 @@ test_home_config_manages_shared_user_tools() {
   local home_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
 
-  assert_contains "$home_text" "home.packages = with pkgs; ["
+  assert_contains "$home_text" "devTerminalPackages = with pkgs; ["
+  assert_contains "$home_text" "standaloneLinuxPackages = with pkgs; ["
+  assert_contains "$home_text" "linuxDesktopPackages = with pkgs; ["
+  assert_contains "$home_text" "home.packages = devTerminalPackages"
   assert_contains "$home_text" "\"\${homeDir}/.local/bin\""
   assert_contains "$home_text" "nixosSystem = pkgs.stdenv.isLinux && osConfig != null"
   assert_contains "$home_text" "standaloneLinux = pkgs.stdenv.isLinux && !nixosSystem"
@@ -156,7 +174,7 @@ test_home_config_manages_shared_user_tools() {
   assert_not_contains "$home_text" "GOPATH"
   assert_not_contains "$home_text" "PNPM_HOME"
 
-  for pkg in ast-grep jq nerd-fonts.fira-code fontconfig openssh waybar ghostty google-chrome gcc obsidian-headless codex codebase-memory-mcp; do
+  for pkg in ast-grep jq gcc codex codebase-memory-mcp nerd-fonts.fira-code fontconfig openssh waybar ghostty google-chrome obsidian-headless; do
     assert_contains "$home_text" "$pkg"
   done
   for pkg in lua5_1 luarocks tree-sitter unzip; do

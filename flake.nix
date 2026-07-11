@@ -27,10 +27,16 @@
         config.allowUnfree = true;
         inherit overlays;
       };
+      darwinPkgs = import nixpkgs {
+        system = "aarch64-darwin";
+        config.allowUnfree = true;
+        inherit overlays;
+      };
     in
     {
       packages.x86_64-linux.codex = linuxPkgs.codex;
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
+      packages.aarch64-darwin.codex = darwinPkgs.codex;
 
       nixosConfigurations."${machine.hostName}" = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";

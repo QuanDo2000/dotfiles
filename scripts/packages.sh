@@ -141,7 +141,16 @@ function _latest_codex_release_tag {
 }
 
 function _codex_release_archive_url {
-  printf 'https://github.com/openai/codex/releases/download/%s/codex-package-x86_64-unknown-linux-musl.tar.gz\n' "$1"
+  local tag platform version
+  tag="$1"
+  platform="${2:-linux}"
+  version="${tag#rust-v}"
+
+  case "$platform" in
+    linux)  printf 'https://github.com/openai/codex/releases/download/%s/codex-package-x86_64-unknown-linux-musl.tar.gz\n' "$tag" ;;
+    darwin) printf 'https://github.com/openai/codex/releases/download/%s/openai_codex_cli_bin-%s-py3-none-macosx_11_0_arm64.whl\n' "$tag" "$version" ;;
+    *)      fail "Unsupported Codex release platform: $platform" ;;
+  esac
 }
 
 function _parse_nix_hash {
@@ -149,9 +158,10 @@ function _parse_nix_hash {
 }
 
 function _prefetch_codex_release_hash {
-  local tag url output hash
+  local tag platform url output hash
   tag="$1"
-  url="$(_codex_release_archive_url "$tag")"
+  platform="${2:-linux}"
+  url="$(_codex_release_archive_url "$tag" "$platform")"
   output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
     || fail "Failed to prefetch Codex release archive"
   hash="$(printf '%s\n' "$output" | _parse_nix_hash)"
@@ -160,9 +170,10 @@ function _prefetch_codex_release_hash {
 }
 
 function _write_codex_release_package {
-  local tag hash version package_file tmp
+  local tag linux_hash darwin_hash version package_file tmp
   tag="$1"
-  hash="$2"
+  linux_hash="$2"
+  darwin_hash="$3"
   version="${tag#rust-v}"
   package_file="$DOTFILES_DIR/packages/codex-release.nix"
   [[ -f "$package_file" ]] || fail "Missing Codex package file: $package_file"
@@ -170,7 +181,8 @@ function _write_codex_release_package {
   tmp="$(mktemp)" || fail "Failed to create temp file"
   sed -E \
     -e 's#version = "[^"]+";#version = "'"$version"'";#' \
-    -e 's#hash = "[^"]+";#hash = "'"$hash"'";#' \
+    -e 's#linuxHash = "[^"]+";#linuxHash = "'"$linux_hash"'";#' \
+    -e 's#darwinHash = "[^"]+";#darwinHash = "'"$darwin_hash"'";#' \
     "$package_file" > "$tmp" \
     && mv "$tmp" "$package_file" \
     || fail "Failed to update Codex package file"
@@ -182,7 +194,7 @@ function _update_codex_release_package {
     return
   fi
 
-  local tag hash version package_file current_version
+  local tag linux_hash darwin_hash version package_file current_version
   package_file="$DOTFILES_DIR/packages/codex-release.nix"
   [[ -f "$package_file" ]] || fail "Missing Codex package file: $package_file"
   tag="$(_latest_codex_release_tag)"
@@ -195,8 +207,9 @@ function _update_codex_release_package {
 
   info "Updating Codex package to $tag..."
   _ensure_nix
-  hash="$(_prefetch_codex_release_hash "$tag")"
-  _write_codex_release_package "$tag" "$hash"
+  linux_hash="$(_prefetch_codex_release_hash "$tag" linux)"
+  darwin_hash="$(_prefetch_codex_release_hash "$tag" darwin)"
+  _write_codex_release_package "$tag" "$linux_hash" "$darwin_hash"
 }
 
 function _latest_npm_package_version {

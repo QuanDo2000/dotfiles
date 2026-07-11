@@ -247,15 +247,21 @@ test_update_codex_release_package_pins_latest_binary() {
   cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
 {
   version = "0.0.0";
-  hash = "sha256-old";
+  linuxHash = "sha256-old-linux";
+  darwinHash = "sha256-old-darwin";
 }
 EOF
+  local calls="$TEST_TMPDIR/codex-prefetch.log"
   curl() {
     printf 'https://github.com/openai/codex/releases/tag/rust-v0.144.1'
   }
   nix() {
-    assert_contains "$*" "store prefetch-file --json --hash-type sha256 https://github.com/openai/codex/releases/download/rust-v0.144.1/codex-package-x86_64-unknown-linux-musl.tar.gz"
-    printf '{"hash":"sha256-new"}\n'
+    printf '%s\n' "$*" >> "$calls"
+    case "$*" in
+      *codex-package-x86_64-unknown-linux-musl.tar.gz*) printf '{"hash":"sha256-new-linux"}\n' ;;
+      *openai_codex_cli_bin-0.144.1-py3-none-macosx_11_0_arm64.whl*) printf '{"hash":"sha256-new-darwin"}\n' ;;
+      *) printf 'unexpected prefetch url: %s\n' "$*" >> "$ERROR_FILE"; return 1 ;;
+    esac
   }
 
   _update_codex_release_package >/dev/null 2>&1
@@ -263,7 +269,10 @@ EOF
   local output
   output="$(<"$DOTFILES_DIR/packages/codex-release.nix")"
   assert_contains "$output" 'version = "0.144.1";'
-  assert_contains "$output" 'hash = "sha256-new";'
+  assert_contains "$output" 'linuxHash = "sha256-new-linux";'
+  assert_contains "$output" 'darwinHash = "sha256-new-darwin";'
+  assert_contains "$(<"$calls")" "codex-package-x86_64-unknown-linux-musl.tar.gz"
+  assert_contains "$(<"$calls")" "openai_codex_cli_bin-0.144.1-py3-none-macosx_11_0_arm64.whl"
 
   unset -f curl nix
 }
@@ -274,7 +283,8 @@ test_update_codex_release_package_parses_spaced_prefetch_json() {
   cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
 {
   version = "0.0.0";
-  hash = "sha256-old";
+  linuxHash = "sha256-old-linux";
+  darwinHash = "sha256-old-darwin";
 }
 EOF
   curl() {
@@ -288,7 +298,8 @@ EOF
 
   local output
   output="$(<"$DOTFILES_DIR/packages/codex-release.nix")"
-  assert_contains "$output" 'hash = "sha256-new";'
+  assert_contains "$output" 'linuxHash = "sha256-new";'
+  assert_contains "$output" 'darwinHash = "sha256-new";'
 
   unset -f curl nix
 }

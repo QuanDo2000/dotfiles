@@ -57,6 +57,26 @@ let
     echo "No configured Obsidian vault found under $HOME/documents/obsidian" >&2
     exit 0
   '';
+  devTerminalPackages = with pkgs; [
+    ast-grep
+    codex
+    jq
+  ] ++ lib.optionals pkgs.stdenv.isLinux [
+    gcc
+    codebase-memory-mcp
+  ];
+  standaloneLinuxPackages = with pkgs; [
+    fontconfig
+    openssh
+  ];
+  linuxDesktopPackages = with pkgs; [
+    wl-clipboard
+    waybar
+    ghostty
+    google-chrome
+    obsidian
+    obsidian-headless
+  ];
 in
 {
   home.username = machine.username;
@@ -65,25 +85,12 @@ in
   home.sessionPath = [
     "${homeDir}/.local/bin"
   ];
-  home.packages = with pkgs; [
-    ast-grep
-    jq
-  ] ++ lib.optionals (!nixosSystem) [
-    nerd-fonts.fira-code
-  ] ++ lib.optionals standaloneLinux [
-    fontconfig
-    openssh
-  ] ++ lib.optionals pkgs.stdenv.isLinux [
-    wl-clipboard
-    waybar
-    ghostty
-    google-chrome
-    gcc
-    obsidian
-    obsidian-headless
-    codex
-    codebase-memory-mcp
-  ];
+  home.packages = devTerminalPackages
+  ++ lib.optionals (!nixosSystem) [
+    pkgs.nerd-fonts.fira-code
+  ]
+  ++ lib.optionals standaloneLinux standaloneLinuxPackages
+  ++ lib.optionals pkgs.stdenv.isLinux linuxDesktopPackages;
 
   home.file = obsidianFiles // {
     ".ssh/config" = forceSource ./shared/.ssh/config;
