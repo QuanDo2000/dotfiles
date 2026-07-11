@@ -82,6 +82,7 @@ test_pi_matches_minimal_codex_setup() {
   assert_contains "$home_text" './shared/ai/pi/mcp.json'
   assert_contains "$home_text" '${../scripts/pi_seed_merge.py}'
   assert_contains "$home_text" '".pi/agent/extensions/codebase-memory-guidance.ts"'
+  assert_contains "$home_text" '".pi/agent/extensions/codex-status.js"'
 
   local pi_mcp pi_hook
   pi_mcp="$(<"$REPO_DIR/config/shared/ai/pi/mcp.json")"
@@ -392,6 +393,35 @@ EOF
   assert_contains "$(<"$seed")" 'command = "echo hi"'
   assert_exit_code 0 python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$seed"
   rm -rf "$tmp"
+}
+
+test_pi_codex_status_formats_plan_usage_and_resets() {
+  local extension output
+  extension="$REPO_DIR/config/shared/ai/pi/codex-status.js"
+  assert_file_exists "$extension"
+
+  output="$(node --input-type=module - "$extension" <<'EOF'
+const { default: factory, formatUsage } = await import(process.argv[2]);
+if (typeof factory !== "function") throw new Error(`default export is ${typeof factory}`);
+console.log(formatUsage({
+  plan_type: "prolite",
+  rate_limit: {
+    allowed: true,
+    limit_reached: false,
+    primary_window: { used_percent: 25, reset_after_seconds: 14156 },
+    secondary_window: { used_percent: 7, reset_after_seconds: 582213 }
+  },
+  credits: { has_credits: false, balance: "0" },
+  rate_limit_reset_credits: { available_count: 4 }
+}));
+EOF
+)"
+
+  assert_contains "$output" "Plan: Pro Lite"
+  assert_contains "$output" "5-hour limit: 25% used, resets in 3h 56m"
+  assert_contains "$output" "Weekly limit: 7% used, resets in 6d 17h"
+  assert_contains "$output" "Reset tokens: 4"
+  assert_contains "$output" 'Credits: $0'
 }
 
 test_pi_seed_merge_engine_applies_live_only_nested_json() {

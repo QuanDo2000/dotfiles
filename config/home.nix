@@ -109,6 +109,7 @@ in
     ".codex/skills/test-driven-development" = forceSource "${superpowersSrc}/skills/test-driven-development";
     ".codex/skills/verification-before-completion" = forceSource "${superpowersSrc}/skills/verification-before-completion";
     ".pi/agent/extensions/codebase-memory-guidance.ts" = forceSource ./shared/ai/pi/codebase-memory-guidance.ts;
+    ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".local/bin/dotfile" = {
       text = ''
         #!/usr/bin/env bash

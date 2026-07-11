@@ -5,10 +5,20 @@
   "defaultProjectTrust": "ask",
   "enableInstallTelemetry": false,
   "enableSkillCommands": true,
-  "skills": ["~/.codex/skills"],
+  "skills": [
+    "~/.codex/skills"
+  ],
   "packages": [
     "npm:pi-mcp-extension@1.5.0",
     "npm:@dietrichgebert/ponytail@4.8.4",
     "npm:pi-hermes-memory@0.7.23"
-  ]
+  ],
+  "lastChangelogVersion": "0.80.6",
+  "theme": "dark",
+  "editorPaddingX": 0,
+  "outputPad": 1,
+  "terminal": {
+    "showTerminalProgress": true,
+    "clearOnShrink": true
+  }
 }
