@@ -58,6 +58,41 @@ test_codex_package_supports_darwin_release_wheel() {
   assert_contains "$codex_text" "unzip"
 }
 
+test_pi_matches_minimal_codex_setup() {
+  local home_text pi_package pi_settings
+  home_text="$(<"$REPO_DIR/config/home.nix")"
+  pi_package="$(<"$REPO_DIR/packages/pi-agent.nix")"
+  pi_settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
+
+  assert_contains "$home_text" "pi-agent = pkgs.callPackage ../packages/pi-agent.nix"
+  assert_contains "$home_text" "pi-agent"
+  assert_contains "$home_text" "home.activation.seedPiSettings"
+  assert_contains "$home_text" "./shared/ai/pi/settings.json"
+  assert_contains "$pi_package" 'version = "0.80.6"'
+  assert_contains "$pi_package" "@earendil-works/pi-coding-agent"
+  assert_equals "openai-codex" "$(jq -r '.defaultProvider' <<< "$pi_settings")"
+  assert_equals "gpt-5.5" "$(jq -r '.defaultModel' <<< "$pi_settings")"
+  assert_equals "medium" "$(jq -r '.defaultThinkingLevel' <<< "$pi_settings")"
+  assert_equals "ask" "$(jq -r '.defaultProjectTrust' <<< "$pi_settings")"
+  assert_equals "~/.codex/skills" "$(jq -r '.skills[]' <<< "$pi_settings")"
+  assert_contains "$pi_settings" '"npm:pi-mcp-extension@1.5.0"'
+  assert_contains "$pi_settings" '"npm:@dietrichgebert/ponytail@4.8.4"'
+  assert_contains "$pi_settings" '"npm:pi-hermes-memory@0.7.23"'
+  assert_contains "$home_text" 'home.activation.seedPiMcpConfig'
+  assert_contains "$home_text" './shared/ai/pi/mcp.json'
+  assert_contains "$home_text" '${../scripts/pi_seed_merge.py}'
+  assert_contains "$home_text" '".pi/agent/extensions/codebase-memory-guidance.ts"'
+
+  local pi_mcp pi_hook
+  pi_mcp="$(<"$REPO_DIR/config/shared/ai/pi/mcp.json")"
+  pi_hook="$(<"$REPO_DIR/config/shared/ai/pi/codebase-memory-guidance.ts")"
+  assert_equals "codebase-memory-mcp" "$(jq -r '.mcpServers.codebaseMemory.command' <<< "$pi_mcp")"
+  assert_equals "eager" "$(jq -r '.mcpServers.codebaseMemory.lifecycle' <<< "$pi_mcp")"
+  assert_contains "$pi_hook" 'before_agent_start'
+  assert_contains "$pi_hook" 'codebase-memory-mcp'
+  assert_contains "$pi_hook" 'index_repository'
+}
+
 test_nixos_uses_tracked_host_config() {
   local host_text flake_text configuration_text
   host_text="$(<"$REPO_DIR/config/host.nix")"
@@ -356,6 +391,42 @@ EOF
   assert_contains "$(<"$seed")" 'SessionStart = [{ matcher = "startup"'
   assert_contains "$(<"$seed")" 'command = "echo hi"'
   assert_exit_code 0 python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$seed"
+  rm -rf "$tmp"
+}
+
+test_pi_seed_merge_engine_applies_live_only_nested_json() {
+  local tmp script live seed output
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/pi_seed_merge.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+
+  assert_file_exists "$script"
+
+  cat > "$live" <<'EOF'
+{
+  "defaultModel": "live-model",
+  "packages": ["runtime-package"],
+  "custom": {"enabled": true},
+  "mcpServers": {"local": {"command": "local-mcp"}}
+}
+EOF
+  cat > "$seed" <<'EOF'
+{
+  "defaultModel": "tracked-model",
+  "packages": ["tracked-package"],
+  "mcpServers": {}
+}
+EOF
+
+  output="$(python3 "$script" "$live" "$seed" "$seed")"
+
+  assert_contains "$output" "Applied Pi live config additions to tracked seed"
+  assert_equals "tracked-model" "$(jq -r '.defaultModel' "$seed")"
+  assert_equals "tracked-package" "$(jq -r '.packages[]' "$seed")"
+  assert_equals "true" "$(jq -r '.custom.enabled' "$seed")"
+  assert_equals "local-mcp" "$(jq -r '.mcpServers.local.command' "$seed")"
+  assert_exit_code 0 jq empty "$seed"
   rm -rf "$tmp"
 }
 

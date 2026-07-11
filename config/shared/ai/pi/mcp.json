@@ -1,0 +1,14 @@
+{
+  "settings": {
+    "toolPrefix": "mcp",
+    "requestTimeoutMs": 30000,
+    "maxRetries": 5
+  },
+  "mcpServers": {
+    "codebaseMemory": {
+      "command": "codebase-memory-mcp",
+      "transport": "stdio",
+      "lifecycle": "eager"
+    }
+  }
+}

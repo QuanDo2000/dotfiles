@@ -23,6 +23,7 @@ let
     rev = "c984ea2e7aeffdcc865784fd6c5e3ab75da0209a";
     hash = "sha256-kHdQ9e44doBk2yYW88tMSCqVG8ycYcvJSZlrIziXhpA=";
   };
+  pi-agent = pkgs.callPackage ../packages/pi-agent.nix { };
   obsidianSettings = [
     "app.json"
     "appearance.json"
@@ -68,6 +69,7 @@ let
     codex
     codebase-memory-mcp
     jq
+    pi-agent
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     gcc
   ];
@@ -106,6 +108,7 @@ in
     ".codex/skills/systematic-debugging" = forceSource "${superpowersSrc}/skills/systematic-debugging";
     ".codex/skills/test-driven-development" = forceSource "${superpowersSrc}/skills/test-driven-development";
     ".codex/skills/verification-before-completion" = forceSource "${superpowersSrc}/skills/verification-before-completion";
+    ".pi/agent/extensions/codebase-memory-guidance.ts" = forceSource ./shared/ai/pi/codebase-memory-guidance.ts;
     ".local/bin/dotfile" = {
       text = ''
         #!/usr/bin/env bash
@@ -297,6 +300,50 @@ in
       cp "$source" "$target"
       chmod u+w "$target"
     fi
+  '';
+
+  home.activation.seedPiSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    target="$HOME/.pi/agent/settings.json"
+    source="${./shared/ai/pi/settings.json}"
+    repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/pi/settings.json"
+    apply_seed=
+
+    mkdir -p "$(dirname "$target")"
+    if [ -f "$target" ] && [ ! -L "$target" ]; then
+      if [ -w "$repo_seed" ]; then
+        apply_seed="$repo_seed"
+      fi
+      "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || true
+      merged="$(mktemp)"
+      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$source" > "$merged"
+      mv "$merged" "$target"
+    else
+      rm -f "$target"
+      cp "$source" "$target"
+    fi
+    chmod u+w "$target"
+  '';
+
+  home.activation.seedPiMcpConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    target="$HOME/.pi/agent/mcp.json"
+    source="${./shared/ai/pi/mcp.json}"
+    repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/pi/mcp.json"
+    apply_seed=
+
+    mkdir -p "$(dirname "$target")"
+    if [ -f "$target" ] && [ ! -L "$target" ]; then
+      if [ -w "$repo_seed" ]; then
+        apply_seed="$repo_seed"
+      fi
+      "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || true
+      merged="$(mktemp)"
+      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$source" > "$merged"
+      mv "$merged" "$target"
+    else
+      rm -f "$target"
+      cp "$source" "$target"
+    fi
+    chmod u+w "$target"
   '';
 
   xdg.configFile."nvim" = forceSource ./shared/config/nvim;
