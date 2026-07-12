@@ -74,6 +74,10 @@ test_pi_matches_minimal_codex_setup() {
   assert_contains "$pi_package" 'version = "0.80.6"'
   assert_contains "$pi_package" "@earendil-works/pi-coding-agent"
   assert_contains "$pi_package" '${lib.getExe jq} '\''del(.devDependencies)'\'' package.json'
+  assert_contains "$pi_package" 'dist/core/slash-commands.js'
+  assert_contains "$pi_package" 'dist/modes/interactive/interactive-mode.js'
+  assert_contains "$pi_package" '--replace-fail '\''{ name: "quit", description:'\'' '\''{ name: "exit", description:'\'''
+  assert_contains "$pi_package" '--replace-fail '\''text === "/quit"'\'' '\''text === "/exit"'\'''
   assert_not_contains "$pi_package" "nativeBuildInputs = [ jq ]"
   assert_equals "openai-codex" "$(jq -r '.defaultProvider' <<< "$pi_settings")"
   assert_equals "gpt-5.6-sol" "$(jq -r '.defaultModel' <<< "$pi_settings")"
