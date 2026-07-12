@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import math
+import os
 import re
 import sys
+import tempfile
 import tomllib
 
 live_path, seed_path, apply_path = sys.argv[1:]
@@ -63,6 +65,21 @@ def table_name(path):
     return ".".join(toml_key(part) for part in path)
 
 
+def write_toml(path, value):
+    directory = os.path.dirname(path) or "."
+    fd, temporary = tempfile.mkstemp(dir=directory, prefix=".codex-seed-", text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as file:
+            file.write(render(value))
+        os.replace(temporary, path)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
 def render(table):
     lines = []
 
@@ -104,9 +121,7 @@ except Exception as exc:
 
 if missing:
     if apply_path:
-        merged = merge_missing(seed_config, missing)
-        with open(apply_path, "w", encoding="utf-8") as f:
-            f.write(render(merged))
+        write_toml(apply_path, merge_missing(seed_config, missing))
         print(f"Applied Codex live config additions to tracked seed: {apply_path}")
     else:
         print("Codex live config has settings missing from the tracked seed.")

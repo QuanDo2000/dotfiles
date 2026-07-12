@@ -11,11 +11,7 @@ run() {
 
 run nix develop "$repo_dir" -c bash "$repo_dir/tests/bash/runner.sh" --no-docker
 
-if command -v pwsh >/dev/null 2>&1; then
-  run pwsh "$repo_dir/tests/powershell/runner.ps1"
-else
-  printf '\n==> Skipping PowerShell tests: pwsh not found\n'
-fi
+run nix develop "$repo_dir" -c pwsh "$repo_dir/tests/powershell/runner.ps1"
 
 run nix flake check --no-build --all-systems
 run nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" "$repo_dir#fff-mcp" --no-link

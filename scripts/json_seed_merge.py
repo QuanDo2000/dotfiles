@@ -4,8 +4,9 @@ import os
 import sys
 import tempfile
 
-live_path, seed_path, apply_path = sys.argv[1:4]
-label = sys.argv[4] if len(sys.argv) > 4 else "Pi"
+live_path, seed_path, apply_path, label, override_keys, list_keys = sys.argv[1:]
+live_overrides = set(filter(None, override_keys.split(",")))
+merge_lists = set(filter(None, list_keys.split(",")))
 
 
 def load(path):
@@ -16,15 +17,12 @@ def load(path):
     return value
 
 
-LIVE_OVERRIDES = {"defaultModel"}
-
-
 def missing_from_seed(live, seed):
     missing = {}
     for key, value in live.items():
-        if key not in seed or (key in LIVE_OVERRIDES and seed[key] != value):
+        if key not in seed or (key in live_overrides and seed[key] != value):
             missing[key] = value
-        elif key == "extras" and isinstance(value, list) and isinstance(seed[key], list):
+        elif key in merge_lists and isinstance(value, list) and isinstance(seed[key], list):
             additions = [item for item in value if item not in seed[key]]
             if additions:
                 missing[key] = additions
@@ -39,7 +37,7 @@ def merge_missing(seed, missing):
     for key, value in missing.items():
         if isinstance(value, dict) and isinstance(seed.get(key), dict):
             merge_missing(seed[key], value)
-        elif key == "extras" and isinstance(value, list) and isinstance(seed.get(key), list):
+        elif key in merge_lists and isinstance(value, list) and isinstance(seed.get(key), list):
             seed[key].extend(item for item in value if item not in seed[key])
         else:
             seed[key] = value
@@ -48,7 +46,7 @@ def merge_missing(seed, missing):
 
 def write_json(path, value):
     directory = os.path.dirname(path) or "."
-    fd, temporary = tempfile.mkstemp(dir=directory, prefix=".pi-seed-", text=True)
+    fd, temporary = tempfile.mkstemp(dir=directory, prefix=".json-seed-", text=True)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as file:
             json.dump(value, file, indent=2)

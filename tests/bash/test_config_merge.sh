@@ -2,6 +2,14 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
+test_codex_seed_merge_writes_atomically() {
+  local script
+  script="$(<"$REPO_DIR/scripts/codex_seed_merge.py")"
+
+  assert_contains "$script" "tempfile.mkstemp"
+  assert_contains "$script" "os.replace"
+}
+
 test_codex_seed_merge_engine_applies_live_only_nested_toml() {
   if ! python3 -c 'import tomllib' 2>/dev/null; then
     printf '  SKIP  Codex merge test requires Python 3.11+\n'
@@ -50,14 +58,14 @@ EOF
 test_lazyvim_seed_merge_engine_preserves_live_extras() {
   local tmp script live seed output
   tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/pi_seed_merge.py"
+  script="$REPO_DIR/scripts/json_seed_merge.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
 
   printf '%s\n' '{"extras":["tracked","live"],"version":8}' > "$live"
   printf '%s\n' '{"extras":["tracked"],"version":8}' > "$seed"
 
-  output="$(python3 "$script" "$live" "$seed" "$seed" LazyVim)"
+  output="$(python3 "$script" "$live" "$seed" "$seed" LazyVim '' extras)"
 
   assert_contains "$output" "Applied LazyVim live config additions to tracked seed"
   assert_equals '["tracked","live"]' "$(jq -c '.extras' "$seed")"
@@ -67,7 +75,7 @@ test_lazyvim_seed_merge_engine_preserves_live_extras() {
 test_pi_seed_merge_engine_applies_live_only_nested_json() {
   local tmp script live seed output
   tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/pi_seed_merge.py"
+  script="$REPO_DIR/scripts/json_seed_merge.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
 
@@ -87,7 +95,7 @@ EOF
 }
 EOF
 
-  output="$(python3 "$script" "$live" "$seed" "$seed")"
+  output="$(python3 "$script" "$live" "$seed" "$seed" Pi defaultModel '')"
 
   assert_contains "$output" "Applied Pi live config additions to tracked seed"
   assert_equals "live-model" "$(jq -r '.defaultModel' "$seed")"

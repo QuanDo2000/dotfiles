@@ -34,6 +34,15 @@
         config.allowUnfree = true;
         inherit overlays;
       };
+      devShell = pkgs: pkgs.mkShell {
+        packages = with pkgs; [
+          git
+          gh
+          powershell
+          python3
+          shellcheck
+        ];
+      };
     in
     {
       packages.x86_64-linux.codex = linuxPkgs.codex;
@@ -76,14 +85,7 @@
         program = "${nix-darwin.packages.aarch64-darwin.darwin-rebuild}/bin/darwin-rebuild";
       };
 
-      devShells.x86_64-linux.default = linuxPkgs.mkShell {
-        packages = with linuxPkgs; [
-          git
-          gh
-          powershell
-          python3
-          shellcheck
-        ];
-      };
+      devShells.x86_64-linux.default = devShell linuxPkgs;
+      devShells.aarch64-darwin.default = devShell darwinPkgs;
     };
 }

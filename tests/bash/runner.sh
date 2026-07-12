@@ -35,7 +35,7 @@ run_in_docker() {
     docker build -t "$image_name" -f - . <<'DOCKERFILE'
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        bash coreutils git diffutils ca-certificates jq \
+        bash coreutils git diffutils ca-certificates jq python3 \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd -m -s /bin/bash testuser
 USER testuser
