@@ -20,6 +20,7 @@
         (final: _prev: {
           codex = final.callPackage ./packages/codex-release.nix { };
           obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
+          pi-agent = final.callPackage ./packages/pi-agent.nix { };
         })
       ];
       linuxPkgs = import nixpkgs {
@@ -36,6 +37,7 @@
     {
       packages.x86_64-linux.codex = linuxPkgs.codex;
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
+      packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent;
       packages.aarch64-darwin.codex = darwinPkgs.codex;
 
       nixosConfigurations."${machine.hostName}" = nixpkgs.lib.nixosSystem {

@@ -18,5 +18,5 @@ else
 fi
 
 run nix flake check --no-build --all-systems
-run nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" --no-link
+run nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" --no-link
 run nix develop "$repo_dir" -c shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh

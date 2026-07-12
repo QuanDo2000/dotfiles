@@ -81,6 +81,9 @@ test_pi_matches_minimal_codex_setup() {
   assert_contains "$home_text" 'home.activation.seedPiMcpConfig'
   assert_contains "$home_text" './shared/ai/pi/mcp.json'
   assert_contains "$home_text" '${../scripts/pi_seed_merge.py}'
+  assert_contains "$home_text" 'Warning: failed to sync Codex config seed'
+  assert_contains "$home_text" 'Warning: failed to sync Pi settings seed'
+  assert_contains "$home_text" 'Warning: failed to sync Pi MCP config seed'
   assert_contains "$home_text" "merge_source=\"''\${apply_seed:-\$source}\""
   assert_contains "$home_text" '".pi/agent/extensions/codebase-memory-guidance.ts"'
   assert_contains "$home_text" '".pi/agent/extensions/codex-status.js"'

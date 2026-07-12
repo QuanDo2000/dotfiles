@@ -292,7 +292,7 @@ in
         apply_seed="$repo_seed"
       fi
 
-      "${pkgs.python3}/bin/python3" "${../scripts/codex_seed_merge.py}" "$target" "$source" "$apply_seed" || true
+      "${pkgs.python3}/bin/python3" "${../scripts/codex_seed_merge.py}" "$target" "$source" "$apply_seed" || echo "Warning: failed to sync Codex config seed" >&2
     fi
 
     if [ "$replace" = true ]; then
@@ -314,7 +314,7 @@ in
       if [ -w "$repo_seed" ]; then
         apply_seed="$repo_seed"
       fi
-      "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || true
+      "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || echo "Warning: failed to sync Pi settings seed" >&2
       merge_source="''${apply_seed:-$source}"
       merged="$(mktemp)"
       "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
@@ -337,7 +337,7 @@ in
       if [ -w "$repo_seed" ]; then
         apply_seed="$repo_seed"
       fi
-      "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || true
+      "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || echo "Warning: failed to sync Pi MCP config seed" >&2
       merge_source="''${apply_seed:-$source}"
       merged="$(mktemp)"
       "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
