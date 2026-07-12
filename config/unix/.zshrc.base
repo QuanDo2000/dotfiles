@@ -1,5 +1,10 @@
 # Base config (tracked in dotfiles repo). Inlined into generated ~/.zshrc by Home Manager.
 
+if [[ -d "$HOME/.local/share/terminfo" ]]; then
+  export TERMINFO=/usr/share/terminfo
+  export TERMINFO_DIRS="$HOME/.local/share/terminfo:/usr/share/terminfo"
+fi
+
 if [[ -t 0 ]]; then
   export GPG_TTY=$(tty)
   command -v gpg-connect-agent >/dev/null 2>&1 \

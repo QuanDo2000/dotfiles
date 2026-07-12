@@ -78,6 +78,8 @@ test_pi_matches_minimal_codex_setup() {
   assert_contains "$pi_package" 'dist/modes/interactive/interactive-mode.js'
   assert_contains "$pi_package" '--replace-fail '\''{ name: "quit", description:'\'' '\''{ name: "exit", description:'\'''
   assert_contains "$pi_package" '--replace-fail '\''text === "/quit"'\'' '\''text === "/exit"'\'''
+  assert_contains "$pi_package" "makeWrapper"
+  assert_contains "$pi_package" '--prefix PATH : "${lib.makeBinPath [ nodejs ]}"'
   assert_not_contains "$pi_package" "nativeBuildInputs = [ jq ]"
   assert_equals "openai-codex" "$(jq -r '.defaultProvider' <<< "$pi_settings")"
   assert_equals "gpt-5.6-sol" "$(jq -r '.defaultModel' <<< "$pi_settings")"
@@ -149,6 +151,7 @@ test_darwin_uses_tracked_host_username() {
   assert_contains "$darwin_text" "users.users.\${machine.username} = {"
   assert_contains "$darwin_text" "home = \"/Users/\${machine.username}\""
   assert_contains "$darwin_text" "shell = pkgs.zsh"
+  assert_contains "$darwin_text" 'home-manager.backupFileExtension = "backup"'
   assert_contains "$darwin_text" "home-manager.users.\${machine.username}"
   assert_not_contains "$darwin_text" 'system.primaryUser = "quando"'
   assert_not_contains "$darwin_text" "users.users.quando"
@@ -338,6 +341,9 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "forceSource ./shared/ai/AGENTS.md"
   assert_not_contains "$home_text" "home.file.\".codex/config.toml\""
   assert_contains "$home_text" "home.activation.seedCodexConfig"
+  assert_contains "$home_text" "home.activation.fixCodexRuntime"
+  assert_contains "$home_text" 'rm -f "$HOME/.codex/dotfiles.config.toml"'
+  assert_contains "$home_text" 'cp -R "/Applications/Ghostty.app/Contents/Resources/terminfo/." "$terminfo_target/"'
   assert_contains "$home_text" "\${../scripts/codex_seed_merge.py}"
   assert_not_contains "$home_text" "import tomllib"
   assert_contains "$codex_merge_text" "Codex live config has settings missing from the tracked seed"
@@ -597,6 +603,8 @@ test_zsh_keytimeout_allows_bracketed_paste_sequences() {
 
   assert_not_contains "$zsh_text" $'\nexport KEYTIMEOUT=1\n'
   assert_contains "$zsh_text" $'\nexport KEYTIMEOUT=10\n'
+  assert_contains "$zsh_text" 'export TERMINFO=/usr/share/terminfo'
+  assert_contains "$zsh_text" 'export TERMINFO_DIRS="$HOME/.local/share/terminfo:/usr/share/terminfo"'
 }
 
 test_tmux_enables_synchronized_output() {

@@ -1,4 +1,4 @@
-{ lib, buildNpmPackage, fetchurl, jq }:
+{ lib, buildNpmPackage, fetchurl, jq, makeWrapper, nodejs }:
 
 buildNpmPackage rec {
   pname = "pi-coding-agent";
@@ -12,6 +12,7 @@ buildNpmPackage rec {
   npmDepsHash = "sha256-xwn6zBV6QmLPaf9Ht2y1smJSUTMw1DYmPFBvPGVgvCc=";
   dontNpmBuild = true;
   npmFlags = [ "--omit=dev" "--ignore-scripts" ];
+  nativeBuildInputs = [ makeWrapper ];
 
   postPatch = ''
     ${lib.getExe jq} 'del(.devDependencies)' package.json > package.json.tmp
@@ -24,6 +25,10 @@ buildNpmPackage rec {
       --replace-fail '"resolved": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.80.6.tgz",' '"resolved": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.80.6.tgz", "integrity": "sha512-Lvn89ko42h5ETUb6Z0Ku6ldskEqXaTdQBYvSa0+7bdG9V6rUEpXptv5e0OVZ1HDcvi8s6/2lGCQWsxKX+DFHNw==",' \
       --replace-fail '"resolved": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.80.6.tgz",' '"resolved": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.80.6.tgz", "integrity": "sha512-7xfLk8sANBp+bpPEbjoOZTbPxsa+++b1JXAoSJsNa3vbs9AHHEclmvg54XLQcxH+fuwaeti/g2jeIfJ+mVYLpA==",' \
       --replace-fail '"resolved": "https://registry.npmjs.org/@earendil-works/pi-tui/-/pi-tui-0.80.6.tgz",' '"resolved": "https://registry.npmjs.org/@earendil-works/pi-tui/-/pi-tui-0.80.6.tgz", "integrity": "sha512-bSuzS4EVSqEPj/Qr/p9eqCESfKsGuDNbl77EGci8Iaqqt/C/XCBZL1MjXaxSWW1NsT5afjp/Cb0NTPzOLv/aPA==",'
+  '';
+
+  postFixup = ''
+    wrapProgram $out/bin/pi --prefix PATH : "${lib.makeBinPath [ nodejs ]}"
   '';
 
   meta = {

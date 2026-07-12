@@ -284,6 +284,19 @@ in
     fi
   '';
 
+  home.activation.fixCodexRuntime = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ -L "$HOME/.codex/dotfiles.config.toml" ] && [ ! -e "$HOME/.codex/dotfiles.config.toml" ]; then
+      rm -f "$HOME/.codex/dotfiles.config.toml"
+    fi
+
+    terminfo_source="/Applications/Ghostty.app/Contents/Resources/terminfo"
+    terminfo_target="$HOME/.local/share/terminfo"
+    if [ -d "$terminfo_source" ]; then
+      mkdir -p "$terminfo_target"
+      cp -R "/Applications/Ghostty.app/Contents/Resources/terminfo/." "$terminfo_target/"
+    fi
+  '';
+
   home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     target="$HOME/.codex/config.toml"
     source="${./shared/ai/codex/config.toml}"
