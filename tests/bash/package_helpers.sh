@@ -5,7 +5,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 setup() {
   init_test_env
-  source_scripts utils.sh packages.sh
+  source_scripts utils.sh packages.sh releases.sh
   calls="$TEST_TMPDIR/nix.log"
   nix() {
     if [[ "${1:-}" == "eval" && "${2:-}" == "--raw" && "${3:-}" == "--file" && "${4:-}" == "$DOTFILES_DIR/config/host.nix" ]]; then

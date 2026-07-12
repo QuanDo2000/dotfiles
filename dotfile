@@ -38,6 +38,7 @@ fi
 source "$SCRIPTS_DIR/utils.sh"
 source "$SCRIPTS_DIR/platform.sh"
 source "$SCRIPTS_DIR/packages.sh"
+source "$SCRIPTS_DIR/releases.sh"
 source "$SCRIPTS_DIR/doctor.sh"
 source "$SCRIPTS_DIR/obsidian.sh"
 

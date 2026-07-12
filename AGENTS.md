@@ -31,6 +31,7 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 - **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` - OS-specific package installation (apt/pacman only for Linux bootstrap packages, NixOS flakes, existing nix-darwin or pinned nix-darwin bootstrap on macOS).
+  - `releases.sh` - Codex and Obsidian Headless release discovery, hash prefetching, and tracked Nix package pin updates.
   - `doctor.sh` - Health checks for Home Manager conflicts, core Unix links, Nix-managed tools, and flake targets.
   - `obsidian.sh` - Interactive Obsidian Sync bootstrap and service restart; Home Manager owns the Linux `obsidian-headless` package and `obsidian-sync` unit file.
 
@@ -63,7 +64,7 @@ Tests live under `tests/` with one suite per platform.
 ```bash
 bash tests/bash/runner.sh                  # all bash tests (runs in Docker by default)
 bash tests/bash/runner.sh --no-docker      # all bash tests on host (faster while iterating)
-bash tests/bash/runner.sh test_packages.sh # single file
+bash tests/bash/runner.sh test_platform_packages.sh # single file
 pwsh tests/powershell/runner.ps1           # PowerShell tests (Windows / pwsh)
 ./scripts/check.sh                         # local full check: bash, pwsh if present, Nix flake, ShellCheck via Nix
 ```
