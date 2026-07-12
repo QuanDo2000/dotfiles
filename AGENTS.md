@@ -70,8 +70,8 @@ pwsh tests/powershell/runner.ps1           # PowerShell tests (Windows / pwsh)
 
 ### Bash test pattern
 
-- One `test_<module>.sh` per `scripts/<module>.sh`. Each `test_*` function is auto-discovered by the runner.
-- Source `tests/bash/helpers.sh` at the top, then use `setup`/`teardown` to call `init_test_env` / `cleanup_test_env`. The helper creates a throwaway `$HOME` under a temp dir and exports `DRY`/`QUIET`/`FORCE`.
+- Default to one `test_<module>.sh` per `scripts/<module>.sh`; split unusually large modules into focused suites. `scripts/packages.sh` uses platform, release pin, Codex runtime, and Neovim suites. Each `test_*` function is auto-discovered by the runner.
+- Source `tests/bash/helpers.sh` at the top, then use `setup`/`teardown` to call `init_test_env` / `cleanup_test_env`. Package suites use `setup_packages_test_env`. The helper creates a throwaway `$HOME` under a temp dir and exports `DRY`/`QUIET`/`FORCE`.
 - Source the script under test via `source_scripts utils.sh <module>.sh` (always pulls in `platform.sh` automatically).
 - Mock OS detection with `mock_uname Linux` / `mock_uname Darwin` (auto-cleared by `cleanup_test_env`).
 - Assertions: `assert_equals`, `assert_contains`, `assert_file_exists`, `assert_symlink`, `assert_exit_code`. Failures append to `$ERROR_FILE`; tests do not abort on first failure.

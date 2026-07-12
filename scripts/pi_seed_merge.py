@@ -4,8 +4,7 @@ import os
 import sys
 import tempfile
 
-live_path, seed_path, apply_path, label, override_keys = sys.argv[1:]
-live_overrides = set(filter(None, override_keys.split(",")))
+live_path, seed_path, apply_path = sys.argv[1:]
 
 
 def load(path):
@@ -19,7 +18,7 @@ def load(path):
 def missing_from_seed(live, seed):
     missing = {}
     for key, value in live.items():
-        if key not in seed or (key in live_overrides and seed[key] != value):
+        if key not in seed or (key == "defaultModel" and seed[key] != value):
             missing[key] = value
         elif isinstance(value, dict) and isinstance(seed[key], dict):
             nested = missing_from_seed(value, seed[key])
@@ -59,14 +58,14 @@ try:
     seed_config = load(compare_path)
     missing = missing_from_seed(live_config, seed_config)
 except Exception as exc:
-    print(f"Warning: failed to compare {label} config with tracked seed: {exc}", file=sys.stderr)
+    print(f"Warning: failed to compare Pi config with tracked seed: {exc}", file=sys.stderr)
     sys.exit(0)
 
 if missing:
     if apply_path:
         write_json(apply_path, merge_missing(seed_config, missing))
-        print(f"Applied {label} config changes to tracked seed: {apply_path}")
+        print(f"Applied Pi config changes to tracked seed: {apply_path}")
     else:
-        print(f"{label} live config has changes missing from the tracked seed.")
+        print("Pi live config has changes missing from the tracked seed.")
         print("Review these additions:")
         print(json.dumps(missing, indent=2))

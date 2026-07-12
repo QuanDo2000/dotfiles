@@ -133,7 +133,7 @@ test_lazyvim_merge_preserves_seed_permissions() {
 test_pi_seed_merge_engine_applies_live_only_nested_json() {
   local tmp script live seed output
   tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/json_seed_merge.py"
+  script="$REPO_DIR/scripts/pi_seed_merge.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
 
@@ -153,7 +153,7 @@ EOF
 }
 EOF
 
-  output="$(python3 "$script" "$live" "$seed" "$seed" Pi defaultModel)"
+  output="$(python3 "$script" "$live" "$seed" "$seed")"
 
   assert_contains "$output" "Applied Pi config changes to tracked seed"
   assert_equals "live-model" "$(jq -r '.defaultModel' "$seed")"

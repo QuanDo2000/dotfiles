@@ -48,6 +48,22 @@ source_scripts() {
   source "$REPO_DIR/scripts/platform.sh"
 }
 
+# Shared setup for scripts/packages.sh suites.
+setup_packages_test_env() {
+  init_test_env
+  source_scripts utils.sh packages.sh
+  calls="$TEST_TMPDIR/nix.log"
+  nix() {
+    if [[ "${1:-}" == "eval" && "${2:-}" == "--raw" && "${3:-}" == "--file" && "${4:-}" == "$DOTFILES_DIR/config/host.nix" ]]; then
+      case "${5:-}" in
+        username) printf 'testuser\n'; return ;;
+        hostName) printf 'testhost\n'; return ;;
+      esac
+    fi
+    printf 'nix %s\n' "$*" >> "$calls"
+  }
+}
+
 # Internal: install a uname() that respects __MOCK_UNAME and __MOCK_UNAME_M.
 # Falls through to the real uname for whichever env var is unset.
 _install_uname_mock() {
