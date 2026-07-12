@@ -71,7 +71,7 @@ test_pi_matches_minimal_codex_setup() {
   assert_contains "$pi_package" 'version = "0.80.6"'
   assert_contains "$pi_package" "@earendil-works/pi-coding-agent"
   assert_equals "openai-codex" "$(jq -r '.defaultProvider' <<< "$pi_settings")"
-  assert_equals "gpt-5.5" "$(jq -r '.defaultModel' <<< "$pi_settings")"
+  assert_equals "gpt-5.6-sol" "$(jq -r '.defaultModel' <<< "$pi_settings")"
   assert_equals "medium" "$(jq -r '.defaultThinkingLevel' <<< "$pi_settings")"
   assert_equals "ask" "$(jq -r '.defaultProjectTrust' <<< "$pi_settings")"
   assert_equals "~/.codex/skills" "$(jq -r '.skills[]' <<< "$pi_settings")"
@@ -81,6 +81,7 @@ test_pi_matches_minimal_codex_setup() {
   assert_contains "$home_text" 'home.activation.seedPiMcpConfig'
   assert_contains "$home_text" './shared/ai/pi/mcp.json'
   assert_contains "$home_text" '${../scripts/pi_seed_merge.py}'
+  assert_contains "$home_text" "merge_source=\"''\${apply_seed:-\$source}\""
   assert_contains "$home_text" '".pi/agent/extensions/codebase-memory-guidance.ts"'
   assert_contains "$home_text" '".pi/agent/extensions/codex-status.js"'
 
@@ -452,7 +453,7 @@ EOF
   output="$(python3 "$script" "$live" "$seed" "$seed")"
 
   assert_contains "$output" "Applied Pi live config additions to tracked seed"
-  assert_equals "tracked-model" "$(jq -r '.defaultModel' "$seed")"
+  assert_equals "live-model" "$(jq -r '.defaultModel' "$seed")"
   assert_equals "tracked-package" "$(jq -r '.packages[]' "$seed")"
   assert_equals "true" "$(jq -r '.custom.enabled' "$seed")"
   assert_equals "local-mcp" "$(jq -r '.mcpServers.local.command' "$seed")"

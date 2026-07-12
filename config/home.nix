@@ -315,8 +315,9 @@ in
         apply_seed="$repo_seed"
       fi
       "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || true
+      merge_source="''${apply_seed:-$source}"
       merged="$(mktemp)"
-      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$source" > "$merged"
+      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
       mv "$merged" "$target"
     else
       rm -f "$target"
@@ -337,8 +338,9 @@ in
         apply_seed="$repo_seed"
       fi
       "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || true
+      merge_source="''${apply_seed:-$source}"
       merged="$(mktemp)"
-      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$source" > "$merged"
+      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
       mv "$merged" "$target"
     else
       rm -f "$target"

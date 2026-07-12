@@ -15,10 +15,13 @@ def load(path):
     return value
 
 
+LIVE_OVERRIDES = {"defaultModel"}
+
+
 def missing_from_seed(live, seed):
     missing = {}
     for key, value in live.items():
-        if key not in seed:
+        if key not in seed or (key in LIVE_OVERRIDES and seed[key] != value):
             missing[key] = value
         elif isinstance(value, dict) and isinstance(seed[key], dict):
             nested = missing_from_seed(value, seed[key])
