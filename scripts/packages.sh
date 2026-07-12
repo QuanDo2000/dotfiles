@@ -110,10 +110,6 @@ function _linux_home_manager_target {
   echo "$DOTFILES_DIR#${username}@linux"
 }
 
-function _darwin_flake_target {
-  echo "$DOTFILES_DIR#mac"
-}
-
 function _nixos_flake_target {
   local host_name
   host_name="$(host_config_value hostName)" \
@@ -181,7 +177,7 @@ function _cleanup_codex_runtime_after_update {
 
 function _darwin_rebuild_switch {
   local target
-  target="$(_darwin_flake_target)"
+  target="$DOTFILES_DIR#mac"
   if [[ "$DRY" == "true" ]]; then
     _dry_run_nix_managed_switch sudo HOME=/var/root darwin-rebuild switch --flake "$target"
     return
