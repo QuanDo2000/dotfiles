@@ -463,6 +463,20 @@ function update_nixos {
   success "Finished update for NixOS"
 }
 
+function _sync_fff_nvim {
+  if [ "$DRY" = true ]; then
+    info "Would install or update fff.nvim"
+    return
+  fi
+
+  info "Installing or updating fff.nvim..."
+  local plugin="$HOME/.local/share/nvim/lazy/fff.nvim"
+  local release="$plugin/target/release"
+  nvim --headless "+Lazy! sync fff.nvim" +qa
+  (cd "$plugin" && nix run .#release)
+  [ -f "$release/libfff_nvim.so" ] || [ -f "$release/fff_nvim.so" ] || [ -f "$release/libfff_nvim.dylib" ] || fail "fff.nvim backend build failed"
+}
+
 function update_packages {
   info "Updating packages..."
   local platform codex_version_before
@@ -479,6 +493,7 @@ function update_packages {
     mac)     update_mac ;;
   esac
   _cleanup_codex_runtime_after_update "$codex_version_before"
+  _sync_fff_nvim
   success "Finished update"
 }
 
@@ -505,5 +520,6 @@ function install_packages {
   esac
 
   set_zsh_default
+  _sync_fff_nvim
   success "Finished install"
 }

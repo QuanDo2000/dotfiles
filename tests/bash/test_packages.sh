@@ -506,6 +506,7 @@ EOF
   home-manager() {
     printf 'home-manager-switch\n' >> "$calls"
   }
+  _sync_fff_nvim() { :; }
 
   OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
 
@@ -513,7 +514,7 @@ EOF
   output="$(<"$calls")"
   assert_equals "home-manager-switch" "$output"
 
-  unset -f command _update_codex_release_package home-manager
+  unset -f command _update_codex_release_package home-manager _sync_fff_nvim
 }
 
 test_update_packages_fails_unsupported_before_codex_update() {
@@ -576,6 +577,7 @@ _mock_codex_update_runtime() {
   rm() {
     printf 'rm %s\n' "$*" >> "$MOCK_CODEX_CALLS"
   }
+  _sync_fff_nvim() { :; }
 }
 
 test_update_packages_cleans_codex_runtime_when_version_changes() {
@@ -737,12 +739,58 @@ test_home_manager_seeds_writable_lazyvim_config() {
   assert_not_contains "$config" 'xdg.configFile."nvim/lazyvim.json"'
 }
 
-test_fff_nvim_uses_nixos_build() {
+test_install_and_update_sync_fff_nvim() {
+  assert_equals "3" "$(grep -c '_sync_fff_nvim' "$REPO_DIR/scripts/packages.sh")"
+}
+
+test_sync_fff_nvim_runs_headless_lazy_sync() {
+  local calls="$TEST_TMPDIR/nvim.log"
+  DRY=false
+  nvim() {
+    printf '%s\n' "$*" >> "$calls"
+    mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim"
+  }
+  nix() {
+    mkdir -p target/release
+    touch target/release/libfff_nvim.so
+  }
+
+  _sync_fff_nvim
+
+  assert_contains "$(<"$calls")" '--headless +Lazy! sync fff.nvim +qa'
+  unset -f nvim nix
+}
+
+test_sync_fff_nvim_builds_backend_with_nix() {
+  local calls="$TEST_TMPDIR/nix.log"
+  DRY=false
+  nvim() { mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim"; }
+  nix() {
+    printf '%s %s\n' "$PWD" "$*" >> "$calls"
+    mkdir -p target/release
+    touch target/release/libfff_nvim.so
+  }
+
+  _sync_fff_nvim
+
+  assert_contains "$(<"$calls")" "$HOME/.local/share/nvim/lazy/fff.nvim run .#release"
+  unset -f nvim nix
+}
+
+test_sync_fff_nvim_dry_run_does_not_start_neovim() {
+  DRY=true
+  nvim() { return 1; }
+
+  assert_exit_code 0 _sync_fff_nvim
+  unset -f nvim
+}
+
+test_fff_nvim_build_is_owned_by_dotfile() {
   local config
   config="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
 
   assert_contains "$config" '"dmtrKovalenko/fff.nvim"'
-  assert_contains "$config" 'build = "nix run .#release"'
+  assert_not_contains "$config" "build ="
 }
 
 test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {
