@@ -33,6 +33,7 @@ test_ci_runs_windows_lazyvim_integration() {
 
   assert_contains "$workflow" "Neovim.Neovim"
   assert_contains "$workflow" 'Microsoft\WinGet\Links\nvim.exe'
+  assert_contains "$workflow" 'Neovim\bin\nvim.exe'
   assert_contains "$workflow" "tests/powershell/integration_lazyvim.ps1"
 
   local integration

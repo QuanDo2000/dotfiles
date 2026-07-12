@@ -31,8 +31,9 @@ jobs:
         shell: pwsh
         run: |
           $wingetNvim = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\nvim.exe'
+          $programFilesNvim = Join-Path $env:ProgramFiles 'Neovim\bin\nvim.exe'
           $wingetPackage = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages') -Filter nvim.exe -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not (Get-Command nvim -ErrorAction SilentlyContinue) -and -not (Test-Path -LiteralPath $wingetNvim) -and -not $wingetPackage) {
+          if (-not (Get-Command nvim -ErrorAction SilentlyContinue) -and -not (Test-Path -LiteralPath $wingetNvim) -and -not (Test-Path -LiteralPath $programFilesNvim) -and -not $wingetPackage) {
             winget install --id Neovim.Neovim --exact --silent --accept-package-agreements --accept-source-agreements
           }
 

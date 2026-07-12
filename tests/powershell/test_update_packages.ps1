@@ -74,6 +74,8 @@ function test_lazyvim_sync_uses_winget_neovim_fallback {
     $text = Get-Content -Raw $script:DotfileScript
     Assert-Contains $text 'Microsoft\WinGet\Links\nvim.exe'
     Assert-Contains $text 'Microsoft\WinGet\Packages'
+    Assert-Contains $text 'Neovim\bin\nvim.exe'
+    Assert-Contains $text '$env:ProgramFiles'
     Assert-Contains $text 'Get-ChildItem'
     Assert-Contains $text 'Get-NeovimCommand'
     Assert-Contains $text 'Get-NeovimDataPath'

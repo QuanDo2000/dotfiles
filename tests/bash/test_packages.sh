@@ -845,11 +845,19 @@ test_home_manager_lazyvim_guard_uses_runnable_ps() {
     return
   fi
   local activation ps_path
-  activation="$("$nix_bin" eval --raw "$REPO_DIR#nixosConfigurations.nixos.config.home-manager.users.quando.home.activation.seedLazyVimConfig.data")"
-  ps_path="$(grep -o '/nix/store/[^ ]*/bin/ps' <<< "$activation" | head -1)"
-
-  assert_file_exists "$ps_path"
-  assert_exit_code 0 "$ps_path" --version
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    activation="$("$nix_bin" eval --raw "$REPO_DIR#darwinConfigurations.mac.config.home-manager.users.quando.home.activation.seedLazyVimConfig.data")"
+    assert_contains "$activation" '"/bin/ps" -A -o comm='
+    assert_exit_code 0 /bin/ps -A
+  else
+    activation="$("$nix_bin" eval --raw "$REPO_DIR#nixosConfigurations.nixos.config.home-manager.users.quando.home.activation.seedLazyVimConfig.data")"
+    ps_path="$(grep -o '/nix/store/[^ "]*/bin/ps' <<< "$activation" | head -1)"
+    local nix_store_bin
+    nix_store_bin="$(type -P nix-store)"
+    assert_exit_code 0 "$nix_store_bin" --realise "${ps_path%/bin/ps}"
+    assert_file_exists "$ps_path"
+    assert_exit_code 0 "$ps_path" --version
+  fi
 }
 
 test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {

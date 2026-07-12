@@ -319,6 +319,9 @@ function Get-NeovimCommand {
     $wingetLink = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\nvim.exe"
     if (Test-Path -LiteralPath $wingetLink) { return $wingetLink }
 
+    $programFiles = Join-Path $env:ProgramFiles "Neovim\bin\nvim.exe"
+    if (Test-Path -LiteralPath $programFiles) { return $programFiles }
+
     $wingetPackages = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
     $installed = Get-ChildItem -Path $wingetPackages -Filter nvim.exe -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($installed) { return $installed.FullName }
