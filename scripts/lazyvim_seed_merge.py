@@ -2,6 +2,7 @@
 import copy
 import json
 import os
+import stat
 import sys
 import tempfile
 
@@ -33,7 +34,7 @@ def resolve(live, seed, base):
         return seed
     if isinstance(live, dict) and isinstance(seed, dict) and isinstance(base, dict):
         merged = {}
-        for key in live.keys() | seed.keys() | base.keys():
+        for key in sorted(live.keys() | seed.keys() | base.keys()):
             value = resolve(live.get(key, missing), seed.get(key, missing), base.get(key, missing))
             if value is not missing:
                 merged[key] = value
@@ -44,11 +45,14 @@ def resolve(live, seed, base):
 def write_json(path, value):
     directory = os.path.dirname(path) or "."
     os.makedirs(directory, exist_ok=True)
+    mode = stat.S_IMODE(os.stat(path).st_mode) if os.path.exists(path) else None
     fd, temporary = tempfile.mkstemp(dir=directory, prefix=".lazyvim-seed-", text=True)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as file:
             json.dump(value, file, indent=2)
             file.write("\n")
+        if mode is not None:
+            os.chmod(temporary, mode)
         os.replace(temporary, path)
     except Exception:
         try:
@@ -60,6 +64,7 @@ def write_json(path, value):
 
 live = load(live_path)
 seed = load(apply_path or seed_path)
+base_present = os.path.exists(base_path)
 try:
     base = load(base_path)
     base_exists = True
@@ -75,7 +80,7 @@ for key in managed_keys:
     if base_exists:
         value = resolve(live_value, seed.get(key, missing), base.get(key, missing))
     else:
-        value = live_value
+        value = seed.get(key, missing) if base_present else live_value
     if value is missing:
         resolved.pop(key, None)
     else:

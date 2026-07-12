@@ -329,7 +329,15 @@ function Sync-LazyVim {
         $nvim = Get-NeovimCommand
         if (-not $nvim) { throw "nvim executable not found" }
         & $nvim --headless "+Lazy! sync" "+qa" 2>&1 | ForEach-Object { Write-Host $_ }
-        if ($LASTEXITCODE -ne 0) { Write-Warning "LazyVim sync failed; Neovim may finish setup on first start" }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "LazyVim sync failed; Neovim may finish setup on first start"
+        } else {
+            $lazyRoot = Join-Path $env:LOCALAPPDATA "nvim-data\lazy"
+            if (-not (Test-Path -LiteralPath (Join-Path $lazyRoot "lazy.nvim")) -or
+                -not (Test-Path -LiteralPath (Join-Path $lazyRoot "LazyVim"))) {
+                Write-Warning "LazyVim sync did not install lazy.nvim and LazyVim; Neovim may finish setup on first start"
+            }
+        }
     } catch {
         Write-Warning "LazyVim sync failed; Neovim may finish setup on first start: $_"
     }

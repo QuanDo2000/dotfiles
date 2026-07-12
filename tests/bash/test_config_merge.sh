@@ -88,6 +88,7 @@ test_lazyvim_three_way_merge_preserves_tracked_and_live_changes() {
   python3 "$script" "$live" "$seed" "$seed" "$base"
   assert_equals 'yes' "$(jq -r '.news.live' "$seed")"
   assert_equals 'yes' "$(jq -r '.news.tracked' "$live")"
+  assert_equals '["live","tracked"]' "$(jq -c '.news | keys_unsorted' "$live")"
   rm -rf "$tmp"
 }
 
@@ -106,8 +107,26 @@ test_lazyvim_merge_recovers_corrupt_baseline_and_reports_read_only_seed() {
   output="$(python3 "$script" "$live" "$seed" '' "$base")"
 
   assert_contains "$output" "tracked seed was not writable"
-  assert_equals '["live"]' "$(jq -c '.extras' "$live")"
+  assert_equals '["seed"]' "$(jq -c '.extras' "$live")"
   assert_exit_code 0 jq empty "$base"
+  rm -rf "$tmp"
+}
+
+test_lazyvim_merge_preserves_seed_permissions() {
+  local tmp script live seed base
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/lazyvim_seed_merge.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+  base="$tmp/base.json"
+
+  printf '%s\n' '{"extras":[]}' > "$live"
+  cp "$live" "$seed"
+  chmod 0644 "$seed"
+
+  python3 "$script" "$live" "$seed" "$seed" "$base" >/dev/null
+
+  assert_equals "644" "$(python3 -c 'import os, sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$seed")"
   rm -rf "$tmp"
 }
 
