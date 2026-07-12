@@ -67,8 +67,8 @@ test_lazyvim_three_way_merge_preserves_tracked_and_live_changes() {
   printf '%s\n' '{"extras":["base"],"news":{},"version":8}' > "$seed"
   local output
   output="$(python3 "$script" "$live" "$seed" "$seed" "$base")"
-  assert_contains "$output" "Applied LazyVim config changes"
-  assert_equals '["base"]' "$(jq -c '.extras' "$live")"
+  assert_contains "$output" "Applied LazyVim config changes to live config and tracked seed"
+  assert_equals '["stale"]' "$(jq -c '.extras' "$seed")"
 
   # A live removal wins when the tracked seed has not changed.
   printf '%s\n' '{"extras":[],"news":{},"version":8}' > "$live"
@@ -80,6 +80,34 @@ test_lazyvim_three_way_merge_preserves_tracked_and_live_changes() {
   python3 "$script" "$live" "$seed" "$seed" "$base"
   assert_equals '["pulled"]' "$(jq -c '.extras' "$live")"
   assert_equals '9' "$(jq -r '.version' "$live")"
+
+  # Independent nested changes survive on both sides.
+  cp "$seed" "$base"
+  printf '%s\n' '{"extras":["pulled"],"news":{"live":"yes"},"version":9}' > "$live"
+  printf '%s\n' '{"extras":["pulled"],"news":{"tracked":"yes"},"version":9}' > "$seed"
+  python3 "$script" "$live" "$seed" "$seed" "$base"
+  assert_equals 'yes' "$(jq -r '.news.live' "$seed")"
+  assert_equals 'yes' "$(jq -r '.news.tracked' "$live")"
+  rm -rf "$tmp"
+}
+
+test_lazyvim_merge_recovers_corrupt_baseline_and_reports_read_only_seed() {
+  local tmp script live seed base output
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/lazyvim_seed_merge.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+  base="$tmp/base.json"
+
+  printf '%s\n' '{"extras":["live"]}' > "$live"
+  printf '%s\n' '{"extras":["seed"]}' > "$seed"
+  printf '%s\n' '{broken' > "$base"
+
+  output="$(python3 "$script" "$live" "$seed" '' "$base")"
+
+  assert_contains "$output" "tracked seed was not writable"
+  assert_equals '["live"]' "$(jq -c '.extras' "$live")"
+  assert_exit_code 0 jq empty "$base"
   rm -rf "$tmp"
 }
 

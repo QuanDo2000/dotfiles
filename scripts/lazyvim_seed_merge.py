@@ -26,6 +26,21 @@ def merge_missing(target, source):
             merge_missing(target[key], value)
 
 
+def resolve(live, seed, base):
+    if seed == base:
+        return live
+    if live == base:
+        return seed
+    if isinstance(live, dict) and isinstance(seed, dict) and isinstance(base, dict):
+        merged = {}
+        for key in live.keys() | seed.keys() | base.keys():
+            value = resolve(live.get(key, missing), seed.get(key, missing), base.get(key, missing))
+            if value is not missing:
+                merged[key] = value
+        return merged
+    return seed
+
+
 def write_json(path, value):
     directory = os.path.dirname(path) or "."
     os.makedirs(directory, exist_ok=True)
@@ -45,16 +60,22 @@ def write_json(path, value):
 
 live = load(live_path)
 seed = load(apply_path or seed_path)
-base_exists = os.path.isfile(base_path)
-base = load(base_path) if base_exists else copy.deepcopy(seed)
+try:
+    base = load(base_path)
+    base_exists = True
+except (OSError, ValueError):
+    base = {}
+    base_exists = False
+
 resolved = copy.deepcopy(seed)
 merge_missing(resolved, live)
 
-for key in managed_keys if base_exists else ():
+for key in managed_keys:
     live_value = live.get(key, missing)
-    seed_value = seed.get(key, missing)
-    base_value = base.get(key, missing)
-    value = seed_value if seed_value != base_value else live_value
+    if base_exists:
+        value = resolve(live_value, seed.get(key, missing), base.get(key, missing))
+    else:
+        value = live_value
     if value is missing:
         resolved.pop(key, None)
     else:
@@ -64,4 +85,7 @@ if apply_path:
     write_json(apply_path, resolved)
 write_json(live_path, resolved)
 write_json(base_path, resolved)
-print("Applied LazyVim config changes to live config and tracked seed")
+if apply_path:
+    print("Applied LazyVim config changes to live config and tracked seed")
+else:
+    print("Applied LazyVim config changes to live config; tracked seed was not writable")
