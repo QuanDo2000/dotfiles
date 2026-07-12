@@ -323,18 +323,6 @@ function update_packages {
   _report_fff_nvim_warning
 }
 
-function update_codex_release {
-  info "Updating pinned Codex release package..."
-  _update_codex_release_package
-  success "Finished updating pinned Codex release package"
-}
-
-function update_obsidian_headless_release {
-  info "Updating pinned Obsidian Headless package..."
-  _update_obsidian_headless_package
-  success "Finished updating pinned Obsidian Headless package"
-}
-
 function install_packages {
   info "Installing packages..."
   case "$(detect_platform)" in

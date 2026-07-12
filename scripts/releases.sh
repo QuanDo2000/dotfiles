@@ -135,23 +135,19 @@ function _write_obsidian_headless_package {
   output_file="${4:-$package_file}"
   [[ -f "$package_file" ]] || fail "Missing Obsidian Headless package file: $package_file"
 
+  tmp="$output_file"
   if [[ "$output_file" == "$package_file" ]]; then
     tmp="$(mktemp)" || fail "Failed to create temp file"
-    sed -E \
-      -e 's#version = "[^"]+";#version = "'"$version"'";#' \
-      -e 's#^([[:space:]]*hash = ")[^"]+(";)$#\1'"$src_hash"'\2#' \
-      -e 's#npmDepsHash = "[^"]+";#npmDepsHash = "'"$deps_hash"'";#' \
-      "$package_file" > "$tmp" \
-      && mv "$tmp" "$package_file" \
-      || fail "Failed to update Obsidian Headless package file"
-    return
   fi
 
   sed -E \
     -e 's#version = "[^"]+";#version = "'"$version"'";#' \
     -e 's#^([[:space:]]*hash = ")[^"]+(";)$#\1'"$src_hash"'\2#' \
     -e 's#npmDepsHash = "[^"]+";#npmDepsHash = "'"$deps_hash"'";#' \
-    "$package_file" > "$output_file" \
+    "$package_file" > "$tmp" \
+    || fail "Failed to update Obsidian Headless package file"
+  [[ "$tmp" == "$output_file" ]] \
+    || mv "$tmp" "$package_file" \
     || fail "Failed to update Obsidian Headless package file"
 }
 
@@ -193,4 +189,16 @@ function _update_obsidian_headless_package {
   mv "$tmp_package" "$package_file" \
     && mv "$tmp_lock" "$lock_file" \
     || fail "Failed to install updated Obsidian Headless package files"
+}
+
+function update_codex_release {
+  info "Updating pinned Codex release package..."
+  _update_codex_release_package
+  success "Finished updating pinned Codex release package"
+}
+
+function update_obsidian_headless_release {
+  info "Updating pinned Obsidian Headless package..."
+  _update_obsidian_headless_package
+  success "Finished updating pinned Obsidian Headless package"
 }
