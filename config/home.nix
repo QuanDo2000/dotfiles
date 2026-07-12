@@ -102,6 +102,7 @@ in
   ++ lib.optionals pkgs.stdenv.isLinux linuxDesktopPackages;
 
   home.file = obsidianFiles // {
+    "${homeDir}/.config/jj/config.toml".force = true;
     ".ssh/config" = forceSource ./shared/.ssh/config;
     ".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
     ".codex/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;

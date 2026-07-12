@@ -729,6 +729,13 @@ test_nixos_flake_target_fails_when_hostname_missing() {
   unset -f nix
 }
 
+test_home_manager_forces_jj_config_takeover() {
+  local config
+  config="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$config" '"${homeDir}/.config/jj/config.toml".force = true;'
+}
+
 test_install_nixos_uses_flake_switch() {
   local calls="$TEST_TMPDIR/sudo.log"
   sudo() { printf '%s\n' "$*" >> "$calls"; }

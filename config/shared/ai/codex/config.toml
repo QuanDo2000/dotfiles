@@ -1,4 +1,4 @@
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "medium"
 personality = "pragmatic"
 approval_policy = "on-request"
@@ -27,6 +27,9 @@ source = "https://github.com/DietrichGebert/ponytail.git"
 [plugins."ponytail@ponytail"]
 enabled = true
 
+[plugins."superpowers@openai-curated"]
+enabled = true
+
 [projects."/home/quando/dotfiles"]
 trust_level = "trusted"
 
@@ -37,6 +40,9 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/home/quando"]
+trust_level = "trusted"
+
+[projects."/home/quando/Downloads"]
 trust_level = "trusted"
 
 [mcp_servers.fff]
