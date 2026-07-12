@@ -27,10 +27,11 @@ function formatWindow(label, window) {
 function formatUsage(usage) {
   const limits = usage.rate_limit || {};
   const credits = usage.credits || {};
+  const windows = [limits.primary_window, limits.secondary_window];
   return [
     `Plan: ${formatPlan(usage.plan_type)}`,
-    formatWindow("5-hour limit", limits.primary_window),
-    formatWindow("Weekly limit", limits.secondary_window),
+    formatWindow("5-hour limit", windows.find((window) => window?.limit_window_seconds === 18000)),
+    formatWindow("Weekly limit", windows.find((window) => window?.limit_window_seconds === 604800)),
     `Reset tokens: ${usage.rate_limit_reset_credits?.available_count ?? "unavailable"}`,
     `Credits: $${credits.balance ?? "unavailable"}`,
   ].join("\n");
