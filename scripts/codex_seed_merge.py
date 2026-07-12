@@ -15,6 +15,8 @@ def load(path):
 def missing_from_seed(live, seed):
     missing = {}
     for key, value in live.items():
+        if key == "hooks":
+            continue
         if key not in seed:
             missing[key] = value
         elif isinstance(value, dict) and isinstance(seed[key], dict):

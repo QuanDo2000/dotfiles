@@ -103,8 +103,7 @@ test_pi_matches_minimal_codex_setup() {
   assert_not_contains "$home_text" '".pi/agent/extensions/codebase-memory-guidance.ts"'
   assert_contains "$home_text" '".pi/agent/extensions/codex-status.js"'
   assert_not_contains "$codex_config" 'SessionStart ='
-  assert_not_contains "$codex_config" '[hooks.state."/home/quando/.codex/config.toml'
-  assert_not_contains "$codex_config" '[hooks.state."/Users/quando/.codex/config.toml'
+  assert_not_contains "$codex_config" '[hooks'
 
   local pi_mcp
   pi_mcp="$(<"$REPO_DIR/config/shared/ai/pi/mcp.json")"
@@ -410,8 +409,9 @@ EOF
   assert_contains "$(<"$seed")" "multi_agent = true"
   assert_contains "$(<"$seed")" '[projects."/home/quando/dotfiles"]'
   assert_contains "$(<"$seed")" 'trust_level = "trusted"'
-  assert_contains "$(<"$seed")" 'SessionStart = [{ matcher = "startup"'
-  assert_contains "$(<"$seed")" 'command = "echo hi"'
+  assert_not_contains "$(<"$seed")" '[hooks]'
+  assert_not_contains "$(<"$seed")" 'SessionStart'
+  assert_not_contains "$(<"$seed")" 'command = "echo hi"'
   assert_exit_code 0 python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$seed"
   rm -rf "$tmp"
 }
@@ -616,8 +616,10 @@ test_home_config_owns_existing_xdg_configs() {
   lazy_text="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/lazy.lua")"
 
   assert_not_contains "$home_text" "xdg.configFile.\"jj\""
-  assert_contains "$home_text" "xdg.configFile.\"nvim\""
-  assert_contains "$home_text" "./shared/config/nvim"
+  assert_not_contains "$home_text" "xdg.configFile.\"nvim\""
+  assert_contains "$home_text" "initLua = builtins.readFile ./shared/config/nvim/init.lua"
+  assert_contains "$home_text" "xdg.configFile.\"nvim/lua\" = forceSource ./shared/config/nvim/lua"
+  assert_not_contains "$home_text" "xdg.configFile.\"nvim/lazy-lock.json\""
   assert_not_contains "$(<"$REPO_DIR/config/shared/config/nvim/init.lua")" "bootstrap lazy.nvim"
   assert_not_contains "$lazy_text" "lazyrepo"
   assert_not_contains "$lazy_text" "git\", \"clone"

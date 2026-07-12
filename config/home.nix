@@ -138,6 +138,7 @@ in
     withPython3 = false;
     withRuby = false;
     plugins = [ pkgs.vimPlugins.lazy-nvim ];
+    initLua = builtins.readFile ./shared/config/nvim/init.lua;
     extraPackages = with pkgs; [
       lua5_1
       luarocks
@@ -351,7 +352,11 @@ in
     chmod u+w "$target"
   '';
 
-  xdg.configFile."nvim" = forceSource ./shared/config/nvim;
+  xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;
+  xdg.configFile."nvim/.gitignore" = forceSource ./shared/config/nvim/.gitignore;
+  xdg.configFile."nvim/.neoconf.json" = forceSource ./shared/config/nvim/.neoconf.json;
+  xdg.configFile."nvim/lazyvim.json" = forceSource ./shared/config/nvim/lazyvim.json;
+  xdg.configFile."nvim/stylua.toml" = forceSource ./shared/config/nvim/stylua.toml;
 
   xdg.configFile."fcitx5" = linuxConfig ./unix/config/fcitx5;
 
