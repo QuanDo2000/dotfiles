@@ -390,12 +390,6 @@ function AddToUserPath($dir) {
     }
 }
 
-function EnsureDir($dir) {
-    if (-not (Test-Path $dir)) {
-        New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    }
-}
-
 function New-LinkSpec($Kind, $Source, $Destination, [bool]$Verify = $false, [bool]$AddToPath = $false) {
     [pscustomobject]@{
         Kind = $Kind
