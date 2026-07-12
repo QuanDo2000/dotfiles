@@ -275,6 +275,15 @@ in
     Install.WantedBy = [ "default.target" ];
   };
 
+  home.activation.migrateNvimConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+    nvim_config="$HOME/.config/nvim"
+    if [ -L "$nvim_config" ]; then
+      case "$(readlink "$nvim_config")" in
+        /nix/store/*-home-manager-files/.config/nvim) rm -f "$nvim_config" ;;
+      esac
+    fi
+  '';
+
   home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     target="$HOME/.codex/config.toml"
     source="${./shared/ai/codex/config.toml}"
@@ -352,6 +361,7 @@ in
     chmod u+w "$target"
   '';
 
+  xdg.configFile."nvim/init.lua".force = true;
   xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;
   xdg.configFile."nvim/.gitignore" = forceSource ./shared/config/nvim/.gitignore;
   xdg.configFile."nvim/.neoconf.json" = forceSource ./shared/config/nvim/.neoconf.json;

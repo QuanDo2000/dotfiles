@@ -618,6 +618,10 @@ test_home_config_owns_existing_xdg_configs() {
   assert_not_contains "$home_text" "xdg.configFile.\"jj\""
   assert_not_contains "$home_text" "xdg.configFile.\"nvim\""
   assert_contains "$home_text" "initLua = builtins.readFile ./shared/config/nvim/init.lua"
+  assert_contains "$home_text" "home.activation.migrateNvimConfig"
+  assert_contains "$home_text" 'entryBefore [ "checkLinkTargets" ]'
+  assert_contains "$home_text" 'rm -f "$nvim_config"'
+  assert_contains "$home_text" "xdg.configFile.\"nvim/init.lua\".force = true"
   assert_contains "$home_text" "xdg.configFile.\"nvim/lua\" = forceSource ./shared/config/nvim/lua"
   assert_not_contains "$home_text" "xdg.configFile.\"nvim/lazy-lock.json\""
   assert_not_contains "$(<"$REPO_DIR/config/shared/config/nvim/init.lua")" "bootstrap lazy.nvim"
