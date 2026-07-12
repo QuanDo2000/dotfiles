@@ -817,6 +817,14 @@ test_sync_fff_nvim_dry_run_does_not_start_neovim() {
   unset -f nvim
 }
 
+test_fff_nvim_is_disabled_on_windows() {
+  local config
+  config="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
+
+  assert_contains "$config" 'vim.fn.has("win32") == 1'
+  assert_contains "$config" "return {}"
+}
+
 test_fff_nvim_build_is_owned_by_dotfile() {
   local config
   config="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"

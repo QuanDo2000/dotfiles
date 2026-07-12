@@ -14,6 +14,11 @@ function TestTeardown {
     Clear-TestEnv
 }
 
+function test_windows_neovim_disables_fff_plugin {
+    $config = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/lua/plugins/fff.lua')
+    Assert-Contains $config 'vim.fn.has("win32") == 1'
+}
+
 function test_linkpath_file_dry_run_does_not_create_destination {
     $script:Dry = $true
     $src = Join-Path $env:USERPROFILE 'src.txt'
