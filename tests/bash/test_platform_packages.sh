@@ -293,6 +293,17 @@ test_update_nixos_uses_flake_switch_upgrade() {
   unset -f sudo
 }
 
+test_update_nixos_reloads_running_hyprland() {
+  local calls="$TEST_TMPDIR/hyprctl.log"
+  sudo() { :; }
+  hyprctl() { printf '%s\n' "$*" >> "$calls"; }
+
+  HYPRLAND_INSTANCE_SIGNATURE=test update_nixos >/dev/null 2>&1
+
+  assert_equals "reload" "$(<"$calls")"
+  unset -f sudo hyprctl
+}
+
 test_install_packages_dispatches_nixos() {
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"

@@ -248,6 +248,10 @@ function _nixos_rebuild_switch {
   fi
 
   _run_nix_managed_switch "$fail_message" sudo nixos-rebuild "${args[@]}" --flake "$target"
+
+  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
+    hyprctl reload >/dev/null
+  fi
 }
 
 # Reprovision NixOS from this repo's flake. System packages come from the

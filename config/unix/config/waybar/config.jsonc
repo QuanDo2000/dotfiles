@@ -1,24 +1,38 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 38,
+  "output": "DP-3",
+  "height": 35,
+  "reload_style_on_change": true,
   "spacing": 0,
 
   "modules-left": [
-    "hyprland/workspaces"
+    "hyprland/workspaces",
+    "hyprland/window"
   ],
   "modules-center": [
     "clock"
   ],
   "modules-right": [
+    "privacy",
     "pulseaudio",
     "idle_inhibitor",
     "network"
   ],
 
   "hyprland/workspaces": {
-    "format": "{icon}",
+    "format": "{icon} {windows}",
+    "format-window-separator": " ",
+    "window-rewrite-default": "•",
+    "window-rewrite": {
+      "class<com.mitchellh.ghostty>": "",
+      "class<google-chrome>": "",
+      "class<org.kde.dolphin>": "",
+      "class<obsidian>": "󰠮",
+      "class<anki>": "󰘸"
+    },
     "on-click": "activate",
+    "disable-scroll": true,
     "sort-by-number": true,
     "persistent-workspaces": {
       "1": [],
@@ -32,6 +46,12 @@
     }
   },
 
+  "hyprland/window": {
+    "format": "{title}",
+    "max-length": 60,
+    "separate-outputs": true
+  },
+
   "clock": {
     "interval": 60,
     "format": "{:%Y-%m-%d  %H:%M}",
@@ -40,6 +60,16 @@
       "mode": "month",
       "weeks-pos": "right"
     }
+  },
+
+  "privacy": {
+    "icon-spacing": 8,
+    "icon-size": 18,
+    "transition-duration": 0,
+    "modules": [
+      { "type": "screenshare" },
+      { "type": "audio-in" }
+    ]
   },
 
   "pulseaudio": {
@@ -56,6 +86,8 @@
 
   "idle_inhibitor": {
     "format": "{icon}",
+    "tooltip-format-activated": "Idle timeout: disabled",
+    "tooltip-format-deactivated": "Idle timeout: enabled",
     "format-icons": {
       "activated": "󰅶",
       "deactivated": "󰾪"
@@ -68,8 +100,9 @@
     "format-wifi": "{icon}",
     "format-disconnected": "󰖪",
     "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
-    "tooltip-format-wifi": "{essid} · {signalStrength}%",
-    "tooltip-format-ethernet": "{ifname} · {ipaddr}/{cidr}",
-    "tooltip-format-disconnected": "Disconnected"
+    "tooltip-format-wifi": "Network: {essid} · {signalStrength}%",
+    "tooltip-format-ethernet": "Network: {ifname} · {ipaddr}/{cidr}",
+    "tooltip-format-disconnected": "Network: disconnected",
+    "on-click": "ghostty -e nmtui"
   }
 }

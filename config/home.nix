@@ -130,6 +130,11 @@ in
 
   programs.home-manager.enable = true;
 
+  gtk = lib.mkIf pkgs.stdenv.isLinux {
+    enable = true;
+    gtk3.extraConfig.gtk-tooltip-timeout = 200;
+  };
+
   programs.hyprlock.enable = pkgs.stdenv.isLinux;
   services.hypridle.enable = pkgs.stdenv.isLinux;
 

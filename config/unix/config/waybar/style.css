@@ -14,16 +14,16 @@ window#waybar {
 .modules-left,
 .modules-center,
 .modules-right {
-  margin: 5px 6px;
-  padding: 0 6px;
+  margin: 4px 6px 2px;
+  padding: 0;
   border: 1px solid rgba(137, 180, 250, 0.25);
-  border-radius: 10px;
+  border-radius: 0;
   background: rgba(17, 17, 27, 0.90);
 }
 
 #workspaces button {
   min-width: 18px;
-  padding: 0 5px;
+  padding: 0 8px 0 5px;
   color: #6c7086;
   background: transparent;
 }
@@ -41,21 +41,31 @@ window#waybar {
   background: rgba(205, 214, 244, 0.10);
 }
 
+#window {
+  padding: 0 12px;
+  color: #a6adc8;
+}
+
 #clock {
   padding: 0 8px;
   color: #cdd6f4;
   font-weight: 600;
 }
 
+#privacy,
 #pulseaudio,
 #idle_inhibitor,
 #network {
   padding: 0 12px;
 }
 
-#pulseaudio.muted,
-#network.disconnected {
+#pulseaudio.muted {
   color: #6c7086;
+}
+
+#network.disconnected,
+#privacy-item {
+  color: #f38ba8;
 }
 
 #idle_inhibitor.activated {
@@ -70,7 +80,7 @@ window#waybar {
 
 tooltip {
   border: 1px solid rgba(137, 180, 250, 0.35);
-  border-radius: 8px;
+  border-radius: 0;
   background: #11111b;
 }
 

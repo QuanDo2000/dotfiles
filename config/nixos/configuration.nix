@@ -50,6 +50,9 @@ in
 
   # --- User ----------------------------------------------------------------
   programs.zsh.enable = true;
+  security.sudo.extraConfig = ''
+    Defaults timestamp_timeout=30
+  '';
   programs.gnupg.agent = {
     enable = true;
     pinentryPackage = pkgs.pinentry-gnome3;
@@ -72,6 +75,15 @@ in
   hardware.graphics.enable = true;
   programs.hyprland.enable = true;
   security.pam.services.hyprlock = { };
+
+  programs.thunar = {
+    enable = true;
+    plugins = with pkgs; [ thunar-archive-plugin thunar-volman ];
+  };
+  services.gvfs.enable = true;
+  services.tumbler.enable = true;
+  services.udisks2.enable = true;
+  environment.systemPackages = [ pkgs.xarchiver ];
 
   # Audio (PipeWire) and screenshare/file-picker portals — hardware-independent.
   security.rtkit.enable = true;

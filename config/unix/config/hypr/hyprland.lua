@@ -32,7 +32,7 @@ hl.monitor({
 ---------------------
 
 local terminal    = "ghostty"
-local fileManager = "dolphin"
+local fileManager = "thunar"
 local musicPlayer = "kew"
 local anki        = "anki"
 local mainMod     = "SUPER"
@@ -43,7 +43,7 @@ local mainMod     = "SUPER"
 
 hl.on("hyprland.start", function()
     hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
-    hl.exec_cmd("waybar")
+    hl.exec_cmd("bash $HOME/dotfiles/scripts/reload-waybar.sh")
     hl.exec_cmd("systemctl --user start hyprpolkitagent")
     hl.exec_cmd("fcitx5 -d")
     hl.exec_cmd("[workspace 1] " .. terminal .. " +new-window")
@@ -64,9 +64,9 @@ hl.env("XMODIFIERS", "@im=fcitx")
 
 hl.config({
     general = {
-        gaps_in = 5,
-        gaps_out = 10,
-        border_size = 2,
+        gaps_in = 3,
+        gaps_out = 6,
+        border_size = 1,
         col = {
             active_border = { colors = { "rgba(33ccffee)", "rgba(00ff99ee)" }, angle = 45 },
             inactive_border = "rgba(595959aa)",
@@ -158,7 +158,7 @@ hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, repeating = true })
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, repeating = true })
 
-hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("bash -lc 'pkill waybar; exec waybar -c \"${DOTFILES_DIR:-$HOME/dotfiles}/config/unix/config/waybar/config.jsonc\" -s \"${DOTFILES_DIR:-$HOME/dotfiles}/config/unix/config/waybar/style.css\"'"))
+hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("bash $HOME/dotfiles/scripts/reload-waybar.sh"))
 
 --------------------------------
 ---- WINDOWS AND WORKSPACES ----
