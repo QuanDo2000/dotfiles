@@ -729,6 +729,13 @@ test_nixos_flake_target_fails_when_hostname_missing() {
   unset -f nix
 }
 
+test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {
+  local config
+  config="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/lazy.lua")"
+
+  assert_contains "$config" '{ "folke/lazy.nvim", enabled = false }'
+}
+
 test_home_manager_forces_jj_config_takeover() {
   local config
   config="$(<"$REPO_DIR/config/home.nix")"
