@@ -28,6 +28,10 @@ in
   };
   time.timeZone = machine.timeZone;
   i18n.defaultLocale = "en_US.UTF-8";
+  console = {
+    font = "ter-v32n";
+    packages = [ pkgs.terminus_font ];
+  };
   networking.hostName = machine.hostName;
   networking.networkmanager.enable = true;
 
@@ -67,6 +71,7 @@ in
   # --- Desktop: Hyprland + greetd login ------------------------------------
   hardware.graphics.enable = true;
   programs.hyprland.enable = true;
+  security.pam.services.hyprlock = { };
 
   # Audio (PipeWire) and screenshare/file-picker portals — hardware-independent.
   security.rtkit.enable = true;
@@ -83,7 +88,7 @@ in
   services.greetd = {
     enable = true;
     settings.default_session = {
-      command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd start-hyprland";
+      command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --asterisks --width 60 --cmd start-hyprland";
       user = "greeter";
     };
   };

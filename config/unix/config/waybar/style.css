@@ -1,67 +1,80 @@
 * {
-  font-family: JetBrainsMono Nerd Font;
-  font-size: 17px;
-  padding: 0;
-  margin: 0;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+  font-family: "FiraCode Nerd Font";
+  font-size: 16px;
 }
 
-#waybar {
-  color: #eeeeee;
-  background-color: rgba(0, 0, 0, 0.6);
+window#waybar {
+  color: #cdd6f4;
+  background: transparent;
 }
 
-#workspaces,
-#cpu,
-#memory,
-#temperature {
-  padding: 0 0.5em;
-}
-
-#cpu:hover,
-#memory:hover,
-#temperature:hover {
-  background-color: rgba(100, 100, 100, 0.6);
+.modules-left,
+.modules-center,
+.modules-right {
+  margin: 5px 6px;
+  padding: 0 6px;
+  border: 1px solid rgba(137, 180, 250, 0.25);
+  border-radius: 10px;
+  background: rgba(17, 17, 27, 0.90);
 }
 
 #workspaces button {
-  color: #eeeeee;
-  padding-left: 0.2em;
-  padding-right: 0.5em;
+  min-width: 18px;
+  padding: 0 5px;
+  color: #6c7086;
+  background: transparent;
+}
+
+#workspaces button.active {
+  color: #89dceb;
+}
+
+#workspaces button.urgent {
+  color: #f38ba8;
 }
 
 #workspaces button:hover {
-  background-color: rgba(100, 100, 100, 0.6);
+  color: #cdd6f4;
+  background: rgba(205, 214, 244, 0.10);
 }
 
 #clock {
-  padding: 0 0.5em;
-}
-
-#clock:hover {
-  background-color: rgba(100, 100, 100, 0.6);
+  padding: 0 8px;
+  color: #cdd6f4;
+  font-weight: 600;
 }
 
 #pulseaudio,
-#battery,
 #idle_inhibitor,
-#language,
-#network,
-#bluetooth,
-#tray,
-#custom-power {
-  padding: 0 0.5em
+#network {
+  padding: 0 12px;
+}
+
+#pulseaudio.muted,
+#network.disconnected {
+  color: #6c7086;
+}
+
+#idle_inhibitor.activated {
+  color: #f9e2af;
 }
 
 #pulseaudio:hover,
-#battery:hover,
 #idle_inhibitor:hover,
-#language:hover,
-#network:hover,
-#bluetooth:hover,
-#custom-power:hover {
-  background-color: rgba(100, 100, 100, 0.6);
+#network:hover {
+  background: rgba(205, 214, 244, 0.10);
 }
 
-#tray>*:hover {
-  background-color: rgba(100, 100, 100, 0.6);
+tooltip {
+  border: 1px solid rgba(137, 180, 250, 0.35);
+  border-radius: 8px;
+  background: #11111b;
+}
+
+tooltip label {
+  padding: 6px;
+  color: #cdd6f4;
 }

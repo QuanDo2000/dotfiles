@@ -130,6 +130,9 @@ in
 
   programs.home-manager.enable = true;
 
+  programs.hyprlock.enable = pkgs.stdenv.isLinux;
+  services.hypridle.enable = pkgs.stdenv.isLinux;
+
   programs.gpg.enable = true;
 
   programs.neovim = {

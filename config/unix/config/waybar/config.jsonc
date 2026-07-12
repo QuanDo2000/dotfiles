@@ -1,120 +1,75 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 24,
-  "spacing": 5,
-  // Left
+  "height": 38,
+  "spacing": 0,
+
   "modules-left": [
-    "hyprland/workspaces",
-    "cpu",
-    "memory",
-    "temperature"
+    "hyprland/workspaces"
   ],
+  "modules-center": [
+    "clock"
+  ],
+  "modules-right": [
+    "pulseaudio",
+    "idle_inhibitor",
+    "network"
+  ],
+
   "hyprland/workspaces": {
-    "format": "<span size='larger'>{icon}</span>",
+    "format": "{icon}",
     "on-click": "activate",
-    "format-icons": {
-      "active": "\uf444",
-      "default": "\uf4c3"
-    },
-    "icon-size": 10,
     "sort-by-number": true,
     "persistent-workspaces": {
       "1": [],
       "2": [],
       "3": []
+    },
+    "format-icons": {
+      "active": "●",
+      "urgent": "●",
+      "default": "○"
     }
   },
-  "cpu": {
-    "interval": 5,
-    "format": "\uf2db {icon0}{icon1}{icon2}{icon3} {usage:>2}%",
-    "format-icons": [
-      "▁",
-      "▂",
-      "▃",
-      "▄",
-      "▅",
-      "▆",
-      "▇",
-      "█"
-    ],
-    "on-click": "ghostty -e btop"
-  },
-  "memory": {
-    "interval": 30,
-    "format": "\uefc5    {used:0.1f}G/{total:0.1f}G",
-    "on-click": "ghostty -e btop"
-  },
-  "temperature": {
-    "format": "{temperatureC}°C"
-  },
-  // Center
-  "modules-center": [
-    "clock"
-  ],
+
   "clock": {
-    "interval": 1,
-    "format": "{:%Y.%m.%d | %H:%M:%S}"
+    "interval": 60,
+    "format": "{:%Y-%m-%d  %H:%M}",
+    "tooltip-format": "<tt><small>{calendar}</small></tt>",
+    "calendar": {
+      "mode": "month",
+      "weeks-pos": "right"
+    }
   },
-  // Right
-  "modules-right": [
-    "pulseaudio",
-    "hyprland/language",
-    "idle_inhibitor",
-    "network",
-    "bluetooth",
-    "tray",
-    "custom/power"
-  ],
+
   "pulseaudio": {
-    "format": "\udb81\udd7e   {volume}%",
+    "format": "{icon}",
+    "format-muted": "󰝟",
+    "tooltip-format": "Volume: {volume}%",
+    "format-icons": {
+      "default": ["󰕿", "󰖀", "󰕾"]
+    },
     "max-volume": 100,
     "scroll-step": 5,
-    "on-click": "pwvucontrol"
+    "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
   },
-  "hyprland/language": {
-    "format": "{short}"
-  },
+
   "idle_inhibitor": {
     "format": "{icon}",
     "format-icons": {
-      "activated": "\udb80\udd76",
-      "deactivated": "\udb83\udfaa"
+      "activated": "󰅶",
+      "deactivated": "󰾪"
     }
   },
+
   "network": {
-    "format": "",
-    "format-ethernet": "\udb83\udc9d",
+    "format": "{ifname}",
+    "format-ethernet": "󰈀",
     "format-wifi": "{icon}",
-    "format-disconnected": "\udb83\udc9c",
-    "format-icons": [
-      "\udb82\udd2f",
-      "\udb82\udd1f",
-      "\udb82\udd22",
-      "\udb82\udd25",
-      "\udb82\udd28"
-    ],
-    "tooltip-format-wifi": "{essid} ({signalStrength}%)",
-    "tooltip-format-ethernet": "{ifname}",
-    "tooltip-format-disconnected": "Disconnected",
-    "on-click": "nm-connection-editor"
-  },
-  "bluetooth": {
-    "format": "\udb80\udcaf",
-    "format-disabled": "\udb80\udcb2",
-    "format-connected": "\udb80\udcb1",
-    "tooltip-format": "{controller_alias}\t{controller_address}",
-    "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
-    "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
-    "on-click": "blueman-manager"
-  },
-  "tray": {
-    "icon-size": 18,
-    "spacing": 20
-  },
-  "custom/power": {
-    "tooltip": false,
-    "on-click": "wlogout --protocol layer-shell",
-    "format": "<span size='larger'>\u23fb</span>"
+    "format-disconnected": "󰖪",
+    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+    "tooltip-format-wifi": "{essid} · {signalStrength}%",
+    "tooltip-format-ethernet": "{ifname} · {ipaddr}/{cidr}",
+    "tooltip-format-disconnected": "Disconnected"
   }
 }

@@ -121,6 +121,7 @@ hl.device({
 hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(terminal .. " +new-window"))
 hl.bind(mainMod .. " + W", hl.dsp.window.close())
 hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exit())
+hl.bind(mainMod .. " + CTRL + L", hl.dsp.exec_cmd("hyprlock"))
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(fileManager .. " /mnt/storage/"))
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("google-chrome-stable"))
@@ -157,7 +158,7 @@ hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, repeating = true })
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, repeating = true })
 
-hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("pkill waybar && waybar &"))
+hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("bash -lc 'pkill waybar; exec waybar -c \"${DOTFILES_DIR:-$HOME/dotfiles}/config/unix/config/waybar/config.jsonc\" -s \"${DOTFILES_DIR:-$HOME/dotfiles}/config/unix/config/waybar/style.css\"'"))
 
 --------------------------------
 ---- WINDOWS AND WORKSPACES ----
