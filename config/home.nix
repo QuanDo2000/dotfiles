@@ -384,7 +384,6 @@ in
   xdg.configFile."nvim/init.lua".force = true;
   xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;
   xdg.configFile."nvim/.gitignore" = forceSource ./shared/config/nvim/.gitignore;
-  xdg.configFile."nvim/.neoconf.json" = forceSource ./shared/config/nvim/.neoconf.json;
   xdg.configFile."nvim/stylua.toml" = forceSource ./shared/config/nvim/stylua.toml;
 
   xdg.configFile."fcitx5" = linuxConfig ./unix/config/fcitx5;
