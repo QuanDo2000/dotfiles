@@ -63,25 +63,6 @@ def table_name(path):
     return ".".join(toml_key(part) for part in path)
 
 
-def emit_table(table, path=()):
-    scalar_lines = []
-    child_tables = []
-    for key, value in table.items():
-        if isinstance(value, dict):
-            child_tables.append((key, value))
-        else:
-            scalar_lines.append(f"{toml_key(key)} = {toml_value(value)}")
-
-    if scalar_lines:
-        if path:
-            print(f"[{table_name(path)}]")
-        print("\n".join(scalar_lines))
-        print()
-
-    for key, value in child_tables:
-        emit_table(value, (*path, key))
-
-
 def render(table):
     lines = []
 
@@ -131,4 +112,4 @@ if missing:
         print("Codex live config has settings missing from the tracked seed.")
         print("Review these additions for config/shared/ai/codex/config.toml:")
         print()
-        emit_table(missing)
+        print(render(missing), end="")

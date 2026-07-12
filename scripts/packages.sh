@@ -153,10 +153,6 @@ function _codex_release_archive_url {
   esac
 }
 
-function _parse_nix_hash {
-  sed -n 's/.*"hash"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
-}
-
 function _prefetch_codex_release_hash {
   local tag platform url output hash
   tag="$1"
@@ -164,7 +160,7 @@ function _prefetch_codex_release_hash {
   url="$(_codex_release_archive_url "$tag" "$platform")"
   output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
     || fail "Failed to prefetch Codex release archive"
-  hash="$(printf '%s\n' "$output" | _parse_nix_hash)"
+  hash="$(jq -r '.hash // empty' <<< "$output")"
   [[ -n "$hash" ]] || fail "Failed to parse Codex release archive hash"
   printf '%s\n' "$hash"
 }
@@ -280,7 +276,7 @@ function _prefetch_obsidian_headless_src_hash {
   url="$(_obsidian_headless_archive_url "$version")"
   output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
     || fail "Failed to prefetch Obsidian Headless archive"
-  hash="$(printf '%s\n' "$output" | _parse_nix_hash)"
+  hash="$(jq -r '.hash // empty' <<< "$output")"
   [[ -n "$hash" ]] || fail "Failed to parse Obsidian Headless archive hash"
   printf '%s\n' "$hash"
 }
