@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
 # Platform package installation tests.
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
-
-setup() {
-  setup_packages_test_env
-}
-
-teardown() {
-  cleanup_test_env
-}
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
 test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"

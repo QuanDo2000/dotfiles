@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
 # Pinned Codex and Obsidian Headless release update tests.
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
-
-setup() {
-  setup_packages_test_env
-}
-
-teardown() {
-  cleanup_test_env
-}
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
 test_latest_codex_release_tag_reads_github_redirect() {
   curl() {

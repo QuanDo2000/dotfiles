@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
 # Neovim and fff.nvim setup tests.
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
-
-setup() {
-  setup_packages_test_env
-}
-
-teardown() {
-  cleanup_test_env
-}
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
 test_home_manager_seeds_writable_lazyvim_config() {
   local config

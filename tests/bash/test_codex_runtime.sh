@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
 # Codex runtime cleanup and package-update integration tests.
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
-
-setup() {
-  setup_packages_test_env
-}
-
-teardown() {
-  cleanup_test_env
-}
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
 test_update_packages_does_not_update_codex_release_pin() {
   DRY=false
