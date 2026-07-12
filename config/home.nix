@@ -289,11 +289,11 @@ in
       rm -f "$HOME/.codex/dotfiles.config.toml"
     fi
 
-    terminfo_source="/Applications/Ghostty.app/Contents/Resources/terminfo"
-    terminfo_target="$HOME/.local/share/terminfo"
-    if [ -d "$terminfo_source" ]; then
-      mkdir -p "$terminfo_target"
-      cp -R "/Applications/Ghostty.app/Contents/Resources/terminfo/." "$terminfo_target/"
+    terminfo_source="/Applications/Ghostty.app/Contents/Resources/terminfo/78/xterm-ghostty"
+    terminfo_target="$HOME/.local/share/terminfo/78/xterm-ghostty"
+    if [ -f "$terminfo_source" ]; then
+      mkdir -p "$(dirname "$terminfo_target")"
+      cp "$terminfo_source" "$terminfo_target"
     fi
   '';
 
@@ -328,50 +328,29 @@ in
     fi
   '';
 
-  home.activation.seedPiSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    target="$HOME/.pi/agent/settings.json"
-    source="${./shared/ai/pi/settings.json}"
-    repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/pi/settings.json"
-    apply_seed=
+  home.activation.seedPiConfigs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    for name in settings.json mcp.json; do
+      target="$HOME/.pi/agent/$name"
+      source="${./shared/ai/pi}/$name"
+      repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/pi/$name"
+      apply_seed=
 
-    mkdir -p "$(dirname "$target")"
-    if [ -f "$target" ] && [ ! -L "$target" ]; then
-      if [ -w "$repo_seed" ]; then
-        apply_seed="$repo_seed"
+      mkdir -p "$(dirname "$target")"
+      if [ -f "$target" ] && [ ! -L "$target" ]; then
+        if [ -w "$repo_seed" ]; then
+          apply_seed="$repo_seed"
+        fi
+        "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || echo "Warning: failed to sync Pi $name seed" >&2
+        merge_source="''${apply_seed:-$source}"
+        merged="$(mktemp)"
+        "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
+        mv "$merged" "$target"
+      else
+        rm -f "$target"
+        cp "$source" "$target"
       fi
-      "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || echo "Warning: failed to sync Pi settings seed" >&2
-      merge_source="''${apply_seed:-$source}"
-      merged="$(mktemp)"
-      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
-      mv "$merged" "$target"
-    else
-      rm -f "$target"
-      cp "$source" "$target"
-    fi
-    chmod u+w "$target"
-  '';
-
-  home.activation.seedPiMcpConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    target="$HOME/.pi/agent/mcp.json"
-    source="${./shared/ai/pi/mcp.json}"
-    repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/pi/mcp.json"
-    apply_seed=
-
-    mkdir -p "$(dirname "$target")"
-    if [ -f "$target" ] && [ ! -L "$target" ]; then
-      if [ -w "$repo_seed" ]; then
-        apply_seed="$repo_seed"
-      fi
-      "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" || echo "Warning: failed to sync Pi MCP config seed" >&2
-      merge_source="''${apply_seed:-$source}"
-      merged="$(mktemp)"
-      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
-      mv "$merged" "$target"
-    else
-      rm -f "$target"
-      cp "$source" "$target"
-    fi
-    chmod u+w "$target"
+      chmod u+w "$target"
+    done
   '';
 
   xdg.configFile."nvim/init.lua".force = true;

@@ -106,8 +106,8 @@ function New-Symlink($source, $destination) {
     New-Item -ItemType SymbolicLink -Path $destination -Target $source | Out-Null
 }
 
-function LinkFile($source, $destination) {
-    Info "Linking $source to $destination"
+function LinkPath($source, $destination, [bool]$isDirectory = $false) {
+    Info "Linking $(if ($isDirectory) { 'directory ' })$source to $destination"
     if ($script:Dry) { return }
 
     $skip = $false
@@ -116,10 +116,15 @@ function LinkFile($source, $destination) {
     $conflict = Get-LinkConflict $source $destination
     if ($conflict) {
         if ($conflict.AlreadyLinked) {
-            $skip = $true
+            Success "Skipped $destination (already linked)"
+            return
+        }
+
+        if ($isDirectory) {
+            $overwrite = $script:Force
+            $backup = -not $script:Force
         } elseif (-not $script:OverwriteAll -and -not $script:BackupAll -and -not $script:SkipAll) {
-            $action = PromptAction $destination (Split-Path $source -Leaf)
-            switch ($action) {
+            switch (PromptAction $destination (Split-Path $source -Leaf)) {
                 'o' { $overwrite = $true }
                 'O' { $script:OverwriteAll = $true }
                 'b' { $backup = $true }
@@ -131,7 +136,8 @@ function LinkFile($source, $destination) {
         }
 
         if ($script:OverwriteAll -or $overwrite) {
-            Remove-Item $destination -Force
+            $recurse = $conflict.Item.PSIsContainer -and -not $conflict.Item.LinkType
+            Remove-Item $destination -Force -Recurse:$recurse
             Success "Removed $destination"
         }
         if ($script:BackupAll -or $backup) {
@@ -141,33 +147,6 @@ function LinkFile($source, $destination) {
         if ($script:SkipAll -or $skip) {
             Success "Skipped $source"
             return
-        }
-    }
-
-    New-Symlink $source $destination
-    Success "Linked $source to $destination"
-}
-
-function LinkDir($source, $destination) {
-    Info "Linking directory $source to $destination"
-    if ($script:Dry) { return }
-
-    $conflict = Get-LinkConflict $source $destination
-    if ($conflict) {
-        if ($conflict.AlreadyLinked) {
-            Success "Skipped $destination (already linked)"
-            return
-        }
-        $current = $conflict.Item
-        if ($script:Force) {
-            if ($current.PSIsContainer -and -not $current.LinkType) {
-                Remove-Item $destination -Recurse -Force
-            } else {
-                Remove-Item $destination -Force
-            }
-        } else {
-            Move-Item $destination "$destination.bak" -Force
-            Success "Moved $destination to $destination.bak"
         }
     }
 
@@ -455,11 +434,7 @@ function SetupSymlinks {
         if ($spec.AddToPath) {
             AddToUserPath (Split-Path $spec.Destination -Parent)
         }
-        if ($spec.Kind -eq 'Dir') {
-            LinkDir -source $spec.Source -destination $spec.Destination
-        } else {
-            LinkFile -source $spec.Source -destination $spec.Destination
-        }
+        LinkPath -source $spec.Source -destination $spec.Destination -isDirectory ($spec.Kind -eq 'Dir')
     }
 
     Success "Finished setting up symlinks"

@@ -1,5 +1,5 @@
-# Exercise non-trivial branches of LinkFile / LinkDir: overwrite-all,
-# backup-all, skip-all, and LinkDir force-replace of a real directory.
+# Exercise non-trivial branches of LinkPath: overwrite-all, backup-all,
+# skip-all, and force-replace of a real directory.
 
 function TestSetup {
     Initialize-TestEnv | Out-Null
@@ -32,7 +32,7 @@ function test_linkfile_overwrite_all_replaces_existing {
     'old' | Set-Content -LiteralPath $dst
     $script:OverwriteAll = $true
 
-    LinkFile $src $dst
+    LinkPath $src $dst
 
     $item = Get-Item -LiteralPath $dst -Force
     Assert-Equals 'SymbolicLink' $item.LinkType
@@ -47,7 +47,7 @@ function test_linkfile_backup_all_renames_existing {
     'old' | Set-Content -LiteralPath $dst
     $script:BackupAll = $true
 
-    LinkFile $src $dst
+    LinkPath $src $dst
 
     Assert-FileExists "$dst.bak"
     Assert-Equals 'old' ((Get-Content -LiteralPath "$dst.bak") -join '')
@@ -62,7 +62,7 @@ function test_linkfile_skip_all_leaves_existing_untouched {
     'old' | Set-Content -LiteralPath $dst
     $script:SkipAll = $true
 
-    LinkFile $src $dst
+    LinkPath $src $dst
 
     Assert-Equals 'old' ((Get-Content -LiteralPath $dst) -join '')
     $item = Get-Item -LiteralPath $dst -Force
@@ -78,7 +78,7 @@ function test_linkdir_force_replaces_existing_directory {
     'data' | Set-Content -LiteralPath (Join-Path $dst 'preexisting.txt')
     $script:Force = $true
 
-    LinkDir $src $dst
+    LinkPath $src $dst $true
 
     $item = Get-Item -LiteralPath $dst -Force
     Assert-Equals 'SymbolicLink' $item.LinkType

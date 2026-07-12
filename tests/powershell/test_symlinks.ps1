@@ -20,7 +20,7 @@ function test_linkfile_dry_run_does_not_create_destination {
     $dst = Join-Path $env:USERPROFILE 'dst.txt'
     'hello' | Set-Content -LiteralPath $src
 
-    LinkFile $src $dst
+    LinkPath $src $dst
 
     Assert-False (Test-Path -LiteralPath $dst) 'dst should not exist in dry run'
 }
@@ -31,7 +31,7 @@ function test_linkdir_dry_run_does_not_create_destination {
     $dst = Join-Path $env:USERPROFILE 'dstdir'
     New-Item -ItemType Directory -Path $src | Out-Null
 
-    LinkDir $src $dst
+    LinkPath $src $dst $true
 
     Assert-False (Test-Path -LiteralPath $dst) 'dst dir should not exist in dry run'
 }
@@ -44,7 +44,7 @@ function test_linkfile_creates_symlink_when_privileged {
     'hello' | Set-Content -LiteralPath $src
 
     try {
-        LinkFile $src $dst
+        LinkPath $src $dst
     } catch {
         if ($_.Exception.Message -match 'privilege|Administrator') { return }
         throw
@@ -60,7 +60,7 @@ function test_linkfile_creates_missing_parent_directory {
     'hello' | Set-Content -LiteralPath $src
 
     try {
-        LinkFile $src $dst
+        LinkPath $src $dst
     } catch {
         if ($_.Exception.Message -match 'privilege|Administrator') { return }
         throw
@@ -72,7 +72,7 @@ function test_linkfile_creates_missing_parent_directory {
 
 function test_setupsymlinks_dry_run_completes {
     # Dry run drives every branch (incl. the AI config + skills loops) without
-    # touching the filesystem — LinkFile/LinkDir return early when $Dry.
+    # touching the filesystem — LinkPath returns early when $Dry.
     $script:Dry = $true
     SetupSymlinks
     Assert-True $true 'SetupSymlinks dry run threw no exception'
@@ -107,7 +107,7 @@ function test_linkfile_skips_when_already_linked {
     }
 
     # Re-linking should be a no-op — existing link's Target matches source.
-    LinkFile $src $dst
+    LinkPath $src $dst
 
     $item = Get-Item -LiteralPath $dst -Force
     Assert-Equals $src $item.Target
