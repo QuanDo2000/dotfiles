@@ -27,6 +27,26 @@ function test_update_packages_dry_run_does_not_call_winget {
     Assert-False $script:Called 'winget should not be invoked in dry run'
 }
 
+function test_update_packages_syncs_lazyvim {
+    $script:Dry = $false
+    $script:LazySynced = $false
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
+    $originalInstallAi = (Get-Command InstallAi).ScriptBlock
+    $originalSyncLazyVim = (Get-Command Sync-LazyVim).ScriptBlock
+    Set-FunctionMock 'InstallAi' { }
+    Set-FunctionMock 'Sync-LazyVim' { $script:LazySynced = $true }
+
+    try {
+        Update-Packages 6>&1 | Out-Null
+    } finally {
+        Clear-CommandMock 'winget'
+        Set-FunctionMock 'InstallAi' $originalInstallAi
+        Set-FunctionMock 'Sync-LazyVim' $originalSyncLazyVim
+    }
+
+    Assert-True $script:LazySynced 'Update-Packages should sync LazyVim'
+}
+
 function test_update_packages_fails_when_winget_upgrade_fails {
     $script:Dry = $false
     $script:WingetCalls = @()

@@ -312,6 +312,18 @@ function InstallAi {
     Success "Finished installing agent CLIs"
 }
 
+function Sync-LazyVim {
+    Info "Installing or updating LazyVim..."
+    if ($script:Dry) { return }
+
+    try {
+        & nvim --headless "+Lazy! sync" "+qa" 2>&1 | ForEach-Object { Write-Host $_ }
+        if ($LASTEXITCODE -ne 0) { Write-Warning "LazyVim sync failed; Neovim may finish setup on first start" }
+    } catch {
+        Write-Warning "LazyVim sync failed; Neovim may finish setup on first start: $_"
+    }
+}
+
 function Update-Packages {
     Info "Updating packages..."
     if ($script:Dry) {
@@ -320,6 +332,7 @@ function Update-Packages {
         Invoke-Winget "winget upgrade failed" @('upgrade', '--all')
     }
     InstallAi -Update
+    Sync-LazyVim
     Success "Finished updating packages"
 }
 
@@ -516,6 +529,7 @@ function SetupDotfiles {
     InstallExtras
     InstallAi
     SetupSymlinks
+    Sync-LazyVim
     Success "Done!"
 }
 

@@ -14,6 +14,14 @@ function TestTeardown {
     Clear-TestEnv
 }
 
+function test_windows_neovim_bootstraps_lazy_without_tracking_lockfile {
+    $lazyConfig = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/lua/config/lazy.lua')
+    $gitignore = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/.gitignore')
+    Assert-Contains $lazyConfig 'vim.fn.has("win32") == 1'
+    Assert-Contains $lazyConfig 'https://github.com/folke/lazy.nvim.git'
+    Assert-Contains $gitignore 'lazy-lock.json'
+}
+
 function test_windows_neovim_disables_fff_plugin {
     $config = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/lua/plugins/fff.lua')
     Assert-Contains $config 'vim.fn.has("win32") == 1'

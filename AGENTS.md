@@ -38,7 +38,7 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 
 Platform config lives under `config/`. Unix links are managed by Home Manager from `config/home.nix`:
 
-1. **config/shared/** - Cross-platform configs (neovim, starship, jj, SSH, AI tool seeds, Obsidian settings). Neovim remains cross-platform, but its `fff.nvim` plugin/backend is Unix-only and disabled on Windows. Git settings for Linux/macOS are declared through Home Manager `programs.git`; `config/shared/.gitconfig` is kept for Windows.
+1. **config/shared/** - Cross-platform configs (neovim, starship, jj, SSH, AI tool seeds, Obsidian settings). Neovim and LazyVim remain cross-platform, but the `fff.nvim` plugin/backend is Unix-only and disabled on Windows. Git settings for Linux/macOS are declared through Home Manager `programs.git`; `config/shared/.gitconfig` is kept for Windows.
 2. **config/unix/** - Unix shell/tool configs plus Linux desktop configs (`.zshrc.base`, `.tmux.conf`, ghostty, hyprland, waybar, fcitx5). Home Manager gates hyprland, waybar, and fcitx5 to Linux.
 3. **config/mac/** - macOS-only files used by `dotfile.ps1` or platform-specific Home Manager logic.
 4. **config/windows/** - Windows-specific (PowerShell profile, Windows Terminal settings). Used by `dotfile.ps1`.

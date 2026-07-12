@@ -48,11 +48,13 @@ function test_setupdotfiles_updates_repo_before_installing_packages {
     $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
     $originalInstallAi = (Get-Command InstallAi).ScriptBlock
     $originalSetupSymlinks = (Get-Command SetupSymlinks).ScriptBlock
+    $originalSyncLazyVim = (Get-Command Sync-LazyVim).ScriptBlock
     Set-FunctionMock 'InstallPackages' { $script:Calls += 'InstallPackages' }
     Set-FunctionMock 'UpdateRepo' { $script:Calls += 'UpdateRepo' }
     Set-FunctionMock 'InstallExtras' { $script:Calls += 'InstallExtras' }
     Set-FunctionMock 'InstallAi' { $script:Calls += 'InstallAi' }
     Set-FunctionMock 'SetupSymlinks' { $script:Calls += 'SetupSymlinks' }
+    Set-FunctionMock 'Sync-LazyVim' { $script:Calls += 'Sync-LazyVim' }
 
     try {
         SetupDotfiles
@@ -62,10 +64,12 @@ function test_setupdotfiles_updates_repo_before_installing_packages {
         Set-FunctionMock 'InstallExtras' $originalInstallExtras
         Set-FunctionMock 'InstallAi' $originalInstallAi
         Set-FunctionMock 'SetupSymlinks' $originalSetupSymlinks
+        Set-FunctionMock 'Sync-LazyVim' $originalSyncLazyVim
     }
 
     Assert-Equals 'UpdateRepo' $script:Calls[0]
     Assert-Equals 'InstallPackages' $script:Calls[1]
+    Assert-Equals 'Sync-LazyVim' $script:Calls[5]
 }
 
 function test_setupsymlinks_dry_run_creates_no_symlinks {

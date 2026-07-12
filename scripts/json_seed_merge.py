@@ -4,9 +4,8 @@ import os
 import sys
 import tempfile
 
-live_path, seed_path, apply_path, label, override_keys, list_keys = sys.argv[1:]
+live_path, seed_path, apply_path, label, override_keys = sys.argv[1:]
 live_overrides = set(filter(None, override_keys.split(",")))
-merge_lists = set(filter(None, list_keys.split(",")))
 
 
 def load(path):
@@ -22,10 +21,6 @@ def missing_from_seed(live, seed):
     for key, value in live.items():
         if key not in seed or (key in live_overrides and seed[key] != value):
             missing[key] = value
-        elif key in merge_lists and isinstance(value, list) and isinstance(seed[key], list):
-            additions = [item for item in value if item not in seed[key]]
-            if additions:
-                missing[key] = additions
         elif isinstance(value, dict) and isinstance(seed[key], dict):
             nested = missing_from_seed(value, seed[key])
             if nested:
@@ -37,8 +32,6 @@ def merge_missing(seed, missing):
     for key, value in missing.items():
         if isinstance(value, dict) and isinstance(seed.get(key), dict):
             merge_missing(seed[key], value)
-        elif key in merge_lists and isinstance(value, list) and isinstance(seed.get(key), list):
-            seed[key].extend(item for item in value if item not in seed[key])
         else:
             seed[key] = value
     return seed

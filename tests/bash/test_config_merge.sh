@@ -55,6 +55,25 @@ EOF
   rm -rf "$tmp"
 }
 
+test_lazyvim_seed_merge_tracks_removals_and_runtime_state() {
+  local tmp script live seed output
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/json_seed_merge.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+
+  printf '%s\n' '{"extras":["kept"],"news":{"NEWS.md":"2"},"version":9}' > "$live"
+  printf '%s\n' '{"extras":["kept","removed"],"news":{"NEWS.md":"1"},"version":8}' > "$seed"
+
+  output="$(python3 "$script" "$live" "$seed" "$seed" LazyVim extras,news,version)"
+
+  assert_contains "$output" "Applied LazyVim live config additions to tracked seed"
+  assert_equals '["kept"]' "$(jq -c '.extras' "$seed")"
+  assert_equals '2' "$(jq -r '.news["NEWS.md"]' "$seed")"
+  assert_equals '9' "$(jq -r '.version' "$seed")"
+  rm -rf "$tmp"
+}
+
 test_lazyvim_seed_merge_engine_preserves_live_extras() {
   local tmp script live seed output
   tmp="$(mktemp -d)"
@@ -65,7 +84,7 @@ test_lazyvim_seed_merge_engine_preserves_live_extras() {
   printf '%s\n' '{"extras":["tracked","live"],"version":8}' > "$live"
   printf '%s\n' '{"extras":["tracked"],"version":8}' > "$seed"
 
-  output="$(python3 "$script" "$live" "$seed" "$seed" LazyVim '' extras)"
+  output="$(python3 "$script" "$live" "$seed" "$seed" LazyVim extras,news,version)"
 
   assert_contains "$output" "Applied LazyVim live config additions to tracked seed"
   assert_equals '["tracked","live"]' "$(jq -c '.extras' "$seed")"
@@ -95,7 +114,7 @@ EOF
 }
 EOF
 
-  output="$(python3 "$script" "$live" "$seed" "$seed" Pi defaultModel '')"
+  output="$(python3 "$script" "$live" "$seed" "$seed" Pi defaultModel)"
 
   assert_contains "$output" "Applied Pi live config additions to tracked seed"
   assert_equals "live-model" "$(jq -r '.defaultModel' "$seed")"
