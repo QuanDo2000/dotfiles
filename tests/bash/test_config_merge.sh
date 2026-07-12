@@ -3,6 +3,11 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 test_codex_seed_merge_engine_applies_live_only_nested_toml() {
+  if ! python3 -c 'import tomllib' 2>/dev/null; then
+    printf '  SKIP  Codex merge test requires Python 3.11+\n'
+    return
+  fi
+
   local tmp script live seed output
   tmp="$(mktemp -d)"
   script="$REPO_DIR/scripts/codex_seed_merge.py"

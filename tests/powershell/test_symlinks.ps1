@@ -14,7 +14,7 @@ function TestTeardown {
     Clear-TestEnv
 }
 
-function test_linkfile_dry_run_does_not_create_destination {
+function test_linkpath_file_dry_run_does_not_create_destination {
     $script:Dry = $true
     $src = Join-Path $env:USERPROFILE 'src.txt'
     $dst = Join-Path $env:USERPROFILE 'dst.txt'
@@ -25,7 +25,7 @@ function test_linkfile_dry_run_does_not_create_destination {
     Assert-False (Test-Path -LiteralPath $dst) 'dst should not exist in dry run'
 }
 
-function test_linkdir_dry_run_does_not_create_destination {
+function test_linkpath_directory_dry_run_does_not_create_destination {
     $script:Dry = $true
     $src = Join-Path $env:USERPROFILE 'srcdir'
     $dst = Join-Path $env:USERPROFILE 'dstdir'
@@ -36,7 +36,7 @@ function test_linkdir_dry_run_does_not_create_destination {
     Assert-False (Test-Path -LiteralPath $dst) 'dst dir should not exist in dry run'
 }
 
-function test_linkfile_creates_symlink_when_privileged {
+function test_linkpath_file_creates_symlink_when_privileged {
     # Native symlink creation on Windows requires admin OR Developer Mode.
     # If neither is on, skip rather than fail — CI runs as admin.
     $src = Join-Path $env:USERPROFILE 'src.txt'
@@ -54,7 +54,7 @@ function test_linkfile_creates_symlink_when_privileged {
     Assert-True ($item -and $item.LinkType -eq 'SymbolicLink') 'dst should be a symlink'
 }
 
-function test_linkfile_creates_missing_parent_directory {
+function test_linkpath_file_creates_missing_parent_directory {
     $src = Join-Path $env:USERPROFILE 'src.txt'
     $dst = Join-Path $env:USERPROFILE 'missing\parent\dst.txt'
     'hello' | Set-Content -LiteralPath $src
@@ -95,7 +95,7 @@ function test_global_agents_file_is_not_linked_on_windows {
     Assert-False (($sources -join "`n") -match 'ai[\\/]AGENTS\.md') 'global AGENTS.md should not be linked on Windows'
 }
 
-function test_linkfile_skips_when_already_linked {
+function test_linkpath_skips_when_already_linked {
     $src = Join-Path $env:USERPROFILE 'src.txt'
     $dst = Join-Path $env:USERPROFILE 'dst.txt'
     'hello' | Set-Content -LiteralPath $src

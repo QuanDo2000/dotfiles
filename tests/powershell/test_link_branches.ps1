@@ -24,7 +24,7 @@ function Try-Skip-If-No-Symlink-Privilege {
     }
 }
 
-function test_linkfile_overwrite_all_replaces_existing {
+function test_linkpath_file_overwrite_all_replaces_existing {
     if (Try-Skip-If-No-Symlink-Privilege) { return }
     $src = Join-Path $env:USERPROFILE 'src.txt'
     $dst = Join-Path $env:USERPROFILE 'dst.txt'
@@ -39,7 +39,7 @@ function test_linkfile_overwrite_all_replaces_existing {
     Assert-Equals $src $item.Target
 }
 
-function test_linkfile_backup_all_renames_existing {
+function test_linkpath_file_backup_all_renames_existing {
     if (Try-Skip-If-No-Symlink-Privilege) { return }
     $src = Join-Path $env:USERPROFILE 'src.txt'
     $dst = Join-Path $env:USERPROFILE 'dst.txt'
@@ -55,7 +55,7 @@ function test_linkfile_backup_all_renames_existing {
     Assert-Equals 'SymbolicLink' $item.LinkType
 }
 
-function test_linkfile_skip_all_leaves_existing_untouched {
+function test_linkpath_file_skip_all_leaves_existing_untouched {
     $src = Join-Path $env:USERPROFILE 'src.txt'
     $dst = Join-Path $env:USERPROFILE 'dst.txt'
     'new' | Set-Content -LiteralPath $src
@@ -69,7 +69,7 @@ function test_linkfile_skip_all_leaves_existing_untouched {
     Assert-False ($item.LinkType -eq 'SymbolicLink') 'dst should remain a regular file'
 }
 
-function test_linkdir_force_replaces_existing_directory {
+function test_linkpath_directory_force_replaces_existing_directory {
     if (Try-Skip-If-No-Symlink-Privilege) { return }
     $src = Join-Path $env:USERPROFILE 'srcdir'
     $dst = Join-Path $env:USERPROFILE 'dstdir'
