@@ -17,7 +17,7 @@ test_ci_runs_direct_nix_checks() {
 
   assert_not_contains "$workflow" "run: ./scripts/check.sh"
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
-  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless --no-link'
+  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent --no-link'
 }
 
 test_ci_pins_nix_installer_action() {

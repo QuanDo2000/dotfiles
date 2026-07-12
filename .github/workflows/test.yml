@@ -40,4 +40,4 @@ jobs:
         run: nix flake check --no-build --all-systems
 
       - name: Build custom packages
-        run: nix build .#codex .#obsidian-headless --no-link
+        run: nix build .#codex .#obsidian-headless .#pi-agent --no-link
