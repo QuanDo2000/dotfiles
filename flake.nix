@@ -19,6 +19,7 @@
       overlays = [
         (final: _prev: {
           codex = final.callPackage ./packages/codex-release.nix { };
+          fff-mcp = final.callPackage ./packages/fff-mcp.nix { };
           obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
           pi-agent = final.callPackage ./packages/pi-agent.nix { };
         })
@@ -36,9 +37,11 @@
     in
     {
       packages.x86_64-linux.codex = linuxPkgs.codex;
+      packages.x86_64-linux.fff-mcp = linuxPkgs.fff-mcp;
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
       packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent;
       packages.aarch64-darwin.codex = darwinPkgs.codex;
+      packages.aarch64-darwin.fff-mcp = darwinPkgs.fff-mcp;
 
       nixosConfigurations."${machine.hostName}" = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";

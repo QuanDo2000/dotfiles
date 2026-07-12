@@ -59,10 +59,13 @@ test_codex_package_supports_darwin_release_wheel() {
 }
 
 test_pi_matches_minimal_codex_setup() {
-  local home_text pi_package pi_settings
+  local home_text pi_package pi_settings fff_package codex_config global_agents
   home_text="$(<"$REPO_DIR/config/home.nix")"
   pi_package="$(<"$REPO_DIR/packages/pi-agent.nix")"
   pi_settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
+  fff_package="$(<"$REPO_DIR/packages/fff-mcp.nix")"
+  codex_config="$(<"$REPO_DIR/config/shared/ai/codex/config.toml")"
+  global_agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
 
   assert_contains "$home_text" "pi-agent = pkgs.callPackage ../packages/pi-agent.nix"
   assert_contains "$home_text" "pi-agent"
@@ -80,6 +83,16 @@ test_pi_matches_minimal_codex_setup() {
   assert_contains "$pi_settings" '"npm:pi-mcp-extension@1.5.0"'
   assert_contains "$pi_settings" '"npm:@dietrichgebert/ponytail@4.8.4"'
   assert_contains "$pi_settings" '"npm:pi-hermes-memory@0.7.23"'
+  assert_contains "$pi_settings" '"npm:@ff-labs/pi-fff@0.9.6"'
+  assert_contains "$fff_package" 'version = "0.9.6"'
+  assert_contains "$fff_package" 'target = "x86_64-unknown-linux-musl"'
+  assert_contains "$fff_package" 'target = "aarch64-apple-darwin"'
+  assert_contains "$codex_config" '[mcp_servers.fff]'
+  assert_contains "$codex_config" 'args = ["fff-mcp"]'
+  assert_contains "$global_agents" 'Use codebase-memory first when it is available'
+  assert_contains "$global_agents" 'fall back to FFF'
+  assert_contains "$home_text" '".codex/AGENTS.md" = forceSource ./shared/ai/AGENTS.md'
+  assert_contains "$home_text" '".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md'
   assert_contains "$home_text" 'home.activation.seedPiMcpConfig'
   assert_contains "$home_text" './shared/ai/pi/mcp.json'
   assert_contains "$home_text" '${../scripts/pi_seed_merge.py}'
@@ -87,17 +100,17 @@ test_pi_matches_minimal_codex_setup() {
   assert_contains "$home_text" 'Warning: failed to sync Pi settings seed'
   assert_contains "$home_text" 'Warning: failed to sync Pi MCP config seed'
   assert_contains "$home_text" "merge_source=\"''\${apply_seed:-\$source}\""
-  assert_contains "$home_text" '".pi/agent/extensions/codebase-memory-guidance.ts"'
+  assert_not_contains "$home_text" '".pi/agent/extensions/codebase-memory-guidance.ts"'
   assert_contains "$home_text" '".pi/agent/extensions/codex-status.js"'
+  assert_not_contains "$codex_config" 'SessionStart ='
+  assert_not_contains "$codex_config" '[hooks.state."/home/quando/.codex/config.toml'
+  assert_not_contains "$codex_config" '[hooks.state."/Users/quando/.codex/config.toml'
 
-  local pi_mcp pi_hook
+  local pi_mcp
   pi_mcp="$(<"$REPO_DIR/config/shared/ai/pi/mcp.json")"
-  pi_hook="$(<"$REPO_DIR/config/shared/ai/pi/codebase-memory-guidance.ts")"
   assert_equals "codebase-memory-mcp" "$(jq -r '.mcpServers.codebaseMemory.command' <<< "$pi_mcp")"
   assert_equals "eager" "$(jq -r '.mcpServers.codebaseMemory.lifecycle' <<< "$pi_mcp")"
-  assert_contains "$pi_hook" 'before_agent_start'
-  assert_contains "$pi_hook" 'codebase-memory-mcp'
-  assert_contains "$pi_hook" 'index_repository'
+  assert_equals "null" "$(jq -r '.mcpServers.fff // null' <<< "$pi_mcp")"
 }
 
 test_nixos_uses_tracked_host_config() {
@@ -207,7 +220,7 @@ test_home_config_manages_shared_user_tools() {
   assert_contains "$home_text" "standaloneLinuxPackages = with pkgs; ["
   assert_contains "$home_text" "linuxDesktopPackages = with pkgs; ["
   assert_contains "$home_text" "home.packages = devTerminalPackages"
-  assert_contains "$home_text" $'    codex\n    codebase-memory-mcp\n    jq'
+  assert_contains "$home_text" $'    codex\n    codebase-memory-mcp\n    fff-mcp\n    jq'
   assert_contains "$home_text" "\"\${homeDir}/.local/bin\""
   assert_contains "$home_text" "nixosSystem = pkgs.stdenv.isLinux && osConfig != null"
   assert_contains "$home_text" "standaloneLinux = pkgs.stdenv.isLinux && !nixosSystem"
@@ -217,7 +230,7 @@ test_home_config_manages_shared_user_tools() {
   assert_not_contains "$home_text" "GOPATH"
   assert_not_contains "$home_text" "PNPM_HOME"
 
-  for pkg in ast-grep jq gcc codex codebase-memory-mcp nerd-fonts.fira-code fontconfig openssh waybar ghostty google-chrome obsidian-headless; do
+  for pkg in ast-grep jq gcc codex codebase-memory-mcp fff-mcp nerd-fonts.fira-code fontconfig openssh waybar ghostty google-chrome obsidian-headless; do
     assert_contains "$home_text" "$pkg"
   done
   for pkg in lua5_1 luarocks tree-sitter unzip; do
@@ -319,6 +332,7 @@ test_home_config_owns_remaining_dotfiles() {
   assert_contains "$home_text" "forceSource ./shared/.ssh/config"
   assert_contains "$home_text" "\".claude/settings.json\" = forceSource ./shared/ai/claude/settings.json"
   assert_contains "$home_text" "forceSource ./shared/ai/claude/settings.json"
+  assert_contains "$home_text" "forceSource ./shared/ai/AGENTS.md"
   assert_not_contains "$home_text" "home.file.\".codex/config.toml\""
   assert_contains "$home_text" "home.activation.seedCodexConfig"
   assert_contains "$home_text" "\${../scripts/codex_seed_merge.py}"

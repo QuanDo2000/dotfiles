@@ -19,10 +19,12 @@ test_check_script_runs_repo_verification() {
   assert_contains "$check_text" 'bash "$repo_dir/tests/bash/runner.sh" --no-docker'
   assert_contains "$check_text" 'pwsh "$repo_dir/tests/powershell/runner.ps1"'
   assert_contains "$check_text" 'nix flake check --no-build --all-systems'
-  assert_contains "$check_text" 'nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" --no-link'
+  assert_contains "$check_text" 'nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" "$repo_dir#fff-mcp" --no-link'
   assert_contains "$check_text" 'nix develop "$repo_dir" -c shellcheck'
   assert_contains "$flake_text" "pi-agent = final.callPackage ./packages/pi-agent.nix"
+  assert_contains "$flake_text" "fff-mcp = final.callPackage ./packages/fff-mcp.nix"
   assert_contains "$flake_text" "packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent"
+  assert_contains "$flake_text" "packages.x86_64-linux.fff-mcp = linuxPkgs.fff-mcp"
   assert_contains "$flake_text" "shellcheck"
 }
 

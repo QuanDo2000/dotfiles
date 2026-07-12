@@ -89,6 +89,12 @@ function test_ai_config_sources_exist {
     }
 }
 
+function test_global_agents_file_is_not_linked_on_windows {
+    $sources = @(Get-WindowsLinkSpecs | ForEach-Object Source)
+
+    Assert-False (($sources -join "`n") -match 'ai[\\/]AGENTS\.md') 'global AGENTS.md should not be linked on Windows'
+}
+
 function test_linkfile_skips_when_already_linked {
     $src = Join-Path $env:USERPROFILE 'src.txt'
     $dst = Join-Path $env:USERPROFILE 'dst.txt'
