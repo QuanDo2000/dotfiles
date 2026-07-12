@@ -22,6 +22,10 @@ success() {
   printf '\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n' "$1"
 }
 
+warn() {
+  printf '\r\033[2K  [\033[0;33mWARN\033[0m] %b\n' "$1"
+}
+
 fail_soft() {
   printf '\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n' "$1"
 }

@@ -117,7 +117,12 @@ settings. Agent-specific plugins, packages, hooks, and generated runtime state
 such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
 
 Note: Home Manager owns the `lazy.nvim` bootstrap package. LazyVim plugin state
-and generated lockfiles such as `lazy-lock.json` stay out of the repo.
+and generated lockfiles such as `lazy-lock.json` stay out of the repo. On Unix,
+`dotfile packages` and `dotfile update` prebuild the `fff.nvim` backend so its
+first Neovim startup does not wait for compilation; failures are reported as
+warnings after the package operation completes.
+
+Windows does not install or manage Neovim or `fff.nvim`.
 
 Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
 

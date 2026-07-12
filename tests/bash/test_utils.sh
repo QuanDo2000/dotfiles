@@ -27,6 +27,13 @@ test_user_output() {
   assert_contains "$output" "pick one"
 }
 
+test_warn_output() {
+  local output
+  output=$(warn "careful")
+  assert_contains "$output" "WARN"
+  assert_contains "$output" "careful"
+}
+
 test_fail_exits() {
   assert_exit_code 1 bash -c "source '$REPO_DIR/scripts/utils.sh'; fail 'boom'"
 }

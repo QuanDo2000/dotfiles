@@ -464,17 +464,34 @@ function update_nixos {
 }
 
 function _sync_fff_nvim {
+  FFF_NVIM_WARNING=
   if [ "$DRY" = true ]; then
     info "Would install or update fff.nvim"
     return
   fi
 
   info "Installing or updating fff.nvim..."
-  local plugin="$HOME/.local/share/nvim/lazy/fff.nvim"
+  local output plugin="$HOME/.local/share/nvim/lazy/fff.nvim"
   local release="$plugin/target/release"
-  nvim --headless "+Lazy! sync fff.nvim" +qa
-  (cd "$plugin" && nix run .#release)
-  [ -f "$release/libfff_nvim.so" ] || [ -f "$release/fff_nvim.so" ] || [ -f "$release/libfff_nvim.dylib" ] || fail "fff.nvim backend build failed"
+  if ! output="$(nvim --headless "+Lazy! sync fff.nvim" +qa 2>&1)"; then
+    FFF_NVIM_WARNING="Lazy sync failed:\n$output"
+    return
+  fi
+  if [ ! -d "$plugin" ]; then
+    FFF_NVIM_WARNING="Lazy sync did not install $plugin"
+    return
+  fi
+  if ! output="$(cd "$plugin" && nix run .#release 2>&1)"; then
+    FFF_NVIM_WARNING="Nix backend build failed:\n$output"
+    return
+  fi
+  if [ ! -f "$release/libfff_nvim.so" ] && [ ! -f "$release/fff_nvim.so" ] && [ ! -f "$release/libfff_nvim.dylib" ]; then
+    FFF_NVIM_WARNING="Nix build completed without an fff.nvim backend in $release"
+  fi
+}
+
+function _report_fff_nvim_warning {
+  [ -z "${FFF_NVIM_WARNING:-}" ] || warn "fff.nvim setup failed; Neovim may start without FFF.\n$FFF_NVIM_WARNING"
 }
 
 function update_packages {
@@ -495,6 +512,7 @@ function update_packages {
   _cleanup_codex_runtime_after_update "$codex_version_before"
   _sync_fff_nvim
   success "Finished update"
+  _report_fff_nvim_warning
 }
 
 function update_codex_release {
@@ -522,4 +540,5 @@ function install_packages {
   set_zsh_default
   _sync_fff_nvim
   success "Finished install"
+  _report_fff_nvim_warning
 }

@@ -739,8 +739,29 @@ test_home_manager_seeds_writable_lazyvim_config() {
   assert_not_contains "$config" 'xdg.configFile."nvim/lazyvim.json"'
 }
 
-test_install_and_update_sync_fff_nvim() {
-  assert_equals "3" "$(grep -c '_sync_fff_nvim' "$REPO_DIR/scripts/packages.sh")"
+test_install_packages_syncs_fff_nvim() {
+  local calls="$TEST_TMPDIR/calls.log"
+  detect_platform() { printf 'nixos\n'; }
+  install_nixos() { :; }
+  set_zsh_default() { :; }
+  _sync_fff_nvim() { printf 'fff-sync\n' >> "$calls"; }
+
+  install_packages >/dev/null
+
+  assert_equals "fff-sync" "$(<"$calls")"
+}
+
+test_update_packages_syncs_fff_nvim() {
+  local calls="$TEST_TMPDIR/calls.log"
+  detect_platform() { printf 'nixos\n'; }
+  update_nixos() { :; }
+  _codex_version() { :; }
+  _cleanup_codex_runtime_after_update() { :; }
+  _sync_fff_nvim() { printf 'fff-sync\n' >> "$calls"; }
+
+  update_packages >/dev/null
+
+  assert_equals "fff-sync" "$(<"$calls")"
 }
 
 test_sync_fff_nvim_runs_headless_lazy_sync() {
@@ -775,6 +796,17 @@ test_sync_fff_nvim_builds_backend_with_nix() {
 
   assert_contains "$(<"$calls")" "$HOME/.local/share/nvim/lazy/fff.nvim run .#release"
   unset -f nvim nix
+}
+
+test_sync_fff_nvim_failure_warns_without_failing_update() {
+  DRY=false
+  nvim() { printf 'clone failed\n'; return 1; }
+
+  assert_exit_code 0 _sync_fff_nvim
+  assert_contains "$FFF_NVIM_WARNING" "clone failed"
+  assert_contains "$(_report_fff_nvim_warning)" "WARN"
+  assert_contains "$(_report_fff_nvim_warning)" "fff.nvim setup failed"
+  unset -f nvim
 }
 
 test_sync_fff_nvim_dry_run_does_not_start_neovim() {
