@@ -737,6 +737,14 @@ test_home_manager_seeds_writable_lazyvim_config() {
   assert_not_contains "$config" 'xdg.configFile."nvim/lazyvim.json"'
 }
 
+test_fff_nvim_uses_nixos_build() {
+  local config
+  config="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
+
+  assert_contains "$config" '"dmtrKovalenko/fff.nvim"'
+  assert_contains "$config" 'build = "nix run .#release"'
+}
+
 test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {
   local config
   config="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/lazy.lua")"
