@@ -19,6 +19,8 @@ function test_windows_neovim_bootstraps_lazy_without_tracking_lockfile {
     $gitignore = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/.gitignore')
     Assert-Contains $lazyConfig 'vim.fn.has("win32") == 1'
     Assert-Contains $lazyConfig 'https://github.com/folke/lazy.nvim.git'
+    Assert-Contains $lazyConfig 'local lazy_spec = vim.fn.has("win32") == 1'
+    Assert-Contains $lazyConfig '{ "folke/lazy.nvim" }'
     Assert-Contains $gitignore 'lazy-lock.json'
 }
 

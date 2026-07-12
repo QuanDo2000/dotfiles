@@ -312,12 +312,23 @@ function InstallAi {
     Success "Finished installing agent CLIs"
 }
 
+function Get-NeovimCommand {
+    $command = Get-Command nvim -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+
+    $wingetLink = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\nvim.exe"
+    if (Test-Path -LiteralPath $wingetLink) { return $wingetLink }
+    return $null
+}
+
 function Sync-LazyVim {
     Info "Installing or updating LazyVim..."
     if ($script:Dry) { return }
 
     try {
-        & nvim --headless "+Lazy! sync" "+qa" 2>&1 | ForEach-Object { Write-Host $_ }
+        $nvim = Get-NeovimCommand
+        if (-not $nvim) { throw "nvim executable not found" }
+        & $nvim --headless "+Lazy! sync" "+qa" 2>&1 | ForEach-Object { Write-Host $_ }
         if ($LASTEXITCODE -ne 0) { Write-Warning "LazyVim sync failed; Neovim may finish setup on first start" }
     } catch {
         Write-Warning "LazyVim sync failed; Neovim may finish setup on first start: $_"

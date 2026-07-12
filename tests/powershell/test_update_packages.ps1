@@ -27,6 +27,12 @@ function test_update_packages_dry_run_does_not_call_winget {
     Assert-False $script:Called 'winget should not be invoked in dry run'
 }
 
+function test_lazyvim_sync_uses_winget_neovim_fallback {
+    $text = Get-Content -Raw $script:DotfileScript
+    Assert-Contains $text 'Microsoft\WinGet\Links\nvim.exe'
+    Assert-Contains $text 'Get-NeovimCommand'
+}
+
 function test_update_packages_syncs_lazyvim {
     $script:Dry = $false
     $script:LazySynced = $false

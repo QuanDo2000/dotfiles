@@ -359,20 +359,19 @@ in
     source="${./shared/config/nvim/lazyvim.json}"
     repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/config/nvim/lazyvim.json"
     apply_seed=
+    base="$HOME/.local/state/dotfiles/lazyvim-seed.json"
 
     mkdir -p "$(dirname "$target")"
     if [ -f "$target" ] && [ ! -L "$target" ]; then
       if [ -w "$repo_seed" ]; then
         apply_seed="$repo_seed"
       fi
-      "${pkgs.python3}/bin/python3" "${../scripts/json_seed_merge.py}" "$target" "$source" "$apply_seed" LazyVim extras,news,version || echo "Warning: failed to sync LazyVim config seed" >&2
-      merge_source="''${apply_seed:-$source}"
-      merged="$(mktemp)"
-      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
-      mv "$merged" "$target"
+      "${pkgs.python3}/bin/python3" "${../scripts/lazyvim_seed_merge.py}" "$target" "$source" "$apply_seed" "$base" || echo "Warning: failed to sync LazyVim config seed" >&2
     else
       rm -f "$target"
       cp "$source" "$target"
+      mkdir -p "$(dirname "$base")"
+      cp "$source" "$base"
     fi
     chmod u+w "$target"
   '';

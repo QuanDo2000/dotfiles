@@ -65,8 +65,8 @@ except Exception as exc:
 if missing:
     if apply_path:
         write_json(apply_path, merge_missing(seed_config, missing))
-        print(f"Applied {label} live config additions to tracked seed: {apply_path}")
+        print(f"Applied {label} config changes to tracked seed: {apply_path}")
     else:
-        print(f"{label} live config has settings missing from the tracked seed.")
+        print(f"{label} live config has changes missing from the tracked seed.")
         print("Review these additions:")
         print(json.dumps(missing, indent=2))

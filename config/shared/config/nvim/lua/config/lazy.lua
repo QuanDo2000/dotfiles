@@ -25,10 +25,12 @@ if not lazy_ok then
   os.exit(1)
 end
 
+local lazy_spec = vim.fn.has("win32") == 1 and { "folke/lazy.nvim" } or { "folke/lazy.nvim", enabled = false }
+
 lazy.setup({
   spec = {
-    -- Home Manager owns lazy.nvim on Unix; Windows bootstraps it above.
-    { "folke/lazy.nvim", enabled = false },
+    -- Home Manager owns lazy.nvim on Unix; Lazy manages its Windows clone.
+    lazy_spec,
     -- add LazyVim and import its plugins
     { "LazyVim/LazyVim", import = "lazyvim.plugins" },
     -- import/override with your plugins

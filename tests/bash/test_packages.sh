@@ -736,7 +736,8 @@ test_home_manager_seeds_writable_lazyvim_config() {
   config="$(<"$REPO_DIR/config/home.nix")"
 
   assert_contains "$config" "home.activation.seedLazyVimConfig"
-  assert_contains "$config" 'LazyVim extras,news,version'
+  assert_contains "$config" "lazyvim_seed_merge.py"
+  assert_contains "$config" "lazyvim-seed.json"
   assert_not_contains "$config" 'xdg.configFile."nvim/lazyvim.json"'
 }
 

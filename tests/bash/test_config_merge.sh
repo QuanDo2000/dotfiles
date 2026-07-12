@@ -55,39 +55,31 @@ EOF
   rm -rf "$tmp"
 }
 
-test_lazyvim_seed_merge_tracks_removals_and_runtime_state() {
-  local tmp script live seed output
+test_lazyvim_three_way_merge_preserves_tracked_and_live_changes() {
+  local tmp script live seed base
   tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/json_seed_merge.py"
+  script="$REPO_DIR/scripts/lazyvim_seed_merge.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
+  base="$tmp/base.json"
 
-  printf '%s\n' '{"extras":["kept"],"news":{"NEWS.md":"2"},"version":9}' > "$live"
-  printf '%s\n' '{"extras":["kept","removed"],"news":{"NEWS.md":"1"},"version":8}' > "$seed"
+  printf '%s\n' '{"extras":["stale"],"news":{},"version":7}' > "$live"
+  printf '%s\n' '{"extras":["base"],"news":{},"version":8}' > "$seed"
+  local output
+  output="$(python3 "$script" "$live" "$seed" "$seed" "$base")"
+  assert_contains "$output" "Applied LazyVim config changes"
+  assert_equals '["base"]' "$(jq -c '.extras' "$live")"
 
-  output="$(python3 "$script" "$live" "$seed" "$seed" LazyVim extras,news,version)"
+  # A live removal wins when the tracked seed has not changed.
+  printf '%s\n' '{"extras":[],"news":{},"version":8}' > "$live"
+  python3 "$script" "$live" "$seed" "$seed" "$base"
+  assert_equals '[]' "$(jq -c '.extras' "$seed")"
 
-  assert_contains "$output" "Applied LazyVim live config additions to tracked seed"
-  assert_equals '["kept"]' "$(jq -c '.extras' "$seed")"
-  assert_equals '2' "$(jq -r '.news["NEWS.md"]' "$seed")"
-  assert_equals '9' "$(jq -r '.version' "$seed")"
-  rm -rf "$tmp"
-}
-
-test_lazyvim_seed_merge_engine_preserves_live_extras() {
-  local tmp script live seed output
-  tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/json_seed_merge.py"
-  live="$tmp/live.json"
-  seed="$tmp/seed.json"
-
-  printf '%s\n' '{"extras":["tracked","live"],"version":8}' > "$live"
-  printf '%s\n' '{"extras":["tracked"],"version":8}' > "$seed"
-
-  output="$(python3 "$script" "$live" "$seed" "$seed" LazyVim extras,news,version)"
-
-  assert_contains "$output" "Applied LazyVim live config additions to tracked seed"
-  assert_equals '["tracked","live"]' "$(jq -c '.extras' "$seed")"
+  # A newly pulled tracked change wins over stale live state.
+  printf '%s\n' '{"extras":["pulled"],"news":{},"version":9}' > "$seed"
+  python3 "$script" "$live" "$seed" "$seed" "$base"
+  assert_equals '["pulled"]' "$(jq -c '.extras' "$live")"
+  assert_equals '9' "$(jq -r '.version' "$live")"
   rm -rf "$tmp"
 }
 
@@ -116,7 +108,7 @@ EOF
 
   output="$(python3 "$script" "$live" "$seed" "$seed" Pi defaultModel)"
 
-  assert_contains "$output" "Applied Pi live config additions to tracked seed"
+  assert_contains "$output" "Applied Pi config changes to tracked seed"
   assert_equals "live-model" "$(jq -r '.defaultModel' "$seed")"
   assert_equals "tracked-package" "$(jq -r '.packages[]' "$seed")"
   assert_equals "true" "$(jq -r '.custom.enabled' "$seed")"
