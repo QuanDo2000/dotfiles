@@ -595,6 +595,13 @@ test_zsh_keytimeout_allows_bracketed_paste_sequences() {
   assert_contains "$zsh_text" $'\nexport KEYTIMEOUT=10\n'
 }
 
+test_tmux_enables_synchronized_output() {
+local tmux_text
+tmux_text="$(<"$REPO_DIR/config/unix/.tmux.conf")"
+
+assert_contains "$tmux_text" 'terminal-features ",*:sync"'
+}
+
 test_home_config_uses_home_manager_tmux_plugins() {
   local home_text tmux_text
   home_text="$(<"$REPO_DIR/config/home.nix")"
