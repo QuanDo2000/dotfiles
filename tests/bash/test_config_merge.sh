@@ -47,6 +47,23 @@ EOF
   rm -rf "$tmp"
 }
 
+test_lazyvim_seed_merge_engine_preserves_live_extras() {
+  local tmp script live seed output
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/pi_seed_merge.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+
+  printf '%s\n' '{"extras":["tracked","live"],"version":8}' > "$live"
+  printf '%s\n' '{"extras":["tracked"],"version":8}' > "$seed"
+
+  output="$(python3 "$script" "$live" "$seed" "$seed" LazyVim)"
+
+  assert_contains "$output" "Applied LazyVim live config additions to tracked seed"
+  assert_equals '["tracked","live"]' "$(jq -c '.extras' "$seed")"
+  rm -rf "$tmp"
+}
+
 test_pi_seed_merge_engine_applies_live_only_nested_json() {
   local tmp script live seed output
   tmp="$(mktemp -d)"

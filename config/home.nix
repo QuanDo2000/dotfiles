@@ -354,11 +354,33 @@ in
     done
   '';
 
+  home.activation.seedLazyVimConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    target="$HOME/.config/nvim/lazyvim.json"
+    source="${./shared/config/nvim/lazyvim.json}"
+    repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/config/nvim/lazyvim.json"
+    apply_seed=
+
+    mkdir -p "$(dirname "$target")"
+    if [ -f "$target" ] && [ ! -L "$target" ]; then
+      if [ -w "$repo_seed" ]; then
+        apply_seed="$repo_seed"
+      fi
+      "${pkgs.python3}/bin/python3" "${../scripts/pi_seed_merge.py}" "$target" "$source" "$apply_seed" LazyVim || echo "Warning: failed to sync LazyVim config seed" >&2
+      merge_source="''${apply_seed:-$source}"
+      merged="$(mktemp)"
+      "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
+      mv "$merged" "$target"
+    else
+      rm -f "$target"
+      cp "$source" "$target"
+    fi
+    chmod u+w "$target"
+  '';
+
   xdg.configFile."nvim/init.lua".force = true;
   xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;
   xdg.configFile."nvim/.gitignore" = forceSource ./shared/config/nvim/.gitignore;
   xdg.configFile."nvim/.neoconf.json" = forceSource ./shared/config/nvim/.neoconf.json;
-  xdg.configFile."nvim/lazyvim.json" = forceSource ./shared/config/nvim/lazyvim.json;
   xdg.configFile."nvim/stylua.toml" = forceSource ./shared/config/nvim/stylua.toml;
 
   xdg.configFile."fcitx5" = linuxConfig ./unix/config/fcitx5;

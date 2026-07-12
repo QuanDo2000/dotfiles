@@ -729,6 +729,14 @@ test_nixos_flake_target_fails_when_hostname_missing() {
   unset -f nix
 }
 
+test_home_manager_seeds_writable_lazyvim_config() {
+  local config
+  config="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$config" "home.activation.seedLazyVimConfig"
+  assert_not_contains "$config" 'xdg.configFile."nvim/lazyvim.json"'
+}
+
 test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {
   local config
   config="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/lazy.lua")"
