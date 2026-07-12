@@ -70,6 +70,8 @@ test_pi_matches_minimal_codex_setup() {
   assert_contains "$home_text" "./shared/ai/pi/settings.json"
   assert_contains "$pi_package" 'version = "0.80.6"'
   assert_contains "$pi_package" "@earendil-works/pi-coding-agent"
+  assert_contains "$pi_package" '${lib.getExe jq} '\''del(.devDependencies)'\'' package.json'
+  assert_not_contains "$pi_package" "nativeBuildInputs = [ jq ]"
   assert_equals "openai-codex" "$(jq -r '.defaultProvider' <<< "$pi_settings")"
   assert_equals "gpt-5.6-sol" "$(jq -r '.defaultModel' <<< "$pi_settings")"
   assert_equals "medium" "$(jq -r '.defaultThinkingLevel' <<< "$pi_settings")"

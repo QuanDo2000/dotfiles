@@ -12,10 +12,9 @@ buildNpmPackage rec {
   npmDepsHash = "sha256-xwn6zBV6QmLPaf9Ht2y1smJSUTMw1DYmPFBvPGVgvCc=";
   dontNpmBuild = true;
   npmFlags = [ "--omit=dev" "--ignore-scripts" ];
-  nativeBuildInputs = [ jq ];
 
   postPatch = ''
-    jq 'del(.devDependencies)' package.json > package.json.tmp
+    ${lib.getExe jq} 'del(.devDependencies)' package.json > package.json.tmp
     mv package.json.tmp package.json
     substituteInPlace npm-shrinkwrap.json \
       --replace-fail '"resolved": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.80.6.tgz",' '"resolved": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.80.6.tgz", "integrity": "sha512-Lvn89ko42h5ETUb6Z0Ku6ldskEqXaTdQBYvSa0+7bdG9V6rUEpXptv5e0OVZ1HDcvi8s6/2lGCQWsxKX+DFHNw==",' \
