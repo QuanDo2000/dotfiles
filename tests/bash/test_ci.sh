@@ -11,6 +11,13 @@ teardown() {
   cleanup_test_env
 }
 
+test_ci_bash_jobs_match_local_nix_environment() {
+  local workflow
+  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+
+  assert_contains "$workflow" 'nix develop . -c bash ./tests/bash/runner.sh --no-docker'
+}
+
 test_ci_runs_direct_nix_checks() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
@@ -30,6 +37,8 @@ test_ci_runs_windows_lazyvim_integration() {
 
   local integration
   integration="$(<"$REPO_DIR/tests/powershell/integration_lazyvim.ps1")"
+  assert_contains "$integration" "dotfile.ps1"
+  assert_contains "$integration" "Get-NeovimCommand"
   assert_contains "$integration" "XDG_CONFIG_HOME"
   assert_contains "$integration" "XDG_DATA_HOME"
   assert_contains "$integration" "Remove-Item -Recurse -Force"

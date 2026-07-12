@@ -1,10 +1,9 @@
 $ErrorActionPreference = 'Stop'
 
-$nvim = (Get-Command nvim -ErrorAction SilentlyContinue).Source
-if (-not $nvim) {
-    $nvim = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\nvim.exe'
-}
-if (-not (Test-Path -LiteralPath $nvim)) { throw 'nvim executable not found' }
+$dotfile = Join-Path $PSScriptRoot '..\..\dotfile.ps1'
+. $dotfile -NoMain
+$nvim = Get-NeovimCommand
+if (-not $nvim) { throw 'nvim executable not found' }
 
 $root = Join-Path $env:RUNNER_TEMP 'lazyvim-integration'
 if (Test-Path -LiteralPath $root) { Remove-Item -Recurse -Force $root }

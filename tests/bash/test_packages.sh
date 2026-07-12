@@ -841,8 +841,9 @@ test_fff_nvim_build_is_owned_by_dotfile() {
 
 test_home_manager_lazyvim_guard_uses_runnable_ps() {
   local nix_bin
-  nix_bin="$(type -P nix)"
-  [ -n "$nix_bin" ] || return
+  if ! nix_bin="$(type -P nix)"; then
+    return
+  fi
   local activation ps_path
   activation="$("$nix_bin" eval --raw "$REPO_DIR#nixosConfigurations.nixos.config.home-manager.users.quando.home.activation.seedLazyVimConfig.data")"
   ps_path="$(grep -o '/nix/store/[^ ]*/bin/ps' <<< "$activation" | head -1)"

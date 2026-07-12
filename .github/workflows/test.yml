@@ -16,9 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: DeterminateSystems/nix-installer-action@v22
+
       - name: Run bash tests
         shell: bash
-        run: ./tests/bash/runner.sh --no-docker
+        run: nix develop . -c bash ./tests/bash/runner.sh --no-docker
 
   powershell:
     runs-on: windows-latest
@@ -29,7 +31,8 @@ jobs:
         shell: pwsh
         run: |
           $wingetNvim = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\nvim.exe'
-          if (-not (Get-Command nvim -ErrorAction SilentlyContinue) -and -not (Test-Path -LiteralPath $wingetNvim)) {
+          $wingetPackage = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages') -Filter nvim.exe -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not (Get-Command nvim -ErrorAction SilentlyContinue) -and -not (Test-Path -LiteralPath $wingetNvim) -and -not $wingetPackage) {
             winget install --id Neovim.Neovim --exact --silent --accept-package-agreements --accept-source-agreements
           }
 
