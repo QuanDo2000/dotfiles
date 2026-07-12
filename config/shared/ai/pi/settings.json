@@ -6,7 +6,7 @@
   "enableInstallTelemetry": false,
   "enableSkillCommands": true,
   "skills": [
-    "~/.codex/skills"
+    "~/.agents/skills"
   ],
   "packages": [
     "npm:pi-mcp-extension@1.5.0",

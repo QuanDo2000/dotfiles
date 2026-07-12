@@ -103,11 +103,11 @@ in
   home.file = obsidianFiles // {
     ".ssh/config" = forceSource ./shared/.ssh/config;
     ".claude/settings.json" = forceSource ./shared/ai/claude/settings.json;
-    ".codex/skills/caveman/README.md" = forceSource "${cavemanSrc}/skills/caveman/README.md";
-    ".codex/skills/caveman/SKILL.md" = forceSource "${cavemanSrc}/skills/caveman/SKILL.md";
-    ".codex/skills/systematic-debugging" = forceSource "${superpowersSrc}/skills/systematic-debugging";
-    ".codex/skills/test-driven-development" = forceSource "${superpowersSrc}/skills/test-driven-development";
-    ".codex/skills/verification-before-completion" = forceSource "${superpowersSrc}/skills/verification-before-completion";
+    ".agents/skills/caveman/README.md" = forceSource "${cavemanSrc}/skills/caveman/README.md";
+    ".agents/skills/caveman/SKILL.md" = forceSource "${cavemanSrc}/skills/caveman/SKILL.md";
+    ".agents/skills/systematic-debugging" = forceSource "${superpowersSrc}/skills/systematic-debugging";
+    ".agents/skills/test-driven-development" = forceSource "${superpowersSrc}/skills/test-driven-development";
+    ".agents/skills/verification-before-completion" = forceSource "${superpowersSrc}/skills/verification-before-completion";
     ".pi/agent/extensions/codebase-memory-guidance.ts" = forceSource ./shared/ai/pi/codebase-memory-guidance.ts;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".local/bin/dotfile" = {

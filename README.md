@@ -111,9 +111,10 @@ Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` is generated from `c
 Run `./scripts/check.sh` from the repo root before pushing changes.
 
 Note: Home Manager seeds `~/.codex/config.toml` as a writable file for Codex
-runtime preferences and owns the pinned `~/.codex/skills/caveman/` skill.
-Generated Codex/plugin state such as `.agents/`, `skills-lock.json`, caches,
-and sessions stays out of the repo.
+runtime preferences and owns shared global skills under `~/.agents/skills/`.
+Codex discovers that standard location natively; Pi includes it through its
+settings. Agent-specific plugins, packages, hooks, and generated runtime state
+such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
 
 Note: Home Manager owns the `lazy.nvim` bootstrap package. LazyVim plugin state
 and generated lockfiles such as `lazy-lock.json` stay out of the repo.
