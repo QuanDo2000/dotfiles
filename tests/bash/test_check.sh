@@ -16,7 +16,7 @@ test_check_script_runs_repo_verification() {
   check_text="$(<"$REPO_DIR/scripts/check.sh")"
   flake_text="$(<"$REPO_DIR/flake.nix")"
 
-  assert_contains "$check_text" 'bash "$repo_dir/tests/bash/runner.sh" --no-docker'
+  assert_contains "$check_text" 'nix develop "$repo_dir" -c bash "$repo_dir/tests/bash/runner.sh" --no-docker'
   assert_contains "$check_text" 'pwsh "$repo_dir/tests/powershell/runner.ps1"'
   assert_contains "$check_text" 'nix flake check --no-build --all-systems'
   assert_contains "$check_text" 'nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" "$repo_dir#fff-mcp" --no-link'
@@ -25,6 +25,7 @@ test_check_script_runs_repo_verification() {
   assert_contains "$flake_text" "fff-mcp = final.callPackage ./packages/fff-mcp.nix"
   assert_contains "$flake_text" "packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent"
   assert_contains "$flake_text" "packages.x86_64-linux.fff-mcp = linuxPkgs.fff-mcp"
+  assert_contains "$flake_text" "python3"
   assert_contains "$flake_text" "shellcheck"
 }
 

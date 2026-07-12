@@ -81,6 +81,7 @@
           git
           gh
           powershell
+          python3
           shellcheck
         ];
       };

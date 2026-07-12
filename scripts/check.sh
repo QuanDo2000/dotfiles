@@ -9,7 +9,7 @@ run() {
   "$@"
 }
 
-run bash "$repo_dir/tests/bash/runner.sh" --no-docker
+run nix develop "$repo_dir" -c bash "$repo_dir/tests/bash/runner.sh" --no-docker
 
 if command -v pwsh >/dev/null 2>&1; then
   run pwsh "$repo_dir/tests/powershell/runner.ps1"
