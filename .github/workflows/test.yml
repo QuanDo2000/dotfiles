@@ -25,9 +25,20 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Install Neovim
+        shell: pwsh
+        run: |
+          if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
+            winget install --id Neovim.Neovim --exact --silent --accept-package-agreements --accept-source-agreements
+          }
+
       - name: Run PowerShell tests (Windows)
         shell: pwsh
         run: ./tests/powershell/runner.ps1
+
+      - name: Test LazyVim bootstrap (Windows)
+        shell: pwsh
+        run: ./tests/powershell/integration_lazyvim.ps1
 
   nix:
     runs-on: ubuntu-latest

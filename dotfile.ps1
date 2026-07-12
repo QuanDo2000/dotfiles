@@ -321,6 +321,12 @@ function Get-NeovimCommand {
     return $null
 }
 
+function Get-NeovimDataPath($nvim) {
+    $output = & $nvim --headless --clean "+lua io.write(vim.fn.stdpath('data'))" "+qa" 2>$null
+    if ($LASTEXITCODE -ne 0) { return $null }
+    return (($output -join '').Trim())
+}
+
 function Sync-LazyVim {
     Info "Installing or updating LazyVim..."
     if ($script:Dry) { return }
@@ -332,7 +338,9 @@ function Sync-LazyVim {
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "LazyVim sync failed; Neovim may finish setup on first start"
         } else {
-            $lazyRoot = Join-Path $env:LOCALAPPDATA "nvim-data\lazy"
+            $dataPath = Get-NeovimDataPath $nvim
+            if (-not $dataPath) { throw "could not determine Neovim data path" }
+            $lazyRoot = Join-Path $dataPath "lazy"
             if (-not (Test-Path -LiteralPath (Join-Path $lazyRoot "lazy.nvim")) -or
                 -not (Test-Path -LiteralPath (Join-Path $lazyRoot "LazyVim"))) {
                 Write-Warning "LazyVim sync did not install lazy.nvim and LazyVim; Neovim may finish setup on first start"

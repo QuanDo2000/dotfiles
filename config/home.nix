@@ -366,7 +366,11 @@ in
       if [ -w "$repo_seed" ]; then
         apply_seed="$repo_seed"
       fi
-      "${pkgs.python3}/bin/python3" "${../scripts/lazyvim_seed_merge.py}" "$target" "$source" "$apply_seed" "$base" || echo "Warning: failed to sync LazyVim config seed" >&2
+      if /bin/ps -A -o comm= | "${pkgs.gnugrep}/bin/grep" -Eq '(^|/)nvim$'; then
+        echo "Warning: Skipping LazyVim config sync while Neovim is running" >&2
+      else
+        "${pkgs.python3}/bin/python3" "${../scripts/lazyvim_seed_merge.py}" "$target" "$source" "$apply_seed" "$base" || echo "Warning: failed to sync LazyVim config seed" >&2
+      fi
     else
       rm -f "$target"
       cp "$source" "$target"

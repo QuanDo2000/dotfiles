@@ -68,7 +68,7 @@ test_lazyvim_three_way_merge_preserves_tracked_and_live_changes() {
   local output
   output="$(python3 "$script" "$live" "$seed" "$seed" "$base")"
   assert_contains "$output" "Applied LazyVim config changes to live config and tracked seed"
-  assert_equals '["stale"]' "$(jq -c '.extras' "$seed")"
+  assert_equals '["base"]' "$(jq -c '.extras' "$live")"
 
   # A live removal wins when the tracked seed has not changed.
   printf '%s\n' '{"extras":[],"news":{},"version":8}' > "$live"

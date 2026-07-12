@@ -31,7 +31,9 @@ function test_lazyvim_sync_verifies_installed_directories {
     $script:Dry = $false
     $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
     $originalGetNeovim = (Get-Command Get-NeovimCommand).ScriptBlock
+    $originalGetDataPath = (Get-Command Get-NeovimDataPath).ScriptBlock
     Set-FunctionMock 'Get-NeovimCommand' { 'nvim' }
+    Set-FunctionMock 'Get-NeovimDataPath' { Join-Path $env:LOCALAPPDATA 'nvim-data' }
     Set-CommandMock 'nvim' { $global:LASTEXITCODE = 0 }
 
     try {
@@ -39,6 +41,7 @@ function test_lazyvim_sync_verifies_installed_directories {
     } finally {
         Clear-CommandMock 'nvim'
         Set-FunctionMock 'Get-NeovimCommand' $originalGetNeovim
+        Set-FunctionMock 'Get-NeovimDataPath' $originalGetDataPath
     }
 
     Assert-Contains $output 'LazyVim sync did not install'
@@ -51,7 +54,9 @@ function test_lazyvim_sync_accepts_installed_directories {
     New-Item -ItemType Directory -Force -Path (Join-Path $lazyRoot 'lazy.nvim') | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $lazyRoot 'LazyVim') | Out-Null
     $originalGetNeovim = (Get-Command Get-NeovimCommand).ScriptBlock
+    $originalGetDataPath = (Get-Command Get-NeovimDataPath).ScriptBlock
     Set-FunctionMock 'Get-NeovimCommand' { 'nvim' }
+    Set-FunctionMock 'Get-NeovimDataPath' { Join-Path $env:LOCALAPPDATA 'nvim-data' }
     Set-CommandMock 'nvim' { $global:LASTEXITCODE = 0 }
 
     try {
@@ -59,6 +64,7 @@ function test_lazyvim_sync_accepts_installed_directories {
     } finally {
         Clear-CommandMock 'nvim'
         Set-FunctionMock 'Get-NeovimCommand' $originalGetNeovim
+        Set-FunctionMock 'Get-NeovimDataPath' $originalGetDataPath
     }
 
     Assert-False ($output -like '*LazyVim sync did not install*') 'installed directories should satisfy LazyVim sync verification'
@@ -68,6 +74,9 @@ function test_lazyvim_sync_uses_winget_neovim_fallback {
     $text = Get-Content -Raw $script:DotfileScript
     Assert-Contains $text 'Microsoft\WinGet\Links\nvim.exe'
     Assert-Contains $text 'Get-NeovimCommand'
+    Assert-Contains $text 'Get-NeovimDataPath'
+    Assert-Contains $text 'vim.fn.stdpath'
+    Assert-False ($text -like '*Join-Path $env:LOCALAPPDATA "nvim-data\lazy"*') 'sync verification should not hard-code Neovim data path'
 }
 
 function test_update_packages_syncs_lazyvim {

@@ -64,7 +64,6 @@ def write_json(path, value):
 
 live = load(live_path)
 seed = load(apply_path or seed_path)
-base_present = os.path.exists(base_path)
 try:
     base = load(base_path)
     base_exists = True
@@ -80,7 +79,7 @@ for key in managed_keys:
     if base_exists:
         value = resolve(live_value, seed.get(key, missing), base.get(key, missing))
     else:
-        value = seed.get(key, missing) if base_present else live_value
+        value = seed.get(key, missing)
     if value is missing:
         resolved.pop(key, None)
     else:

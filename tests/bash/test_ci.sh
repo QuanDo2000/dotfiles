@@ -20,6 +20,14 @@ test_ci_runs_direct_nix_checks() {
   assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#fff-mcp --no-link'
 }
 
+test_ci_runs_windows_lazyvim_integration() {
+  local workflow
+  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+
+  assert_contains "$workflow" "Neovim.Neovim"
+  assert_contains "$workflow" "tests/powershell/integration_lazyvim.ps1"
+}
+
 test_ci_pins_nix_installer_action() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"

@@ -738,6 +738,8 @@ test_home_manager_seeds_writable_lazyvim_config() {
   assert_contains "$config" "home.activation.seedLazyVimConfig"
   assert_contains "$config" "lazyvim_seed_merge.py"
   assert_contains "$config" "lazyvim-seed.json"
+  assert_contains "$config" "ps -A -o comm="
+  assert_contains "$config" "Skipping LazyVim config sync while Neovim is running"
   assert_not_contains "$config" 'xdg.configFile."nvim/lazyvim.json"'
 }
 
