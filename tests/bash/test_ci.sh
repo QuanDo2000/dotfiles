@@ -25,7 +25,14 @@ test_ci_runs_windows_lazyvim_integration() {
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_contains "$workflow" "Neovim.Neovim"
+  assert_contains "$workflow" 'Microsoft\WinGet\Links\nvim.exe'
   assert_contains "$workflow" "tests/powershell/integration_lazyvim.ps1"
+
+  local integration
+  integration="$(<"$REPO_DIR/tests/powershell/integration_lazyvim.ps1")"
+  assert_contains "$integration" "XDG_CONFIG_HOME"
+  assert_contains "$integration" "XDG_DATA_HOME"
+  assert_contains "$integration" "Remove-Item -Recurse -Force"
 }
 
 test_ci_pins_nix_installer_action() {

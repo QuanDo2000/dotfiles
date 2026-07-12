@@ -738,7 +738,9 @@ test_home_manager_seeds_writable_lazyvim_config() {
   assert_contains "$config" "home.activation.seedLazyVimConfig"
   assert_contains "$config" "lazyvim_seed_merge.py"
   assert_contains "$config" "lazyvim-seed.json"
-  assert_contains "$config" "ps -A -o comm="
+  assert_contains "$config" 'psCommand = if pkgs.stdenv.isDarwin then "/bin/ps" else "${pkgs.procps}/bin/ps";'
+  assert_contains "$config" '"${psCommand}" -A -o comm='
+  assert_not_contains "$config" "if /bin/ps -A"
   assert_contains "$config" "Skipping LazyVim config sync while Neovim is running"
   assert_not_contains "$config" 'xdg.configFile."nvim/lazyvim.json"'
 }
@@ -835,6 +837,18 @@ test_fff_nvim_build_is_owned_by_dotfile() {
 
   assert_contains "$config" '"dmtrKovalenko/fff.nvim"'
   assert_not_contains "$config" "build ="
+}
+
+test_home_manager_lazyvim_guard_uses_runnable_ps() {
+  local nix_bin
+  nix_bin="$(type -P nix)"
+  [ -n "$nix_bin" ] || return
+  local activation ps_path
+  activation="$("$nix_bin" eval --raw "$REPO_DIR#nixosConfigurations.nixos.config.home-manager.users.quando.home.activation.seedLazyVimConfig.data")"
+  ps_path="$(grep -o '/nix/store/[^ ]*/bin/ps' <<< "$activation" | head -1)"
+
+  assert_file_exists "$ps_path"
+  assert_exit_code 0 "$ps_path" --version
 }
 
 test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {

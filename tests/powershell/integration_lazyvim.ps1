@@ -6,8 +6,13 @@ if (-not $nvim) {
 }
 if (-not (Test-Path -LiteralPath $nvim)) { throw 'nvim executable not found' }
 
-$config = Join-Path $env:LOCALAPPDATA 'nvim'
-if (Test-Path -LiteralPath $config) { Remove-Item -Recurse -Force $config }
+$root = Join-Path $env:RUNNER_TEMP 'lazyvim-integration'
+if (Test-Path -LiteralPath $root) { Remove-Item -Recurse -Force $root }
+$env:XDG_CONFIG_HOME = Join-Path $root 'config'
+$env:XDG_DATA_HOME = Join-Path $root 'data'
+New-Item -ItemType Directory -Force -Path $env:XDG_CONFIG_HOME, $env:XDG_DATA_HOME | Out-Null
+
+$config = Join-Path $env:XDG_CONFIG_HOME 'nvim'
 Copy-Item -Recurse (Join-Path $PSScriptRoot '..\..\config\shared\config\nvim') $config
 
 & $nvim --headless '+Lazy! sync' '+qa'

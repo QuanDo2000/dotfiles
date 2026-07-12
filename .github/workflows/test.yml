@@ -28,7 +28,8 @@ jobs:
       - name: Install Neovim
         shell: pwsh
         run: |
-          if (-not (Get-Command nvim -ErrorAction SilentlyContinue)) {
+          $wingetNvim = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\nvim.exe'
+          if (-not (Get-Command nvim -ErrorAction SilentlyContinue) -and -not (Test-Path -LiteralPath $wingetNvim)) {
             winget install --id Neovim.Neovim --exact --silent --accept-package-agreements --accept-source-agreements
           }
 

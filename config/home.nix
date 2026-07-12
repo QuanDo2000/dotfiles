@@ -6,6 +6,7 @@ let
   standaloneLinux = pkgs.stdenv.isLinux && !nixosSystem;
   homeDir =
     if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
+  psCommand = if pkgs.stdenv.isDarwin then "/bin/ps" else "${pkgs.procps}/bin/ps";
   forceSource = source: {
     inherit source;
     force = true;
@@ -366,7 +367,7 @@ in
       if [ -w "$repo_seed" ]; then
         apply_seed="$repo_seed"
       fi
-      if /bin/ps -A -o comm= | "${pkgs.gnugrep}/bin/grep" -Eq '(^|/)nvim$'; then
+      if "${psCommand}" -A -o comm= | "${pkgs.gnugrep}/bin/grep" -Eq '(^|/)nvim$'; then
         echo "Warning: Skipping LazyVim config sync while Neovim is running" >&2
       else
         "${pkgs.python3}/bin/python3" "${../scripts/lazyvim_seed_merge.py}" "$target" "$source" "$apply_seed" "$base" || echo "Warning: failed to sync LazyVim config seed" >&2
