@@ -71,14 +71,8 @@ hl.config({
             active_border = { colors = { "rgba(33ccffee)", "rgba(00ff99ee)" }, angle = 45 },
             inactive_border = "rgba(595959aa)",
         },
-        resize_on_border = false,
         allow_tearing = true,
         layout = "dwindle",
-    },
-
-    decoration = {
-        active_opacity = 1.0,
-        inactive_opacity = 1.0,
     },
 
     animations = {
@@ -90,17 +84,9 @@ hl.config({
         force_split = 2,
     },
 
-    master = {
-        new_status = "master",
-    },
-
     misc = {
         force_default_wallpaper = -1,
         disable_hyprland_logo = false,
-    },
-
-    xwayland = {
-        force_zero_scaling = 0,
     },
 
     cursor = {
@@ -109,16 +95,7 @@ hl.config({
 
     input = {
         kb_layout = "us",
-        kb_variant = "",
-        kb_model = "",
-        kb_options = "",
-        kb_rules = "",
-        follow_mouse = 1,
         sensitivity = -0.5,
-        scroll_factor = 1,
-        touchpad = {
-            natural_scroll = false,
-        },
     },
 })
 
