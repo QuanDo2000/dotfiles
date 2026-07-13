@@ -412,12 +412,10 @@ function Get-WindowsLinkSpecs {
     $specs = @()
 
     # PowerShell profiles (link each file into the target dir).
-    # Lowercase "documents" works on Windows (case-insensitive) and matches
-    # the XDG-style lowercase convention on Unix/Mac when running PS tests.
     $psSource = Join-Path $configPath "Powershell"
     $targets = @(
-        "$userHome\documents\WindowsPowerShell"
-        "$userHome\documents\PowerShell"
+        "$userHome\Documents\WindowsPowerShell"
+        "$userHome\Documents\PowerShell"
     )
     if (Test-Path $psSource) {
         foreach ($target in $targets) {

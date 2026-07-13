@@ -152,7 +152,7 @@ test_setup_vault_dry_run_does_not_mkdir_or_call_ob() {
   DRY=true
   mock_cmd ob 'echo "unexpected ob call: $*" >&2; exit 99'
 
-  local vault_path="$HOME/documents/obsidian/test-vault"
+  local vault_path="$HOME/Documents/obsidian/test-vault"
   local output exit_code=0
   output=$(_obsidian_setup_vault "test-vault" "$vault_path" 2>&1) || exit_code=$?
 
@@ -166,7 +166,7 @@ test_setup_vault_dry_run_does_not_mkdir_or_call_ob() {
 }
 
 test_setup_vault_skips_when_already_configured() {
-  local vault_path="$HOME/documents/obsidian/test-vault"
+  local vault_path="$HOME/Documents/obsidian/test-vault"
   mkdir -p "$vault_path"
   # sync-status exits 0 → already configured → sync-setup must NOT run.
   mock_cmd ob 'case "$1" in
@@ -185,7 +185,7 @@ test_setup_vault_skips_when_already_configured() {
 }
 
 test_setup_obsidian_skips_reconfiguring_existing_sync() {
-  local vault_path="$HOME/documents/obsidian/test-vault"
+  local vault_path="$HOME/Documents/obsidian/test-vault"
   mkdir -p "$vault_path"
   mock_cmd ob 'case "$1" in
     sync-status) exit 0 ;;
@@ -208,7 +208,7 @@ test_setup_obsidian_skips_reconfiguring_existing_sync() {
 }
 
 test_setup_obsidian_uses_home_manager_vault_base() {
-  local vault_path="$HOME/documents/obsidian/Sync"
+  local vault_path="$HOME/Documents/obsidian/Sync"
   mkdir -p "$vault_path"
   mock_cmd ob 'case "$1" in
     sync-status) exit 0 ;;
@@ -225,7 +225,7 @@ test_setup_obsidian_uses_home_manager_vault_base() {
   if [ "$exit_code" -ne 0 ]; then
     echo "  FAILED: setup_obsidian should skip reconfiguring existing sync ($output)" >> "$ERROR_FILE"
   fi
-  if [[ "$OBSIDIAN_VAULT_BASE" != "$HOME/documents/obsidian" ]]; then
+  if [[ "$OBSIDIAN_VAULT_BASE" != "$HOME/Documents/obsidian" ]]; then
     echo "  FAILED: Obsidian setup should use the same base as Home Manager-managed settings" >> "$ERROR_FILE"
   fi
 }

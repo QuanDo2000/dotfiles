@@ -44,8 +44,8 @@ let
     "templates.json"
   ];
   obsidianFiles = lib.genAttrs
-    (map (name: "documents/obsidian/Sync/.obsidian/${name}") obsidianSettings)
-    (path: forceSource (./shared/obsidian + "/${lib.removePrefix "documents/obsidian/Sync/.obsidian/" path}"));
+    (map (name: "Documents/obsidian/Sync/.obsidian/${name}") obsidianSettings)
+    (path: forceSource (./shared/obsidian + "/${lib.removePrefix "Documents/obsidian/Sync/.obsidian/" path}"));
   obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
     set -euo pipefail
     export PATH="${lib.makeBinPath [ pkgs.obsidian-headless pkgs.nodejs ]}:$PATH"
@@ -56,13 +56,13 @@ let
     fi
 
     shopt -s nullglob
-    for vault in "$HOME"/documents/obsidian/*; do
+    for vault in "$HOME"/Documents/obsidian/*; do
       if [ -d "$vault" ] && ob sync-status --path "$vault" >/dev/null 2>&1; then
         exec ob sync --path "$vault" --continuous
       fi
     done
 
-    echo "No configured Obsidian vault found under $HOME/documents/obsidian" >&2
+    echo "No configured Obsidian vault found under $HOME/Documents/obsidian" >&2
     exit 0
   '';
   devTerminalPackages = with pkgs; [
@@ -417,6 +417,14 @@ in
     fi
     chmod u+w "$target"
   '';
+
+  xdg.userDirs = {
+    enable = true;
+    createDirectories = true;
+    setSessionVariables = true;
+    documents = "${homeDir}/Documents";
+    download = "${homeDir}/Downloads";
+  };
 
   xdg.configFile."nvim/init.lua".force = true;
   xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;

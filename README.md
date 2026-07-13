@@ -124,10 +124,10 @@ warnings after the package operation completes.
 
 Windows installs Neovim and LazyVim but does not enable or install `fff.nvim`.
 
-Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/documents/obsidian` unless `-f` is passed.
+Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/Documents/obsidian` unless `-f` is passed.
 
 Note: Home Manager owns tracked Obsidian settings from `config/shared/obsidian`
-under `~/documents/obsidian/Sync/.obsidian`. Plugin bundles, themes, workspace state,
+under `~/Documents/obsidian/Sync/.obsidian`. Plugin bundles, themes, workspace state,
 bookmarks, starred files, recent files, and Electron app state stay out of the
 repo.
 
