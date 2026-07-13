@@ -15,6 +15,7 @@
   ],
   "modules-right": [
     "privacy",
+    "custom/hyprsunset",
     "mpris",
     "pulseaudio",
     "idle_inhibitor",
@@ -72,6 +73,12 @@
       { "type": "screenshare" },
       { "type": "audio-in" }
     ]
+  },
+
+  "custom/hyprsunset": {
+    "exec": "$HOME/dotfiles/scripts/hyprsunset-status.sh",
+    "return-type": "json",
+    "interval": 60
   },
 
   "mpris": {

@@ -53,12 +53,22 @@ window#waybar {
 }
 
 #privacy,
+#custom-hyprsunset,
 #mpris,
 #pulseaudio,
 #idle_inhibitor,
 #network,
 #custom-power {
   padding: 0 12px;
+}
+
+#custom-hyprsunset.active {
+  color: #f9e2af;
+}
+
+#custom-hyprsunset.inactive,
+#custom-hyprsunset.disabled {
+  color: #6c7086;
 }
 
 #mpris.playing {
@@ -79,6 +89,7 @@ window#waybar {
   color: #f9e2af;
 }
 
+#custom-hyprsunset:hover,
 #mpris:hover,
 #pulseaudio:hover,
 #idle_inhibitor:hover,

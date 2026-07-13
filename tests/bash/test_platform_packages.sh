@@ -347,6 +347,25 @@ test_hyprland_exposes_keybind_list() {
   assert_contains "$script" 'fuzzel --dmenu'
 }
 
+test_waybar_shows_hyprsunset_status() {
+  local config style day night
+  config="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
+  style="$(<"$REPO_DIR/config/unix/config/waybar/style.css")"
+
+  assert_contains "$config" '"custom/hyprsunset"'
+  assert_contains "$config" 'scripts/hyprsunset-status.sh'
+  assert_contains "$style" "#custom-hyprsunset.active"
+
+  day="$(HYPRSUNSET_RUNNING=true "$REPO_DIR/scripts/hyprsunset-status.sh" 12:00)"
+  night="$(HYPRSUNSET_RUNNING=true "$REPO_DIR/scripts/hyprsunset-status.sh" 21:00)"
+  assert_equals "inactive" "$(jq -r .class <<<"$day")"
+  assert_equals "active" "$(jq -r .class <<<"$night")"
+  assert_not_contains "$(jq -r .text <<<"$day")" ":"
+  assert_not_contains "$(jq -r .text <<<"$night")" ":"
+  assert_contains "$(jq -r .tooltip <<<"$day")" "20:00"
+  assert_contains "$(jq -r .tooltip <<<"$night")" "07:00"
+}
+
 test_waybar_shows_media_status() {
   local config style
   config="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
@@ -365,6 +384,18 @@ test_hyprland_configures_actual_mouse() {
 
   assert_contains "$config" 'name = "logitech-g502-1"'
   assert_not_contains "$config" 'name = "logitech-g502"'
+}
+
+test_home_manager_enables_hyprsunset() {
+  local home_config sunset_config
+  home_config="$(<"$REPO_DIR/config/home.nix")"
+  sunset_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprsunset.conf")"
+
+  assert_contains "$home_config" "services.hyprsunset.enable = pkgs.stdenv.isLinux;"
+  assert_contains "$home_config" "systemd.user.services.hyprsunset.Unit.X-Restart-Triggers"
+  assert_contains "$sunset_config" "time = 07:00"
+  assert_contains "$sunset_config" "time = 20:00"
+  assert_contains "$sunset_config" "temperature = 4500"
 }
 
 test_home_manager_enables_mako() {

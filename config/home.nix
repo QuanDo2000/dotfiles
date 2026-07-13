@@ -205,6 +205,10 @@ in
   services.hypridle.enable = pkgs.stdenv.isLinux;
   services.hyprpolkitagent.enable = pkgs.stdenv.isLinux;
 
+  services.hyprsunset.enable = pkgs.stdenv.isLinux;
+  systemd.user.services.hyprsunset.Unit.X-Restart-Triggers =
+    lib.mkIf pkgs.stdenv.isLinux [ "${./unix/config/hypr/hyprsunset.conf}" ];
+
   services.mako = lib.mkIf pkgs.stdenv.isLinux {
     enable = true;
     settings = {
