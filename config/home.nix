@@ -142,9 +142,9 @@ in
     clipboarder=wl-copy
     typer=wtype
     prompt=
-    selector-args=--placeholder "Search vault…" --inner-pad 8
+    selector-args=--prompt "" --placeholder "Search vault…" --inner-pad 8
     action=copy
-    target=password
+    target=menu
     clear-after=30
     no-cache=true
   '';

@@ -280,8 +280,10 @@ test_home_manager_installs_bitwarden_picker() {
   assert_contains "$home_config" 'selector=fuzzel'
   assert_contains "$home_config" 'typer=wtype'
   assert_contains "$home_config" 'prompt='
-  assert_contains "$home_config" 'selector-args=--placeholder "Search vault…" --inner-pad 8'
+  assert_contains "$home_config" 'selector-args=--prompt "" --placeholder "Search vault…" --inner-pad 8'
   assert_contains "$home_config" 'action=copy'
+  assert_contains "$home_config" 'target=menu'
+  assert_not_contains "$home_config" 'target=password'
   assert_contains "$home_config" 'clear-after=30'
   assert_contains "$home_config" 'no-cache=true'
   assert_contains "$hypr_config" 'mainMod .. " + CTRL + Space"'
@@ -367,13 +369,16 @@ test_hyprland_exposes_keybind_list() {
 }
 
 test_waybar_shows_hyprsunset_status() {
-  local config style day night
+  local config style status_script day night
   config="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
   style="$(<"$REPO_DIR/config/unix/config/waybar/style.css")"
+  status_script="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
 
   assert_contains "$config" '"custom/hyprsunset"'
   assert_contains "$config" 'scripts/hyprsunset-status.sh'
   assert_contains "$style" "#custom-hyprsunset.active"
+  assert_contains "$status_script" 'repo="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"'
+  assert_not_contains "$status_script" "mapfile"
 
   day="$(HYPRSUNSET_RUNNING=true "$REPO_DIR/scripts/hyprsunset-status.sh" 12:00)"
   night="$(HYPRSUNSET_RUNNING=true "$REPO_DIR/scripts/hyprsunset-status.sh" 21:00)"

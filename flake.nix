@@ -38,6 +38,7 @@
         packages = with pkgs; [
           git
           gh
+          jq
           powershell
           python3
           shellcheck

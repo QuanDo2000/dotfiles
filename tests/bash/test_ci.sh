@@ -18,6 +18,13 @@ test_ci_bash_jobs_match_local_nix_environment() {
   assert_contains "$workflow" 'nix develop . -c bash ./tests/bash/runner.sh --no-docker'
 }
 
+test_ci_dev_shell_includes_script_dependencies() {
+  local flake
+  flake="$(<"$REPO_DIR/flake.nix")"
+
+  assert_contains "$flake" "jq"
+}
+
 test_ci_runs_direct_nix_checks() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"

@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+repo="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprsunset.conf"
 if [[ ! -f "$config" ]]; then
-  config="${DOTFILES_DIR:-$HOME/dotfiles}/config/unix/config/hypr/hyprsunset.conf"
+  config="$repo/config/unix/config/hypr/hyprsunset.conf"
 fi
 
-mapfile -t times < <(awk '$1 == "time" && $2 == "=" { print $3 }' "$config")
-day="${times[0]:-07:00}"
-night="${times[1]:-20:00}"
+times="$(awk '$1 == "time" && $2 == "=" { print $3 }' "$config")"
+day="$(awk 'NR == 1 { print; exit }' <<<"$times")"
+night="$(awk 'NR == 2 { print; exit }' <<<"$times")"
+day="${day:-07:00}"
+night="${night:-20:00}"
 temperature="$(awk '$1 == "temperature" && $2 == "=" { print $3; exit }' "$config")"
 temperature="${temperature:-4500}"
 now="${1:-$(date +%H:%M)}"
