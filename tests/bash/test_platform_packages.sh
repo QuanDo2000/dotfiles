@@ -276,9 +276,9 @@ test_home_manager_installs_screenshot_tools() {
 
   assert_contains "$home_config" "grim"
   assert_contains "$home_config" "slurp"
-  assert_contains "$hypr_config" 'hl.bind("Print"'
-  assert_contains "$hypr_config" 'hl.bind("SHIFT + Print"'
-  assert_contains "$hypr_config" 'hl.bind("CTRL + Print"'
+  assert_contains "$hypr_config" 'bind("Print"'
+  assert_contains "$hypr_config" 'bind("SHIFT + Print"'
+  assert_contains "$hypr_config" 'bind("CTRL + Print"'
 }
 
 test_home_manager_enables_fuzzel() {
@@ -303,8 +303,31 @@ test_hyprland_uses_uwsm_application_lifecycle() {
   assert_not_contains "$config" "hl.dsp.exit()"
 }
 
-test_hyprland_configures_actual_mouse() {
+test_hyprland_adds_window_management_keybinds() {
   local config
+  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+
+  assert_contains "$config" 'mainMod .. " + F"'
+  assert_contains "$config" 'mainMod .. " + SHIFT + " .. key'
+  assert_contains "$config" 'mainMod .. " + ALT + " .. key'
+  assert_contains "$config" 'mainMod .. " + G"'
+  assert_contains "$config" 'mainMod .. " + Tab"'
+  assert_contains "$config" 'mainMod .. " + Z"'
+  assert_contains "$config" 'hl.define_submap("resize"'
+}
+
+test_hyprland_exposes_keybind_list() {
+  local config script
+  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  script="$(<"$REPO_DIR/scripts/show-keybinds.sh")"
+
+  assert_contains "$config" 'description = description'
+  assert_contains "$config" 'scripts/show-keybinds.sh'
+  assert_contains "$script" 'hyprctl binds -j'
+  assert_contains "$script" 'fuzzel --dmenu'
+}
+
+test_hyprland_configures_actual_mouse() {  local config
   config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
 
   assert_contains "$config" 'name = "logitech-g502-1"'

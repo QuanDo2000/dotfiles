@@ -108,52 +108,77 @@ hl.device({
 ---- KEYBINDINGS ----
 ---------------------
 
-hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(app .. terminal .. " +new-window"))
-hl.bind(mainMod .. " + W", hl.dsp.window.close())
-hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("uwsm stop"))
-hl.bind(mainMod .. " + CTRL + L", hl.dsp.exec_cmd("hyprlock"))
-hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(app .. fileManager))
-hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(app .. fileManager .. " /mnt/storage/"))
-hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(app .. "google-chrome-stable"))
-hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(app .. terminal .. " -e " .. musicPlayer .. " all"))
-hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(app .. anki))
-hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(app .. "obsidian"))
-hl.bind(mainMod .. " + Space", hl.dsp.exec_cmd(app .. "fuzzel"))
-hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
-hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
-hl.bind(mainMod .. " + O", hl.dsp.layout("togglesplit"))
-
-hl.bind(mainMod .. " + H", hl.dsp.focus({ direction = "left" }))
-hl.bind(mainMod .. " + L", hl.dsp.focus({ direction = "right" }))
-hl.bind(mainMod .. " + K", hl.dsp.focus({ direction = "up" }))
-hl.bind(mainMod .. " + J", hl.dsp.focus({ direction = "down" }))
-
--- ponytail: loop only the repetitive workspace number binds; one-off binds stay explicit.
-for i = 1, 10 do
-    local key = i % 10
-    hl.bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = i }))
-    hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
+local function bind(keys, dispatcher, description, flags)
+    flags = flags or {}
+    flags.description = description
+    hl.bind(keys, dispatcher, flags)
 end
 
-hl.bind(mainMod .. " + S", hl.dsp.workspace.toggle_special("magic"))
-hl.bind(mainMod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:magic" }))
+bind(mainMod .. " + Return", hl.dsp.exec_cmd(app .. terminal .. " +new-window"), "Open terminal")
+bind(mainMod .. " + W", hl.dsp.window.close(), "Close window")
+bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("uwsm stop"), "Log out")
+bind(mainMod .. " + CTRL + L", hl.dsp.exec_cmd("hyprlock"), "Lock screen")
+bind(mainMod .. " + E", hl.dsp.exec_cmd(app .. fileManager), "Open file manager")
+bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(app .. fileManager .. " /mnt/storage/"), "Open storage")
+bind(mainMod .. " + B", hl.dsp.exec_cmd(app .. "google-chrome-stable"), "Open browser")
+bind(mainMod .. " + M", hl.dsp.exec_cmd(app .. terminal .. " -e " .. musicPlayer .. " all"), "Open music player")
+bind(mainMod .. " + A", hl.dsp.exec_cmd(app .. anki), "Open Anki")
+bind(mainMod .. " + N", hl.dsp.exec_cmd(app .. "obsidian"), "Open Obsidian")
+bind(mainMod .. " + Space", hl.dsp.exec_cmd(app .. "fuzzel"), "Open app launcher")
+bind(mainMod .. " + F1", hl.dsp.exec_cmd("bash $HOME/dotfiles/scripts/show-keybinds.sh"), "Show keybinds")
 
-hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
-hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
+bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }), "Toggle fullscreen")
+bind(mainMod .. " + SHIFT + F", hl.dsp.window.fullscreen({ mode = "maximized" }), "Toggle maximize")
+bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }), "Toggle floating")
+bind(mainMod .. " + P", hl.dsp.window.pseudo(), "Toggle pseudotiling")
+bind(mainMod .. " + O", hl.dsp.layout("togglesplit"), "Toggle split direction")
+bind(mainMod .. " + G", hl.dsp.group.toggle(), "Toggle window group")
+bind(mainMod .. " + Tab", hl.dsp.group.next(), "Cycle grouped windows")
 
-hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
-hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+local directions = { H = "left", J = "down", K = "up", L = "right" }
+for key, direction in pairs(directions) do
+    bind(mainMod .. " + " .. key, hl.dsp.focus({ direction = direction }), "Focus " .. direction)
+    bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.swap({ direction = direction }), "Swap window " .. direction)
+    bind(mainMod .. " + ALT + " .. key, hl.dsp.window.move({ monitor = direction, follow = true }), "Move window to monitor " .. direction)
+end
 
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true, repeating = true })
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, repeating = true })
+for i = 1, 10 do
+    local key = i % 10
+    bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = i }), "Open workspace " .. i)
+    bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }), "Move window to workspace " .. i)
+end
 
-hl.bind("Print", hl.dsp.exec_cmd([[grim -g "$(slurp)" - | wl-copy]]))
-hl.bind("SHIFT + Print", hl.dsp.exec_cmd([[grim -g "$(slurp)" "$HOME/Downloads/screenshot-$(date +%F-%H%M%S).png"]]))
-hl.bind("CTRL + Print", hl.dsp.exec_cmd([[grim -o "$(hyprctl monitors -j | jq -r '.[] | select(.focused).name')" - | wl-copy]]))
+bind(mainMod .. " + S", hl.dsp.workspace.toggle_special("magic"), "Toggle scratchpad")
+bind(mainMod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:magic" }), "Move window to scratchpad")
+bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }), "Next workspace")
+bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }), "Previous workspace")
+bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), "Drag window", { mouse = true })
+bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), "Resize window", { mouse = true })
 
-hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("bash $HOME/dotfiles/scripts/reload-waybar.sh"))
+bind(mainMod .. " + CTRL + R", hl.dsp.submap("resize"), "Enter resize mode")
+hl.define_submap("resize", function()
+    bind("Left", hl.dsp.window.resize({ x = -20, y = 0, relative = true }), "Resize left", { repeating = true })
+    bind("Right", hl.dsp.window.resize({ x = 20, y = 0, relative = true }), "Resize right", { repeating = true })
+    bind("Up", hl.dsp.window.resize({ x = 0, y = -20, relative = true }), "Resize up", { repeating = true })
+    bind("Down", hl.dsp.window.resize({ x = 0, y = 20, relative = true }), "Resize down", { repeating = true })
+    bind("Escape", hl.dsp.submap("reset"), "Exit resize mode")
+end)
+
+bind(mainMod .. " + Z", function()
+    local zoom = hl.get_config("cursor.zoom_factor")
+    hl.config({ cursor = { zoom_factor = zoom == 1 and 1.5 or 1 } })
+end, "Toggle cursor zoom")
+
+bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), "Volume up", { locked = true, repeating = true })
+bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), "Volume down", { locked = true, repeating = true })
+bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), "Mute audio", { locked = true, repeating = true })
+bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), "Mute microphone", { locked = true, repeating = true })
+
+bind("Print", hl.dsp.exec_cmd([[grim -g "$(slurp)" - | wl-copy]]), "Copy region screenshot")
+bind("SHIFT + Print", hl.dsp.exec_cmd([[grim -g "$(slurp)" "$HOME/Downloads/screenshot-$(date +%F-%H%M%S).png"]]), "Save region screenshot")
+bind("CTRL + Print", hl.dsp.exec_cmd([[grim -o "$(hyprctl monitors -j | jq -r '.[] | select(.focused).name')" - | wl-copy]]), "Copy monitor screenshot")
+
+bind(mainMod .. " + R", hl.dsp.exec_cmd("bash $HOME/dotfiles/scripts/reload-waybar.sh"), "Reload Waybar")
 
 --------------------------------
 ---- WINDOWS AND WORKSPACES ----
