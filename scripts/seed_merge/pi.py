@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
 import json
-import os
 import sys
-import tempfile
+
+from common import load_json, write_json
 
 live_path, seed_path, apply_path = sys.argv[1:]
-
-
-def load(path):
-    with open(path, encoding="utf-8") as file:
-        value = json.load(file)
-    if not isinstance(value, dict):
-        raise ValueError(f"{path} must contain a JSON object")
-    return value
 
 
 def missing_from_seed(live, seed):
@@ -36,26 +28,10 @@ def merge_missing(seed, missing):
     return seed
 
 
-def write_json(path, value):
-    directory = os.path.dirname(path) or "."
-    fd, temporary = tempfile.mkstemp(dir=directory, prefix=".json-seed-", text=True)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as file:
-            json.dump(value, file, indent=2)
-            file.write("\n")
-        os.replace(temporary, path)
-    except Exception:
-        try:
-            os.unlink(temporary)
-        except FileNotFoundError:
-            pass
-        raise
-
-
 try:
     compare_path = apply_path or seed_path
-    live_config = load(live_path)
-    seed_config = load(compare_path)
+    live_config = load_json(live_path)
+    seed_config = load_json(compare_path)
     missing = missing_from_seed(live_config, seed_config)
 except Exception as exc:
     print(f"Warning: failed to compare Pi config with tracked seed: {exc}", file=sys.stderr)
@@ -63,7 +39,7 @@ except Exception as exc:
 
 if missing:
     if apply_path:
-        write_json(apply_path, merge_missing(seed_config, missing))
+        write_json(apply_path, merge_missing(seed_config, missing), prefix=".json-seed-")
         print(f"Applied Pi config changes to tracked seed: {apply_path}")
     else:
         print("Pi live config has changes missing from the tracked seed.")

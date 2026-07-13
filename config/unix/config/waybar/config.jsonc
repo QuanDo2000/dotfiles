@@ -30,7 +30,7 @@
     "window-rewrite": {
       "class<com.mitchellh.ghostty>": "",
       "class<google-chrome>": "",
-      "class<org.kde.dolphin>": "",
+      "class<thunar>": "",
       "class<obsidian>": "󰠮",
       "class<anki>": "󰘸"
     },

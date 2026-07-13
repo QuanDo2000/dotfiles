@@ -4,7 +4,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 test_codex_seed_merge_writes_atomically() {
   local script
-  script="$(<"$REPO_DIR/scripts/codex_seed_merge.py")"
+  script="$(<"$REPO_DIR/scripts/seed_merge/codex.py")"
 
   assert_contains "$script" "tempfile.mkstemp"
   assert_contains "$script" "os.replace"
@@ -18,7 +18,7 @@ test_codex_seed_merge_engine_applies_live_only_nested_toml() {
 
   local tmp script live seed output
   tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/codex_seed_merge.py"
+  script="$REPO_DIR/scripts/seed_merge/codex.py"
   live="$tmp/live.toml"
   seed="$tmp/seed.toml"
 
@@ -58,7 +58,7 @@ EOF
 test_lazyvim_three_way_merge_preserves_tracked_and_live_changes() {
   local tmp script live seed base
   tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/lazyvim_seed_merge.py"
+  script="$REPO_DIR/scripts/seed_merge/lazyvim.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
   base="$tmp/base.json"
@@ -95,7 +95,7 @@ test_lazyvim_three_way_merge_preserves_tracked_and_live_changes() {
 test_lazyvim_merge_recovers_corrupt_baseline_and_reports_read_only_seed() {
   local tmp script live seed base output
   tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/lazyvim_seed_merge.py"
+  script="$REPO_DIR/scripts/seed_merge/lazyvim.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
   base="$tmp/base.json"
@@ -115,7 +115,7 @@ test_lazyvim_merge_recovers_corrupt_baseline_and_reports_read_only_seed() {
 test_lazyvim_merge_preserves_seed_permissions() {
   local tmp script live seed base
   tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/lazyvim_seed_merge.py"
+  script="$REPO_DIR/scripts/seed_merge/lazyvim.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
   base="$tmp/base.json"
@@ -133,7 +133,7 @@ test_lazyvim_merge_preserves_seed_permissions() {
 test_pi_seed_merge_engine_applies_live_only_nested_json() {
   local tmp script live seed output
   tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/pi_seed_merge.py"
+  script="$REPO_DIR/scripts/seed_merge/pi.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
 

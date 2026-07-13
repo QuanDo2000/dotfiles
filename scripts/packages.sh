@@ -10,11 +10,14 @@ DEBIAN_PACKAGES=(
   curl git zsh procps file
 )
 
-function update_debian {
-  info "Updating packages for Debian..."
+function _update_home_manager_platform {
+  local platform="$1"
+  info "Updating packages for $platform..."
   _home_manager_switch
-  success "Finished update for Debian"
+  success "Finished update for $platform"
 }
+
+function update_debian { _update_home_manager_platform Debian; }
 
 function install_debian {
   info "Installing packages and programs for Debian..."
@@ -30,11 +33,7 @@ ARCH_PACKAGES=(
   base-devel curl git zsh
 )
 
-function update_arch {
-  info "Updating packages for Arch Linux..."
-  _home_manager_switch
-  success "Finished update for Arch Linux"
-}
+function update_arch { _update_home_manager_platform "Arch Linux"; }
 
 function install_arch {
   info "Installing packages and programs for Arch Linux..."

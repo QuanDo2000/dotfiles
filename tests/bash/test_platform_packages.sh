@@ -3,6 +3,14 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
+HOME_CONFIG="$(<"$REPO_DIR/config/home.nix")"
+HYPR_CONFIG="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+NIXOS_CONFIG="$(<"$REPO_DIR/config/nixos/configuration.nix")"
+WAYBAR_CONFIG="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
+WAYBAR_STYLE="$(<"$REPO_DIR/config/unix/config/waybar/style.css")"
+SUNSET_CONFIG="$(<"$REPO_DIR/config/unix/config/hypr/hyprsunset.conf")"
+SUNSET_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
+
 test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
   assert_contains "${ARCH_PACKAGES[*]}" "curl"
@@ -259,8 +267,7 @@ test_nixos_flake_target_fails_when_hostname_missing() {
 }
 
 test_home_manager_declares_default_apps() {
-  local config
-  config="$(<"$REPO_DIR/config/home.nix")"
+  local config="$HOME_CONFIG"
 
   assert_contains "$config" '"inode/directory" = [ "thunar.desktop" ];'
   assert_contains "$config" '"x-scheme-handler/https" = [ "google-chrome.desktop" ];'
@@ -270,9 +277,7 @@ test_home_manager_declares_default_apps() {
 }
 
 test_home_manager_installs_bitwarden_picker() {
-  local home_config hypr_config
-  home_config="$(<"$REPO_DIR/config/home.nix")"
-  hypr_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
 
   assert_contains "$home_config" "rbw"
   assert_contains "$home_config" "rofi-rbw"
@@ -291,9 +296,7 @@ test_home_manager_installs_bitwarden_picker() {
 }
 
 test_home_manager_installs_screenshot_tools() {
-  local home_config hypr_config
-  home_config="$(<"$REPO_DIR/config/home.nix")"
-  hypr_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
 
   assert_contains "$home_config" "grim"
   assert_contains "$home_config" "slurp"
@@ -303,9 +306,7 @@ test_home_manager_installs_screenshot_tools() {
 }
 
 test_home_manager_enables_fuzzel() {
-  local home_config hypr_config
-  home_config="$(<"$REPO_DIR/config/home.nix")"
-  hypr_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
 
   assert_contains "$home_config" "programs.fuzzel = lib.mkIf pkgs.stdenv.isLinux"
   assert_contains "$home_config" 'terminal = "ghostty";'
@@ -315,8 +316,7 @@ test_home_manager_enables_fuzzel() {
 }
 
 test_hyprland_uses_uwsm_application_lifecycle() {
-  local config
-  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  local config="$HYPR_CONFIG"
 
   assert_contains "$config" 'local app         = "uwsm app -- "'
   assert_contains "$config" 'hl.dsp.exec_cmd("uwsm stop")'
@@ -325,9 +325,7 @@ test_hyprland_uses_uwsm_application_lifecycle() {
 }
 
 test_hyprland_adds_media_controls() {
-  local home_config hypr_config
-  home_config="$(<"$REPO_DIR/config/home.nix")"
-  hypr_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
 
   assert_contains "$home_config" "playerctl"
   assert_contains "$hypr_config" 'bind("XF86AudioPlay"'
@@ -337,16 +335,14 @@ test_hyprland_adds_media_controls() {
 }
 
 test_hyprland_removes_unused_input_and_tearing_config() {
-  local config
-  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  local config="$HYPR_CONFIG"
 
   assert_not_contains "$config" "allow_tearing"
   assert_not_contains "$config" "hl.gesture"
 }
 
 test_hyprland_adds_window_management_keybinds() {
-  local config
-  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  local config="$HYPR_CONFIG"
 
   assert_contains "$config" 'mainMod .. " + F"'
   assert_contains "$config" 'mainMod .. " + SHIFT + " .. key'
@@ -358,8 +354,7 @@ test_hyprland_adds_window_management_keybinds() {
 }
 
 test_hyprland_exposes_keybind_list() {
-  local config script
-  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  local config="$HYPR_CONFIG" script
   script="$(<"$REPO_DIR/scripts/show-keybinds.sh")"
 
   assert_contains "$config" 'description = description'
@@ -369,10 +364,7 @@ test_hyprland_exposes_keybind_list() {
 }
 
 test_waybar_shows_hyprsunset_status() {
-  local config style status_script day night
-  config="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
-  style="$(<"$REPO_DIR/config/unix/config/waybar/style.css")"
-  status_script="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
+  local config="$WAYBAR_CONFIG" style="$WAYBAR_STYLE" status_script="$SUNSET_STATUS_SCRIPT" day night
 
   assert_contains "$config" '"custom/hyprsunset"'
   assert_contains "$config" 'scripts/hyprsunset-status.sh'
@@ -391,29 +383,26 @@ test_waybar_shows_hyprsunset_status() {
 }
 
 test_waybar_shows_media_status() {
-  local config style
-  config="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
-  style="$(<"$REPO_DIR/config/unix/config/waybar/style.css")"
+  local config="$WAYBAR_CONFIG" style="$WAYBAR_STYLE"
 
   assert_contains "$config" '"mpris"'
   assert_contains "$config" '"format": "{status_icon} {dynamic}"'
   assert_contains "$config" '"format-paused": "{status_icon}"'
   assert_contains "$config" '"playing": "󰐊"'
+  assert_contains "$config" '"class<thunar>": ""'
+  assert_not_contains "$config" "org.kde.dolphin"
   assert_contains "$style" "#mpris"
 }
 
 test_hyprland_configures_actual_mouse() {
-  local config
-  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  local config="$HYPR_CONFIG"
 
   assert_contains "$config" 'name = "logitech-g502-1"'
   assert_not_contains "$config" 'name = "logitech-g502"'
 }
 
 test_home_manager_enables_hyprsunset() {
-  local home_config sunset_config
-  home_config="$(<"$REPO_DIR/config/home.nix")"
-  sunset_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprsunset.conf")"
+  local home_config="$HOME_CONFIG" sunset_config="$SUNSET_CONFIG"
 
   assert_contains "$home_config" "services.hyprsunset.enable = pkgs.stdenv.isLinux;"
   assert_contains "$home_config" "systemd.user.services.hyprsunset.Unit.X-Restart-Triggers"
@@ -423,16 +412,14 @@ test_home_manager_enables_hyprsunset() {
 }
 
 test_home_manager_enables_clipboard_persistence() {
-  local config
-  config="$(<"$REPO_DIR/config/home.nix")"
+  local config="$HOME_CONFIG"
 
   assert_contains "$config" "services.wl-clip-persist = lib.mkIf pkgs.stdenv.isLinux"
   assert_contains "$config" 'clipboardType = "regular";'
 }
 
 test_home_manager_enables_mako() {
-  local config
-  config="$(<"$REPO_DIR/config/home.nix")"
+  local config="$HOME_CONFIG"
 
   assert_contains "$config" "services.mako = lib.mkIf pkgs.stdenv.isLinux"
   assert_contains "$config" 'output = "DP-3";'
@@ -440,8 +427,7 @@ test_home_manager_enables_mako() {
 }
 
 test_home_manager_declares_default_user_dirs() {
-  local config
-  config="$(<"$REPO_DIR/config/home.nix")"
+  local config="$HOME_CONFIG"
 
   assert_contains "$config" 'documents = "${homeDir}/Documents";'
   assert_contains "$config" 'download = "${homeDir}/Downloads";'
@@ -449,29 +435,25 @@ test_home_manager_declares_default_user_dirs() {
 }
 
 test_home_manager_enables_hyprpolkitagent() {
-  local config
-  config="$(<"$REPO_DIR/config/home.nix")"
+  local config="$HOME_CONFIG"
 
   assert_contains "$config" "services.hyprpolkitagent.enable = pkgs.stdenv.isLinux;"
 }
 
 test_home_manager_forces_jj_config_takeover() {
-  local config
-  config="$(<"$REPO_DIR/config/home.nix")"
+  local config="$HOME_CONFIG"
 
   assert_contains "$config" '"${homeDir}/.config/jj/config.toml".force = true;'
 }
 
 test_nixos_enables_gnome_keyring() {
-  local config
-  config="$(<"$REPO_DIR/config/nixos/configuration.nix")"
+  local config="$NIXOS_CONFIG"
 
   assert_contains "$config" "services.gnome.gnome-keyring.enable = true;"
 }
 
 test_nixos_configures_nvidia_driver() {
-  local config
-  config="$(<"$REPO_DIR/config/nixos/configuration.nix")"
+  local config="$NIXOS_CONFIG"
 
   assert_contains "$config" 'services.xserver.videoDrivers = [ "nvidia" ];'
   assert_contains "$config" "modesetting.enable = true;"
@@ -482,8 +464,8 @@ test_nixos_configures_nvidia_driver() {
 
 test_nixos_uses_uwsm_session() {
   local nix_config hypr_config
-  nix_config="$(<"$REPO_DIR/config/nixos/configuration.nix")"
-  hypr_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+  nix_config="$NIXOS_CONFIG"
+  hypr_config="$HYPR_CONFIG"
 
   assert_contains "$nix_config" "withUWSM = true;"
   assert_contains "$nix_config" 'uwsm start -e -D Hyprland hyprland.desktop'
