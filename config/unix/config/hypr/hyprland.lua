@@ -35,6 +35,7 @@ local terminal    = "ghostty"
 local fileManager = "thunar"
 local musicPlayer = "kew"
 local anki        = "anki"
+local app         = "uwsm app -- "
 local mainMod     = "SUPER"
 
 -------------------
@@ -44,7 +45,7 @@ local mainMod     = "SUPER"
 hl.on("hyprland.start", function()
     hl.exec_cmd("bash $HOME/dotfiles/scripts/reload-waybar.sh")
     hl.exec_cmd("fcitx5 -d")
-    hl.exec_cmd("[workspace 1] " .. terminal .. " +new-window")
+    hl.exec_cmd(app .. terminal .. " +new-window")
 end)
 
 -----------------------
@@ -99,7 +100,7 @@ hl.gesture({
 })
 
 hl.device({
-    name = "logitech-g502",
+    name = "logitech-g502-1",
     sensitivity = -1.0,
 })
 
@@ -107,17 +108,17 @@ hl.device({
 ---- KEYBINDINGS ----
 ---------------------
 
-hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(terminal .. " +new-window"))
+hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(app .. terminal .. " +new-window"))
 hl.bind(mainMod .. " + W", hl.dsp.window.close())
-hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exit())
+hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("uwsm stop"))
 hl.bind(mainMod .. " + CTRL + L", hl.dsp.exec_cmd("hyprlock"))
-hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
-hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(fileManager .. " /mnt/storage/"))
-hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("google-chrome-stable"))
-hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(terminal .. " -e " .. musicPlayer .. " all"))
-hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(anki))
-hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("obsidian"))
-hl.bind(mainMod .. " + Space", hl.dsp.exec_cmd("fuzzel"))
+hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(app .. fileManager))
+hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(app .. fileManager .. " /mnt/storage/"))
+hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(app .. "google-chrome-stable"))
+hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(app .. terminal .. " -e " .. musicPlayer .. " all"))
+hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(app .. anki))
+hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(app .. "obsidian"))
+hl.bind(mainMod .. " + Space", hl.dsp.exec_cmd(app .. "fuzzel"))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + O", hl.dsp.layout("togglesplit"))

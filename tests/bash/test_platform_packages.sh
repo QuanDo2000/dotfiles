@@ -288,8 +288,27 @@ test_home_manager_enables_fuzzel() {
 
   assert_contains "$home_config" "programs.fuzzel = lib.mkIf pkgs.stdenv.isLinux"
   assert_contains "$home_config" 'terminal = "ghostty";'
+  assert_contains "$home_config" 'launch-prefix = "uwsm app --";'
   assert_contains "$hypr_config" 'mainMod .. " + Space"'
-  assert_contains "$hypr_config" 'hl.dsp.exec_cmd("fuzzel")'
+  assert_contains "$hypr_config" 'hl.dsp.exec_cmd(app .. "fuzzel")'
+}
+
+test_hyprland_uses_uwsm_application_lifecycle() {
+  local config
+  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+
+  assert_contains "$config" 'local app         = "uwsm app -- "'
+  assert_contains "$config" 'hl.dsp.exec_cmd("uwsm stop")'
+  assert_contains "$config" 'hl.dsp.exec_cmd(app .. "google-chrome-stable")'
+  assert_not_contains "$config" "hl.dsp.exit()"
+}
+
+test_hyprland_configures_actual_mouse() {
+  local config
+  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+
+  assert_contains "$config" 'name = "logitech-g502-1"'
+  assert_not_contains "$config" 'name = "logitech-g502"'
 }
 
 test_home_manager_enables_mako() {

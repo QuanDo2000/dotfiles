@@ -178,6 +178,7 @@ in
     settings = {
       main = {
         terminal = "ghostty";
+        launch-prefix = "uwsm app --";
         layer = "overlay";
         width = 40;
         lines = 10;
