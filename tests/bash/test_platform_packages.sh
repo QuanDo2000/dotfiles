@@ -258,6 +258,29 @@ test_nixos_flake_target_fails_when_hostname_missing() {
   unset -f nix
 }
 
+test_home_manager_declares_default_apps() {
+  local config
+  config="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$config" '"inode/directory" = [ "thunar.desktop" ];'
+  assert_contains "$config" '"x-scheme-handler/https" = [ "google-chrome.desktop" ];'
+  assert_contains "$config" '"application/zip" = [ "xarchiver.desktop" ];'
+  assert_contains "$config" 'xdg.configFile."mimeapps.list".force = lib.mkIf pkgs.stdenv.isLinux true;'
+  assert_contains "$config" 'xdg.dataFile."applications/mimeapps.list".force = lib.mkIf pkgs.stdenv.isLinux true;'
+}
+
+test_home_manager_installs_screenshot_tools() {
+  local home_config hypr_config
+  home_config="$(<"$REPO_DIR/config/home.nix")"
+  hypr_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+
+  assert_contains "$home_config" "grim"
+  assert_contains "$home_config" "slurp"
+  assert_contains "$hypr_config" 'hl.bind("Print"'
+  assert_contains "$hypr_config" 'hl.bind("SHIFT + Print"'
+  assert_contains "$hypr_config" 'hl.bind("CTRL + Print"'
+}
+
 test_home_manager_enables_mako() {
   local config
   config="$(<"$REPO_DIR/config/home.nix")"
@@ -265,6 +288,15 @@ test_home_manager_enables_mako() {
   assert_contains "$config" "services.mako = lib.mkIf pkgs.stdenv.isLinux"
   assert_contains "$config" 'output = "DP-3";'
   assert_contains "$config" 'default-timeout = 5000;'
+}
+
+test_home_manager_declares_default_user_dirs() {
+  local config
+  config="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$config" 'documents = "${homeDir}/Documents";'
+  assert_contains "$config" 'download = "${homeDir}/Downloads";'
+  assert_contains "$config" "desktop = null;"
 }
 
 test_home_manager_enables_hyprpolkitagent() {
@@ -279,6 +311,13 @@ test_home_manager_forces_jj_config_takeover() {
   config="$(<"$REPO_DIR/config/home.nix")"
 
   assert_contains "$config" '"${homeDir}/.config/jj/config.toml".force = true;'
+}
+
+test_nixos_enables_gnome_keyring() {
+  local config
+  config="$(<"$REPO_DIR/config/nixos/configuration.nix")"
+
+  assert_contains "$config" "services.gnome.gnome-keyring.enable = true;"
 }
 
 test_nixos_configures_nvidia_driver() {

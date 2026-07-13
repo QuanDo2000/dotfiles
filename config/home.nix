@@ -80,6 +80,8 @@ let
     openssh
   ];
   linuxDesktopPackages = with pkgs; [
+    grim
+    slurp
     wl-clipboard
     waybar
     ghostty
@@ -133,6 +135,42 @@ in
   gtk = lib.mkIf pkgs.stdenv.isLinux {
     enable = true;
     gtk3.extraConfig.gtk-tooltip-timeout = 200;
+  };
+
+  xdg.configFile."mimeapps.list".force = lib.mkIf pkgs.stdenv.isLinux true;
+  xdg.dataFile."applications/mimeapps.list".force = lib.mkIf pkgs.stdenv.isLinux true;
+
+  xdg.mimeApps = lib.mkIf pkgs.stdenv.isLinux {
+    enable = true;
+    defaultApplications = {
+      "inode/directory" = [ "thunar.desktop" ];
+      "x-scheme-handler/http" = [ "google-chrome.desktop" ];
+      "x-scheme-handler/https" = [ "google-chrome.desktop" ];
+      "text/html" = [ "google-chrome.desktop" ];
+      "application/zip" = [ "xarchiver.desktop" ];
+      "application/x-7z-compressed" = [ "xarchiver.desktop" ];
+      "application/vnd.rar" = [ "xarchiver.desktop" ];
+      "application/x-rar" = [ "xarchiver.desktop" ];
+      "application/x-tar" = [ "xarchiver.desktop" ];
+      "application/gzip" = [ "xarchiver.desktop" ];
+      "application/x-bzip2" = [ "xarchiver.desktop" ];
+      "application/x-xz" = [ "xarchiver.desktop" ];
+      "application/zstd" = [ "xarchiver.desktop" ];
+    };
+  };
+
+  xdg.userDirs = lib.mkIf pkgs.stdenv.isLinux {
+    enable = true;
+    setSessionVariables = false;
+    documents = "${homeDir}/Documents";
+    download = "${homeDir}/Downloads";
+    desktop = null;
+    music = null;
+    pictures = null;
+    projects = null;
+    publicShare = null;
+    templates = null;
+    videos = null;
   };
 
   programs.hyprlock.enable = pkgs.stdenv.isLinux;
@@ -417,14 +455,6 @@ in
     fi
     chmod u+w "$target"
   '';
-
-  xdg.userDirs = {
-    enable = true;
-    createDirectories = true;
-    setSessionVariables = true;
-    documents = "${homeDir}/Documents";
-    download = "${homeDir}/Downloads";
-  };
 
   xdg.configFile."nvim/init.lua".force = true;
   xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;

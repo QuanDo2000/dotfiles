@@ -55,7 +55,8 @@ window#waybar {
 #privacy,
 #pulseaudio,
 #idle_inhibitor,
-#network {
+#network,
+#custom-power {
   padding: 0 12px;
 }
 
@@ -74,7 +75,8 @@ window#waybar {
 
 #pulseaudio:hover,
 #idle_inhibitor:hover,
-#network:hover {
+#network:hover,
+#custom-power:hover {
   background: rgba(205, 214, 244, 0.10);
 }
 
@@ -87,4 +89,26 @@ tooltip {
 tooltip label {
   padding: 6px;
   color: #cdd6f4;
+}
+
+menu {
+  padding: 4px;
+  border: 1px solid rgba(137, 180, 250, 0.35);
+  border-radius: 0;
+  color: #cdd6f4;
+  background: #11111b;
+}
+
+menuitem {
+  padding: 8px 14px;
+}
+
+menuitem:hover {
+  background: rgba(205, 214, 244, 0.10);
+}
+
+menu separator {
+  min-height: 1px;
+  margin: 4px 0;
+  background: rgba(137, 180, 250, 0.25);
 }

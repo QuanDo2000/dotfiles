@@ -17,7 +17,8 @@
     "privacy",
     "pulseaudio",
     "idle_inhibitor",
-    "network"
+    "network",
+    "custom/power"
   ],
 
   "hyprland/workspaces": {
@@ -91,6 +92,19 @@
     "format-icons": {
       "activated": "󰅶",
       "deactivated": "󰾪"
+    }
+  },
+
+  "custom/power": {
+    "format": "󰐥",
+    "tooltip-format": "Power menu",
+    "menu": "on-click",
+    "menu-file": "$HOME/dotfiles/config/unix/config/waybar/power-menu.xml",
+    "menu-actions": {
+      "lock": "loginctl lock-session",
+      "suspend": "systemctl suspend",
+      "reboot": "systemctl reboot",
+      "poweroff": "systemctl poweroff"
     }
   },
 
