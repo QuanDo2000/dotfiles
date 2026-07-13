@@ -281,6 +281,17 @@ test_home_manager_installs_screenshot_tools() {
   assert_contains "$hypr_config" 'hl.bind("CTRL + Print"'
 }
 
+test_home_manager_enables_fuzzel() {
+  local home_config hypr_config
+  home_config="$(<"$REPO_DIR/config/home.nix")"
+  hypr_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+
+  assert_contains "$home_config" "programs.fuzzel = lib.mkIf pkgs.stdenv.isLinux"
+  assert_contains "$home_config" 'terminal = "ghostty";'
+  assert_contains "$hypr_config" 'mainMod .. " + Space"'
+  assert_contains "$hypr_config" 'hl.dsp.exec_cmd("fuzzel")'
+}
+
 test_home_manager_enables_mako() {
   local config
   config="$(<"$REPO_DIR/config/home.nix")"

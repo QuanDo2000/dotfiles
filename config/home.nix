@@ -173,6 +173,32 @@ in
     videos = null;
   };
 
+  programs.fuzzel = lib.mkIf pkgs.stdenv.isLinux {
+    enable = true;
+    settings = {
+      main = {
+        terminal = "ghostty";
+        layer = "overlay";
+        width = 40;
+        lines = 10;
+        font = "FiraCode Nerd Font:size=14";
+      };
+      colors = {
+        background = "11111be6";
+        text = "cdd6f4ff";
+        match = "89b4faff";
+        selection = "313244ff";
+        selection-text = "cdd6f4ff";
+        selection-match = "89b4faff";
+        border = "89b4faff";
+      };
+      border = {
+        width = 1;
+        radius = 0;
+      };
+    };
+  };
+
   programs.hyprlock.enable = pkgs.stdenv.isLinux;
   services.hypridle.enable = pkgs.stdenv.isLinux;
   services.hyprpolkitagent.enable = pkgs.stdenv.isLinux;
