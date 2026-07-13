@@ -396,6 +396,15 @@ in
 
   xdg.configFile."fcitx5" = linuxConfig ./unix/config/fcitx5;
 
+  xdg.configFile."uwsm/env-hyprland" = lib.mkIf pkgs.stdenv.isLinux {
+    text = ''
+      export XCURSOR_SIZE=48
+      export HYPRCURSOR_SIZE=48
+      export QT_IM_MODULE=fcitx
+      export XMODIFIERS=@im=fcitx
+    '';
+  };
+
   xdg.configFile."ghostty/config" = forceSource ./unix/config/ghostty/config;
 
   xdg.configFile."hypr" = linuxConfig ./unix/config/hypr;

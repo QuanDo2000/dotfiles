@@ -42,21 +42,10 @@ local mainMod     = "SUPER"
 -------------------
 
 hl.on("hyprland.start", function()
-    hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
     hl.exec_cmd("bash $HOME/dotfiles/scripts/reload-waybar.sh")
-    hl.exec_cmd("systemctl --user start hyprpolkitagent")
     hl.exec_cmd("fcitx5 -d")
     hl.exec_cmd("[workspace 1] " .. terminal .. " +new-window")
 end)
-
--------------------------------
----- ENVIRONMENT VARIABLES ----
--------------------------------
-
-hl.env("XCURSOR_SIZE", "48")
-hl.env("HYPRCURSOR_SIZE", "48")
-hl.env("QT_IM_MODULE", "fcitx")
-hl.env("XMODIFIERS", "@im=fcitx")
 
 -----------------------
 ---- LOOK AND FEEL ----

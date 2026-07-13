@@ -265,6 +265,28 @@ test_home_manager_forces_jj_config_takeover() {
   assert_contains "$config" '"${homeDir}/.config/jj/config.toml".force = true;'
 }
 
+test_nixos_configures_nvidia_driver() {
+  local config
+  config="$(<"$REPO_DIR/config/nixos/configuration.nix")"
+
+  assert_contains "$config" 'services.xserver.videoDrivers = [ "nvidia" ];'
+  assert_contains "$config" "modesetting.enable = true;"
+  assert_contains "$config" "powerManagement.enable = true;"
+  assert_contains "$config" "open = true;"
+  assert_contains "$config" "nvidiaPackages.stable"
+}
+
+test_nixos_uses_uwsm_session() {
+  local nix_config hypr_config
+  nix_config="$(<"$REPO_DIR/config/nixos/configuration.nix")"
+  hypr_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+
+  assert_contains "$nix_config" "withUWSM = true;"
+  assert_contains "$nix_config" 'uwsm start -e -D Hyprland hyprland.desktop'
+  assert_not_contains "$hypr_config" "dbus-update-activation-environment"
+  assert_not_contains "$hypr_config" "hl.env("
+}
+
 test_install_nixos_uses_flake_switch() {
   local calls="$TEST_TMPDIR/sudo.log"
   sudo() { printf '%s\n' "$*" >> "$calls"; }
