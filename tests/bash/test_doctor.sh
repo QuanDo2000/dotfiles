@@ -242,7 +242,7 @@ test_doctor_retries_nix_eval_with_temp_cache_after_fetcher_cache_failure() {
   export -f nix
 
   local output
-  output=$(OS_RELEASE="$os_release" doctor 2>&1)
+  output=$(unset XDG_CACHE_HOME; OS_RELEASE="$os_release" doctor 2>&1)
 
   assert_contains "$output" "All checks passed"
   assert_contains "$(tail -n 1 "$calls")" "dotfile-nix-cache."

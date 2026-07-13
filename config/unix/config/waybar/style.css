@@ -53,6 +53,7 @@ window#waybar {
 }
 
 #privacy,
+#mpris,
 #pulseaudio,
 #idle_inhibitor,
 #network,
@@ -60,6 +61,11 @@ window#waybar {
   padding: 0 12px;
 }
 
+#mpris.playing {
+  color: #89dceb;
+}
+
+#mpris.paused,
 #pulseaudio.muted {
   color: #6c7086;
 }
@@ -73,6 +79,7 @@ window#waybar {
   color: #f9e2af;
 }
 
+#mpris:hover,
 #pulseaudio:hover,
 #idle_inhibitor:hover,
 #network:hover,

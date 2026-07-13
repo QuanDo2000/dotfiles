@@ -61,7 +61,6 @@ hl.config({
             active_border = { colors = { "rgba(33ccffee)", "rgba(00ff99ee)" }, angle = 45 },
             inactive_border = "rgba(595959aa)",
         },
-        allow_tearing = true,
         layout = "dwindle",
     },
 
@@ -92,12 +91,6 @@ hl.config({
 ---------------
 ---- INPUT ----
 ---------------
-
-hl.gesture({
-    fingers = 3,
-    direction = "horizontal",
-    action = "workspace",
-})
 
 hl.device({
     name = "logitech-g502-1",
@@ -173,6 +166,9 @@ bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUD
 bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), "Volume down", { locked = true, repeating = true })
 bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), "Mute audio", { locked = true, repeating = true })
 bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), "Mute microphone", { locked = true, repeating = true })
+bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), "Play or pause media", { locked = true })
+bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), "Previous track", { locked = true })
+bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), "Next track", { locked = true })
 
 bind("Print", hl.dsp.exec_cmd([[grim -g "$(slurp)" - | wl-copy]]), "Copy region screenshot")
 bind("SHIFT + Print", hl.dsp.exec_cmd([[grim -g "$(slurp)" "$HOME/Downloads/screenshot-$(date +%F-%H%M%S).png"]]), "Save region screenshot")

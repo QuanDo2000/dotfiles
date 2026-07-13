@@ -15,6 +15,7 @@
   ],
   "modules-right": [
     "privacy",
+    "mpris",
     "pulseaudio",
     "idle_inhibitor",
     "network",
@@ -71,6 +72,22 @@
       { "type": "screenshare" },
       { "type": "audio-in" }
     ]
+  },
+
+  "mpris": {
+    "format": "{status_icon} {dynamic}",
+    "format-paused": "{status_icon}",
+    "format-stopped": "",
+    "dynamic-order": ["title", "artist"],
+    "dynamic-len": 40,
+    "title-len": 28,
+    "artist-len": 18,
+    "tooltip-format": "{title}\n{artist} — {album}",
+    "status-icons": {
+      "playing": "󰐊",
+      "paused": "󰏤",
+      "stopped": "󰓛"
+    }
   },
 
   "pulseaudio": {

@@ -88,6 +88,7 @@ let
     google-chrome
     obsidian
     obsidian-headless
+    playerctl
   ];
 in
 {

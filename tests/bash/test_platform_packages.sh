@@ -303,6 +303,26 @@ test_hyprland_uses_uwsm_application_lifecycle() {
   assert_not_contains "$config" "hl.dsp.exit()"
 }
 
+test_hyprland_adds_media_controls() {
+  local home_config hypr_config
+  home_config="$(<"$REPO_DIR/config/home.nix")"
+  hypr_config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+
+  assert_contains "$home_config" "playerctl"
+  assert_contains "$hypr_config" 'bind("XF86AudioPlay"'
+  assert_contains "$hypr_config" 'bind("XF86AudioPrev"'
+  assert_contains "$hypr_config" 'bind("XF86AudioNext"'
+  assert_contains "$hypr_config" 'playerctl play-pause'
+}
+
+test_hyprland_removes_unused_input_and_tearing_config() {
+  local config
+  config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
+
+  assert_not_contains "$config" "allow_tearing"
+  assert_not_contains "$config" "hl.gesture"
+}
+
 test_hyprland_adds_window_management_keybinds() {
   local config
   config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
@@ -327,7 +347,20 @@ test_hyprland_exposes_keybind_list() {
   assert_contains "$script" 'fuzzel --dmenu'
 }
 
-test_hyprland_configures_actual_mouse() {  local config
+test_waybar_shows_media_status() {
+  local config style
+  config="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
+  style="$(<"$REPO_DIR/config/unix/config/waybar/style.css")"
+
+  assert_contains "$config" '"mpris"'
+  assert_contains "$config" '"format": "{status_icon} {dynamic}"'
+  assert_contains "$config" '"format-paused": "{status_icon}"'
+  assert_contains "$config" '"playing": "󰐊"'
+  assert_contains "$style" "#mpris"
+}
+
+test_hyprland_configures_actual_mouse() {
+  local config
   config="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
 
   assert_contains "$config" 'name = "logitech-g502-1"'
@@ -427,8 +460,9 @@ test_update_nixos_reloads_running_hyprland() {
   local calls="$TEST_TMPDIR/hyprctl.log"
   sudo() { :; }
   hyprctl() { printf '%s\n' "$*" >> "$calls"; }
+  local HYPRLAND_INSTANCE_SIGNATURE=test
 
-  HYPRLAND_INSTANCE_SIGNATURE=test update_nixos >/dev/null 2>&1
+  update_nixos >/dev/null 2>&1
 
   assert_equals "reload" "$(<"$calls")"
   unset -f sudo hyprctl
