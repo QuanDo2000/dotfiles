@@ -118,6 +118,7 @@ bind(mainMod .. " + M", hl.dsp.exec_cmd(app .. terminal .. " -e " .. musicPlayer
 bind(mainMod .. " + A", hl.dsp.exec_cmd(app .. anki), "Open Anki")
 bind(mainMod .. " + N", hl.dsp.exec_cmd(app .. "obsidian"), "Open Obsidian")
 bind(mainMod .. " + Space", hl.dsp.exec_cmd(app .. "fuzzel"), "Open app launcher")
+bind(mainMod .. " + CTRL + Space", hl.dsp.exec_cmd(app .. "rofi-rbw"), "Open password vault")
 bind(mainMod .. " + F1", hl.dsp.exec_cmd("bash $HOME/dotfiles/scripts/show-keybinds.sh"), "Show keybinds")
 
 bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }), "Toggle fullscreen")

@@ -81,8 +81,12 @@ let
   ];
   linuxDesktopPackages = with pkgs; [
     grim
+    pinentry-gnome3
+    rbw
+    rofi-rbw
     slurp
     wl-clipboard
+    wtype
     waybar
     ghostty
     google-chrome
@@ -132,6 +136,18 @@ in
   };
 
   programs.home-manager.enable = true;
+
+  xdg.configFile."rofi-rbw.rc".text = lib.mkIf pkgs.stdenv.isLinux ''
+    selector=fuzzel
+    clipboarder=wl-copy
+    typer=wtype
+    prompt=
+    selector-args=--placeholder "Search vault…" --inner-pad 8
+    action=copy
+    target=password
+    clear-after=30
+    no-cache=true
+  '';
 
   gtk = lib.mkIf pkgs.stdenv.isLinux {
     enable = true;
