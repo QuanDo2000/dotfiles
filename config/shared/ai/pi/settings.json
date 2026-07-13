@@ -12,7 +12,8 @@
     "npm:pi-mcp-extension@1.5.0",
     "npm:@dietrichgebert/ponytail@4.8.4",
     "npm:pi-hermes-memory@0.7.23",
-    "npm:@ff-labs/pi-fff@0.9.6"
+    "npm:@ff-labs/pi-fff@0.9.6",
+    "npm:pi-web-access"
   ],
   "lastChangelogVersion": "0.80.6",
   "theme": "dark",
