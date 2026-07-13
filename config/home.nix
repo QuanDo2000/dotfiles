@@ -137,6 +137,35 @@ in
 
   programs.hyprlock.enable = pkgs.stdenv.isLinux;
   services.hypridle.enable = pkgs.stdenv.isLinux;
+  services.hyprpolkitagent.enable = pkgs.stdenv.isLinux;
+
+  services.mako = lib.mkIf pkgs.stdenv.isLinux {
+    enable = true;
+    settings = {
+      output = "DP-3";
+      anchor = "top-right";
+      outer-margin = "45,10,10";
+      margin = 5;
+      padding = 12;
+      width = 360;
+      max-visible = 3;
+      default-timeout = 5000;
+      font = "FiraCode Nerd Font 14";
+      background-color = "#11111be6";
+      text-color = "#cdd6f4";
+      border-color = "#89b4fa";
+      border-size = 1;
+      border-radius = 0;
+      icons = true;
+      max-icon-size = 48;
+      actions = true;
+      markup = true;
+      "urgency=high" = {
+        border-color = "#f38ba8";
+        default-timeout = 0;
+      };
+    };
+  };
 
   programs.gpg.enable = true;
 

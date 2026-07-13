@@ -258,6 +258,22 @@ test_nixos_flake_target_fails_when_hostname_missing() {
   unset -f nix
 }
 
+test_home_manager_enables_mako() {
+  local config
+  config="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$config" "services.mako = lib.mkIf pkgs.stdenv.isLinux"
+  assert_contains "$config" 'output = "DP-3";'
+  assert_contains "$config" 'default-timeout = 5000;'
+}
+
+test_home_manager_enables_hyprpolkitagent() {
+  local config
+  config="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$config" "services.hyprpolkitagent.enable = pkgs.stdenv.isLinux;"
+}
+
 test_home_manager_forces_jj_config_takeover() {
   local config
   config="$(<"$REPO_DIR/config/home.nix")"
