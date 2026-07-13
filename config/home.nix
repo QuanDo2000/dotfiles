@@ -209,6 +209,11 @@ in
   systemd.user.services.hyprsunset.Unit.X-Restart-Triggers =
     lib.mkIf pkgs.stdenv.isLinux [ "${./unix/config/hypr/hyprsunset.conf}" ];
 
+  services.wl-clip-persist = lib.mkIf pkgs.stdenv.isLinux {
+    enable = true;
+    clipboardType = "regular";
+  };
+
   services.mako = lib.mkIf pkgs.stdenv.isLinux {
     enable = true;
     settings = {

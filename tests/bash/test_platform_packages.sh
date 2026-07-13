@@ -398,6 +398,14 @@ test_home_manager_enables_hyprsunset() {
   assert_contains "$sunset_config" "temperature = 4500"
 }
 
+test_home_manager_enables_clipboard_persistence() {
+  local config
+  config="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$config" "services.wl-clip-persist = lib.mkIf pkgs.stdenv.isLinux"
+  assert_contains "$config" 'clipboardType = "regular";'
+}
+
 test_home_manager_enables_mako() {
   local config
   config="$(<"$REPO_DIR/config/home.nix")"
