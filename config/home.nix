@@ -80,6 +80,7 @@ let
     openssh
   ];
   linuxDesktopPackages = with pkgs; [
+    anki
     grim
     pinentry-gnome3
     rbw

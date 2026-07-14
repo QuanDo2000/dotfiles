@@ -299,6 +299,11 @@ test_home_manager_installs_bitwarden_picker() {
   assert_contains "$hypr_config" 'app .. "rofi-rbw"'
 }
 
+test_home_manager_installs_anki() {
+  assert_contains "$HOME_CONFIG" "anki"
+  assert_contains "$HYPR_CONFIG" 'hl.dsp.exec_cmd(app .. anki)'
+}
+
 test_home_manager_installs_pinned_webcord_release() {
   local package="$REPO_DIR/packages/webcord-release.nix" flake
   flake="$(<"$REPO_DIR/flake.nix")"
