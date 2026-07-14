@@ -93,6 +93,7 @@ let
     obsidian
     obsidian-headless
     playerctl
+    webcord
   ];
 in
 {

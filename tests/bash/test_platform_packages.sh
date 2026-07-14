@@ -299,6 +299,10 @@ test_home_manager_installs_bitwarden_picker() {
   assert_contains "$hypr_config" 'app .. "rofi-rbw"'
 }
 
+test_home_manager_installs_webcord() {
+  assert_contains "$HOME_CONFIG" "webcord"
+}
+
 test_home_manager_installs_screenshot_tools() {
   local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
 
