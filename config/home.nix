@@ -92,6 +92,7 @@ let
     google-chrome
     obsidian
     obsidian-headless
+    pavucontrol
     playerctl
     webcord
   ];

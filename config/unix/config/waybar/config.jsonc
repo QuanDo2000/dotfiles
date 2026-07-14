@@ -108,13 +108,13 @@
   "pulseaudio": {
     "format": "{icon}",
     "format-muted": "󰝟",
-    "tooltip-format": "Volume: {volume}%",
+    "tooltip-format": "Volume: {volume}%\nOutput: {desc}",
     "format-icons": {
       "default": ["󰕿", "󰖀", "󰕾"]
     },
     "max-volume": 100,
     "scroll-step": 5,
-    "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+    "on-click": "pavucontrol"
   },
 
   "idle_inhibitor": {

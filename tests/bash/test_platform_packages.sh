@@ -449,6 +449,15 @@ test_waybar_power_menu_logs_out_gracefully() {
   assert_contains "$WAYBAR_CONFIG" '"logout": "uwsm app -- hyprshutdown"'
 }
 
+test_waybar_audio_tooltip_shows_selected_output() {
+  assert_contains "$WAYBAR_CONFIG" '"tooltip-format": "Volume: {volume}%\nOutput: {desc}"'
+}
+
+test_waybar_audio_click_opens_mixer() {
+  assert_contains "$HOME_CONFIG" "pavucontrol"
+  assert_contains "$WAYBAR_CONFIG" '"on-click": "pavucontrol"'
+}
+
 test_waybar_shows_media_status() {
   local config="$WAYBAR_CONFIG" style="$WAYBAR_STYLE"
 
