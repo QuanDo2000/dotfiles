@@ -47,32 +47,27 @@ test_sync_fff_nvim_runs_headless_lazy_sync() {
   DRY=false
   nvim() {
     printf '%s\n' "$*" >> "$calls"
-    mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim"
-  }
-  nix() {
-    mkdir -p target/release
-    touch target/release/libfff_nvim.so
+    mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim/target/release"
+    touch "$HOME/.local/share/nvim/lazy/fff.nvim/target/release/libfff_nvim.so"
   }
 
   _sync_fff_nvim
 
   assert_contains "$(<"$calls")" '--headless +Lazy! sync fff.nvim +qa'
-  unset -f nvim nix
+  unset -f nvim
 }
 
-test_sync_fff_nvim_builds_backend_with_nix() {
-  local calls="$TEST_TMPDIR/nix.log"
+test_sync_fff_nvim_does_not_compile_backend() {
   DRY=false
-  nvim() { mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim"; }
-  nix() {
-    printf '%s %s\n' "$PWD" "$*" >> "$calls"
-    mkdir -p target/release
-    touch target/release/libfff_nvim.so
+  nvim() {
+    mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim/target/release"
+    touch "$HOME/.local/share/nvim/lazy/fff.nvim/target/release/libfff_nvim.so"
   }
+  nix() { printf 'nix should not run\n'; return 1; }
 
   _sync_fff_nvim
 
-  assert_contains "$(<"$calls")" "$HOME/.local/share/nvim/lazy/fff.nvim run .#release"
+  assert_equals "" "$FFF_NVIM_WARNING"
   unset -f nvim nix
 }
 
@@ -103,12 +98,13 @@ test_fff_nvim_is_disabled_on_windows() {
   assert_contains "$config" "return {}"
 }
 
-test_fff_nvim_build_is_owned_by_dotfile() {
+test_fff_nvim_downloads_prebuilt_backend() {
   local config
   config="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
 
   assert_contains "$config" '"dmtrKovalenko/fff.nvim"'
-  assert_not_contains "$config" "build ="
+  assert_contains "$config" "download_or_build_binary"
+  assert_not_contains "$config" 'nix run .#release'
 }
 
 test_home_manager_lazyvim_guard_uses_runnable_ps() {

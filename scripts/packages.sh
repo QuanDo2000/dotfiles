@@ -230,23 +230,15 @@ function set_zsh_default {
 }
 
 function _nixos_rebuild_switch {
-  local upgrade="${1:-false}"
   local target
   target="$(_nixos_flake_target)"
-  local args=(switch)
-  local fail_message="nixos-rebuild switch failed"
-
-  if [[ "$upgrade" == "true" ]]; then
-    args+=(--upgrade)
-    fail_message="nixos-rebuild switch --upgrade failed"
-  fi
 
   if [[ "$DRY" == "true" ]]; then
-    _dry_run_nix_managed_switch sudo nixos-rebuild "${args[@]}" --flake "$target"
+    _dry_run_nix_managed_switch sudo nixos-rebuild switch --flake "$target"
     return
   fi
 
-  _run_nix_managed_switch "$fail_message" sudo nixos-rebuild "${args[@]}" --flake "$target"
+  _run_nix_managed_switch "nixos-rebuild switch failed" sudo nixos-rebuild switch --flake "$target"
 
   if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
     hyprctl reload >/dev/null
@@ -262,11 +254,16 @@ function install_nixos {
   success "Finished install for NixOS"
 }
 
-# Update NixOS by rebuilding this repo's flake with channel upgrade.
+# Update the pinned flake inputs, then rebuild NixOS from them.
 # Usage: update_nixos
 function update_nixos {
   info "Updating packages for NixOS..."
-  _nixos_rebuild_switch true
+  if [[ "$DRY" == "true" ]]; then
+    _dry_run_nix_managed_switch nix flake update --flake "$DOTFILES_DIR"
+  else
+    _run_nix_managed_switch "nix flake update failed" nix flake update --flake "$DOTFILES_DIR"
+  fi
+  _nixos_rebuild_switch
   success "Finished update for NixOS"
 }
 
@@ -288,12 +285,8 @@ function _sync_fff_nvim {
     FFF_NVIM_WARNING="Lazy sync did not install $plugin"
     return
   fi
-  if ! output="$(cd "$plugin" && nix run .#release 2>&1)"; then
-    FFF_NVIM_WARNING="Nix backend build failed:\n$output"
-    return
-  fi
   if [ ! -f "$release/libfff_nvim.so" ] && [ ! -f "$release/fff_nvim.so" ] && [ ! -f "$release/libfff_nvim.dylib" ]; then
-    FFF_NVIM_WARNING="Nix build completed without an fff.nvim backend in $release"
+    FFF_NVIM_WARNING="Lazy sync completed without an fff.nvim backend in $release"
   fi
 }
 

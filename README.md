@@ -157,8 +157,12 @@ After provisioning, use `dotfile update` as the normal Nix-managed update
 command. On NixOS it wraps:
 
 ```bash
-sudo nixos-rebuild switch --upgrade --flake ~/dotfiles#${hostName}
+nix flake update --flake ~/dotfiles
+sudo nixos-rebuild switch --flake ~/dotfiles#${hostName}
 ```
+
+The first command updates the tracked `flake.lock`; commit that file after a
+successful update to preserve the working package versions.
 
 On macOS it uses existing `darwin-rebuild` when available:
 

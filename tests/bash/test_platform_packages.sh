@@ -230,7 +230,9 @@ test_update_nixos_dry_run() {
   output=$(update_nixos 2>&1)
 
   assert_contains "$output" "NixOS"
-  assert_contains "$output" "sudo nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#testhost"
+  assert_contains "$output" "nix flake update --flake $DOTFILES_DIR"
+  assert_contains "$output" "sudo nixos-rebuild switch --flake $DOTFILES_DIR#testhost"
+  assert_not_contains "$output" "--upgrade"
 }
 
 test_nixos_flake_target_reads_host_config_when_nix_is_missing() {
@@ -521,22 +523,27 @@ test_install_nixos_uses_flake_switch() {
   unset -f sudo
 }
 
-test_update_nixos_uses_flake_switch_upgrade() {
-  local calls="$TEST_TMPDIR/sudo.log"
-  sudo() { printf '%s\n' "$*" >> "$calls"; }
+test_update_nixos_updates_flake_then_switches() {
+  local calls="$TEST_TMPDIR/update.log"
+  host_config_value() { printf 'testhost\n'; }
+  nix() { printf 'nix %s\n' "$*" >> "$calls"; }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
 
   update_nixos >/dev/null 2>&1
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "nixos-rebuild switch --upgrade --flake $DOTFILES_DIR#testhost"
+  assert_contains "$output" "nix flake update --flake $DOTFILES_DIR"
+  assert_contains "$output" "sudo nixos-rebuild switch --flake $DOTFILES_DIR#testhost"
+  assert_not_contains "$output" "--upgrade"
   assert_not_contains "$output" "--impure"
 
-  unset -f sudo
+  unset -f host_config_value nix sudo
 }
 
 test_update_nixos_reloads_running_hyprland() {
   local calls="$TEST_TMPDIR/hyprctl.log"
+  nix() { :; }
   sudo() { :; }
   hyprctl() { printf '%s\n' "$*" >> "$calls"; }
   local HYPRLAND_INSTANCE_SIGNATURE=test
@@ -544,7 +551,7 @@ test_update_nixos_reloads_running_hyprland() {
   update_nixos >/dev/null 2>&1
 
   assert_equals "reload" "$(<"$calls")"
-  unset -f sudo hyprctl
+  unset -f nix sudo hyprctl
 }
 
 test_install_packages_dispatches_nixos() {
