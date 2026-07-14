@@ -53,6 +53,7 @@ window#waybar {
 }
 
 #privacy,
+#custom-input-method,
 #custom-hyprsunset,
 #mpris,
 #pulseaudio,
@@ -89,6 +90,7 @@ window#waybar {
   color: #f9e2af;
 }
 
+#custom-input-method:hover,
 #custom-hyprsunset:hover,
 #mpris:hover,
 #pulseaudio:hover,

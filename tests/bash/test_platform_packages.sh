@@ -10,6 +10,7 @@ WAYBAR_CONFIG="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
 WAYBAR_STYLE="$(<"$REPO_DIR/config/unix/config/waybar/style.css")"
 SUNSET_CONFIG="$(<"$REPO_DIR/config/unix/config/hypr/hyprsunset.conf")"
 SUNSET_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
+INPUT_METHOD_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/input-method-status.sh")"
 
 test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
@@ -380,6 +381,39 @@ test_waybar_shows_hyprsunset_status() {
   assert_not_contains "$(jq -r .text <<<"$night")" ":"
   assert_contains "$(jq -r .tooltip <<<"$day")" "20:00"
   assert_contains "$(jq -r .tooltip <<<"$night")" "07:00"
+}
+
+test_waybar_shows_input_method() {
+  local config="$WAYBAR_CONFIG" style="$WAYBAR_STYLE" status_script="$INPUT_METHOD_STATUS_SCRIPT" english vietnamese chinese
+
+  assert_contains "$config" '"custom/input-method"'
+  assert_contains "$config" 'scripts/input-method-status.sh'
+  assert_contains "$config" '"on-click": "$HOME/dotfiles/scripts/input-method-status.sh --next"'
+  assert_contains "$style" "#custom-input-method"
+
+  english="$("$REPO_DIR/scripts/input-method-status.sh" keyboard-us)"
+  vietnamese="$("$REPO_DIR/scripts/input-method-status.sh" unikey)"
+  chinese="$("$REPO_DIR/scripts/input-method-status.sh" pinyin)"
+  assert_contains "$(jq -r .text <<<"$english")" "EN"
+  assert_contains "$(jq -r .tooltip <<<"$english")" "English"
+  assert_contains "$(jq -r .text <<<"$vietnamese")" "VI"
+  assert_contains "$(jq -r .tooltip <<<"$vietnamese")" "Vietnamese"
+  assert_contains "$(jq -r .text <<<"$chinese")" "中"
+  assert_contains "$(jq -r .tooltip <<<"$chinese")" "Chinese"
+
+  mkdir -p "$TEST_TMPDIR/bin"
+  cat > "$TEST_TMPDIR/bin/fcitx5-remote" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-n" ]]; then
+  printf '%s\n' "$FCITX_CURRENT"
+elif [[ "$1" == "-s" ]]; then
+  printf '%s\n' "$2" > "$FCITX_SWITCH_LOG"
+fi
+EOF
+  chmod +x "$TEST_TMPDIR/bin/fcitx5-remote"
+  PATH="$TEST_TMPDIR/bin:$PATH" FCITX_CURRENT=unikey FCITX_SWITCH_LOG="$TEST_TMPDIR/switch" \
+    "$REPO_DIR/scripts/input-method-status.sh" --next
+  assert_equals "pinyin" "$(<"$TEST_TMPDIR/switch")"
 }
 
 test_waybar_shows_media_status() {

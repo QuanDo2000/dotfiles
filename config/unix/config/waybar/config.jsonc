@@ -15,6 +15,7 @@
   ],
   "modules-right": [
     "privacy",
+    "custom/input-method",
     "custom/hyprsunset",
     "mpris",
     "pulseaudio",
@@ -73,6 +74,13 @@
       { "type": "screenshare" },
       { "type": "audio-in" }
     ]
+  },
+
+  "custom/input-method": {
+    "exec": "$HOME/dotfiles/scripts/input-method-status.sh",
+    "return-type": "json",
+    "interval": 1,
+    "on-click": "$HOME/dotfiles/scripts/input-method-status.sh --next"
   },
 
   "custom/hyprsunset": {
