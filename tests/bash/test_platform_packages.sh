@@ -299,8 +299,16 @@ test_home_manager_installs_bitwarden_picker() {
   assert_contains "$hypr_config" 'app .. "rofi-rbw"'
 }
 
-test_home_manager_installs_webcord() {
+test_home_manager_installs_pinned_webcord_release() {
+  local package="$REPO_DIR/packages/webcord-release.nix" flake
+  flake="$(<"$REPO_DIR/flake.nix")"
+
   assert_contains "$HOME_CONFIG" "webcord"
+  assert_contains "$flake" 'webcord = final.callPackage ./packages/webcord-release.nix { };'
+  assert_file_exists "$package"
+  [[ -f "$package" ]] || return
+  assert_contains "$(<"$package")" 'version = "4.14.0";'
+  assert_contains "$(<"$package")" "appimageTools.wrapType2"
 }
 
 test_home_manager_installs_screenshot_tools() {

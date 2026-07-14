@@ -22,6 +22,7 @@
           fff-mcp = final.callPackage ./packages/fff-mcp.nix { };
           obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
           pi-agent = final.callPackage ./packages/pi-agent.nix { };
+          webcord = final.callPackage ./packages/webcord-release.nix { };
         })
       ];
       linuxPkgs = import nixpkgs {
