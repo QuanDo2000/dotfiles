@@ -135,9 +135,9 @@
     "menu-actions": {
       "lock": "loginctl lock-session",
       "suspend": "systemctl suspend",
-      "logout": "hyprshutdown",
-      "reboot": "hyprshutdown --post-cmd 'systemctl reboot'",
-      "poweroff": "hyprshutdown --post-cmd 'systemctl poweroff'"
+      "logout": "uwsm app -- hyprshutdown",
+      "reboot": "uwsm app -- hyprshutdown --post-cmd 'systemctl reboot'",
+      "poweroff": "uwsm app -- hyprshutdown --post-cmd 'systemctl poweroff'"
     }
   },
 

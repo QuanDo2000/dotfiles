@@ -331,10 +331,10 @@ test_hyprshutdown_gracefully_ends_power_actions() {
   assert_contains "$HOME_CONFIG" "hyprshutdown"
   assert_contains "$NIXOS_CONFIG" 'BackgroundModeEnabled = false;'
   assert_contains "$HYPR_CONFIG" 'hl.dsp.exec_cmd("hyprshutdown")'
-  assert_contains "$WAYBAR_CONFIG" '"logout": "hyprshutdown"'
-  assert_contains "$WAYBAR_CONFIG" '"reboot": "hyprshutdown --post-cmd'
+  assert_contains "$WAYBAR_CONFIG" '"logout": "uwsm app -- hyprshutdown"'
+  assert_contains "$WAYBAR_CONFIG" '"reboot": "uwsm app -- hyprshutdown --post-cmd'
   assert_contains "$WAYBAR_CONFIG" 'systemctl reboot'
-  assert_contains "$WAYBAR_CONFIG" '"poweroff": "hyprshutdown --post-cmd'
+  assert_contains "$WAYBAR_CONFIG" '"poweroff": "uwsm app -- hyprshutdown --post-cmd'
   assert_contains "$WAYBAR_CONFIG" 'systemctl poweroff'
   assert_not_contains "$WAYBAR_CONFIG" 'scripts/logout-session.sh'
 }
@@ -442,7 +442,7 @@ EOF
 test_waybar_power_menu_logs_out_gracefully() {
   assert_contains "$POWER_MENU" 'id="logout"'
   assert_contains "$POWER_MENU" '<property name="label">Log Out</property>'
-  assert_contains "$WAYBAR_CONFIG" '"logout": "hyprshutdown"'
+  assert_contains "$WAYBAR_CONFIG" '"logout": "uwsm app -- hyprshutdown"'
 }
 
 test_waybar_shows_media_status() {
