@@ -43,8 +43,6 @@ local mainMod     = "SUPER"
 -------------------
 
 hl.on("hyprland.start", function()
-    hl.exec_cmd("bash $HOME/dotfiles/scripts/reload-waybar.sh")
-    hl.exec_cmd("fcitx5 -d")
     hl.exec_cmd(app .. terminal .. " +new-window")
 end)
 
@@ -78,10 +76,6 @@ hl.config({
         disable_hyprland_logo = false,
     },
 
-    cursor = {
-        no_hardware_cursors = true,
-    },
-
     input = {
         kb_layout = "us",
         sensitivity = -0.5,
@@ -109,7 +103,7 @@ end
 
 bind(mainMod .. " + Return", hl.dsp.exec_cmd(app .. terminal .. " +new-window"), "Open terminal")
 bind(mainMod .. " + W", hl.dsp.window.close(), "Close window")
-bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("bash $HOME/dotfiles/scripts/logout-session.sh"), "Log out")
+bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("hyprshutdown"), "Log out")
 bind(mainMod .. " + CTRL + L", hl.dsp.exec_cmd("hyprlock"), "Lock screen")
 bind(mainMod .. " + E", hl.dsp.exec_cmd(app .. fileManager), "Open file manager")
 bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(app .. fileManager .. " /mnt/storage/"), "Open storage")
@@ -175,7 +169,7 @@ bind("Print", hl.dsp.exec_cmd([[grim -g "$(slurp)" - | wl-copy]]), "Copy region 
 bind("SHIFT + Print", hl.dsp.exec_cmd([[grim -g "$(slurp)" "$HOME/Downloads/screenshot-$(date +%F-%H%M%S).png"]]), "Save region screenshot")
 bind("CTRL + Print", hl.dsp.exec_cmd([[grim -o "$(hyprctl monitors -j | jq -r '.[] | select(.focused).name')" - | wl-copy]]), "Copy monitor screenshot")
 
-bind(mainMod .. " + R", hl.dsp.exec_cmd("bash $HOME/dotfiles/scripts/reload-waybar.sh"), "Reload Waybar")
+bind(mainMod .. " + R", hl.dsp.exec_cmd("systemctl --user restart waybar.service"), "Reload Waybar")
 
 --------------------------------
 ---- WINDOWS AND WORKSPACES ----

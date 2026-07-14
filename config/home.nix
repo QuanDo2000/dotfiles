@@ -87,7 +87,7 @@ let
     slurp
     wl-clipboard
     wtype
-    waybar
+    hyprshutdown
     ghostty
     google-chrome
     obsidian
@@ -215,6 +215,11 @@ in
         radius = 0;
       };
     };
+  };
+
+  programs.waybar = {
+    enable = pkgs.stdenv.isLinux;
+    systemd.enable = pkgs.stdenv.isLinux;
   };
 
   programs.hyprlock.enable = pkgs.stdenv.isLinux;

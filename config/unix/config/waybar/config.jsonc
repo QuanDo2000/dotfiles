@@ -135,9 +135,9 @@
     "menu-actions": {
       "lock": "loginctl lock-session",
       "suspend": "systemctl suspend",
-      "logout": "$HOME/dotfiles/scripts/logout-session.sh",
-      "reboot": "systemctl reboot",
-      "poweroff": "systemctl poweroff"
+      "logout": "hyprshutdown",
+      "reboot": "hyprshutdown --post-cmd 'systemctl reboot'",
+      "poweroff": "hyprshutdown --post-cmd 'systemctl poweroff'"
     }
   },
 
