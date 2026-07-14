@@ -452,6 +452,8 @@ test_waybar_shows_media_status() {
   assert_contains "$config" '"format": "{status_icon} {dynamic}"'
   assert_contains "$config" '"format-paused": "{status_icon}"'
   assert_contains "$config" '"playing": "󰐊"'
+  assert_contains "$style" "#mpris.stopped"
+  assert_contains "$style" "padding: 0;"
   assert_contains "$config" '"class<thunar>": ""'
   assert_not_contains "$config" "org.kde.dolphin"
   assert_contains "$style" "#mpris"

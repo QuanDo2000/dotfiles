@@ -76,6 +76,10 @@ window#waybar {
   color: #89dceb;
 }
 
+#mpris.stopped {
+  padding: 0;
+}
+
 #mpris.paused,
 #pulseaudio.muted {
   color: #6c7086;
