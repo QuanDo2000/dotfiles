@@ -12,6 +12,11 @@
       </object>
     </child>
     <child>
+      <object class="GtkMenuItem" id="logout">
+        <property name="label">Log Out</property>
+      </object>
+    </child>
+    <child>
       <object class="GtkSeparatorMenuItem"/>
     </child>
     <child>

@@ -8,6 +8,7 @@ HYPR_CONFIG="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
 NIXOS_CONFIG="$(<"$REPO_DIR/config/nixos/configuration.nix")"
 WAYBAR_CONFIG="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
 WAYBAR_STYLE="$(<"$REPO_DIR/config/unix/config/waybar/style.css")"
+POWER_MENU="$(<"$REPO_DIR/config/unix/config/waybar/power-menu.xml")"
 SUNSET_CONFIG="$(<"$REPO_DIR/config/unix/config/hypr/hyprsunset.conf")"
 SUNSET_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
 INPUT_METHOD_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/input-method-status.sh")"
@@ -416,6 +417,12 @@ EOF
   PATH="$TEST_TMPDIR/bin:$PATH" FCITX_CURRENT=unikey FCITX_SWITCH_LOG="$TEST_TMPDIR/switch" \
     "$REPO_DIR/scripts/input-method-status.sh" --next
   assert_equals "pinyin" "$(<"$TEST_TMPDIR/switch")"
+}
+
+test_waybar_power_menu_logs_out_of_uwsm() {
+  assert_contains "$POWER_MENU" 'id="logout"'
+  assert_contains "$POWER_MENU" '<property name="label">Log Out</property>'
+  assert_contains "$WAYBAR_CONFIG" '"logout": "uwsm stop"'
 }
 
 test_waybar_shows_media_status() {

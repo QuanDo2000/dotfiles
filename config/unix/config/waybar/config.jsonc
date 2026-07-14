@@ -135,6 +135,7 @@
     "menu-actions": {
       "lock": "loginctl lock-session",
       "suspend": "systemctl suspend",
+      "logout": "uwsm stop",
       "reboot": "systemctl reboot",
       "poweroff": "systemctl poweroff"
     }
