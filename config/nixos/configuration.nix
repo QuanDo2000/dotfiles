@@ -96,6 +96,8 @@ in
   services.tumbler.enable = true;
   services.udisks2.enable = true;
   environment.systemPackages = [ pkgs.xarchiver ];
+  environment.etc."opt/chrome/policies/managed/dotfiles.json".text =
+    builtins.toJSON { BackgroundModeEnabled = false; };
 
   # Audio (PipeWire) and screenshare/file-picker portals — hardware-independent.
   security.rtkit.enable = true;

@@ -135,7 +135,7 @@
     "menu-actions": {
       "lock": "loginctl lock-session",
       "suspend": "systemctl suspend",
-      "logout": "uwsm stop",
+      "logout": "$HOME/dotfiles/scripts/logout-session.sh",
       "reboot": "systemctl reboot",
       "poweroff": "systemctl poweroff"
     }

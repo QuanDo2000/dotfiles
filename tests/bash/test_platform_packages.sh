@@ -12,6 +12,7 @@ POWER_MENU="$(<"$REPO_DIR/config/unix/config/waybar/power-menu.xml")"
 SUNSET_CONFIG="$(<"$REPO_DIR/config/unix/config/hypr/hyprsunset.conf")"
 SUNSET_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
 INPUT_METHOD_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/input-method-status.sh")"
+LOGOUT_SCRIPT="$(<"$REPO_DIR/scripts/logout-session.sh")"
 
 test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
@@ -323,9 +324,38 @@ test_hyprland_uses_uwsm_application_lifecycle() {
   local config="$HYPR_CONFIG"
 
   assert_contains "$config" 'local app         = "uwsm app -- "'
-  assert_contains "$config" 'hl.dsp.exec_cmd("uwsm stop")'
+  assert_contains "$config" 'scripts/logout-session.sh'
   assert_contains "$config" 'hl.dsp.exec_cmd(app .. "google-chrome-stable")'
   assert_not_contains "$config" "hl.dsp.exit()"
+}
+
+test_logout_closes_chrome_before_stopping_uwsm() {
+  local calls="$TEST_TMPDIR/logout.log"
+  assert_contains "$NIXOS_CONFIG" 'BackgroundModeEnabled = false;'
+  assert_contains "$WAYBAR_CONFIG" 'scripts/logout-session.sh'
+
+  mkdir -p "$TEST_TMPDIR/bin"
+  cat > "$TEST_TMPDIR/bin/hyprctl" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-j" ]]; then
+  printf '%s\n' '[{"class":"google-chrome","address":"0x123"}]'
+else
+  printf 'hyprctl %s\n' "$*" >> "$LOGOUT_CALLS"
+fi
+EOF
+  cat > "$TEST_TMPDIR/bin/pgrep" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+  cat > "$TEST_TMPDIR/bin/uwsm" <<'EOF'
+#!/usr/bin/env bash
+printf 'uwsm %s\n' "$*" >> "$LOGOUT_CALLS"
+EOF
+  chmod +x "$TEST_TMPDIR/bin/"{hyprctl,pgrep,uwsm}
+
+  PATH="$TEST_TMPDIR/bin:$PATH" LOGOUT_CALLS="$calls" "$REPO_DIR/scripts/logout-session.sh"
+  assert_contains "$(<"$calls")" "hyprctl dispatch closewindow address:0x123"
+  assert_contains "$(<"$calls")" "uwsm stop"
 }
 
 test_hyprland_adds_media_controls() {
@@ -422,7 +452,7 @@ EOF
 test_waybar_power_menu_logs_out_of_uwsm() {
   assert_contains "$POWER_MENU" 'id="logout"'
   assert_contains "$POWER_MENU" '<property name="label">Log Out</property>'
-  assert_contains "$WAYBAR_CONFIG" '"logout": "uwsm stop"'
+  assert_contains "$WAYBAR_CONFIG" '"logout": "$HOME/dotfiles/scripts/logout-session.sh"'
 }
 
 test_waybar_shows_media_status() {

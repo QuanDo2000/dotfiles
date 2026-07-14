@@ -109,7 +109,7 @@ end
 
 bind(mainMod .. " + Return", hl.dsp.exec_cmd(app .. terminal .. " +new-window"), "Open terminal")
 bind(mainMod .. " + W", hl.dsp.window.close(), "Close window")
-bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("uwsm stop"), "Log out")
+bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("bash $HOME/dotfiles/scripts/logout-session.sh"), "Log out")
 bind(mainMod .. " + CTRL + L", hl.dsp.exec_cmd("hyprlock"), "Lock screen")
 bind(mainMod .. " + E", hl.dsp.exec_cmd(app .. fileManager), "Open file manager")
 bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(app .. fileManager .. " /mnt/storage/"), "Open storage")
