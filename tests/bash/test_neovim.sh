@@ -35,6 +35,7 @@ test_update_packages_syncs_fff_nvim() {
   update_nixos() { :; }
   _codex_version() { :; }
   _cleanup_codex_runtime_after_update() { :; }
+  _update_pi_release_package() { :; }
   _sync_fff_nvim() { printf 'fff-sync\n' >> "$calls"; }
 
   update_packages >/dev/null

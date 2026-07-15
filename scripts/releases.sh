@@ -90,6 +90,98 @@ function _latest_npm_package_version {
   printf '%s\n' "$version"
 }
 
+function _pi_archive_url {
+  printf 'https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-%s.tgz\n' "$1"
+}
+
+function _prefetch_pi_src_hash {
+  local version output hash
+  version="$1"
+  output="$(nix store prefetch-file --json --hash-type sha256 "$(_pi_archive_url "$version")")" \
+    || fail "Failed to prefetch Pi archive"
+  hash="$(jq -r '.hash // empty' <<< "$output")"
+  [[ -n "$hash" ]] || fail "Failed to parse Pi archive hash"
+  printf '%s\n' "$hash"
+}
+
+function _download_pi_package_lock {
+  local version lock_file tmp_dir tarball key package package_version integrity next
+  version="$1"
+  lock_file="$2"
+  tmp_dir="$(mktemp -d)" || fail "Failed to create temp dir"
+  tarball="$tmp_dir/pi.tgz"
+  curl -fsSL "$(_pi_archive_url "$version")" -o "$tarball" \
+    || { rm -rf "$tmp_dir"; fail "Failed to download Pi archive"; }
+  tar -xOzf "$tarball" package/npm-shrinkwrap.json > "$lock_file" \
+    || { rm -rf "$tmp_dir"; fail "Failed to extract Pi package lock"; }
+  rm -rf "$tmp_dir"
+
+  while IFS=$'\t' read -r key package package_version; do
+    integrity="$(curl -fsSL "https://registry.npmjs.org/$package/$package_version" | jq -r '.dist.integrity // empty')" \
+      || fail "Failed to fetch $package integrity"
+    [[ -n "$integrity" ]] || fail "Failed to parse $package integrity"
+    next="$(mktemp)" || fail "Failed to create temp file"
+    jq --arg key "$key" --arg integrity "$integrity" '.packages[$key].integrity = $integrity' "$lock_file" > "$next" \
+      && mv "$next" "$lock_file" \
+      || fail "Failed to add $package integrity to Pi package lock"
+  done < <(jq -r '.packages | to_entries[] | select(.value.resolved and (.value.integrity | not)) | [.key, (.key | sub("^node_modules/"; "")), .value.version] | @tsv' "$lock_file")
+}
+
+function _prefetch_pi_npm_deps_hash {
+  nix shell nixpkgs#prefetch-npm-deps -c prefetch-npm-deps "$1" \
+    || fail "Failed to prefetch Pi npm deps"
+}
+
+function _write_pi_package {
+  local version src_hash deps_hash package_file output_file tmp
+  version="$1"
+  src_hash="$2"
+  deps_hash="$3"
+  package_file="$DOTFILES_DIR/packages/pi-agent.nix"
+  output_file="${4:-$package_file}"
+  [[ -f "$package_file" ]] || fail "Missing Pi package file: $package_file"
+  tmp="$output_file"
+  [[ "$output_file" != "$package_file" ]] || tmp="$(mktemp)"
+
+  sed -E \
+    -e 's#version = "[^"]+";#version = "'"$version"'";#' \
+    -e 's#^([[:space:]]*hash = ")[^"]+(";)$#\1'"$src_hash"'\2#' \
+    -e 's#npmDepsHash = "[^"]+";#npmDepsHash = "'"$deps_hash"'";#' \
+    "$package_file" > "$tmp" \
+    || fail "Failed to update Pi package file"
+  [[ "$tmp" == "$output_file" ]] || mv "$tmp" "$package_file"
+}
+
+function _update_pi_release_package {
+  if [[ "$DRY" == "true" ]]; then
+    info "Would update Pi package from the latest npm release"
+    return
+  fi
+
+  local version current_version package_file lock_file src_hash deps_hash tmp_package tmp_lock
+  package_file="$DOTFILES_DIR/packages/pi-agent.nix"
+  lock_file="$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
+  [[ -f "$package_file" ]] || fail "Missing Pi package file: $package_file"
+  version="$(_latest_npm_package_version @earendil-works/pi-coding-agent)"
+  current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
+  if [[ "$current_version" == "$version" ]]; then
+    info "Pi package already at $version"
+    return
+  fi
+
+  info "Updating Pi package to $version..."
+  _ensure_nix
+  tmp_package="$(mktemp)" || fail "Failed to create temp file"
+  tmp_lock="$(mktemp)" || fail "Failed to create temp file"
+  src_hash="$(_prefetch_pi_src_hash "$version")"
+  _download_pi_package_lock "$version" "$tmp_lock"
+  deps_hash="$(_prefetch_pi_npm_deps_hash "$tmp_lock")"
+  _write_pi_package "$version" "$src_hash" "$deps_hash" "$tmp_package"
+  mv "$tmp_package" "$package_file" \
+    && mv "$tmp_lock" "$lock_file" \
+    || fail "Failed to install updated Pi package files"
+}
+
 function _obsidian_headless_archive_url {
   printf 'https://registry.npmjs.org/obsidian-headless/-/obsidian-headless-%s.tgz\n' "$1"
 }

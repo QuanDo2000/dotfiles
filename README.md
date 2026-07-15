@@ -72,7 +72,7 @@ dotfile [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update Nix-managed packages
+  update      Update Nix-managed packages, including Pi
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package

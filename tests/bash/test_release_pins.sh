@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pinned Codex and Obsidian Headless release update tests.
+# Pinned Pi, Codex, and Obsidian Headless release update tests.
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
@@ -124,6 +124,71 @@ test_update_codex_release_package_dry_run_skips_network() {
   output=$(_update_codex_release_package 2>&1)
 
   assert_contains "$output" "Would update Codex package from the latest GitHub release"
+
+  unset -f curl
+}
+
+test_update_pi_release_package_pins_latest_release() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages"
+  cat > "$DOTFILES_DIR/packages/pi-agent.nix" <<'EOF'
+{
+  version = "0.0.0";
+  hash = "sha256-old-src";
+  npmDepsHash = "sha256-old-deps";
+}
+EOF
+  printf '{"old":true}\n' > "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
+
+  curl() {
+    case "$*" in
+      *pi-coding-agent/latest*) printf '{"version":"0.80.7"}' ;;
+      *pi-coding-agent-0.80.7.tgz*) printf 'tarball\n' > "$4" ;;
+      *pi-agent-core/0.80.7*) printf '{"dist":{"integrity":"sha512-core"}}' ;;
+      *pi-ai/0.80.7*) printf '{"dist":{"integrity":"sha512-ai"}}' ;;
+      *pi-tui/0.80.7*) printf '{"dist":{"integrity":"sha512-tui"}}' ;;
+      *) echo "unexpected curl: $*" >> "$ERROR_FILE"; return 1 ;;
+    esac
+  }
+  tar() {
+    cat <<'EOF'
+{"packages":{"node_modules/@earendil-works/pi-agent-core":{"version":"0.80.7","resolved":"core"},"node_modules/@earendil-works/pi-ai":{"version":"0.80.7","resolved":"ai"},"node_modules/@earendil-works/pi-tui":{"version":"0.80.7","resolved":"tui"}}}
+EOF
+  }
+  nix() {
+    case "$*" in
+      *prefetch-file*pi-coding-agent-0.80.7.tgz*) printf '{"hash":"sha256-new-src"}\n' ;;
+      *prefetch-npm-deps*) printf 'sha256-new-deps\n' ;;
+      *) echo "unexpected nix: $*" >> "$ERROR_FILE"; return 1 ;;
+    esac
+  }
+
+  _update_pi_release_package >/dev/null 2>&1
+
+  local package_text lock_text
+  package_text="$(<"$DOTFILES_DIR/packages/pi-agent.nix")"
+  lock_text="$(<"$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json")"
+  assert_contains "$package_text" 'version = "0.80.7";'
+  assert_contains "$package_text" 'hash = "sha256-new-src";'
+  assert_contains "$package_text" 'npmDepsHash = "sha256-new-deps";'
+  assert_contains "$lock_text" '"integrity": "sha512-core"'
+  assert_contains "$lock_text" '"integrity": "sha512-ai"'
+  assert_contains "$lock_text" '"integrity": "sha512-tui"'
+
+  unset -f curl nix tar
+}
+
+test_update_pi_release_package_dry_run_skips_network() {
+  DRY=true
+  curl() {
+    echo "curl should not run in dry-run mode" >> "$ERROR_FILE"
+    return 1
+  }
+
+  local output
+  output=$(_update_pi_release_package 2>&1)
+
+  assert_contains "$output" "Would update Pi package from the latest npm release"
 
   unset -f curl
 }

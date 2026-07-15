@@ -28,6 +28,9 @@ EOF
   _update_codex_release_package() {
     printf 'codex-update\n' >> "$calls"
   }
+  _update_pi_release_package() {
+    printf 'pi-update\n' >> "$calls"
+  }
   home-manager() {
     printf 'home-manager-switch\n' >> "$calls"
   }
@@ -37,9 +40,9 @@ EOF
 
   local output
   output="$(<"$calls")"
-  assert_equals "home-manager-switch" "$output"
+  assert_equals $'pi-update\nhome-manager-switch' "$output"
 
-  unset -f command _update_codex_release_package home-manager _sync_fff_nvim
+  unset -f command _update_codex_release_package _update_pi_release_package home-manager _sync_fff_nvim
 }
 
 test_update_packages_fails_unsupported_before_codex_update() {
@@ -50,6 +53,9 @@ test_update_packages_fails_unsupported_before_codex_update() {
   _update_codex_release_package() {
     printf 'codex-update\n' >> "$calls"
   }
+  _update_pi_release_package() {
+    printf 'pi-update\n' >> "$calls"
+  }
 
   local output exit_code=0
   output=$(update_packages 2>&1) || exit_code=$?
@@ -58,7 +64,7 @@ test_update_packages_fails_unsupported_before_codex_update() {
   assert_contains "$output" "Unsupported system: FreeBSD"
   assert_equals "" "$(<"$calls")"
 
-  unset -f _update_codex_release_package
+  unset -f _update_codex_release_package _update_pi_release_package
 }
 
 test_codex_model_cache_version_reads_multiline_json() {
@@ -102,6 +108,7 @@ _mock_codex_update_runtime() {
   rm() {
     printf 'rm %s\n' "$*" >> "$MOCK_CODEX_CALLS"
   }
+  _update_pi_release_package() { :; }
   _sync_fff_nvim() { :; }
 }
 
