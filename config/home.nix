@@ -304,6 +304,7 @@ in
   };
 
   programs.gpg.enable = true;
+  programs.rclone.enable = pkgs.stdenv.isLinux;
 
   programs.neovim = {
     enable = true;
@@ -431,6 +432,57 @@ in
       pkgs.tmuxPlugins.yank
     ];
     extraConfig = builtins.readFile ./unix/.tmux.conf;
+  };
+
+  systemd.user.services.google-drive-mount = lib.mkIf pkgs.stdenv.isLinux {
+    Unit = {
+      Description = "Google Drive mount";
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
+      ConditionPathExists = "%h/.config/rclone/rclone.conf";
+    };
+
+    Service = {
+      Type = "notify";
+      Environment = "PATH=/run/wrappers/bin:/run/current-system/sw/bin:/usr/bin:/bin";
+      ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p ${homeDir}/GoogleDrive";
+      ExecStart = "${pkgs.rclone}/bin/rclone mount gdrive: ${homeDir}/GoogleDrive --vfs-cache-mode full --cache-dir %h/.cache/rclone --dir-cache-time 1h --poll-interval 15s";
+      Restart = "on-failure";
+      RestartSec = 10;
+    };
+
+    Install.WantedBy = [ "default.target" ];
+  };
+
+  systemd.user.services.google-drive-bisync = lib.mkIf pkgs.stdenv.isLinux {
+    Unit = {
+      Description = "Google Drive two-way sync";
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
+      ConditionPathExists = [
+        "%h/.config/rclone/rclone.conf"
+        "%h/.local/state/dotfiles/google-drive-bisync-initialized"
+      ];
+    };
+
+    Service = {
+      Type = "oneshot";
+      ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
+      ExecStart = "${pkgs.rclone}/bin/rclone bisync ${homeDir}/Documents/Drive gdrive:Drive --check-access --check-filename .rclone-bisync-check --create-empty-src-dirs --resilient --recover --max-lock 2m --conflict-resolve newer --max-delete 25 --backup-dir1 ${homeDir}/Documents/.Drive-backup --backup-dir2 gdrive:.Drive-backup --verbose";
+      KillSignal = "SIGINT";
+      TimeoutStopSec = 120;
+    };
+  };
+
+  systemd.user.timers.google-drive-bisync = lib.mkIf pkgs.stdenv.isLinux {
+    Unit.Description = "Sync Google Drive every five minutes";
+    Timer = {
+      OnBootSec = "2m";
+      OnUnitActiveSec = "5m";
+      Persistent = true;
+      Unit = "google-drive-bisync.service";
+    };
+    Install.WantedBy = [ "timers.target" ];
   };
 
   systemd.user.services.obsidian-sync = lib.mkIf pkgs.stdenv.isLinux {
