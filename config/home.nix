@@ -86,8 +86,10 @@ let
     rbw
     rofi-rbw
     slurp
+    thunar
     wl-clipboard
     wtype
+    xarchiver
     hyprshutdown
     ghostty
     google-chrome

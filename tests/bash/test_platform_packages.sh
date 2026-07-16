@@ -273,6 +273,8 @@ test_nixos_flake_target_fails_when_hostname_missing() {
 test_home_manager_declares_default_apps() {
   local config="$HOME_CONFIG"
 
+  assert_contains "$config" $'    thunar\n'
+  assert_contains "$config" $'    xarchiver\n'
   assert_contains "$config" '"inode/directory" = [ "thunar.desktop" ];'
   assert_contains "$config" '"x-scheme-handler/https" = [ "google-chrome.desktop" ];'
   assert_contains "$config" '"application/zip" = [ "xarchiver.desktop" ];'
