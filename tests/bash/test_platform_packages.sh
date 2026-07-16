@@ -302,7 +302,10 @@ test_home_manager_installs_bitwarden_picker() {
 }
 
 test_home_manager_installs_anki() {
-  assert_contains "$HOME_CONFIG" "anki"
+  assert_contains "$HOME_CONFIG" "anki.withAddons"
+  assert_contains "$HOME_CONFIG" "ankiAddons.passfail2.withConfig"
+  assert_contains "$HOME_CONFIG" 'pname = "zoom24";'
+  assert_contains "$HOME_CONFIG" 'https://ankiweb.net/shared/download/1923741581'
   assert_contains "$HYPR_CONFIG" 'hl.dsp.exec_cmd(app .. anki)'
 }
 

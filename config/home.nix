@@ -25,6 +25,41 @@ let
     hash = "sha256-kHdQ9e44doBk2yYW88tMSCqVG8ycYcvJSZlrIziXhpA=";
   };
   pi-agent = pkgs.callPackage ../packages/pi-agent.nix { };
+  ankiWithAddons = pkgs.anki.withAddons [
+    (pkgs.ankiAddons.passfail2.withConfig {
+      config = {
+        toggle_names_textcolors = "0";
+        again_button_name = "Fail";
+        good_button_name = "Pass";
+        again_button_textcolor = "#000000";
+        good_button_textcolor = "#000000";
+      };
+    })
+    ((pkgs.anki-utils.buildAnkiAddon {
+      pname = "zoom24";
+      version = "2026-05-27";
+      src = pkgs.fetchzip {
+        url = "https://ankiweb.net/shared/download/1923741581?v=2.1&p=2509004";
+        hash = "sha256-6dRKLIc/ySELmOI8xHkSZO2orTZSHb7e12aL2pSogfY=";
+        extension = "zip";
+        stripRoot = false;
+      };
+    }).withConfig {
+      config = {
+        overview_zoom = 1.0;
+        overview_zoom_default = 1.0;
+        review_zoom = 1.0;
+        review_zoom_default = 1.0;
+        zoom_in_shortcut = "Ctrl+Shift++";
+        zoom_out_shortcut = "Ctrl+Shift+-";
+        reset_shortcut = "Ctrl+Shift+^";
+        manually_force_zoom = false;
+        different_zoom_question_and_answer = true;
+        is_rate_this = true;
+        is_change_log_2024_2_21 = true;
+      };
+    })
+  ];
   obsidianSettings = [
     "app.json"
     "appearance.json"
@@ -80,7 +115,7 @@ let
     openssh
   ];
   linuxDesktopPackages = with pkgs; [
-    anki
+    ankiWithAddons
     grim
     pinentry-gnome3
     rbw
