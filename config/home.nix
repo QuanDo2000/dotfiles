@@ -79,8 +79,8 @@ let
     "templates.json"
   ];
   obsidianFiles = lib.genAttrs
-    (map (name: "Documents/obsidian/Sync/.obsidian/${name}") obsidianSettings)
-    (path: forceSource (./shared/obsidian + "/${lib.removePrefix "Documents/obsidian/Sync/.obsidian/" path}"));
+    (map (name: "Documents/Sync/.obsidian/${name}") obsidianSettings)
+    (path: forceSource (./shared/obsidian + "/${lib.removePrefix "Documents/Sync/.obsidian/" path}"));
   obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
     set -euo pipefail
     export PATH="${lib.makeBinPath [ pkgs.obsidian-headless pkgs.nodejs ]}:$PATH"
@@ -91,13 +91,13 @@ let
     fi
 
     shopt -s nullglob
-    for vault in "$HOME"/Documents/obsidian/*; do
+    for vault in "$HOME"/Documents/*; do
       if [ -d "$vault" ] && ob sync-status --path "$vault" >/dev/null 2>&1; then
         exec ob sync --path "$vault" --continuous
       fi
     done
 
-    echo "No configured Obsidian vault found under $HOME/Documents/obsidian" >&2
+    echo "No configured Obsidian vault found under $HOME/Documents" >&2
     exit 0
   '';
   devTerminalPackages = with pkgs; [

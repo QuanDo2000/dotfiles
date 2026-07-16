@@ -2,7 +2,7 @@
 set -eo pipefail
 
 OBSIDIAN_SERVICE_NAME="obsidian-sync.service"
-OBSIDIAN_VAULT_BASE="$HOME/Documents/obsidian"
+OBSIDIAN_VAULT_BASE="$HOME/Documents"
 
 function _obsidian_check_prereqs {
   if ! is_linux; then
