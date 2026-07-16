@@ -39,6 +39,14 @@ assert_checked_flow() {
   fi
 }
 
+test_zsh_vi_insert_mode_can_delete_pasted_text() {
+  local config
+  config="$(<"$REPO_DIR/config/unix/.zshrc.base")"
+
+  assert_contains "$config" "bindkey -M viins '^?' backward-delete-char"
+  assert_contains "$config" "bindkey -M viins '^H' backward-delete-char"
+}
+
 test_help_exits_zero() {
   local output
   output=$(bash "$DOTFILE_CMD" -h 2>&1)

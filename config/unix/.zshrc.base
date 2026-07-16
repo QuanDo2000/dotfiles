@@ -81,6 +81,9 @@ bindkey -M viins '^[[A' history-beginning-search-backward
 bindkey -M viins '^[[B' history-beginning-search-forward
 bindkey -M viins '^[OA' history-beginning-search-backward
 bindkey -M viins '^[OB' history-beginning-search-forward
+# Unlike vi-backward-delete-char, allow Backspace past the current insert boundary.
+bindkey -M viins '^?' backward-delete-char
+bindkey -M viins '^H' backward-delete-char
 export KEYTIMEOUT=10
 _set_cursor_shape() {
   case "$KEYMAP" in
