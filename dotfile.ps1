@@ -2,16 +2,11 @@ param(
     # When set, skip main dispatch so the script can be
     # dot-sourced by tests to load functions without side effects.
     [switch]$NoMain,
-    # Flags declared explicitly so PowerShell's parameter binder doesn't
-    # silently swallow `-d` as a prefix of the `-Debug` common parameter
-    # (common parameters are auto-added because $RemainingArgs carries
-    # [Parameter(...)]). Aliases preserve the short-form CLI.
     [Alias('d')][switch]$Dry,
     [Alias('f')][switch]$Force,
     [Alias('q')][switch]$Quiet,
     [Alias('h')][switch]$Help,
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$RemainingArgs
+    [Parameter(Position = 0)][string]$Command = 'all'
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,7 +28,6 @@ function Resolve-DotfilesDir($Override, $ScriptPath) {
 # Resolve symlink so invoking via ~\.local\bin points back to the real repo.
 # Allow override via $env:DOTFILES_DIR so the install path is not hardcoded.
 $script:DotfilesDir = Resolve-DotfilesDir $env:DOTFILES_DIR $PSCommandPath
-$script:RepoUrl = "https://github.com/QuanDo2000/dotfiles.git"
 
 # Logging helpers
 function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }
@@ -148,22 +142,11 @@ function Invoke-Winget($FailureMessage, [string[]]$Arguments) {
     }
 }
 
-# Ensure repo exists
-function EnsureRepo {
-    if (-not (Test-Path (Join-Path $script:DotfilesDir 'dotfile.ps1'))) {
-        Info "Cloning dotfiles repo..."
-        git clone $script:RepoUrl $script:DotfilesDir
-        if ($LASTEXITCODE -ne 0) { Fail "Failed to clone dotfiles repo" }
-    }
-}
-
 function UpdateRepo {
     Info "Updating dotfiles repo..."
     if (-not $script:Dry) {
-        Push-Location $script:DotfilesDir
-        git pull --rebase --autostash
-        if ($LASTEXITCODE -ne 0) { Pop-Location; Fail "Failed to pull dotfiles repo" }
-        Pop-Location
+        git -C $script:DotfilesDir pull --rebase --autostash
+        if ($LASTEXITCODE -ne 0) { Fail "Failed to pull dotfiles repo" }
     }
     Success "Finished updating repo"
 }
@@ -407,9 +390,10 @@ function InstallAi {
 
     InstallCodex -Update:$Update
 
-    if ($Update -and (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
+    $codebaseMemory = Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue
+    if ($Update -and $codebaseMemory) {
         Invoke-NativeChecked "codebase-memory-mcp update failed" { codebase-memory-mcp update }
-    } elseif (-not (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
+    } elseif (-not $codebaseMemory) {
         irm https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 | iex
     } else {
         Info "Already installed codebase-memory-mcp"
@@ -515,12 +499,11 @@ function AddToUserPath($dir) {
     }
 }
 
-function New-LinkSpec($Kind, $Source, $Destination, [bool]$Verify = $false, [bool]$AddToPath = $false) {
+function New-LinkSpec($Kind, $Source, $Destination, [bool]$AddToPath = $false) {
     [pscustomobject]@{
         Kind = $Kind
         Source = $Source
         Destination = $Destination
-        Verify = $Verify
         AddToPath = $AddToPath
     }
 }
@@ -542,11 +525,9 @@ function Get-WindowsLinkSpecs {
         "$userHome\Documents\WindowsPowerShell"
         "$userHome\Documents\PowerShell"
     )
-    if (Test-Path $psSource) {
-        foreach ($target in $targets) {
-            Get-ChildItem $psSource -File | ForEach-Object {
-                $specs += New-LinkSpec 'File' $_.FullName (Join-Path $target $_.Name)
-            }
+    foreach ($target in $targets) {
+        Get-ChildItem $psSource -File | ForEach-Object {
+            $specs += New-LinkSpec 'File' $_.FullName (Join-Path $target $_.Name)
         }
     }
 
@@ -556,11 +537,11 @@ function Get-WindowsLinkSpecs {
         "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
 
     # Git config
-    $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".gitconfig") "$userHome\.gitconfig" $true
+    $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".gitconfig") "$userHome\.gitconfig"
     $specs += New-LinkSpec 'File' (Join-Path $configPath ".gitconfig") "$userHome\.gitconfig.windows"
 
     # SSH config
-    $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".ssh\config") "$userHome\.ssh\config" $true
+    $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".ssh\config") "$userHome\.ssh\config"
 
     # Neovim settings: keep LazyVim's runtime-written lazyvim.json writable.
     $nvimSource = Join-Path $sharedPath "config\nvim"
@@ -574,21 +555,15 @@ function Get-WindowsLinkSpecs {
     $specs += New-LinkSpec 'Dir' (Join-Path $sharedPath "config\jj") "$env:APPDATA\jj"
 
     # starship prompt config — shared with zsh, read from ~/.config/starship.toml.
-    $specs += New-LinkSpec 'File' (Join-Path $sharedPath "config\starship.toml") (Join-Path $userHome ".config\starship.toml") $true
+    $specs += New-LinkSpec 'File' (Join-Path $sharedPath "config\starship.toml") (Join-Path $userHome ".config\starship.toml")
 
     # AI tool configs live in their own dotfolders (not ~/.config) alongside
     # runtime state we don't track, so link only the tracked files.
-    $claudeSettings = Join-Path $sharedPath "ai\claude\settings.json"
-    if (Test-Path $claudeSettings) {
-        $specs += New-LinkSpec 'File' $claudeSettings "$userHome\.claude\settings.json"
-    }
+    $specs += New-LinkSpec 'File' (Join-Path $sharedPath "ai\claude\settings.json") "$userHome\.claude\settings.json"
 
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
-    $dotfileSource = Join-Path $script:DotfilesDir "dotfile.ps1"
-    if (Test-Path $dotfileSource) {
-        $binDest = "$userHome\.local\bin"
-        $specs += New-LinkSpec 'File' $dotfileSource (Join-Path $binDest "dotfile.ps1") $false $true
-    }
+    $binDest = "$userHome\.local\bin"
+    $specs += New-LinkSpec 'File' (Join-Path $script:DotfilesDir "dotfile.ps1") (Join-Path $binDest "dotfile.ps1") $true
 
     return $specs
 }
@@ -700,13 +675,11 @@ function Verify {
     }
 
     Info "Verifying PowerShell modules..."
-    foreach ($mod in @("PSReadLine")) {
-        if (Get-Module -ListAvailable -Name $mod) {
-            Success "PowerShell module: $mod"
-        } else {
-            FailSoft "PowerShell module missing: $mod"
-            $errors++
-        }
+    if (Get-Module -ListAvailable -Name PSReadLine) {
+        Success "PowerShell module: PSReadLine"
+    } else {
+        FailSoft "PowerShell module missing: PSReadLine"
+        $errors++
     }
 
     Info "Verifying managed links..."
@@ -796,42 +769,15 @@ Options:
 "@
 }
 
-# Parse options. Extracted into a function so tests can drive it with
-# synthetic argument arrays without executing the main dispatch below.
-function ParseArgs([string[]]$Arguments) {
-    $command = "all"
-    $positional = @()
-    foreach ($arg in $Arguments) {
-        switch ($arg) {
-            { $_ -in "-d", "--dry" }   { $script:Dry = $true }
-            { $_ -in "-f", "--force" } { $script:Force = $true }
-            { $_ -in "-q", "--quiet" } { $script:Quiet = $true }
-            { $_ -in "-h", "--help" }  { ShowUsage; return '__help__' }
-            default { $positional += $arg }
-        }
-    }
-    if ($positional.Count -gt 0) { $command = $positional[0] }
-    return $command
-}
-
 if (-not $NoMain) {
-    # Flag params are already bound to $script:Dry/Force/Quiet at top level
-    # (script and local scopes coincide here). Just handle -Help before
-    # ParseArgs and let ParseArgs handle any flags still in $RemainingArgs
-    # (e.g. from tests that drive it with synthetic arrays).
     if ($Help) { ShowUsage; exit 0 }
 
-    $command = ParseArgs $RemainingArgs
-    if ($command -eq '__help__') { exit 0 }
-
-    EnsureRepo
-
-    switch ($command) {
+    switch ($Command) {
         "all"       { SetupDotfiles }
         "update"    { Update-Packages }
         "packages"  { InstallManagedPackages }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
         "verify"    { Verify; if ($script:VerifyFailed) { exit 1 } }
-        default     { Fail "Unknown command: $command"; ShowUsage }
+        default     { Fail "Unknown command: $Command" }
     }
 }

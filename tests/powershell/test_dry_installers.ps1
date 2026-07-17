@@ -1,64 +1,31 @@
-# Dry-mode paths for the installer functions: they should emit their banner
-# message and return before touching external tools.
+# Dry-mode paths for installer functions must return before external tools.
 
 function TestSetup {
     $script:Dry = $true
     $script:Quiet = $false
 }
 
-function test_installscooppackages_dry_run_does_not_call_scoop {
-    $script:Called = $false
-    Set-CommandMock 'scoop' { $script:Called = $true }
+function test_installers_dry_run_before_external_commands {
+    $cases = @(
+        @{ Command = 'scoop'; Function = 'InstallScoopPackages'; Banner = 'Installing Scoop packages' }
+        @{ Command = 'fnm'; Function = 'InstallFnm'; Banner = 'Installing Node.js LTS' }
+        @{ Command = 'npm'; Function = 'InstallAi'; Banner = 'Installing agent CLIs' }
+        @{ Command = 'Invoke-RestMethod'; Function = 'InstallCodex'; Banner = 'Installing Codex CLI' }
+        @{ Command = 'winget'; Function = 'InstallPackages'; Banner = 'Installing packages' }
+    )
 
-    $output = InstallScoopPackages 6>&1 | Out-String
-
-    Clear-CommandMock 'scoop'
-    Assert-Contains $output 'Installing Scoop packages'
-    Assert-False $script:Called 'scoop should not be invoked in dry run'
-}
-
-function test_installfnm_dry_run_does_not_call_fnm {
-    $script:Called = $false
-    Set-CommandMock 'fnm' { $script:Called = $true }
-
-    $output = InstallFnm 6>&1 | Out-String
-
-    Clear-CommandMock 'fnm'
-    Assert-Contains $output 'Installing Node.js LTS'
-    Assert-False $script:Called 'fnm should not be invoked in dry run'
-}
-
-function test_installai_dry_run_does_not_call_npm {
-    $script:Called = $false
-    Set-CommandMock 'npm' { $script:Called = $true }
-
-    $output = InstallAi 6>&1 | Out-String
-
-    Clear-CommandMock 'npm'
-    Assert-Contains $output 'Installing agent CLIs'
-    Assert-False $script:Called 'npm should not be invoked in dry run'
-}
-
-function test_installcodex_dry_run_does_not_download {
-    $script:Called = $false
-    Set-CommandMock 'Invoke-RestMethod' { $script:Called = $true }
-
-    $output = InstallCodex 6>&1 | Out-String
-
-    Clear-CommandMock 'Invoke-RestMethod'
-    Assert-Contains $output 'Installing Codex CLI'
-    Assert-False $script:Called 'Invoke-RestMethod should not be called in dry run'
-}
-
-function test_installpackages_dry_run_does_not_call_winget {
-    $script:Called = $false
-    Set-CommandMock 'winget' { $script:Called = $true }
-
-    $output = InstallPackages 6>&1 | Out-String
-
-    Clear-CommandMock 'winget'
-    Assert-Contains $output 'Installing packages'
-    Assert-False $script:Called 'winget should not be invoked in dry run'
+    foreach ($case in $cases) {
+        $script:Called = $false
+        Set-CommandMock $case.Command { $script:Called = $true }
+        try {
+            $installer = $case.Function
+            $output = & $installer 6>&1 | Out-String
+        } finally {
+            Clear-CommandMock $case.Command
+        }
+        Assert-Contains $output $case.Banner
+        Assert-False $script:Called "$($case.Command) should not be called in dry run"
+    }
 }
 
 function test_installextras_dry_run_chains_font_and_node {

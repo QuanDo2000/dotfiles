@@ -12,17 +12,17 @@ function test_lazyvim_sync_verifies_installed_directories {
     $script:Dry = $false
     $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
     $originalGetNeovim = (Get-Command Get-NeovimCommand).ScriptBlock
-    $originalGetDataPath = (Get-Command Get-NeovimDataPath).ScriptBlock
     Set-FunctionMock 'Get-NeovimCommand' { 'nvim' }
-    Set-FunctionMock 'Get-NeovimDataPath' { Join-Path $env:LOCALAPPDATA 'nvim-data' }
-    Set-CommandMock 'nvim' { $global:LASTEXITCODE = 0 }
+    Set-CommandMock 'nvim' {
+        $global:LASTEXITCODE = 0
+        if (($args -join ' ') -like '*stdpath*') { Join-Path $env:LOCALAPPDATA 'nvim-data' }
+    }
 
     try {
         $output = Sync-LazyVim 3>&1 | Out-String
     } finally {
         Clear-CommandMock 'nvim'
         Set-FunctionMock 'Get-NeovimCommand' $originalGetNeovim
-        Set-FunctionMock 'Get-NeovimDataPath' $originalGetDataPath
     }
 
     Assert-Contains $output 'LazyVim sync did not install'
@@ -35,17 +35,17 @@ function test_lazyvim_sync_accepts_installed_directories {
     New-Item -ItemType Directory -Force -Path (Join-Path $lazyRoot 'lazy.nvim') | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $lazyRoot 'LazyVim') | Out-Null
     $originalGetNeovim = (Get-Command Get-NeovimCommand).ScriptBlock
-    $originalGetDataPath = (Get-Command Get-NeovimDataPath).ScriptBlock
     Set-FunctionMock 'Get-NeovimCommand' { 'nvim' }
-    Set-FunctionMock 'Get-NeovimDataPath' { Join-Path $env:LOCALAPPDATA 'nvim-data' }
-    Set-CommandMock 'nvim' { $global:LASTEXITCODE = 0 }
+    Set-CommandMock 'nvim' {
+        $global:LASTEXITCODE = 0
+        if (($args -join ' ') -like '*stdpath*') { Join-Path $env:LOCALAPPDATA 'nvim-data' }
+    }
 
     try {
         $output = Sync-LazyVim 3>&1 | Out-String
     } finally {
         Clear-CommandMock 'nvim'
         Set-FunctionMock 'Get-NeovimCommand' $originalGetNeovim
-        Set-FunctionMock 'Get-NeovimDataPath' $originalGetDataPath
     }
 
     Assert-False ($output -like '*LazyVim sync did not install*') 'installed directories should satisfy LazyVim sync verification'

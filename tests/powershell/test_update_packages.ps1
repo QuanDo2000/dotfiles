@@ -108,6 +108,24 @@ function Assert-WindowsHealthy { }
     Assert-True ($script:WingetCalls -like 'install --id Example.NewPackage --exact*') 'update should install a package declared by the pull'
 }
 
+function test_update_packages_dry_run_does_not_call_winget {
+    $script:Dry = $true
+    $script:Called = $false
+    Set-CommandMock 'winget' { $script:Called = $true }
+
+    try {
+        $output = Invoke-UpdatedPackageInstall $script:DotfileScript $true $false $false 6>&1 | Out-String
+    } finally {
+        Clear-CommandMock 'winget'
+    }
+
+    Assert-Contains $output 'Installing packages'
+    Assert-Contains $output 'Installing Scoop packages'
+    Assert-Contains $output 'Installing Node.js LTS'
+    Assert-Contains $output 'Installing or updating LazyVim'
+    Assert-False $script:Called 'winget should not be invoked in dry run'
+}
+
 function test_installpackages_fails_when_winget_install_fails {
     $script:Dry = $false
     $originalWingetHas = (Get-Command WingetHas).ScriptBlock

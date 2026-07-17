@@ -6,7 +6,7 @@
 function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\Powershell') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared') -Force | Out-Null
     # Create stub source files so Verify's Compare-Object call never throws on
     # missing sources when the real $HOME happens to contain matching dests.
@@ -35,28 +35,16 @@ function TestTeardown {
     Clear-TestEnv
 }
 
-function test_verify_emits_each_verification_phase {
+function test_verify_reports_missing_installation {
     Set-CommandMock 'Get-Command' { return $null }
     Set-CommandMock 'Get-Module' { return $null }
 
     $output = Verify 6>&1 | Out-String
 
-    Assert-Contains $output 'Verifying installed tools'
-    Assert-Contains $output 'Verifying scoop packages'
-    Assert-Contains $output 'Verifying PowerShell modules'
-    Assert-Contains $output 'Verifying managed links'
-    Assert-Contains $output 'Verifying neovim config'
-}
-
-function test_verify_checks_starship_config {
-    Set-CommandMock 'Get-Command' { return $null }
-    Set-CommandMock 'Get-Module' { return $null }
-
-    $output = Verify 6>&1 | Out-String
-
-    # The starship config is among the copied files Verify checks; with the dest
-    # absent in the temp home it reports the ~/.config/starship.toml path missing.
-    Assert-Contains $output 'starship.toml'
+    foreach ($text in 'Verifying installed tools', 'Verifying scoop packages', 'Verifying PowerShell modules', 'Verifying managed links', 'starship.toml', 'not found', 'issue') {
+        Assert-Contains $output $text
+    }
+    Assert-True $script:VerifyFailed 'missing installation should fail verification'
 }
 
 function test_verify_fails_when_tracked_config_is_not_linked {
@@ -116,18 +104,6 @@ function test_verify_checks_every_managed_link_spec {
 
     Assert-Contains $output 'is not linked to'
     Assert-True $script:VerifyFailed 'matching file contents must not substitute for a managed link'
-}
-
-function test_verify_reports_issues_when_tools_absent {
-    Set-CommandMock 'Get-Command' { return $null }
-    Set-CommandMock 'Get-Module' { return $null }
-
-    $output = Verify 6>&1 | Out-String
-
-    # At least the six tool lookups should come back missing.
-    Assert-Contains $output 'not found'
-    Assert-Contains $output 'issue'
-    Assert-True $script:VerifyFailed 'verify command dispatch should be able to exit nonzero'
 }
 
 function test_verify_reports_tools_found_when_mocks_return_objects {

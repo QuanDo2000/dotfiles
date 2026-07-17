@@ -5,10 +5,6 @@
 
 $script:AliasesFile = Join-Path $script:RepoDir 'config/windows/Powershell/aliases.ps1'
 
-function test_aliases_file_exists {
-    Assert-FileExists $script:AliasesFile
-}
-
 function test_collisions_removed_and_functions_win {
     # Dot-source at top scope in a clean pwsh, then report how each name resolves.
     $probe = ". '$script:AliasesFile'; " +
