@@ -31,6 +31,25 @@ function test_synccodexconfig_creates_writable_seed_file {
     Assert-False ([bool](Get-Item $target).LinkType) 'Codex config should stay writable'
 }
 
+function test_synccodexconfig_clears_readonly_attribute_from_seed_copy {
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+    $seedDir = Join-Path $script:DotfilesDir 'config\windows\ai\codex'
+    New-Item -ItemType Directory -Force -Path $seedDir | Out-Null
+    $source = Join-Path $seedDir 'config.toml'
+    $target = Join-Path $env:USERPROFILE '.codex\config.toml'
+    'model = "gpt-5.6-sol"' | Set-Content $source
+
+    try {
+        (Get-Item $source).IsReadOnly = $true
+        SyncCodexConfig
+
+        Assert-False (Get-Item $target).IsReadOnly 'Codex config should stay writable when the seed is read-only'
+    } finally {
+        if (Test-Path -LiteralPath $source) { (Get-Item $source).IsReadOnly = $false }
+        if (Test-Path -LiteralPath $target) { (Get-Item $target).IsReadOnly = $false }
+    }
+}
+
 function test_installai_fails_when_codebase_memory_update_fails {
     $script:Dry = $false
     $originalInstallCodex = (Get-Command InstallCodex).ScriptBlock

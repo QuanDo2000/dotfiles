@@ -330,12 +330,13 @@ function SyncCodexConfig {
     New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
     if (-not (Test-Path -LiteralPath $target)) {
         Copy-Item -LiteralPath $source -Destination $target
-        return
+    } else {
+        $applySeed = if ((Get-Item -LiteralPath $source).IsReadOnly) { '' } else { $source }
+        Invoke-NativeChecked 'Codex config seed comparison failed' {
+            py -3.14 (Join-Path $script:DotfilesDir 'scripts\seed_merge\codex.py') $target $source $applySeed
+        }
     }
-    $applySeed = if ((Get-Item -LiteralPath $source).IsReadOnly) { '' } else { $source }
-    Invoke-NativeChecked 'Codex config seed comparison failed' {
-        py -3.14 (Join-Path $script:DotfilesDir 'scripts\seed_merge\codex.py') $target $source $applySeed
-    }
+    (Get-Item -LiteralPath $target).IsReadOnly = $false
 }
 
 function InstallPi {
