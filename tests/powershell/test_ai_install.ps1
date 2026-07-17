@@ -179,14 +179,16 @@ function test_syncpiconfigs_creates_writable_seed_files {
     '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
+    'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
 
     SyncPiConfigs
 
     $settings = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
     $mcp = Join-Path $env:USERPROFILE '.pi\agent\mcp.json'
-    $extension = Join-Path $env:USERPROFILE '.pi\agent\extensions\codex-status.js'
+    $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     Assert-FileExists $settings
     Assert-FileExists $mcp
-    Assert-FileExists $extension
+    Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
+    Assert-FileExists (Join-Path $extensionDir 'windows-exit.js')
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
 }

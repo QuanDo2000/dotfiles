@@ -393,7 +393,9 @@ function SyncPiConfigs {
 
     $extensionDir = Join-Path $targetDir "extensions"
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
-    Copy-Item -LiteralPath (Join-Path $seedDir "codex-status.js") -Destination (Join-Path $extensionDir "codex-status.js") -Force
+    foreach ($name in @("codex-status.js", "windows-exit.js")) {
+        Copy-Item -LiteralPath (Join-Path $seedDir $name) -Destination (Join-Path $extensionDir $name) -Force
+    }
     Success "Finished syncing Pi configuration"
 }
 
