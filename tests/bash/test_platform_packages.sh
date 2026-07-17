@@ -329,6 +329,17 @@ test_home_manager_secures_google_drive_sync() {
   assert_contains "$HOME_CONFIG" 'ExecStopPost = "${pkgs.coreutils}/bin/chmod -R u=rwX,go= ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";'
 }
 
+test_google_drive_storage_sync() {
+  local exit_code=0
+  python3 "$REPO_DIR/scripts/google-drive-storage-sync.py" --self-test >/dev/null 2>&1 || exit_code=$?
+  assert_equals "0" "$exit_code"
+  assert_contains "$HOME_CONFIG" "systemd.user.services.google-drive-storage-sync"
+  assert_contains "$HOME_CONFIG" "systemd.user.timers.google-drive-storage-sync"
+  assert_contains "$HOME_CONFIG" 'OnCalendar = "daily";'
+  assert_contains "$HOME_CONFIG" 'google-drive-sync.lock'
+  assert_contains "$HOME_CONFIG" 'TimeoutStartSec = "infinity";'
+}
+
 test_home_manager_installs_screenshot_tools() {
   local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
 

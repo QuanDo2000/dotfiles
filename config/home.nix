@@ -472,9 +472,11 @@ in
       Type = "oneshot";
       UMask = "0077";
       ExecStartPre = "${pkgs.coreutils}/bin/install -d -m 700 ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
-      ExecStart = "${pkgs.rclone}/bin/rclone bisync ${homeDir}/Documents/Drive gdrive:Drive --check-access --check-filename .rclone-bisync-check --create-empty-src-dirs --resilient --recover --max-lock 2m --conflict-resolve newer --max-delete 25 --backup-dir1 ${homeDir}/Documents/.Drive-backup --backup-dir2 gdrive:.Drive-backup --verbose";
+      # ponytail: one lock serializes jobs that touch the same Drive tree.
+      ExecStart = "${pkgs.util-linux}/bin/flock --no-fork --wait 1800 %t/google-drive-sync.lock ${pkgs.rclone}/bin/rclone bisync ${homeDir}/Documents/Drive gdrive:Drive --check-access --check-filename .rclone-bisync-check --create-empty-src-dirs --resilient --recover --max-lock 2m --conflict-resolve newer --max-delete 25 --backup-dir1 ${homeDir}/Documents/.Drive-backup --backup-dir2 gdrive:.Drive-backup --verbose";
       ExecStopPost = "${pkgs.coreutils}/bin/chmod -R u=rwX,go= ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
       KillSignal = "SIGINT";
+      TimeoutStartSec = "35m";
       TimeoutStopSec = 120;
     };
   };
@@ -486,6 +488,36 @@ in
       OnUnitActiveSec = "5m";
       Persistent = true;
       Unit = "google-drive-bisync.service";
+    };
+    Install.WantedBy = [ "timers.target" ];
+  };
+
+  systemd.user.services.google-drive-storage-sync = lib.mkIf pkgs.stdenv.isLinux {
+    Unit = {
+      Description = "Sync matching Google Drive and Storage folders";
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
+      ConditionPathExists = [
+        "%h/.config/rclone/rclone.conf"
+        "%h/.local/state/dotfiles/google-drive-storage-sync-initialized"
+      ];
+      ConditionPathIsMountPoint = "/mnt/storage";
+    };
+    Service = {
+      Type = "oneshot";
+      Environment = "RCLONE=${pkgs.rclone}/bin/rclone";
+      UMask = "0077";
+      ExecStart = "${pkgs.util-linux}/bin/flock --no-fork --wait 1800 %t/google-drive-sync.lock ${pkgs.python3}/bin/python ${../scripts/google-drive-storage-sync.py}";
+      TimeoutStartSec = "infinity";
+    };
+  };
+
+  systemd.user.timers.google-drive-storage-sync = lib.mkIf pkgs.stdenv.isLinux {
+    Unit.Description = "Sync matching Google Drive and Storage folders daily";
+    Timer = {
+      OnCalendar = "daily";
+      Persistent = true;
+      Unit = "google-drive-storage-sync.service";
     };
     Install.WantedBy = [ "timers.target" ];
   };
