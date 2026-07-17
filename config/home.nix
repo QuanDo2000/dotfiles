@@ -116,10 +116,12 @@ let
   ];
   linuxDesktopPackages = with pkgs; [
     ankiWithAddons
+    fuse3
     grim
     pinentry-gnome3
     rbw
     rofi-rbw
+    rclone
     slurp
     thunar
     wl-clipboard
@@ -444,9 +446,10 @@ in
 
     Service = {
       Type = "notify";
+      UMask = "0077";
       Environment = "PATH=/run/wrappers/bin:/run/current-system/sw/bin:/usr/bin:/bin";
-      ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p ${homeDir}/GoogleDrive";
-      ExecStart = "${pkgs.rclone}/bin/rclone mount gdrive: ${homeDir}/GoogleDrive --vfs-cache-mode full --cache-dir %h/.cache/rclone --dir-cache-time 1h --poll-interval 15s";
+      ExecStartPre = "${pkgs.coreutils}/bin/install -d -m 700 ${homeDir}/GoogleDrive";
+      ExecStart = "${pkgs.rclone}/bin/rclone mount gdrive: ${homeDir}/GoogleDrive --vfs-cache-mode full --cache-dir %h/.cache/rclone --dir-cache-time 1h --poll-interval 15s --file-perms 0600 --dir-perms 0700";
       Restart = "on-failure";
       RestartSec = 10;
     };
@@ -467,8 +470,10 @@ in
 
     Service = {
       Type = "oneshot";
-      ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
+      UMask = "0077";
+      ExecStartPre = "${pkgs.coreutils}/bin/install -d -m 700 ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
       ExecStart = "${pkgs.rclone}/bin/rclone bisync ${homeDir}/Documents/Drive gdrive:Drive --check-access --check-filename .rclone-bisync-check --create-empty-src-dirs --resilient --recover --max-lock 2m --conflict-resolve newer --max-delete 25 --backup-dir1 ${homeDir}/Documents/.Drive-backup --backup-dir2 gdrive:.Drive-backup --verbose";
+      ExecStopPost = "${pkgs.coreutils}/bin/chmod -R u=rwX,go= ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
       KillSignal = "SIGINT";
       TimeoutStopSec = 120;
     };

@@ -321,6 +321,14 @@ test_home_manager_installs_pinned_webcord_release() {
   assert_contains "$(<"$package")" "appimageTools.wrapType2"
 }
 
+test_home_manager_secures_google_drive_sync() {
+  assert_contains "$HOME_CONFIG" $'    fuse3\n'
+  assert_contains "$HOME_CONFIG" $'    rclone\n'
+  assert_contains "$HOME_CONFIG" '--file-perms 0600 --dir-perms 0700'
+  assert_contains "$HOME_CONFIG" 'UMask = "0077";'
+  assert_contains "$HOME_CONFIG" 'ExecStopPost = "${pkgs.coreutils}/bin/chmod -R u=rwX,go= ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";'
+}
+
 test_home_manager_installs_screenshot_tools() {
   local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
 
