@@ -18,7 +18,6 @@ function TestTeardown {
 }
 
 function test_updaterepo_skips_git_in_dry_mode {
-    New-Item -ItemType Directory -Path $script:DotfilesDir | Out-Null
     $script:Dry = $true
 
     UpdateRepo
@@ -27,7 +26,6 @@ function test_updaterepo_skips_git_in_dry_mode {
 }
 
 function test_updaterepo_calls_pull_when_not_dry {
-    New-Item -ItemType Directory -Path $script:DotfilesDir | Out-Null
     $script:Dry = $false
 
     UpdateRepo

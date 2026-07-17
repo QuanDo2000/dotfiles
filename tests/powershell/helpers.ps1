@@ -31,6 +31,13 @@ function Assert-False($Condition, $Message = 'condition was true') {
     if ($Condition) { $script:Errors.Add("  Assert-False FAILED: $Message") }
 }
 
+function Assert-Throws([scriptblock]$Action, $Message = 'action did not throw') {
+    try {
+        & $Action
+        $script:Errors.Add("  Assert-Throws FAILED: $Message")
+    } catch { }
+}
+
 function Assert-FileExists($Path) {
     if (-not (Test-Path -LiteralPath $Path)) {
         $script:Errors.Add("  Assert-FileExists FAILED: '$Path' does not exist")

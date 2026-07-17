@@ -5,6 +5,7 @@ function TestSetup {
 }
 
 function TestTeardown {
+    foreach ($command in 'Get-Command', 'scoop', 'fnm') { Clear-CommandMock $command }
     Clear-TestEnv
 }
 
@@ -17,17 +18,7 @@ function test_installscooppackages_fails_when_scoop_install_fails {
     }
     Set-CommandMock 'scoop' { $global:LASTEXITCODE = 1 }
 
-    $failed = $false
-    try {
-        InstallScoopPackages 6>&1 | Out-Null
-    } catch {
-        $failed = $true
-    } finally {
-        Clear-CommandMock 'scoop'
-        Clear-CommandMock 'Get-Command'
-    }
-
-    Assert-True $failed 'InstallScoopPackages should fail when scoop install fails'
+    Assert-Throws { InstallScoopPackages 6>&1 | Out-Null } 'InstallScoopPackages should fail when scoop install fails'
 }
 
 function test_installscooppackages_skips_existing_nerd_fonts_bucket {
@@ -47,12 +38,7 @@ function test_installscooppackages_skips_existing_nerd_fonts_bucket {
         $global:LASTEXITCODE = 0
     }
 
-    try {
-        InstallScoopPackages 6>&1 | Out-Null
-    } finally {
-        Clear-CommandMock 'scoop'
-        Clear-CommandMock 'Get-Command'
-    }
+    InstallScoopPackages 6>&1 | Out-Null
 
     Assert-False ($script:ScoopCalls -contains 'bucket add nerd-fonts') 'existing nerd-fonts bucket should not be added again'
     Assert-True ($script:ScoopCalls -contains 'install FiraCode') 'FiraCode install should still run'
@@ -75,12 +61,7 @@ function test_installscooppackages_updates_only_managed_packages {
         $global:LASTEXITCODE = 0
     }
 
-    try {
-        InstallScoopPackages -Update 6>&1 | Out-Null
-    } finally {
-        Clear-CommandMock 'scoop'
-        Clear-CommandMock 'Get-Command'
-    }
+    InstallScoopPackages -Update 6>&1 | Out-Null
 
     Assert-True ($script:ScoopCalls -contains 'update') 'Scoop manifests should update'
     Assert-True ($script:ScoopCalls -contains 'update FiraCode jq ast-grep') 'only managed Scoop packages should update'
@@ -95,15 +76,5 @@ function test_installfnm_fails_when_fnm_command_fails {
     }
     Set-CommandMock 'fnm' { $global:LASTEXITCODE = 1 }
 
-    $failed = $false
-    try {
-        InstallFnm 6>&1 | Out-Null
-    } catch {
-        $failed = $true
-    } finally {
-        Clear-CommandMock 'fnm'
-        Clear-CommandMock 'Get-Command'
-    }
-
-    Assert-True $failed 'InstallFnm should fail when fnm install/use/default fails'
+    Assert-Throws { InstallFnm 6>&1 | Out-Null } 'InstallFnm should fail when fnm install/use/default fails'
 }

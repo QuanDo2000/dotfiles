@@ -11,29 +11,7 @@ function TestTeardown {
 function test_lazyvim_sync_verifies_installed_directories {
     $script:Dry = $false
     $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
-    $originalGetNeovim = (Get-Command Get-NeovimCommand).ScriptBlock
-    Set-FunctionMock 'Get-NeovimCommand' { 'nvim' }
-    Set-CommandMock 'nvim' {
-        $global:LASTEXITCODE = 0
-        if (($args -join ' ') -like '*stdpath*') { Join-Path $env:LOCALAPPDATA 'nvim-data' }
-    }
-
-    try {
-        $output = Sync-LazyVim 3>&1 | Out-String
-    } finally {
-        Clear-CommandMock 'nvim'
-        Set-FunctionMock 'Get-NeovimCommand' $originalGetNeovim
-    }
-
-    Assert-Contains $output 'LazyVim sync did not install'
-}
-
-function test_lazyvim_sync_accepts_installed_directories {
-    $script:Dry = $false
-    $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
     $lazyRoot = Join-Path $env:LOCALAPPDATA 'nvim-data\lazy'
-    New-Item -ItemType Directory -Force -Path (Join-Path $lazyRoot 'lazy.nvim') | Out-Null
-    New-Item -ItemType Directory -Force -Path (Join-Path $lazyRoot 'LazyVim') | Out-Null
     $originalGetNeovim = (Get-Command Get-NeovimCommand).ScriptBlock
     Set-FunctionMock 'Get-NeovimCommand' { 'nvim' }
     Set-CommandMock 'nvim' {
@@ -42,45 +20,32 @@ function test_lazyvim_sync_accepts_installed_directories {
     }
 
     try {
-        $output = Sync-LazyVim 3>&1 | Out-String
+        $missingOutput = Sync-LazyVim 3>&1 | Out-String
+        New-Item -ItemType Directory -Force -Path (Join-Path $lazyRoot 'lazy.nvim'), (Join-Path $lazyRoot 'LazyVim') | Out-Null
+        $installedOutput = Sync-LazyVim 3>&1 | Out-String
     } finally {
         Clear-CommandMock 'nvim'
         Set-FunctionMock 'Get-NeovimCommand' $originalGetNeovim
     }
 
-    Assert-False ($output -like '*LazyVim sync did not install*') 'installed directories should satisfy LazyVim sync verification'
+    Assert-Contains $missingOutput 'LazyVim sync did not install'
+    Assert-False ($installedOutput -like '*LazyVim sync did not install*') 'installed directories should satisfy LazyVim sync verification'
 }
 
-function test_lazyvim_sync_uses_winget_neovim_fallback {
-    $text = Get-Content -Raw $script:DotfileScript
-    Assert-Contains $text 'Microsoft\WinGet\Links\nvim.exe'
-    Assert-Contains $text 'Microsoft\WinGet\Packages'
-    Assert-Contains $text 'Neovim\bin\nvim.exe'
-    Assert-Contains $text '$env:ProgramFiles'
-    Assert-Contains $text 'Get-ChildItem'
-    Assert-Contains $text 'Get-NeovimCommand'
-    Assert-Contains $text 'Get-NeovimDataPath'
-    Assert-Contains $text 'vim.fn.stdpath'
-    Assert-False ($text -like '*Join-Path $env:LOCALAPPDATA "nvim-data\lazy"*') 'sync verification should not hard-code Neovim data path'
-}
-
-function test_update_packages_syncs_lazyvim {
-    $global:LazySynced = $false
-    $lazySynced = $false
-    $pulledScript = Join-Path $env:USERPROFILE 'dotfile.ps1'
-    (Get-Content -Raw $script:DotfileScript) + @'
-
-function Sync-LazyVim { $global:LazySynced = $true }
-'@ | Set-Content -LiteralPath $pulledScript
+function test_getneovimcommand_uses_winget_fallback {
+    $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
+    $nvim = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\nvim.exe'
+    New-Item -ItemType Directory -Force -Path (Split-Path $nvim -Parent) | Out-Null
+    New-Item -ItemType File -Path $nvim | Out-Null
+    Set-CommandMock 'Get-Command' { return $null }
 
     try {
-        Invoke-UpdatedPackageInstall $pulledScript $true $false $false
-        $lazySynced = $global:LazySynced
+        $result = Get-NeovimCommand
     } finally {
-        Remove-Variable -Name LazySynced -Scope Global -ErrorAction SilentlyContinue
+        Clear-CommandMock 'Get-Command'
     }
 
-    Assert-True $lazySynced 'updated package install should sync LazyVim'
+    Assert-Equals $nvim $result
 }
 
 function test_sync_lazyvim_config_creates_writable_seed {

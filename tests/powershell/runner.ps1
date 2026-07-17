@@ -18,16 +18,9 @@ $Failed = 0
 function Run-TestFile($file) {
     Write-Host "--- $(Split-Path $file -Leaf) ---"
 
-    # Remember the set of test_* functions that existed BEFORE we source the
-    # file, so we only discover the ones this file defined.
-    $preexisting = @{}
-    Get-Command -CommandType Function -Name 'test_*' -ErrorAction SilentlyContinue |
-        ForEach-Object { $preexisting[$_.Name] = $true }
-
     . $file
 
     $tests = Get-Command -CommandType Function -Name 'test_*' -ErrorAction SilentlyContinue |
-        Where-Object { -not $preexisting.ContainsKey($_.Name) } |
         Select-Object -ExpandProperty Name
 
     if (-not $tests) {
@@ -43,13 +36,11 @@ function Run-TestFile($file) {
         $script:Errors = [System.Collections.Generic.List[string]]::new()
         Reset-DotfileState
 
-        $exitCode = 0
         $caught = $null
         try {
             if ($hasTestSetup) { TestSetup }
             & $t
         } catch {
-            $exitCode = 1
             $caught = $_
         } finally {
             if ($hasTestTeardown) {
@@ -57,7 +48,7 @@ function Run-TestFile($file) {
             }
         }
 
-        if ($exitCode -ne 0 -or $script:Errors.Count -gt 0) {
+        if ($caught -or $script:Errors.Count -gt 0) {
             $script:Failed++
             Write-Host "  FAIL  $t" -ForegroundColor Red
             if ($caught) { Write-Host "    (exception: $($caught.Exception.Message))" }

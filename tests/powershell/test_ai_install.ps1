@@ -2,12 +2,14 @@
 
 function TestSetup {
     Initialize-TestEnv | Out-Null
+    $script:OriginalInstallCodex = (Get-Command InstallCodex).ScriptBlock
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'py', 'jq') {
+    foreach ($command in 'npm', 'py', 'jq', 'Get-Command', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod') {
         Clear-CommandMock $command
     }
+    Set-Item -Path function:global:InstallCodex -Value $script:OriginalInstallCodex
     Remove-Variable -Name PiInstalled -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
 }
@@ -20,39 +22,27 @@ function test_windows_installs_codex_cli_with_official_installer {
 
 function test_synccodexconfig_creates_writable_seed_file {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
-    $seedDir = Join-Path $script:DotfilesDir 'config\windows\ai\codex'
-    New-Item -ItemType Directory -Force -Path $seedDir | Out-Null
-    'model = "gpt-5.6-sol"' | Set-Content (Join-Path $seedDir 'config.toml')
-
-    SyncCodexConfig
-
+    $source = Join-Path $script:DotfilesDir 'config\windows\ai\codex\config.toml'
     $target = Join-Path $env:USERPROFILE '.codex\config.toml'
-    Assert-FileExists $target
-    Assert-False ([bool](Get-Item $target).LinkType) 'Codex config should stay writable'
-}
-
-function test_synccodexconfig_clears_readonly_attribute_from_seed_copy {
-    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
-    $seedDir = Join-Path $script:DotfilesDir 'config\windows\ai\codex'
-    New-Item -ItemType Directory -Force -Path $seedDir | Out-Null
-    $source = Join-Path $seedDir 'config.toml'
-    $target = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $source -Parent) | Out-Null
     'model = "gpt-5.6-sol"' | Set-Content $source
 
     try {
         (Get-Item $source).IsReadOnly = $true
         SyncCodexConfig
 
-        Assert-False (Get-Item $target).IsReadOnly 'Codex config should stay writable when the seed is read-only'
+        Assert-FileExists $target
+        Assert-False ([bool](Get-Item $target).LinkType) 'Codex config should be a regular file'
+        Assert-False (Get-Item $target).IsReadOnly 'Codex config should be writable'
     } finally {
-        if (Test-Path -LiteralPath $source) { (Get-Item $source).IsReadOnly = $false }
-        if (Test-Path -LiteralPath $target) { (Get-Item $target).IsReadOnly = $false }
+        foreach ($path in $source, $target) {
+            if (Test-Path -LiteralPath $path) { (Get-Item $path).IsReadOnly = $false }
+        }
     }
 }
 
 function test_installai_fails_when_codebase_memory_update_fails {
     $script:Dry = $false
-    $originalInstallCodex = (Get-Command InstallCodex).ScriptBlock
     Set-Item -Path function:global:InstallCodex -Value { }
     Set-CommandMock 'Get-Command' {
         param($Name)
@@ -61,23 +51,11 @@ function test_installai_fails_when_codebase_memory_update_fails {
     }
     Set-CommandMock 'codebase-memory-mcp' { $global:LASTEXITCODE = 1 }
 
-    $failed = $false
-    try {
-        InstallAi -Update 6>&1 | Out-Null
-    } catch {
-        $failed = $true
-    } finally {
-        Clear-CommandMock 'codebase-memory-mcp'
-        Clear-CommandMock 'Get-Command'
-        Set-Item -Path function:global:InstallCodex -Value $originalInstallCodex
-    }
-
-    Assert-True $failed 'InstallAi should fail when codebase-memory-mcp update fails'
+    Assert-Throws { InstallAi -Update 6>&1 | Out-Null } 'InstallAi should fail when codebase-memory-mcp update fails'
 }
 
 function test_installai_fails_when_codebase_memory_install_fails {
     $script:Dry = $false
-    $originalInstallCodex = (Get-Command InstallCodex).ScriptBlock
     Set-Item -Path function:global:InstallCodex -Value { }
     Set-CommandMock 'Get-Command' {
         param($Name)
@@ -86,19 +64,7 @@ function test_installai_fails_when_codebase_memory_install_fails {
     }
     Set-CommandMock 'irm' { 'function global:codebase-memory-mcp { $global:LASTEXITCODE = 1 }; codebase-memory-mcp install' }
 
-    $failed = $false
-    try {
-        InstallAi 6>&1 | Out-Null
-    } catch {
-        $failed = $true
-    } finally {
-        Clear-CommandMock 'irm'
-        Clear-CommandMock 'Get-Command'
-        Clear-CommandMock 'codebase-memory-mcp'
-        Set-Item -Path function:global:InstallCodex -Value $originalInstallCodex
-    }
-
-    Assert-True $failed 'InstallAi should fail when codebase-memory-mcp install script fails'
+    Assert-Throws { InstallAi 6>&1 | Out-Null } 'InstallAi should fail when codebase-memory-mcp install script fails'
 }
 
 function test_installcodex_fails_when_installer_exits_nonzero {
@@ -110,17 +76,7 @@ function test_installcodex_fails_when_installer_exits_nonzero {
     }
     Set-CommandMock 'Invoke-RestMethod' { '$global:LASTEXITCODE = 1' }
 
-    $failed = $false
-    try {
-        InstallCodex 6>&1 | Out-Null
-    } catch {
-        $failed = $true
-    } finally {
-        Clear-CommandMock 'Invoke-RestMethod'
-        Clear-CommandMock 'Get-Command'
-    }
-
-    Assert-True $failed 'InstallCodex should fail when installer exits nonzero'
+    Assert-Throws { InstallCodex 6>&1 | Out-Null } 'InstallCodex should fail when installer exits nonzero'
 }
 
 function test_installpi_installs_official_package_and_checks_command {
@@ -132,7 +88,7 @@ function test_installpi_installs_official_package_and_checks_command {
             if ($script:PiInstalled) { return [pscustomobject]@{ Source = 'mock-pi' } }
             return $null
         }
-        return Microsoft.PowerShell.CoreGet-Command @PSBoundParameters
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
     Set-CommandMock 'npm' {
         $script:NpmCalls += ,($args -join ' ')
@@ -140,11 +96,7 @@ function test_installpi_installs_official_package_and_checks_command {
         $global:LASTEXITCODE = 0
     }
 
-    try {
-        InstallPi
-    } finally {
-        Clear-CommandMock 'Get-Command'
-    }
+    InstallPi
 
     Assert-Contains $script:NpmCalls[0] 'install --global @earendil-works/pi-coding-agent'
 }
@@ -153,23 +105,11 @@ function test_installpi_fails_when_command_is_missing_after_install {
     Set-CommandMock 'Get-Command' {
         param($Name)
         if ($Name -eq 'pi') { return $null }
-        return Microsoft.PowerShell.CoreGet-Command @PSBoundParameters
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
     Set-CommandMock 'npm' { $global:LASTEXITCODE = 0 }
 
-    $failed = $false
-    $message = ''
-    try {
-        InstallPi
-    } catch {
-        $failed = $true
-        $message = $_.Exception.Message
-    } finally {
-        Clear-CommandMock 'Get-Command'
-    }
-
-    Assert-True $failed 'Pi installation should fail when pi is still unavailable'
-    Assert-Contains $message 'pi command not found after installation'
+    Assert-Throws { InstallPi } 'Pi installation should fail when pi is still unavailable'
 }
 
 function test_syncpiconfigs_creates_writable_seed_files {

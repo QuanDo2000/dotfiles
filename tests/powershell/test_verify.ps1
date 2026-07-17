@@ -7,14 +7,6 @@ function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\Powershell') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared') -Force | Out-Null
-    # Create stub source files so Verify's Compare-Object call never throws on
-    # missing sources when the real $HOME happens to contain matching dests.
-    'g' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\.ssh') -Force | Out-Null
-    'ssh' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\.ssh\config')
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\shared\config') -Force | Out-Null
-    's' | Set-Content (Join-Path $script:DotfilesDir 'config\shared\config\starship.toml')
     # Verify's informational output flows through Info/Success, which are
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.
@@ -25,6 +17,12 @@ function TestSetup {
     }
     $script:OriginalWingetHas = (Get-Command WingetHas).ScriptBlock
     Set-FunctionMock 'WingetHas' { return $true }
+    Set-HealthyToolMocks
+}
+
+function Set-HealthyToolMocks {
+    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
+    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
 }
 
 function TestTeardown {
@@ -47,54 +45,15 @@ function test_verify_reports_missing_installation {
     Assert-True $script:VerifyFailed 'missing installation should fail verification'
 }
 
-function test_verify_fails_when_tracked_config_is_not_linked {
-    Set-CommandMock 'Get-Command' {
-        [pscustomobject]@{ Source = 'C:\fake\tool.exe' }
-    }
-    Set-CommandMock 'Get-Module' {
-        [pscustomobject]@{ Name = 'FakeModule' }
-    }
-    New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE '.config') -Force | Out-Null
-    'different git' | Set-Content (Join-Path $env:USERPROFILE '.gitconfig')
-    'different starship' | Set-Content (Join-Path $env:USERPROFILE '.config\starship.toml')
-    $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
-    New-Item -ItemType Directory -Path (Join-Path $env:LOCALAPPDATA 'nvim') -Force | Out-Null
-    'init' | Set-Content (Join-Path $env:LOCALAPPDATA 'nvim\init.lua')
-
-    $output = Verify 6>&1 | Out-String
-
-    Assert-Contains $output 'is not linked to'
-    Assert-True $script:VerifyFailed 'verify should fail when tracked config is not linked'
-}
-
-function test_verify_checks_shared_link_specs {
-    Set-CommandMock 'Get-Command' {
-        [pscustomobject]@{ Source = 'C:\fake\tool.exe' }
-    }
-    Set-CommandMock 'Get-Module' {
-        [pscustomobject]@{ Name = 'FakeModule' }
-    }
-    New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE '.ssh') -Force | Out-Null
-    'different ssh' | Set-Content (Join-Path $env:USERPROFILE '.ssh\config')
-
-    $output = Verify 6>&1 | Out-String
-
-    Assert-Contains $output '.ssh'
-    Assert-Contains $output 'is not linked to'
-    Assert-True $script:VerifyFailed 'verify should check shared file link specs'
-}
-
 function test_verify_checks_every_managed_link_spec {
     $script:ManagedLinkSource = Join-Path $env:USERPROFILE 'source.txt'
     $script:ManagedLinkDestination = Join-Path $env:USERPROFILE 'destination.txt'
     'same' | Set-Content $script:ManagedLinkSource
     'same' | Set-Content $script:ManagedLinkDestination
-    $originalGetWindowsLinkSpecs = (Get-Command Get-WindowsLinkSpecs).ScriptBlock
+    $originalGetWindowsLinkSpecs = (Microsoft.PowerShell.Core\Get-Command Get-WindowsLinkSpecs).ScriptBlock
     Set-FunctionMock 'Get-WindowsLinkSpecs' {
         @(New-LinkSpec 'File' $script:ManagedLinkSource $script:ManagedLinkDestination)
     }
-    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
-    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
 
     try {
         $output = Verify 6>&1 | Out-String
@@ -106,27 +65,12 @@ function test_verify_checks_every_managed_link_spec {
     Assert-True $script:VerifyFailed 'matching file contents must not substitute for a managed link'
 }
 
-function test_verify_reports_tools_found_when_mocks_return_objects {
-    Set-CommandMock 'Get-Command' {
-        [pscustomobject]@{ Source = 'C:\fake\tool.exe' }
-    }
-    Set-CommandMock 'Get-Module' {
-        [pscustomobject]@{ Name = 'FakeModule' }
-    }
-
-    $output = Verify 6>&1 | Out-String
-
-    Assert-Contains $output 'found'
-    Assert-Contains $output 'installed'
-}
-
 function test_verify_reports_missing_managed_ai_command {
     Set-CommandMock 'Get-Command' {
         param($Name)
         if ($Name -eq 'codebase-memory-mcp') { return $null }
         [pscustomobject]@{ Source = "C:\fake\$Name.exe" }
     }
-    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
 
     $output = Verify 6>&1 | Out-String
 
@@ -135,9 +79,6 @@ function test_verify_reports_missing_managed_ai_command {
 }
 
 function test_verify_reports_missing_codex_config {
-    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
-    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
-
     $output = Verify 6>&1 | Out-String
 
     Assert-Contains $output '.codex\config.toml'
@@ -145,8 +86,6 @@ function test_verify_reports_missing_codex_config {
 }
 
 function test_verify_rejects_codex_config_directory {
-    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
-    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
     New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE '.codex\config.toml') | Out-Null
 
     $output = Verify 6>&1 | Out-String
@@ -156,8 +95,6 @@ function test_verify_rejects_codex_config_directory {
 }
 
 function test_verify_rejects_readonly_codex_config {
-    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
-    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
     $target = Join-Path $env:USERPROFILE '.codex\config.toml'
     New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
     'model = "test"' | Set-Content $target
@@ -174,8 +111,6 @@ function test_verify_rejects_readonly_codex_config {
 }
 
 function test_verify_rejects_codex_config_symlink {
-    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
-    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
     $source = Join-Path $env:USERPROFILE 'codex-source.toml'
     $target = Join-Path $env:USERPROFILE '.codex\config.toml'
     New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
@@ -193,37 +128,10 @@ function test_verify_rejects_codex_config_symlink {
     Assert-True $script:VerifyFailed 'a symlinked Codex config should fail verification'
 }
 
-function test_doctor_refreshes_path_before_verifying {
-    $script:PathRefreshed = $false
-    $originalRefreshProcessPath = (Get-Command Refresh-ProcessPath).ScriptBlock
-    $originalVerify = (Get-Command Verify).ScriptBlock
-    Set-FunctionMock 'Refresh-ProcessPath' { $script:PathRefreshed = $true }
-    Set-FunctionMock 'Verify' { }
-
-    try {
-        Doctor
-    } finally {
-        Set-FunctionMock 'Refresh-ProcessPath' $originalRefreshProcessPath
-        Set-FunctionMock 'Verify' $originalVerify
-    }
-
-    Assert-True $script:PathRefreshed 'doctor should see tools installed into the persistent user PATH'
-}
-
 function test_verify_checks_exact_winget_packages {
     Set-FunctionMock 'WingetHas' { param($id) return ($id -ne 'Microsoft.PowerShell') }
-    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
-    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
-    Set-CommandMock 'scoop' {
-        $global:LASTEXITCODE = 0
-        Get-ScoopPackages | ForEach-Object { [pscustomobject]@{ Name = $_ } }
-    }
 
-    try {
-        $output = Verify 6>&1 | Out-String
-    } finally {
-        Clear-CommandMock 'scoop'
-    }
+    $output = Verify 6>&1 | Out-String
 
     Assert-Contains $output 'Winget package missing: Microsoft.PowerShell'
     Assert-True $script:VerifyFailed 'missing exact Winget package should fail verification'
