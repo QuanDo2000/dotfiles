@@ -197,6 +197,26 @@ function test_verify_rejects_readonly_codex_config {
     Assert-True $script:VerifyFailed 'a read-only Codex config should fail verification'
 }
 
+function test_verify_rejects_codex_config_symlink {
+    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
+    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
+    $source = Join-Path $env:USERPROFILE 'codex-source.toml'
+    $target = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+    'model = "test"' | Set-Content $source
+    try {
+        New-Item -ItemType SymbolicLink -Path $target -Target $source -ErrorAction Stop | Out-Null
+    } catch {
+        if ($_.Exception.Message -match 'privilege|Administrator') { return }
+        throw
+    }
+
+    $output = Verify 6>&1 | Out-String
+
+    Assert-Contains $output 'config.toml must be a regular writable file'
+    Assert-True $script:VerifyFailed 'a symlinked Codex config should fail verification'
+}
+
 function test_doctor_refreshes_path_before_verifying {
     $script:PathRefreshed = $false
     $originalRefreshProcessPath = (Get-Command Refresh-ProcessPath).ScriptBlock
