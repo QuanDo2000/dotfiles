@@ -87,6 +87,47 @@ function test_installpackages_fails_when_winget_install_fails {
     Assert-True $failed 'InstallPackages should fail when winget install fails'
 }
 
+function test_installpackages_upgrades_all_winget_packages {
+    $script:Dry = $false
+    $script:WingetCalls = @()
+    $originalWingetHas = (Get-Command WingetHas).ScriptBlock
+    Set-FunctionMock 'WingetHas' { return $true }
+    Set-CommandMock 'winget' {
+        $script:WingetCalls += ,($args -join ' ')
+        $global:LASTEXITCODE = 0
+    }
+
+    try {
+        InstallPackages 6>&1 | Out-Null
+    } finally {
+        Clear-CommandMock 'winget'
+        Set-FunctionMock 'WingetHas' $originalWingetHas
+    }
+
+    Assert-Equals 1 $script:WingetCalls.Count
+    Assert-Contains $script:WingetCalls[0] 'upgrade --all'
+    Assert-Contains $script:WingetCalls[0] '--accept-source-agreements'
+}
+
+function test_installpackages_fails_when_winget_upgrade_fails {
+    $script:Dry = $false
+    $originalWingetHas = (Get-Command WingetHas).ScriptBlock
+    Set-FunctionMock 'WingetHas' { return $true }
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = 1 }
+
+    $failed = $false
+    try {
+        InstallPackages 6>&1 | Out-Null
+    } catch {
+        $failed = $true
+    } finally {
+        Clear-CommandMock 'winget'
+        Set-FunctionMock 'WingetHas' $originalWingetHas
+    }
+
+    Assert-True $failed 'InstallPackages should fail when winget upgrade fails'
+}
+
 function test_installpackages_installs_missing_winget_packages_individually {
     $script:Dry = $false
     $script:MissingWingetPackages = @('Git.Git', 'Neovim.Neovim')
