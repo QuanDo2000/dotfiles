@@ -65,44 +65,22 @@ function test_lazyvim_sync_uses_winget_neovim_fallback {
 }
 
 function test_update_packages_syncs_lazyvim {
-    $script:Dry = $false
-    $script:LazySynced = $false
-    Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
-    $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
-    $originalInstallPackages = (Get-Command InstallPackages).ScriptBlock
-    $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
-    $originalInstallAi = (Get-Command InstallAi).ScriptBlock
-    $originalSyncLazyVimConfig = (Get-Command Sync-LazyVimConfig).ScriptBlock
-    $originalSyncLazyVim = (Get-Command Sync-LazyVim).ScriptBlock
-    $originalAssertWindowsHealthy = if (Get-Command Assert-WindowsHealthy -ErrorAction SilentlyContinue) {
-        (Get-Command Assert-WindowsHealthy).ScriptBlock
-    } else { $null }
-    Set-FunctionMock 'UpdateRepo' { }
-    Set-FunctionMock 'InstallPackages' { }
-    Set-FunctionMock 'InstallExtras' { }
-    Set-FunctionMock 'InstallAi' { }
-    Set-FunctionMock 'Sync-LazyVimConfig' { }
-    Set-FunctionMock 'Sync-LazyVim' { $script:LazySynced = $true }
-    Set-FunctionMock 'Assert-WindowsHealthy' { }
+    $global:LazySynced = $false
+    $lazySynced = $false
+    $pulledScript = Join-Path $env:USERPROFILE 'dotfile.ps1'
+    (Get-Content -Raw $script:DotfileScript) + @'
+
+function Sync-LazyVim { $global:LazySynced = $true }
+'@ | Set-Content -LiteralPath $pulledScript
 
     try {
-        Update-Packages 6>&1 | Out-Null
+        Invoke-UpdatedPackageInstall $pulledScript $true $false $false
+        $lazySynced = $global:LazySynced
     } finally {
-        Clear-CommandMock 'winget'
-        Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
-        Set-FunctionMock 'InstallPackages' $originalInstallPackages
-        Set-FunctionMock 'InstallExtras' $originalInstallExtras
-        Set-FunctionMock 'InstallAi' $originalInstallAi
-        Set-FunctionMock 'Sync-LazyVimConfig' $originalSyncLazyVimConfig
-        Set-FunctionMock 'Sync-LazyVim' $originalSyncLazyVim
-        if ($originalAssertWindowsHealthy) {
-            Set-FunctionMock 'Assert-WindowsHealthy' $originalAssertWindowsHealthy
-        } else {
-            Remove-Item function:\Assert-WindowsHealthy -ErrorAction SilentlyContinue
-        }
+        Remove-Variable -Name LazySynced -Scope Global -ErrorAction SilentlyContinue
     }
 
-    Assert-True $script:LazySynced 'Update-Packages should sync LazyVim'
+    Assert-True $lazySynced 'updated package install should sync LazyVim'
 }
 
 function test_sync_lazyvim_config_creates_writable_seed {

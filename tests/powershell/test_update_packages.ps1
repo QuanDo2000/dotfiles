@@ -29,43 +29,83 @@ function test_winget_commands_use_shared_helper {
     Assert-False ($text -match '\{ winget (install|upgrade)') 'raw winget install/upgrade calls should go through Invoke-Winget'
 }
 
-function test_update_packages_installs_declared_packages_before_updates {
+function test_update_packages_updates_repo_before_loading_updated_installer {
     $script:Dry = $false
     $script:Calls = @()
     $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
-    $originalInstallPackages = (Get-Command InstallPackages).ScriptBlock
-    $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
-    $originalInstallAi = (Get-Command InstallAi).ScriptBlock
-    $originalSyncLazyVimConfig = (Get-Command Sync-LazyVimConfig).ScriptBlock
-    $originalSyncLazyVim = (Get-Command Sync-LazyVim).ScriptBlock
-    $originalAssertWindowsHealthy = if (Get-Command Assert-WindowsHealthy -ErrorAction SilentlyContinue) {
-        (Get-Command Assert-WindowsHealthy).ScriptBlock
-    } else { $null }
+    $originalUpdatedInstall = (Get-Command Invoke-UpdatedPackageInstall).ScriptBlock
     Set-FunctionMock 'UpdateRepo' { $script:Calls += 'repo' }
-    Set-FunctionMock 'InstallPackages' { $script:Calls += 'winget' }
-    Set-FunctionMock 'InstallExtras' { param([switch]$Update) if ($Update) { $script:Calls += 'extras' } }
-    Set-FunctionMock 'InstallAi' { param([switch]$Update) if ($Update) { $script:Calls += 'ai' } }
-    Set-FunctionMock 'Sync-LazyVimConfig' { $script:Calls += 'config' }
-    Set-FunctionMock 'Sync-LazyVim' { $script:Calls += 'lazy' }
-    Set-FunctionMock 'Assert-WindowsHealthy' { $script:Calls += 'doctor' }
+    Set-FunctionMock 'Invoke-UpdatedPackageInstall' { $script:Calls += 'updated' }
 
     try {
         Update-Packages 6>&1 | Out-Null
     } finally {
         Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
-        Set-FunctionMock 'InstallPackages' $originalInstallPackages
+        Set-FunctionMock 'Invoke-UpdatedPackageInstall' $originalUpdatedInstall
+    }
+
+    Assert-Equals 'repo updated' ($script:Calls -join ' ')
+}
+
+function test_update_packages_reloads_packages_declared_by_repo_update {
+    $script:Dry = $false
+    $script:RepoUpdates = 0
+    $script:WingetCalls = @()
+    $originalDotfilesDir = $script:DotfilesDir
+    $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
+    $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
+    $originalInstallAi = (Get-Command InstallAi).ScriptBlock
+    $originalSyncLazyVimConfig = (Get-Command Sync-LazyVimConfig).ScriptBlock
+    $originalSyncLazyVim = (Get-Command Sync-LazyVim).ScriptBlock
+    $originalAssertWindowsHealthy = (Get-Command Assert-WindowsHealthy).ScriptBlock
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'pulled-dotfiles'
+    New-Item -ItemType Directory -Force -Path $script:DotfilesDir | Out-Null
+    Copy-Item -LiteralPath $script:DotfileScript -Destination (Join-Path $script:DotfilesDir 'dotfile.ps1')
+    $script:PulledScript = (Get-Content -Raw $script:DotfileScript).Replace(
+        '"Python.Python.3.14", "GitHub.cli"',
+        '"Python.Python.3.14", "GitHub.cli", "Example.NewPackage"'
+    ) + @'
+
+function InstallExtras { param([switch]$Update) }
+function InstallAi { param([switch]$Update) }
+function Sync-LazyVimConfig { }
+function Sync-LazyVim { }
+function Assert-WindowsHealthy { }
+'@
+    Set-FunctionMock 'UpdateRepo' {
+        $script:RepoUpdates++
+        Set-Content -LiteralPath (Join-Path $script:DotfilesDir 'dotfile.ps1') -Value $script:PulledScript
+    }
+    Set-FunctionMock 'InstallExtras' { param([switch]$Update) }
+    Set-FunctionMock 'InstallAi' { param([switch]$Update) }
+    Set-FunctionMock 'Sync-LazyVimConfig' { }
+    Set-FunctionMock 'Sync-LazyVim' { }
+    Set-FunctionMock 'Assert-WindowsHealthy' { }
+    Set-CommandMock 'winget' {
+        $call = $args -join ' '
+        $script:WingetCalls += ,$call
+        if ($args[0] -eq 'list' -and $args[2] -eq 'Example.NewPackage') {
+            $global:LASTEXITCODE = 1
+        } else {
+            $global:LASTEXITCODE = 0
+        }
+    }
+
+    try {
+        Update-Packages 6>&1 | Out-Null
+    } finally {
+        Clear-CommandMock 'winget'
+        Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
         Set-FunctionMock 'InstallExtras' $originalInstallExtras
         Set-FunctionMock 'InstallAi' $originalInstallAi
         Set-FunctionMock 'Sync-LazyVimConfig' $originalSyncLazyVimConfig
         Set-FunctionMock 'Sync-LazyVim' $originalSyncLazyVim
-        if ($originalAssertWindowsHealthy) {
-            Set-FunctionMock 'Assert-WindowsHealthy' $originalAssertWindowsHealthy
-        } else {
-            Remove-Item function:\Assert-WindowsHealthy -ErrorAction SilentlyContinue
-        }
+        Set-FunctionMock 'Assert-WindowsHealthy' $originalAssertWindowsHealthy
+        $script:DotfilesDir = $originalDotfilesDir
     }
 
-    Assert-Equals 'repo winget extras ai config lazy doctor' ($script:Calls -join ' ')
+    Assert-Equals 1 $script:RepoUpdates
+    Assert-True ($script:WingetCalls -like 'install --id Example.NewPackage --exact*') 'update should install a package declared by the pull'
 }
 
 function test_installpackages_fails_when_winget_install_fails {

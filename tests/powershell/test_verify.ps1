@@ -168,6 +168,35 @@ function test_verify_reports_missing_codex_config {
     Assert-True $script:VerifyFailed 'missing Codex config should fail verification'
 }
 
+function test_verify_rejects_codex_config_directory {
+    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
+    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
+    New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE '.codex\config.toml') | Out-Null
+
+    $output = Verify 6>&1 | Out-String
+
+    Assert-Contains $output 'config.toml must be a regular writable file'
+    Assert-True $script:VerifyFailed 'a Codex config directory should fail verification'
+}
+
+function test_verify_rejects_readonly_codex_config {
+    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
+    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
+    $target = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+    'model = "test"' | Set-Content $target
+    (Get-Item -LiteralPath $target).IsReadOnly = $true
+
+    try {
+        $output = Verify 6>&1 | Out-String
+    } finally {
+        (Get-Item -LiteralPath $target).IsReadOnly = $false
+    }
+
+    Assert-Contains $output 'config.toml must be a regular writable file'
+    Assert-True $script:VerifyFailed 'a read-only Codex config should fail verification'
+}
+
 function test_doctor_refreshes_path_before_verifying {
     $script:PathRefreshed = $false
     $originalRefreshProcessPath = (Get-Command Refresh-ProcessPath).ScriptBlock

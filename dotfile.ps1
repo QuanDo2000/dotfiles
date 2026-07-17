@@ -470,15 +470,26 @@ function Sync-LazyVim {
     }
 }
 
+function Invoke-UpdatedPackageInstall($DotfileScript, [bool]$DryRun, [bool]$ForceRun, [bool]$QuietRun) {
+    & {
+        param($ScriptPath, $IsDry, $IsForce, $IsQuiet)
+        . $ScriptPath -NoMain -Dry:$IsDry -Force:$IsForce -Quiet:$IsQuiet
+        $script:Dry = $IsDry
+        $script:Force = $IsForce
+        $script:Quiet = $IsQuiet
+        InstallPackages
+        InstallExtras -Update
+        InstallAi -Update
+        Sync-LazyVimConfig
+        Sync-LazyVim
+        if (-not $script:Dry) { Assert-WindowsHealthy }
+    } $DotfileScript $DryRun $ForceRun $QuietRun
+}
+
 function Update-Packages {
     Info "Updating packages..."
     UpdateRepo
-    InstallPackages
-    InstallExtras -Update
-    InstallAi -Update
-    Sync-LazyVimConfig
-    Sync-LazyVim
-    if (-not $script:Dry) { Assert-WindowsHealthy }
+    Invoke-UpdatedPackageInstall (Join-Path $script:DotfilesDir 'dotfile.ps1') $script:Dry $script:Force $script:Quiet
     Success "Finished updating packages"
 }
 
@@ -726,7 +737,8 @@ function Verify {
     if (-not (Test-Path -LiteralPath $codexConfig)) {
         FailSoft "$codexConfig not found"
         $errors++
-    } elseif ((Get-Item -LiteralPath $codexConfig -Force).LinkType) {
+    } elseif (($item = Get-Item -LiteralPath $codexConfig -Force).PSIsContainer -or
+        $item.LinkType -or $item.IsReadOnly) {
         FailSoft "$codexConfig must be a regular writable file"
         $errors++
     } else {
