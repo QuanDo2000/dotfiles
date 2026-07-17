@@ -114,7 +114,7 @@ def copy_files(source, destination, paths):
     with tempfile.NamedTemporaryFile("w", encoding="utf-8") as file_list:
         file_list.write("\n".join(sorted(paths)) + "\n")
         file_list.flush()
-        rclone("copy", source, destination, "--files-from-raw", file_list.name)
+        rclone("copy", source, destination, "--files-from-raw", file_list.name, "--no-update-dir-modtime")
 
 
 def cleanup_backups(now):
