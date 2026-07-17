@@ -6,6 +6,7 @@ function test_showusage_mentions_all_commands {
     foreach ($cmd in 'all', 'packages', 'doctor', 'verify', 'update') {
         Assert-Contains $output $cmd
     }
+    Assert-Contains $output 'packages    Install all managed packages only'
     Assert-False ($output -match '(?m)^\s+ai\s+') 'ShowUsage should not expose a standalone ai command'
 }
 

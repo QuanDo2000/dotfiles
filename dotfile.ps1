@@ -770,7 +770,7 @@ Usage: dotfile.ps1 [OPTIONS] [COMMAND]
 Commands:
   all         Run full setup (default)
   update      Update system packages
-  packages    Install system packages only
+  packages    Install all managed packages only
   doctor      Detect Windows installation issues
   verify      Verify installation
 
