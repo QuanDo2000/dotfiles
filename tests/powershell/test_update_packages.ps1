@@ -8,45 +8,6 @@ function TestTeardown {
     Clear-TestEnv
 }
 
-function test_update_packages_dry_run_does_not_call_winget {
-    $script:Dry = $true
-    $script:Called = $false
-    Set-CommandMock 'winget' { $script:Called = $true }
-
-    try {
-        $output = Update-Packages 6>&1 | Out-String
-    } finally {
-        Clear-CommandMock 'winget'
-    }
-
-    Assert-Contains $output 'Would run: winget upgrade --all'
-    Assert-False $script:Called 'winget should not be invoked in dry run'
-}
-
-function test_update_packages_fails_when_winget_upgrade_fails {
-    $script:Dry = $false
-    $script:WingetCalls = @()
-    Set-CommandMock 'winget' {
-        $script:WingetCalls += ,($args -join ' ')
-        $global:LASTEXITCODE = 1
-    }
-    $originalInstallAi = (Get-Command InstallAi).ScriptBlock
-    Set-FunctionMock 'InstallAi' { }
-
-    $failed = $false
-    try {
-        Update-Packages 6>&1 | Out-Null
-    } catch {
-        $failed = $true
-    } finally {
-        Clear-CommandMock 'winget'
-        Set-FunctionMock 'InstallAi' $originalInstallAi
-    }
-
-    Assert-True $failed 'Update-Packages should fail when winget upgrade fails'
-    Assert-Contains $script:WingetCalls[0] '--accept-source-agreements'
-}
-
 # ---------------------------------------------------------------------------
 # Package list
 # ---------------------------------------------------------------------------
@@ -68,10 +29,11 @@ function test_winget_commands_use_shared_helper {
     Assert-False ($text -match '\{ winget (install|upgrade)') 'raw winget install/upgrade calls should go through Invoke-Winget'
 }
 
-function test_update_packages_updates_extras {
+function test_update_packages_installs_declared_packages_before_updates {
     $script:Dry = $false
-    $script:ExtrasUpdated = $false
-    Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
+    $script:Calls = @()
+    $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
+    $originalInstallPackages = (Get-Command InstallPackages).ScriptBlock
     $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
     $originalInstallAi = (Get-Command InstallAi).ScriptBlock
     $originalSyncLazyVimConfig = (Get-Command Sync-LazyVimConfig).ScriptBlock
@@ -79,16 +41,19 @@ function test_update_packages_updates_extras {
     $originalAssertWindowsHealthy = if (Get-Command Assert-WindowsHealthy -ErrorAction SilentlyContinue) {
         (Get-Command Assert-WindowsHealthy).ScriptBlock
     } else { $null }
-    Set-FunctionMock 'InstallExtras' { param([switch]$Update) $script:ExtrasUpdated = [bool]$Update }
-    Set-FunctionMock 'InstallAi' { }
-    Set-FunctionMock 'Sync-LazyVimConfig' { }
-    Set-FunctionMock 'Sync-LazyVim' { }
-    Set-FunctionMock 'Assert-WindowsHealthy' { $script:UpdateDoctorCalled = $true }
+    Set-FunctionMock 'UpdateRepo' { $script:Calls += 'repo' }
+    Set-FunctionMock 'InstallPackages' { $script:Calls += 'winget' }
+    Set-FunctionMock 'InstallExtras' { param([switch]$Update) if ($Update) { $script:Calls += 'extras' } }
+    Set-FunctionMock 'InstallAi' { param([switch]$Update) if ($Update) { $script:Calls += 'ai' } }
+    Set-FunctionMock 'Sync-LazyVimConfig' { $script:Calls += 'config' }
+    Set-FunctionMock 'Sync-LazyVim' { $script:Calls += 'lazy' }
+    Set-FunctionMock 'Assert-WindowsHealthy' { $script:Calls += 'doctor' }
 
     try {
         Update-Packages 6>&1 | Out-Null
     } finally {
-        Clear-CommandMock 'winget'
+        Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
+        Set-FunctionMock 'InstallPackages' $originalInstallPackages
         Set-FunctionMock 'InstallExtras' $originalInstallExtras
         Set-FunctionMock 'InstallAi' $originalInstallAi
         Set-FunctionMock 'Sync-LazyVimConfig' $originalSyncLazyVimConfig
@@ -100,8 +65,7 @@ function test_update_packages_updates_extras {
         }
     }
 
-    Assert-True $script:ExtrasUpdated 'Update-Packages should update Scoop packages and Node LTS'
-    Assert-True $script:UpdateDoctorCalled 'Update-Packages should run doctor after updating'
+    Assert-Equals 'repo winget extras ai config lazy doctor' ($script:Calls -join ' ')
 }
 
 function test_installpackages_fails_when_winget_install_fails {

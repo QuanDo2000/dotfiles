@@ -68,6 +68,8 @@ function test_update_packages_syncs_lazyvim {
     $script:Dry = $false
     $script:LazySynced = $false
     Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
+    $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
+    $originalInstallPackages = (Get-Command InstallPackages).ScriptBlock
     $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
     $originalInstallAi = (Get-Command InstallAi).ScriptBlock
     $originalSyncLazyVimConfig = (Get-Command Sync-LazyVimConfig).ScriptBlock
@@ -75,6 +77,8 @@ function test_update_packages_syncs_lazyvim {
     $originalAssertWindowsHealthy = if (Get-Command Assert-WindowsHealthy -ErrorAction SilentlyContinue) {
         (Get-Command Assert-WindowsHealthy).ScriptBlock
     } else { $null }
+    Set-FunctionMock 'UpdateRepo' { }
+    Set-FunctionMock 'InstallPackages' { }
     Set-FunctionMock 'InstallExtras' { }
     Set-FunctionMock 'InstallAi' { }
     Set-FunctionMock 'Sync-LazyVimConfig' { }
@@ -85,6 +89,8 @@ function test_update_packages_syncs_lazyvim {
         Update-Packages 6>&1 | Out-Null
     } finally {
         Clear-CommandMock 'winget'
+        Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
+        Set-FunctionMock 'InstallPackages' $originalInstallPackages
         Set-FunctionMock 'InstallExtras' $originalInstallExtras
         Set-FunctionMock 'InstallAi' $originalInstallAi
         Set-FunctionMock 'Sync-LazyVimConfig' $originalSyncLazyVimConfig

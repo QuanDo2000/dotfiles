@@ -175,7 +175,7 @@ function WingetHas($id) {
 
 function Get-WingetPackages {
     @(
-        "Microsoft.PowerShell", "Git.Git", "Microsoft.WindowsTerminal",
+        "Microsoft.PowerShell", "Git.Git", "GnuPG.Gpg4win", "Microsoft.WindowsTerminal",
         "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "junegunn.fzf",
         "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide",
@@ -288,6 +288,12 @@ function InstallExtras {
     param([switch]$Update)
     InstallScoopPackages -Update:$Update
     InstallFnm
+}
+
+function InstallManagedPackages {
+    InstallPackages
+    InstallExtras
+    InstallAi
 }
 
 function InstallCodex {
@@ -450,12 +456,8 @@ function Sync-LazyVim {
 
 function Update-Packages {
     Info "Updating packages..."
-    if ($script:Dry) {
-        Success "Would run: winget upgrade --all"
-    } else {
-        Invoke-Winget "winget upgrade failed" @('upgrade', '--all')
-        Refresh-ProcessPath
-    }
+    UpdateRepo
+    InstallPackages
     InstallExtras -Update
     InstallAi -Update
     Sync-LazyVimConfig
@@ -726,9 +728,7 @@ function Assert-WindowsHealthy {
 function SetupDotfiles {
     Info "Setting up dotfiles..."
     UpdateRepo
-    InstallPackages
-    InstallExtras
-    InstallAi
+    InstallManagedPackages
     SetupSymlinks
     Sync-LazyVim
     if (-not $script:Dry) { Assert-WindowsHealthy }
@@ -787,7 +787,7 @@ if (-not $NoMain) {
     switch ($command) {
         "all"       { SetupDotfiles }
         "update"    { Update-Packages }
-        "packages"  { InstallPackages }
+        "packages"  { InstallManagedPackages }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
         "verify"    { Verify; if ($script:VerifyFailed) { exit 1 } }
         default     { Fail "Unknown command: $command"; ShowUsage }

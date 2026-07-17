@@ -26,6 +26,7 @@ function test_windows_package_manifests_cover_parity_tools {
 
     Assert-True ($winget -contains 'Python.Python.3.14') 'Winget should manage Python for shared seed scripts'
     Assert-True ($winget -contains 'GitHub.cli') 'Winget should manage GitHub CLI'
+    Assert-True ($winget -contains 'GnuPG.Gpg4win') 'Winget should manage Gpg4win'
     Assert-True ($scoop -contains 'FiraCode') 'Scoop should manage FiraCode'
     Assert-True ($scoop -contains 'jq') 'Scoop should manage jq'
     Assert-True ($scoop -contains 'ast-grep') 'Scoop should manage ast-grep'
