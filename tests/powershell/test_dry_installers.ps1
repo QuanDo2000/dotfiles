@@ -6,14 +6,14 @@ function TestSetup {
     $script:Quiet = $false
 }
 
-function test_installfont_dry_run_does_not_call_scoop {
+function test_installscooppackages_dry_run_does_not_call_scoop {
     $script:Called = $false
     Set-CommandMock 'scoop' { $script:Called = $true }
 
-    $output = InstallFont 6>&1 | Out-String
+    $output = InstallScoopPackages 6>&1 | Out-String
 
     Clear-CommandMock 'scoop'
-    Assert-Contains $output 'Installing FiraCode'
+    Assert-Contains $output 'Installing Scoop packages'
     Assert-False $script:Called 'scoop should not be invoked in dry run'
 }
 
@@ -63,6 +63,6 @@ function test_installpackages_dry_run_does_not_call_winget {
 
 function test_installextras_dry_run_chains_font_and_node {
     $output = InstallExtras 6>&1 | Out-String
-    Assert-Contains $output 'Installing FiraCode'
+    Assert-Contains $output 'Installing Scoop packages'
     Assert-Contains $output 'Installing Node.js LTS'
 }

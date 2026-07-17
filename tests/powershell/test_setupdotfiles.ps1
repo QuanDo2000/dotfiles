@@ -42,6 +42,7 @@ function test_setupdotfiles_dry_run_completes_without_errors {
 }
 
 function test_setupdotfiles_updates_repo_before_installing_packages {
+    $script:Dry = $false
     $script:Calls = @()
     $originalInstallPackages = (Get-Command InstallPackages).ScriptBlock
     $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
@@ -49,12 +50,16 @@ function test_setupdotfiles_updates_repo_before_installing_packages {
     $originalInstallAi = (Get-Command InstallAi).ScriptBlock
     $originalSetupSymlinks = (Get-Command SetupSymlinks).ScriptBlock
     $originalSyncLazyVim = (Get-Command Sync-LazyVim).ScriptBlock
+    $originalAssertWindowsHealthy = if (Get-Command Assert-WindowsHealthy -ErrorAction SilentlyContinue) {
+        (Get-Command Assert-WindowsHealthy).ScriptBlock
+    } else { $null }
     Set-FunctionMock 'InstallPackages' { $script:Calls += 'InstallPackages' }
     Set-FunctionMock 'UpdateRepo' { $script:Calls += 'UpdateRepo' }
     Set-FunctionMock 'InstallExtras' { $script:Calls += 'InstallExtras' }
     Set-FunctionMock 'InstallAi' { $script:Calls += 'InstallAi' }
     Set-FunctionMock 'SetupSymlinks' { $script:Calls += 'SetupSymlinks' }
     Set-FunctionMock 'Sync-LazyVim' { $script:Calls += 'Sync-LazyVim' }
+    Set-FunctionMock 'Assert-WindowsHealthy' { $script:Calls += 'Doctor' }
 
     try {
         SetupDotfiles
@@ -65,11 +70,17 @@ function test_setupdotfiles_updates_repo_before_installing_packages {
         Set-FunctionMock 'InstallAi' $originalInstallAi
         Set-FunctionMock 'SetupSymlinks' $originalSetupSymlinks
         Set-FunctionMock 'Sync-LazyVim' $originalSyncLazyVim
+        if ($originalAssertWindowsHealthy) {
+            Set-FunctionMock 'Assert-WindowsHealthy' $originalAssertWindowsHealthy
+        } else {
+            Remove-Item function:\Assert-WindowsHealthy -ErrorAction SilentlyContinue
+        }
     }
 
     Assert-Equals 'UpdateRepo' $script:Calls[0]
     Assert-Equals 'InstallPackages' $script:Calls[1]
     Assert-Equals 'Sync-LazyVim' $script:Calls[5]
+    Assert-Equals 'Doctor' $script:Calls[6]
 }
 
 function test_setupsymlinks_dry_run_creates_no_symlinks {

@@ -68,18 +68,49 @@ function test_update_packages_syncs_lazyvim {
     $script:Dry = $false
     $script:LazySynced = $false
     Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
+    $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
     $originalInstallAi = (Get-Command InstallAi).ScriptBlock
+    $originalSyncLazyVimConfig = (Get-Command Sync-LazyVimConfig).ScriptBlock
     $originalSyncLazyVim = (Get-Command Sync-LazyVim).ScriptBlock
+    $originalAssertWindowsHealthy = if (Get-Command Assert-WindowsHealthy -ErrorAction SilentlyContinue) {
+        (Get-Command Assert-WindowsHealthy).ScriptBlock
+    } else { $null }
+    Set-FunctionMock 'InstallExtras' { }
     Set-FunctionMock 'InstallAi' { }
+    Set-FunctionMock 'Sync-LazyVimConfig' { }
     Set-FunctionMock 'Sync-LazyVim' { $script:LazySynced = $true }
+    Set-FunctionMock 'Assert-WindowsHealthy' { }
 
     try {
         Update-Packages 6>&1 | Out-Null
     } finally {
         Clear-CommandMock 'winget'
+        Set-FunctionMock 'InstallExtras' $originalInstallExtras
         Set-FunctionMock 'InstallAi' $originalInstallAi
+        Set-FunctionMock 'Sync-LazyVimConfig' $originalSyncLazyVimConfig
         Set-FunctionMock 'Sync-LazyVim' $originalSyncLazyVim
+        if ($originalAssertWindowsHealthy) {
+            Set-FunctionMock 'Assert-WindowsHealthy' $originalAssertWindowsHealthy
+        } else {
+            Remove-Item function:\Assert-WindowsHealthy -ErrorAction SilentlyContinue
+        }
     }
 
     Assert-True $script:LazySynced 'Update-Packages should sync LazyVim'
+}
+
+function test_sync_lazyvim_config_creates_writable_seed {
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+    $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
+    $seedDir = Join-Path $script:DotfilesDir 'config\shared\config\nvim'
+    New-Item -ItemType Directory -Force -Path $seedDir | Out-Null
+    '{"extras":[],"version":1}' | Set-Content (Join-Path $seedDir 'lazyvim.json')
+
+    Sync-LazyVimConfig
+
+    $target = Join-Path $env:LOCALAPPDATA 'nvim\lazyvim.json'
+    $base = Join-Path $env:LOCALAPPDATA 'dotfiles\lazyvim-seed.json'
+    Assert-FileExists $target
+    Assert-FileExists $base
+    Assert-False ([bool](Get-Item $target).LinkType) 'LazyVim config should stay writable'
 }

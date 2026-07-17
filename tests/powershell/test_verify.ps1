@@ -19,11 +19,19 @@ function TestSetup {
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.
     $script:Quiet = $false
+    Set-CommandMock 'scoop' {
+        $global:LASTEXITCODE = 0
+        Get-ScoopPackages | ForEach-Object { [pscustomobject]@{ Name = $_ } }
+    }
+    $script:OriginalWingetHas = (Get-Command WingetHas).ScriptBlock
+    Set-FunctionMock 'WingetHas' { return $true }
 }
 
 function TestTeardown {
     Clear-CommandMock 'Get-Command'
     Clear-CommandMock 'Get-Module'
+    Clear-CommandMock 'scoop'
+    Set-FunctionMock 'WingetHas' $script:OriginalWingetHas
     Clear-TestEnv
 }
 
@@ -36,7 +44,7 @@ function test_verify_emits_each_verification_phase {
     Assert-Contains $output 'Verifying installed tools'
     Assert-Contains $output 'Verifying scoop packages'
     Assert-Contains $output 'Verifying PowerShell modules'
-    Assert-Contains $output 'Verifying copied files'
+    Assert-Contains $output 'Verifying managed links'
     Assert-Contains $output 'Verifying neovim config'
 }
 
@@ -51,7 +59,7 @@ function test_verify_checks_starship_config {
     Assert-Contains $output 'starship.toml'
 }
 
-function test_verify_fails_when_tracked_config_differs {
+function test_verify_fails_when_tracked_config_is_not_linked {
     Set-CommandMock 'Get-Command' {
         [pscustomobject]@{ Source = 'C:\fake\tool.exe' }
     }
@@ -67,8 +75,8 @@ function test_verify_fails_when_tracked_config_differs {
 
     $output = Verify 6>&1 | Out-String
 
-    Assert-Contains $output 'differs from source'
-    Assert-True $script:VerifyFailed 'verify should fail when tracked config differs'
+    Assert-Contains $output 'is not linked to'
+    Assert-True $script:VerifyFailed 'verify should fail when tracked config is not linked'
 }
 
 function test_verify_checks_shared_link_specs {
@@ -84,8 +92,30 @@ function test_verify_checks_shared_link_specs {
     $output = Verify 6>&1 | Out-String
 
     Assert-Contains $output '.ssh'
-    Assert-Contains $output 'differs from source'
+    Assert-Contains $output 'is not linked to'
     Assert-True $script:VerifyFailed 'verify should check shared file link specs'
+}
+
+function test_verify_checks_every_managed_link_spec {
+    $script:ManagedLinkSource = Join-Path $env:USERPROFILE 'source.txt'
+    $script:ManagedLinkDestination = Join-Path $env:USERPROFILE 'destination.txt'
+    'same' | Set-Content $script:ManagedLinkSource
+    'same' | Set-Content $script:ManagedLinkDestination
+    $originalGetWindowsLinkSpecs = (Get-Command Get-WindowsLinkSpecs).ScriptBlock
+    Set-FunctionMock 'Get-WindowsLinkSpecs' {
+        @(New-LinkSpec 'File' $script:ManagedLinkSource $script:ManagedLinkDestination)
+    }
+    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
+    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
+
+    try {
+        $output = Verify 6>&1 | Out-String
+    } finally {
+        Set-FunctionMock 'Get-WindowsLinkSpecs' $originalGetWindowsLinkSpecs
+    }
+
+    Assert-Contains $output 'is not linked to'
+    Assert-True $script:VerifyFailed 'matching file contents must not substitute for a managed link'
 }
 
 function test_verify_reports_issues_when_tools_absent {
@@ -112,4 +142,54 @@ function test_verify_reports_tools_found_when_mocks_return_objects {
 
     Assert-Contains $output 'found'
     Assert-Contains $output 'installed'
+}
+
+function test_verify_reports_missing_managed_ai_command {
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'codebase-memory-mcp') { return $null }
+        [pscustomobject]@{ Source = "C:\fake\$Name.exe" }
+    }
+    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
+
+    $output = Verify 6>&1 | Out-String
+
+    Assert-Contains $output 'codebase-memory-mcp not found'
+    Assert-True $script:VerifyFailed 'missing managed AI command should fail verification'
+}
+
+function test_doctor_refreshes_path_before_verifying {
+    $script:PathRefreshed = $false
+    $originalRefreshProcessPath = (Get-Command Refresh-ProcessPath).ScriptBlock
+    $originalVerify = (Get-Command Verify).ScriptBlock
+    Set-FunctionMock 'Refresh-ProcessPath' { $script:PathRefreshed = $true }
+    Set-FunctionMock 'Verify' { }
+
+    try {
+        Doctor
+    } finally {
+        Set-FunctionMock 'Refresh-ProcessPath' $originalRefreshProcessPath
+        Set-FunctionMock 'Verify' $originalVerify
+    }
+
+    Assert-True $script:PathRefreshed 'doctor should see tools installed into the persistent user PATH'
+}
+
+function test_verify_checks_exact_winget_packages {
+    Set-FunctionMock 'WingetHas' { param($id) return ($id -ne 'Microsoft.PowerShell') }
+    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
+    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
+    Set-CommandMock 'scoop' {
+        $global:LASTEXITCODE = 0
+        Get-ScoopPackages | ForEach-Object { [pscustomobject]@{ Name = $_ } }
+    }
+
+    try {
+        $output = Verify 6>&1 | Out-String
+    } finally {
+        Clear-CommandMock 'scoop'
+    }
+
+    Assert-Contains $output 'Winget package missing: Microsoft.PowerShell'
+    Assert-True $script:VerifyFailed 'missing exact Winget package should fail verification'
 }

@@ -8,7 +8,7 @@ function TestTeardown {
     Clear-TestEnv
 }
 
-function test_installfont_fails_when_scoop_install_fails {
+function test_installscooppackages_fails_when_scoop_install_fails {
     $script:Dry = $false
     Set-CommandMock 'Get-Command' {
         param($Name)
@@ -19,7 +19,7 @@ function test_installfont_fails_when_scoop_install_fails {
 
     $failed = $false
     try {
-        InstallFont 6>&1 | Out-Null
+        InstallScoopPackages 6>&1 | Out-Null
     } catch {
         $failed = $true
     } finally {
@@ -27,10 +27,10 @@ function test_installfont_fails_when_scoop_install_fails {
         Clear-CommandMock 'Get-Command'
     }
 
-    Assert-True $failed 'InstallFont should fail when scoop install fails'
+    Assert-True $failed 'InstallScoopPackages should fail when scoop install fails'
 }
 
-function test_installfont_skips_existing_nerd_fonts_bucket {
+function test_installscooppackages_skips_existing_nerd_fonts_bucket {
     $script:Dry = $false
     $script:ScoopCalls = @()
     Set-CommandMock 'Get-Command' {
@@ -41,21 +41,49 @@ function test_installfont_skips_existing_nerd_fonts_bucket {
     Set-CommandMock 'scoop' {
         $script:ScoopCalls += ,($args -join ' ')
         if ($args[0] -eq 'bucket' -and $args[1] -eq 'list') {
-            'main'
-            'nerd-fonts'
+            [pscustomobject]@{ Name = 'main' }
+            [pscustomobject]@{ Name = 'nerd-fonts' }
         }
         $global:LASTEXITCODE = 0
     }
 
     try {
-        InstallFont 6>&1 | Out-Null
+        InstallScoopPackages 6>&1 | Out-Null
     } finally {
         Clear-CommandMock 'scoop'
         Clear-CommandMock 'Get-Command'
     }
 
     Assert-False ($script:ScoopCalls -contains 'bucket add nerd-fonts') 'existing nerd-fonts bucket should not be added again'
-    Assert-True ($script:ScoopCalls -contains 'install FiraCode') 'font install should still run'
+    Assert-True ($script:ScoopCalls -contains 'install FiraCode') 'FiraCode install should still run'
+    Assert-True ($script:ScoopCalls -contains 'install jq') 'jq should be managed by Scoop'
+    Assert-True ($script:ScoopCalls -contains 'install ast-grep') 'ast-grep should be managed by Scoop'
+}
+
+function test_installscooppackages_updates_only_managed_packages {
+    $script:Dry = $false
+    $script:ScoopCalls = @()
+    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
+    Set-CommandMock 'scoop' {
+        $script:ScoopCalls += ,($args -join ' ')
+        if ($args[0] -eq 'bucket' -and $args[1] -eq 'list') {
+            [pscustomobject]@{ Name = 'nerd-fonts' }
+        }
+        if ($args[0] -eq 'list') {
+            Get-ScoopPackages | ForEach-Object { [pscustomobject]@{ Name = $_ } }
+        }
+        $global:LASTEXITCODE = 0
+    }
+
+    try {
+        InstallScoopPackages -Update 6>&1 | Out-Null
+    } finally {
+        Clear-CommandMock 'scoop'
+        Clear-CommandMock 'Get-Command'
+    }
+
+    Assert-True ($script:ScoopCalls -contains 'update') 'Scoop manifests should update'
+    Assert-True ($script:ScoopCalls -contains 'update FiraCode jq ast-grep') 'only managed Scoop packages should update'
 }
 
 function test_installfnm_fails_when_fnm_command_fails {

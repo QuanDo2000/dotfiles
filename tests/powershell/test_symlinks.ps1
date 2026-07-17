@@ -29,6 +29,44 @@ function test_windows_neovim_disables_fff_plugin {
     Assert-Contains $config 'vim.fn.has("win32") == 1'
 }
 
+function test_windows_gitconfig_uses_platform_gpg_program {
+    $shared = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
+    $windows = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\windows\.gitconfig')
+
+    Assert-False ($shared -match '(?m)^\s*program\s*=\s*gpg\s*$') 'shared config must not override the platform GPG program'
+    Assert-Contains $windows 'C:/Program Files/GnuPG/bin/gpg.exe'
+}
+
+function test_windows_neovim_links_stable_files_not_whole_directory {
+    $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
+    $specs = @(Get-WindowsLinkSpecs)
+    $nvimRoot = Join-Path $env:LOCALAPPDATA 'nvim'
+    $nvimSpecs = @($specs | Where-Object { $_.Destination -like "$nvimRoot*" })
+
+    Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq $nvimRoot })) 'whole Neovim directory should not be linked'
+    Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'init.lua') })) 'init.lua should be linked'
+    Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lua') })) 'lua directory should be linked'
+    Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lazyvim.json') })) 'lazyvim.json should remain writable'
+}
+
+function test_migrate_windows_nvim_config_replaces_legacy_directory_link {
+    $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
+    New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
+    $legacySource = Join-Path $script:DotfilesDir 'config\shared\config\nvim'
+    $destination = Join-Path $env:LOCALAPPDATA 'nvim'
+    try {
+        New-Item -ItemType SymbolicLink -Path $destination -Target $legacySource | Out-Null
+    } catch {
+        return
+    }
+
+    Migrate-WindowsNvimConfig
+
+    $item = Get-Item -LiteralPath $destination -Force
+    Assert-True $item.PSIsContainer 'migrated Neovim path should remain a directory'
+    Assert-False ([bool]$item.LinkType) 'migrated Neovim directory should be writable'
+}
+
 function test_linkpath_file_dry_run_does_not_create_destination {
     $script:Dry = $true
     $src = Join-Path $env:USERPROFILE 'src.txt'

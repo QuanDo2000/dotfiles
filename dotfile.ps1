@@ -1,5 +1,5 @@
 param(
-    # When set, skip self-elevation and main dispatch so the script can be
+    # When set, skip main dispatch so the script can be
     # dot-sourced by tests to load functions without side effects.
     [switch]$NoMain,
     # Flags declared explicitly so PowerShell's parameter binder doesn't
@@ -16,25 +16,6 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-function Get-InitialCommand([string[]]$Arguments, [bool]$HelpRequested) {
-    if ($HelpRequested) { return '__help__' }
-    $command = "all"
-    foreach ($arg in $Arguments) {
-        switch ($arg) {
-            { $_ -in "-d", "--dry", "-f", "--force", "-q", "--quiet" } { continue }
-            { $_ -in "-h", "--help" } { return '__help__' }
-            default {
-                if ($command -eq "all") { $command = $arg }
-            }
-        }
-    }
-    return $command
-}
-
-function CommandNeedsAdmin($Command) {
-    return ($Command -in "all", "packages", "update")
-}
-
 function Resolve-DotfilesDir($Override, $ScriptPath) {
     if ($Override) {
         return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Override)
@@ -42,26 +23,6 @@ function Resolve-DotfilesDir($Override, $ScriptPath) {
     $scriptItem = Get-Item -LiteralPath $ScriptPath
     $scriptReal = if ($scriptItem.Target) { $scriptItem.Target } else { $ScriptPath }
     return (Resolve-Path (Split-Path $scriptReal -Parent)).Path
-}
-
-# Self-elevate to admin (required for symlink creation)
-if (-not $NoMain) {
-    $initialCommand = Get-InitialCommand $RemainingArgs ([bool]$Help)
-    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if ((CommandNeedsAdmin $initialCommand) -and -not $isAdmin) {
-        Write-Host "  [ .. ] Elevating to Administrator..."
-        $pwsh = (Get-Process -Id $PID).Path
-        # Flags were bound to named params, so re-emit them explicitly —
-        # $RemainingArgs only contains the positional command now.
-        $forwardedFlags = @()
-        if ($Dry)   { $forwardedFlags += '-d' }
-        if ($Force) { $forwardedFlags += '-f' }
-        if ($Quiet) { $forwardedFlags += '-q' }
-        if ($Help)  { $forwardedFlags += '-h' }
-        $argList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) + $forwardedFlags + $RemainingArgs
-        $elevated = Start-Process -FilePath $pwsh -ArgumentList $argList -Verb RunAs -Wait -PassThru
-        exit $elevated.ExitCode
-    }
 }
 
 # Global variables.
@@ -98,12 +59,39 @@ function Get-LinkConflict($source, $destination) {
     }
 }
 
+function Invoke-ElevatedSymlink($source, $destination) {
+    $escapedSource = $source.Replace("'", "''")
+    $escapedDestination = $destination.Replace("'", "''")
+    $command = "New-Item -ItemType SymbolicLink -Path '$escapedDestination' -Target '$escapedSource' | Out-Null"
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+    $elevated = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @("-NoProfile", "-EncodedCommand", $encoded) -Verb RunAs -Wait -PassThru
+    if ($elevated.ExitCode -ne 0) { throw "Elevated symlink creation failed: $destination" }
+}
+
+function Test-SymlinkPrivilegeError($exception) {
+    while ($exception) {
+        if ($exception -is [System.UnauthorizedAccessException] -or
+            $exception.NativeErrorCode -eq 1314 -or
+            $exception.HResult -eq -2147023582 -or
+            $exception.Message -match 'required privilege') {
+            return $true
+        }
+        $exception = $exception.InnerException
+    }
+    return $false
+}
+
 function New-Symlink($source, $destination) {
     $parent = Split-Path $destination -Parent
     if ($parent -and -not (Test-Path $parent)) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
-    New-Item -ItemType SymbolicLink -Path $destination -Target $source | Out-Null
+    try {
+        New-Item -ItemType SymbolicLink -Path $destination -Target $source | Out-Null
+    } catch {
+        if ($NoMain -or -not (Test-SymlinkPrivilegeError $_.Exception)) { throw }
+        Invoke-ElevatedSymlink $source $destination
+    }
 }
 
 function LinkPath($source, $destination, [bool]$isDirectory = $false) {
@@ -185,6 +173,28 @@ function WingetHas($id) {
     return ($LASTEXITCODE -eq 0)
 }
 
+function Get-WingetPackages {
+    @(
+        "Microsoft.PowerShell", "Git.Git", "Microsoft.WindowsTerminal",
+        "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
+        "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "junegunn.fzf",
+        "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide",
+        "Python.Python.3.14", "GitHub.cli"
+    )
+}
+
+function Get-ScoopPackages {
+    @("FiraCode", "jq", "ast-grep")
+}
+
+function Get-RequiredCommands {
+    @(
+        "git", "gpg", "nvim", "starship", "fzf", "fd", "rg", "lazygit",
+        "fnm", "node", "jj", "zoxide", "jq", "ast-grep", "codex", "pi",
+        "codebase-memory-mcp", "py", "gh"
+    )
+}
+
 function Invoke-NativeChecked($FailureMessage, [scriptblock]$Command) {
     & $Command
     if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
@@ -194,12 +204,7 @@ function InstallPackages {
     Info "Installing packages..."
     if ($script:Dry) { return }
 
-    $wingetPkgs = @(
-        "Microsoft.Powershell", "Git.Git", "Microsoft.WindowsTerminal",
-        "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
-        "BurntSushi.ripgrep.MSVC", "sharkdp.fd",
-        "junegunn.fzf", "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide"
-    )
+    $wingetPkgs = @(Get-WingetPackages)
     Info "Checking winget packages ($($wingetPkgs.Count) total)..."
     $missing = @()
     for ($i = 0; $i -lt $wingetPkgs.Count; $i++) {
@@ -222,8 +227,9 @@ function InstallPackages {
     Success "Finished installing packages"
 }
 
-function InstallFont {
-    Info "Installing FiraCode using scoop..."
+function InstallScoopPackages {
+    param([switch]$Update)
+    Info "Installing Scoop packages..."
     if ($script:Dry) { return }
 
     if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
@@ -232,12 +238,30 @@ function InstallFont {
     }
     $buckets = scoop bucket list
     if ($LASTEXITCODE -ne 0) { throw "scoop bucket list failed" }
-    if ((($buckets -join "`n") -notmatch "(?m)^\s*nerd-fonts(\s|$)")) {
+    if ($buckets.Name -notcontains "nerd-fonts") {
         Invoke-NativeChecked "scoop bucket add nerd-fonts failed" { scoop bucket add nerd-fonts }
     }
-    Invoke-NativeChecked "scoop install FiraCode failed" { scoop install FiraCode }
 
-    Success "Finished installing font"
+    $installed = @(scoop list)
+    if ($LASTEXITCODE -ne 0) { throw "scoop list failed" }
+    foreach ($package in Get-ScoopPackages) {
+        if ($installed.Name -notcontains $package) {
+            Invoke-NativeChecked "scoop install $package failed" { scoop install $package }
+        }
+    }
+    if ($Update) {
+        Invoke-NativeChecked "scoop update failed" { scoop update }
+        $packages = @(Get-ScoopPackages)
+        Invoke-NativeChecked "scoop package update failed" { scoop update @packages }
+    }
+
+    Success "Finished installing Scoop packages"
+}
+
+function Refresh-ProcessPath {
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = "$machinePath;$userPath"
 }
 
 function InstallFnm {
@@ -245,9 +269,7 @@ function InstallFnm {
     if ($script:Dry) { return }
 
     if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
-        $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-        $env:Path = "$machinePath;$userPath"
+        Refresh-ProcessPath
     }
     if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
         FailSoft "fnm not found on PATH. Skipping Node.js LTS install — open a new shell and re-run 'dotfile.ps1'."
@@ -263,7 +285,8 @@ function InstallFnm {
 }
 
 function InstallExtras {
-    InstallFont
+    param([switch]$Update)
+    InstallScoopPackages -Update:$Update
     InstallFnm
 }
 
@@ -277,7 +300,6 @@ function InstallCodex {
         try {
             $env:CODEX_NON_INTERACTIVE = "1"
             Invoke-RestMethod https://chatgpt.com/codex/install.ps1 | Invoke-Expression
-            if ($LASTEXITCODE -ne 0) { throw "Codex CLI install failed" }
         } finally {
             if ($null -eq $oldNonInteractive) {
                 Remove-Item Env:CODEX_NON_INTERACTIVE -ErrorAction SilentlyContinue
@@ -288,8 +310,70 @@ function InstallCodex {
     } else {
         Info "Already installed Codex CLI"
     }
+    Refresh-ProcessPath
+    if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
+        throw "codex command not found after installation"
+    }
 
     Success "Finished installing Codex CLI"
+}
+
+function InstallPi {
+    param([switch]$Update)
+    Info "Installing Pi coding agent..."
+    if ($script:Dry) { return }
+
+    if ($Update -or -not (Get-Command pi -ErrorAction SilentlyContinue)) {
+        Invoke-NativeChecked "Pi install failed" {
+            npm install --global @earendil-works/pi-coding-agent
+        }
+    } else {
+        Info "Already installed Pi coding agent"
+    }
+    Refresh-ProcessPath
+    if (-not (Get-Command pi -ErrorAction SilentlyContinue)) {
+        throw "pi command not found after installation"
+    }
+    Success "Finished installing Pi coding agent"
+}
+
+function SyncPiConfigs {
+    Info "Syncing Pi configuration..."
+    if ($script:Dry) { return }
+
+    $seedDir = Join-Path $script:DotfilesDir "config\shared\ai\pi"
+    $targetDir = Join-Path $env:USERPROFILE ".pi\agent"
+    New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+
+    foreach ($name in @("settings.json", "mcp.json")) {
+        $source = Join-Path $seedDir $name
+        $target = Join-Path $targetDir $name
+        if (-not (Test-Path -LiteralPath $target)) {
+            Copy-Item -LiteralPath $source -Destination $target
+            continue
+        }
+
+        $python = Get-Command py -ErrorAction SilentlyContinue
+        $jq = Get-Command jq -ErrorAction SilentlyContinue
+        if (-not $python -or -not $jq) {
+            throw "py and jq are required to sync Pi configuration"
+        }
+
+        $mergeScript = Join-Path $script:DotfilesDir "scripts\seed_merge\pi.py"
+        $applySeed = if ((Get-Item -LiteralPath $source).IsReadOnly) { "" } else { $source }
+        Invoke-NativeChecked "Pi $name seed comparison failed" {
+            py -3.14 $mergeScript $target $source $applySeed
+        }
+        $mergeSource = if ($applySeed) { $applySeed } else { $source }
+        $merged = & jq -s '.[0] * .[1]' $target $mergeSource
+        if ($LASTEXITCODE -ne 0) { throw "Pi $name merge failed" }
+        Set-Content -LiteralPath $target -Value ($merged -join "`n") -Encoding utf8
+    }
+
+    $extensionDir = Join-Path $targetDir "extensions"
+    New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
+    Copy-Item -LiteralPath (Join-Path $seedDir "codex-status.js") -Destination (Join-Path $extensionDir "codex-status.js") -Force
+    Success "Finished syncing Pi configuration"
 }
 
 # Install or update agent CLIs during package setup.
@@ -304,10 +388,16 @@ function InstallAi {
         Invoke-NativeChecked "codebase-memory-mcp update failed" { codebase-memory-mcp update }
     } elseif (-not (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
         irm https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 | iex
-        if ($LASTEXITCODE -ne 0) { throw "codebase-memory-mcp install failed" }
     } else {
         Info "Already installed codebase-memory-mcp"
     }
+    Refresh-ProcessPath
+    if (-not (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
+        throw "codebase-memory-mcp command not found after installation"
+    }
+
+    InstallPi -Update:$Update
+    SyncPiConfigs
 
     Success "Finished installing agent CLIs"
 }
@@ -364,9 +454,13 @@ function Update-Packages {
         Success "Would run: winget upgrade --all"
     } else {
         Invoke-Winget "winget upgrade failed" @('upgrade', '--all')
+        Refresh-ProcessPath
     }
+    InstallExtras -Update
     InstallAi -Update
+    Sync-LazyVimConfig
     Sync-LazyVim
+    if (-not $script:Dry) { Assert-WindowsHealthy }
     Success "Finished updating packages"
 }
 
@@ -437,8 +531,13 @@ function Get-WindowsLinkSpecs {
     # SSH config
     $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".ssh\config") "$userHome\.ssh\config" $true
 
-    # Neovim settings (symlink the whole dir)
-    $specs += New-LinkSpec 'Dir' (Join-Path $sharedPath "config\nvim") "$env:LOCALAPPDATA\nvim"
+    # Neovim settings: keep LazyVim's runtime-written lazyvim.json writable.
+    $nvimSource = Join-Path $sharedPath "config\nvim"
+    $nvimTarget = "$env:LOCALAPPDATA\nvim"
+    $specs += New-LinkSpec 'File' (Join-Path $nvimSource "init.lua") (Join-Path $nvimTarget "init.lua")
+    $specs += New-LinkSpec 'Dir' (Join-Path $nvimSource "lua") (Join-Path $nvimTarget "lua")
+    $specs += New-LinkSpec 'File' (Join-Path $nvimSource ".gitignore") (Join-Path $nvimTarget ".gitignore")
+    $specs += New-LinkSpec 'File' (Join-Path $nvimSource "stylua.toml") (Join-Path $nvimTarget "stylua.toml")
 
     # Jujutsu config (lives at %APPDATA%\jj\config.toml on Windows)
     $specs += New-LinkSpec 'Dir' (Join-Path $sharedPath "config\jj") "$env:APPDATA\jj"
@@ -463,11 +562,53 @@ function Get-WindowsLinkSpecs {
     return $specs
 }
 
+function Migrate-WindowsNvimConfig {
+    if ($script:Dry) { return }
+    $destination = "$env:LOCALAPPDATA\nvim"
+    if (-not (Test-Path -LiteralPath $destination)) { return }
+
+    $item = Get-Item -LiteralPath $destination -Force
+    if (-not $item.LinkType) { return }
+
+    $legacySource = Join-Path $script:DotfilesDir "config\shared\config\nvim"
+    if ($item.Target -ne $legacySource) {
+        throw "Neovim config points to unexpected target: $($item.Target)"
+    }
+    Remove-Item -LiteralPath $destination -Force
+    New-Item -ItemType Directory -Path $destination -Force | Out-Null
+}
+
+function Sync-LazyVimConfig {
+    Info "Syncing writable LazyVim configuration..."
+    if ($script:Dry) { return }
+
+    $source = Join-Path $script:DotfilesDir "config\shared\config\nvim\lazyvim.json"
+    $target = "$env:LOCALAPPDATA\nvim\lazyvim.json"
+    $base = "$env:LOCALAPPDATA\dotfiles\lazyvim-seed.json"
+    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent), (Split-Path $base -Parent) | Out-Null
+
+    if (-not (Test-Path -LiteralPath $target)) {
+        Copy-Item -LiteralPath $source -Destination $target
+        Copy-Item -LiteralPath $source -Destination $base
+        return
+    }
+
+    if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
+        throw "py is required to sync LazyVim configuration"
+    }
+    $mergeScript = Join-Path $script:DotfilesDir "scripts\seed_merge\lazyvim.py"
+    $applySeed = if ((Get-Item -LiteralPath $source).IsReadOnly) { "" } else { $source }
+    Invoke-NativeChecked "LazyVim config seed merge failed" {
+        py -3.14 $mergeScript $target $source $applySeed $base
+    }
+}
+
 function SetupSymlinks {
     Info "Setting up symlinks..."
     $script:OverwriteAll = $script:Force
     $script:BackupAll = $false
     $script:SkipAll = $false
+    Migrate-WindowsNvimConfig
 
     foreach ($spec in Get-WindowsLinkSpecs) {
         if ($spec.AddToPath) {
@@ -475,6 +616,7 @@ function SetupSymlinks {
         }
         LinkPath -source $spec.Source -destination $spec.Destination -isDirectory ($spec.Kind -eq 'Dir')
     }
+    Sync-LazyVimConfig
 
     Success "Finished setting up symlinks"
 }
@@ -483,7 +625,7 @@ function Verify {
     $errors = 0
 
     Info "Verifying installed tools..."
-    foreach ($cmd in @("git", "nvim", "fzf", "fd", "rg", "lazygit", "zoxide")) {
+    foreach ($cmd in Get-RequiredCommands) {
         $found = Get-Command $cmd -ErrorAction SilentlyContinue
         if ($found) {
             Success "$cmd found: $($found.Source)"
@@ -493,10 +635,34 @@ function Verify {
         }
     }
 
+    Info "Verifying Winget packages..."
+    foreach ($id in Get-WingetPackages) {
+        if (WingetHas $id) {
+            Success "Winget package: $id"
+        } else {
+            FailSoft "Winget package missing: $id"
+            $errors++
+        }
+    }
+
     Info "Verifying scoop packages..."
     $scoopExists = [Boolean](Get-Command scoop -ErrorAction SilentlyContinue)
     if ($scoopExists) {
         Success "scoop installed"
+        $installedScoopPackages = @(scoop list)
+        if ($LASTEXITCODE -ne 0) {
+            FailSoft "scoop package list failed"
+            $errors++
+        } else {
+            foreach ($name in Get-ScoopPackages) {
+                if ($installedScoopPackages.Name -contains $name) {
+                    Success "Scoop package: $name"
+                } else {
+                    FailSoft "Scoop package missing: $name"
+                    $errors++
+                }
+            }
+        }
     } else {
         FailSoft "scoop not installed"
         $errors++
@@ -512,19 +678,18 @@ function Verify {
         }
     }
 
-    Info "Verifying copied files..."
-    $filesToCheck = Get-WindowsLinkSpecs | Where-Object { $_.Verify }
-    foreach ($file in $filesToCheck) {
-        if (Test-Path $file.Destination) {
-            $diff = Compare-Object (Get-Content $file.Source) (Get-Content $file.Destination) -ErrorAction SilentlyContinue
-            if (-not $diff) {
-                Success "$($file.Destination) matches source"
-            } else {
-                FailSoft "$($file.Destination) exists but differs from source"
-                $errors++
-            }
-        } else {
+    Info "Verifying managed links..."
+    foreach ($file in Get-WindowsLinkSpecs) {
+        if (-not (Test-Path -LiteralPath $file.Destination)) {
             FailSoft "$($file.Destination) not found"
+            $errors++
+            continue
+        }
+        $item = Get-Item -LiteralPath $file.Destination -Force
+        if ($item.Target -eq $file.Source) {
+            Success "$($file.Destination) -> $($file.Source)"
+        } else {
+            FailSoft "$($file.Destination) is not linked to $($file.Source)"
             $errors++
         }
     }
@@ -548,6 +713,16 @@ function Verify {
     }
 }
 
+function Doctor {
+    Refresh-ProcessPath
+    Verify
+}
+
+function Assert-WindowsHealthy {
+    Doctor
+    if ($script:VerifyFailed) { throw "Windows installation verification failed" }
+}
+
 function SetupDotfiles {
     Info "Setting up dotfiles..."
     UpdateRepo
@@ -556,6 +731,7 @@ function SetupDotfiles {
     InstallAi
     SetupSymlinks
     Sync-LazyVim
+    if (-not $script:Dry) { Assert-WindowsHealthy }
     Success "Done!"
 }
 
@@ -567,6 +743,7 @@ Commands:
   all         Run full setup (default)
   update      Update system packages
   packages    Install system packages only
+  doctor      Detect Windows installation issues
   verify      Verify installation
 
 Options:
@@ -611,6 +788,7 @@ if (-not $NoMain) {
         "all"       { SetupDotfiles }
         "update"    { Update-Packages }
         "packages"  { InstallPackages }
+        "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
         "verify"    { Verify; if ($script:VerifyFailed) { exit 1 } }
         default     { Fail "Unknown command: $command"; ShowUsage }
     }

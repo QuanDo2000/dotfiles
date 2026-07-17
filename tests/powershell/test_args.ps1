@@ -36,7 +36,7 @@ function test_parseargs_help_short_returns_sentinel {
 }
 
 function test_parseargs_positional_command_recognised {
-    foreach ($c in 'packages', 'verify', 'update') {
+    foreach ($c in 'packages', 'doctor', 'verify', 'update') {
         $script:Dry = $false
         $result = ParseArgs @($c)
         Assert-Equals $c $result
@@ -73,19 +73,34 @@ function test_script_declares_flag_params_with_short_aliases {
     }
 }
 
-function test_self_elevation_exits_with_child_process_status {
+function test_regular_commands_do_not_self_elevate {
     $text = Get-Content -Raw $script:DotfileScript
-    Assert-Contains $text 'Start-Process'
-    Assert-Contains $text '-PassThru'
-    Assert-Contains $text 'exit $elevated.ExitCode'
-    Assert-False ($text -like '*"-NoExit"*') 'self-elevation should not wait for a manually closed shell'
+    Assert-False ($text -like '*CommandNeedsAdmin*') 'package and update workflows should not request blanket elevation'
+    Assert-Contains $text 'function Invoke-ElevatedSymlink'
 }
 
-function test_help_and_verify_do_not_require_self_elevation {
-    Assert-Equals '__help__' (Get-InitialCommand @('verify', '--help') $false)
-    Assert-Equals '__help__' (Get-InitialCommand @() $true)
-    Assert-Equals 'verify' (Get-InitialCommand @('verify') $false)
-    Assert-False (CommandNeedsAdmin 'verify') 'verify should not trigger UAC'
-    Assert-False (CommandNeedsAdmin '__help__') 'help should not trigger UAC'
-    Assert-True (CommandNeedsAdmin 'all') 'full setup still needs admin'
+function test_elevated_symlink_uses_one_encoded_operation {
+    $script:StartProcessArgs = @()
+    $script:StartProcessVerb = ''
+    Set-CommandMock 'Start-Process' {
+        param($FilePath, $ArgumentList, $Verb, [switch]$Wait, [switch]$PassThru)
+        $script:StartProcessArgs = @($ArgumentList)
+        $script:StartProcessVerb = $Verb
+        [pscustomobject]@{ ExitCode = 0 }
+    }
+
+    try {
+        Invoke-ElevatedSymlink 'C:\source path\file' 'C:\destination path\file'
+    } finally {
+        Clear-CommandMock 'Start-Process'
+    }
+
+    Assert-True ($script:StartProcessArgs -contains '-EncodedCommand') 'one elevated operation should use an encoded command'
+    Assert-Equals 'RunAs' $script:StartProcessVerb
+}
+
+function test_only_symlink_privilege_errors_require_elevation {
+    Assert-True (Test-SymlinkPrivilegeError ([System.UnauthorizedAccessException]::new('Access denied'))) 'access failures may require elevation'
+    Assert-True (Test-SymlinkPrivilegeError ([System.IO.IOException]::new('A required privilege is not held by the client.'))) 'Windows symlink privilege failures require elevation'
+    Assert-False (Test-SymlinkPrivilegeError ([System.IO.IOException]::new('The disk is full.'))) 'unrelated filesystem failures must not trigger UAC'
 }

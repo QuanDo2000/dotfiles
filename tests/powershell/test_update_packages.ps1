@@ -56,10 +56,52 @@ function test_windows_packages_include_neovim {
     Assert-Contains $text '"Neovim.Neovim"'
 }
 
+function test_windows_packages_use_exact_powershell_id {
+    $text = Get-Content -Raw $script:DotfileScript
+    Assert-Contains $text '"Microsoft.PowerShell"'
+    Assert-False ($text -clike '*"Microsoft.Powershell"*') 'PowerShell package ID casing must match winget exactly'
+}
+
 function test_winget_commands_use_shared_helper {
     $text = Get-Content -Raw $script:DotfileScript
     Assert-Contains $text 'function Invoke-Winget'
     Assert-False ($text -match '\{ winget (install|upgrade)') 'raw winget install/upgrade calls should go through Invoke-Winget'
+}
+
+function test_update_packages_updates_extras {
+    $script:Dry = $false
+    $script:ExtrasUpdated = $false
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
+    $originalInstallExtras = (Get-Command InstallExtras).ScriptBlock
+    $originalInstallAi = (Get-Command InstallAi).ScriptBlock
+    $originalSyncLazyVimConfig = (Get-Command Sync-LazyVimConfig).ScriptBlock
+    $originalSyncLazyVim = (Get-Command Sync-LazyVim).ScriptBlock
+    $originalAssertWindowsHealthy = if (Get-Command Assert-WindowsHealthy -ErrorAction SilentlyContinue) {
+        (Get-Command Assert-WindowsHealthy).ScriptBlock
+    } else { $null }
+    Set-FunctionMock 'InstallExtras' { param([switch]$Update) $script:ExtrasUpdated = [bool]$Update }
+    Set-FunctionMock 'InstallAi' { }
+    Set-FunctionMock 'Sync-LazyVimConfig' { }
+    Set-FunctionMock 'Sync-LazyVim' { }
+    Set-FunctionMock 'Assert-WindowsHealthy' { $script:UpdateDoctorCalled = $true }
+
+    try {
+        Update-Packages 6>&1 | Out-Null
+    } finally {
+        Clear-CommandMock 'winget'
+        Set-FunctionMock 'InstallExtras' $originalInstallExtras
+        Set-FunctionMock 'InstallAi' $originalInstallAi
+        Set-FunctionMock 'Sync-LazyVimConfig' $originalSyncLazyVimConfig
+        Set-FunctionMock 'Sync-LazyVim' $originalSyncLazyVim
+        if ($originalAssertWindowsHealthy) {
+            Set-FunctionMock 'Assert-WindowsHealthy' $originalAssertWindowsHealthy
+        } else {
+            Remove-Item function:\Assert-WindowsHealthy -ErrorAction SilentlyContinue
+        }
+    }
+
+    Assert-True $script:ExtrasUpdated 'Update-Packages should update Scoop packages and Node LTS'
+    Assert-True $script:UpdateDoctorCalled 'Update-Packages should run doctor after updating'
 }
 
 function test_installpackages_fails_when_winget_install_fails {

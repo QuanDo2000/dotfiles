@@ -12,5 +12,3 @@
     path = ~/.gitconfig.windows
 [tag]
     gpgsign = true
-[gpg]
-    program = gpg

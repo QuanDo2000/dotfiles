@@ -18,3 +18,16 @@ function test_wingethas_false_when_exit_nonzero {
     }
     Assert-False (WingetHas 'Nonexistent.Package') 'WingetHas should return false on non-zero exit'
 }
+
+function test_windows_package_manifests_cover_parity_tools {
+    $winget = @(Get-WingetPackages)
+    $scoop = @(Get-ScoopPackages)
+    $commands = @(Get-RequiredCommands)
+
+    Assert-True ($winget -contains 'Python.Python.3.14') 'Winget should manage Python for shared seed scripts'
+    Assert-True ($winget -contains 'GitHub.cli') 'Winget should manage GitHub CLI'
+    Assert-True ($scoop -contains 'FiraCode') 'Scoop should manage FiraCode'
+    Assert-True ($scoop -contains 'jq') 'Scoop should manage jq'
+    Assert-True ($scoop -contains 'ast-grep') 'Scoop should manage ast-grep'
+    Assert-True ($commands -contains 'gh') 'Doctor should verify GitHub CLI'
+}

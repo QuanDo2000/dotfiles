@@ -5,6 +5,10 @@ function TestSetup {
 }
 
 function TestTeardown {
+    foreach ($command in 'npm', 'py', 'jq') {
+        Clear-CommandMock $command
+    }
+    Remove-Variable -Name PiInstalled -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
 }
 
@@ -85,4 +89,72 @@ function test_installcodex_fails_when_installer_exits_nonzero {
     }
 
     Assert-True $failed 'InstallCodex should fail when installer exits nonzero'
+}
+
+function test_installpi_installs_official_package_and_checks_command {
+    $script:PiInstalled = $false
+    $script:NpmCalls = @()
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'pi') {
+            if ($script:PiInstalled) { return [pscustomobject]@{ Source = 'mock-pi' } }
+            return $null
+        }
+        return Microsoft.PowerShell.CoreGet-Command @PSBoundParameters
+    }
+    Set-CommandMock 'npm' {
+        $script:NpmCalls += ,($args -join ' ')
+        $script:PiInstalled = $true
+        $global:LASTEXITCODE = 0
+    }
+
+    try {
+        InstallPi
+    } finally {
+        Clear-CommandMock 'Get-Command'
+    }
+
+    Assert-Contains $script:NpmCalls[0] 'install --global @earendil-works/pi-coding-agent'
+}
+
+function test_installpi_fails_when_command_is_missing_after_install {
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'pi') { return $null }
+        return Microsoft.PowerShell.CoreGet-Command @PSBoundParameters
+    }
+    Set-CommandMock 'npm' { $global:LASTEXITCODE = 0 }
+
+    $failed = $false
+    $message = ''
+    try {
+        InstallPi
+    } catch {
+        $failed = $true
+        $message = $_.Exception.Message
+    } finally {
+        Clear-CommandMock 'Get-Command'
+    }
+
+    Assert-True $failed 'Pi installation should fail when pi is still unavailable'
+    Assert-Contains $message 'pi command not found after installation'
+}
+
+function test_syncpiconfigs_creates_writable_seed_files {
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+    $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
+    New-Item -ItemType Directory -Force -Path $seedDir | Out-Null
+    '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
+    '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
+    'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
+
+    SyncPiConfigs
+
+    $settings = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
+    $mcp = Join-Path $env:USERPROFILE '.pi\agent\mcp.json'
+    $extension = Join-Path $env:USERPROFILE '.pi\agent\extensions\codex-status.js'
+    Assert-FileExists $settings
+    Assert-FileExists $mcp
+    Assert-FileExists $extension
+    Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
 }
