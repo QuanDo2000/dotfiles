@@ -18,6 +18,19 @@ function test_windows_installs_codex_cli_with_official_installer {
     Assert-Contains $text 'CODEX_NON_INTERACTIVE'
 }
 
+function test_synccodexconfig_creates_writable_seed_file {
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+    $seedDir = Join-Path $script:DotfilesDir 'config\windows\ai\codex'
+    New-Item -ItemType Directory -Force -Path $seedDir | Out-Null
+    'model = "gpt-5.6-sol"' | Set-Content (Join-Path $seedDir 'config.toml')
+
+    SyncCodexConfig
+
+    $target = Join-Path $env:USERPROFILE '.codex\config.toml'
+    Assert-FileExists $target
+    Assert-False ([bool](Get-Item $target).LinkType) 'Codex config should stay writable'
+}
+
 function test_installai_fails_when_codebase_memory_update_fails {
     $script:Dry = $false
     $originalInstallCodex = (Get-Command InstallCodex).ScriptBlock

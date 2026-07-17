@@ -158,6 +158,16 @@ function test_verify_reports_missing_managed_ai_command {
     Assert-True $script:VerifyFailed 'missing managed AI command should fail verification'
 }
 
+function test_verify_reports_missing_codex_config {
+    Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
+    Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
+
+    $output = Verify 6>&1 | Out-String
+
+    Assert-Contains $output '.codex\config.toml'
+    Assert-True $script:VerifyFailed 'missing Codex config should fail verification'
+}
+
 function test_doctor_refreshes_path_before_verifying {
     $script:PathRefreshed = $false
     $originalRefreshProcessPath = (Get-Command Refresh-ProcessPath).ScriptBlock

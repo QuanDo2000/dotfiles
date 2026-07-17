@@ -324,6 +324,20 @@ function InstallCodex {
     Success "Finished installing Codex CLI"
 }
 
+function SyncCodexConfig {
+    $source = Join-Path $script:DotfilesDir 'config\windows\ai\codex\config.toml'
+    $target = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+    if (-not (Test-Path -LiteralPath $target)) {
+        Copy-Item -LiteralPath $source -Destination $target
+        return
+    }
+    $applySeed = if ((Get-Item -LiteralPath $source).IsReadOnly) { '' } else { $source }
+    Invoke-NativeChecked 'Codex config seed comparison failed' {
+        py -3.14 (Join-Path $script:DotfilesDir 'scripts\seed_merge\codex.py') $target $source $applySeed
+    }
+}
+
 function InstallPi {
     param([switch]$Update)
     Info "Installing Pi coding agent..."
@@ -402,6 +416,7 @@ function InstallAi {
         throw "codebase-memory-mcp command not found after installation"
     }
 
+    SyncCodexConfig
     InstallPi -Update:$Update
     SyncPiConfigs
 
@@ -703,6 +718,18 @@ function Verify {
     } else {
         FailSoft "Neovim config not found at $nvimPath"
         $errors++
+    }
+
+    Info "Verifying Codex config..."
+    $codexConfig = Join-Path $env:USERPROFILE '.codex\config.toml'
+    if (-not (Test-Path -LiteralPath $codexConfig)) {
+        FailSoft "$codexConfig not found"
+        $errors++
+    } elseif ((Get-Item -LiteralPath $codexConfig -Force).LinkType) {
+        FailSoft "$codexConfig must be a regular writable file"
+        $errors++
+    } else {
+        Success "Codex config installed"
     }
 
     Write-Host ""
