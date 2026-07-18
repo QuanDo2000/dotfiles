@@ -12,19 +12,20 @@ DEBIAN_PACKAGES=(
 
 function _update_home_manager_platform {
   local platform="$1"
+  local profile="${2:-linux}"
   info "Updating packages for $platform..."
-  _home_manager_switch
+  _home_manager_switch "$profile"
   success "Finished update for $platform"
 }
 
-function update_debian { _update_home_manager_platform Debian; }
+function update_debian { _update_home_manager_platform Debian linux; }
 
 function install_debian {
   info "Installing packages and programs for Debian..."
   if [[ "$DRY" == "false" ]]; then
     _run_nix_managed_switch "Failed to install Debian packages" \
       sudo apt install -y "${DEBIAN_PACKAGES[@]}"
-    _home_manager_switch
+    _home_manager_switch linux
   fi
   success "Finished install for Debian"
 }
@@ -33,14 +34,14 @@ ARCH_PACKAGES=(
   base-devel curl git zsh
 )
 
-function update_arch { _update_home_manager_platform "Arch Linux"; }
+function update_arch { _update_home_manager_platform "Arch Linux" arch-server; }
 
 function install_arch {
   info "Installing packages and programs for Arch Linux..."
   if [[ "$DRY" == "false" ]]; then
     _run_nix_managed_switch "Failed to install Arch packages" \
       sudo pacman -S --needed --noconfirm "${ARCH_PACKAGES[@]}"
-    _home_manager_switch
+    _home_manager_switch arch-server
   fi
   success "Finished install for Arch Linux"
 }
@@ -84,15 +85,15 @@ function _ensure_nix {
 }
 
 function _home_manager_switch {
-  local target
+  local profile="${1:-linux}" target
   if [[ "$DRY" == "true" ]]; then
-    target="$(_linux_home_manager_target)"
+    target="$(_linux_home_manager_target "$profile")"
     _dry_run_nix_managed_switch home-manager switch --flake "$target"
     return
   fi
 
   _ensure_nix
-  target="$(_linux_home_manager_target)"
+  target="$(_linux_home_manager_target "$profile")"
   if command -v home-manager >/dev/null 2>&1; then
     _run_nix_managed_switch "home-manager switch failed" \
       home-manager switch --flake "$target"
@@ -103,10 +104,10 @@ function _home_manager_switch {
 }
 
 function _linux_home_manager_target {
-  local username
+  local profile="${1:-linux}" username
   username="$(host_config_value username)" \
     || fail "Failed to resolve Linux Home Manager username"
-  echo "$DOTFILES_DIR#${username}@linux"
+  echo "$DOTFILES_DIR#${username}@${profile}"
 }
 
 function _nixos_flake_target {

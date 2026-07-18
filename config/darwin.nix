@@ -18,5 +18,6 @@ in
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.backupFileExtension = "backup";
+  home-manager.extraSpecialArgs.storageOffsiteBackup = false;
   home-manager.users.${machine.username} = import ./home.nix;
 }

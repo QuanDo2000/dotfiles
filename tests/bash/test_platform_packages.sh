@@ -4,6 +4,7 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
 HOME_CONFIG="$(<"$REPO_DIR/config/home.nix")"
+FLAKE_CONFIG="$(<"$REPO_DIR/flake.nix")"
 HYPR_CONFIG="$(<"$REPO_DIR/config/unix/config/hypr/hyprland.lua")"
 NIXOS_CONFIG="$(<"$REPO_DIR/config/nixos/configuration.nix")"
 WAYBAR_CONFIG="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
@@ -46,7 +47,7 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   output="$(<"$calls")"
   assert_contains "$output" "sudo pacman -S --needed --noconfirm"
   assert_contains "$output" "install-lix"
-  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@arch-server"
   assert_not_contains "$output" "@linux@linux"
 
   unset -f command sudo _install_lix _load_nix_profile
@@ -72,7 +73,7 @@ test_update_arch_uses_existing_home_manager() {
   local output
   output="$(<"$calls")"
   assert_not_contains "$output" "sudo pacman"
-  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@arch-server"
   assert_not_contains "$output" "@linux@linux"
 
   unset -f command sudo _load_nix_profile home-manager
@@ -98,7 +99,7 @@ test_update_arch_bootstraps_home_manager_when_missing() {
   local output
   output="$(<"$calls")"
   assert_not_contains "$output" "sudo pacman"
-  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@arch-server"
   assert_not_contains "$output" "@linux@linux"
 
   unset -f command sudo _load_nix_profile
@@ -110,7 +111,7 @@ test_update_arch_dry_run_shows_home_manager_switch() {
   local output
   output=$(update_arch 2>&1)
 
-  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@arch-server"
 }
 
 test_debian_packages_are_bootstrap_only() {
@@ -338,6 +339,26 @@ test_google_drive_storage_sync() {
   assert_contains "$HOME_CONFIG" 'OnCalendar = "daily";'
   assert_contains "$HOME_CONFIG" 'google-drive-sync.lock'
   assert_contains "$HOME_CONFIG" 'TimeoutStartSec = "infinity";'
+}
+
+test_storage_offsite_backup() {
+  assert_contains "$HOME_CONFIG" "storageOffsiteBackup ? false"
+  assert_contains "$HOME_CONFIG" 'lib.optionals storageOffsiteBackup [ pkgs.restic ]'
+  assert_contains "$HOME_CONFIG" "systemd.user.services.storage-offsite-backup"
+  assert_contains "$HOME_CONFIG" "systemd.user.timers.storage-offsite-backup"
+  assert_contains "$HOME_CONFIG" 'RESTIC_REPOSITORY=rclone:gdrive:ServerBackup/restic'
+  assert_contains "$HOME_CONFIG" '/mnt/storage/Storage/Documents /mnt/storage/Storage/Book /mnt/storage/Storage/Music'
+  assert_contains "$HOME_CONFIG" 'ConditionPathIsMountPoint = "/mnt/storage";'
+  assert_contains "$HOME_CONFIG" 'ConditionPathIsDirectory = ['
+  assert_contains "$HOME_CONFIG" '"/mnt/storage/Storage/Documents"'
+  assert_contains "$HOME_CONFIG" '"/mnt/storage/Storage/Book"'
+  assert_contains "$HOME_CONFIG" '"/mnt/storage/Storage/Music"'
+  assert_not_contains "$HOME_CONFIG" '/mnt/storage/Storage/Quan'
+  assert_contains "$HOME_CONFIG" 'storage-offsite-backup-initialized'
+  assert_contains "$HOME_CONFIG" 'storage-offsite-excludes'
+  assert_contains "$HOME_CONFIG" "systemd.user.services.storage-offsite-maintenance"
+  assert_contains "$FLAKE_CONFIG" 'homeConfigurations."${machine.username}@arch-server"'
+  assert_contains "$FLAKE_CONFIG" 'storageOffsiteBackup = true;'
 }
 
 test_home_manager_installs_screenshot_tools() {

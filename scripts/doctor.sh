@@ -126,7 +126,9 @@ _check_nix_config() {
         errors=$((errors + 1))
         return
       fi
-      _check_nix_eval "Home Manager configuration $username@linux" "$DOTFILES_DIR#homeConfigurations.\"$username@linux\".activationPackage.drvPath"
+      local profile=linux
+      [[ "$platform" == arch ]] && profile=arch-server
+      _check_nix_eval "Home Manager configuration $username@$profile" "$DOTFILES_DIR#homeConfigurations.\"$username@$profile\".activationPackage.drvPath"
       ;;
   esac
 }

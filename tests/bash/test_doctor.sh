@@ -153,6 +153,33 @@ test_doctor_accepts_home_manager_store_targets_on_debian() {
   assert_contains "$output" "All checks passed"
 }
 
+test_doctor_checks_arch_server_configuration() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release" calls="$TEST_TMPDIR/nix-calls.log"
+  printf 'ID=arch\n' > "$os_release"
+  mkdir -p "$DOTFILES_DIR/config"
+  printf '{ username = "quando"; hostName = "nixos"; }\n' > "$DOTFILES_DIR/config/host.nix"
+  touch "$DOTFILES_DIR/flake.nix"
+  link_valid_core_dotfiles "/nix/store/test-home-manager-files"
+
+  nix() {
+    if [[ "$*" == *"--file"* ]]; then
+      case "${@: -1}" in
+        username) printf 'quando\n' ;;
+        hostName) printf 'nixos\n' ;;
+      esac
+      return 0
+    fi
+    printf '%s\n' "$*" >> "$calls"
+    printf '/nix/store/test-home.drv\n'
+  }
+  export -f nix
+
+  OS_RELEASE="$os_release" doctor >/dev/null 2>&1
+
+  assert_contains "$(<"$calls")" 'homeConfigurations."quando@arch-server".activationPackage.drvPath'
+}
+
 test_doctor_reports_core_dotfile_conflicts() {
   mock_uname Linux
   local os_release="$TEST_TMPDIR/os-release"

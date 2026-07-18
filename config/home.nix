@@ -1,4 +1,4 @@
-{ pkgs, lib, osConfig ? null, ... }:
+{ pkgs, lib, osConfig ? null, storageOffsiteBackup ? false, ... }:
 
 let
   machine = import ./host.nix;
@@ -149,7 +149,8 @@ in
     pkgs.nerd-fonts.fira-code
   ]
   ++ lib.optionals standaloneLinux standaloneLinuxPackages
-  ++ lib.optionals pkgs.stdenv.isLinux linuxDesktopPackages;
+  ++ lib.optionals pkgs.stdenv.isLinux linuxDesktopPackages
+  ++ lib.optionals storageOffsiteBackup [ pkgs.restic ];
 
   home.file = obsidianFiles // {
     "${homeDir}/.config/jj/config.toml".force = true;
@@ -190,6 +191,16 @@ in
     clear-after=30
     no-cache=true
   '';
+
+  xdg.configFile."restic/storage-offsite-excludes" = lib.mkIf storageOffsiteBackup {
+    text = ''
+      **/._*
+      **/.DS_Store
+      **/*.iso
+      **/*.pfx
+      **/recovery/**
+    '';
+  };
 
   gtk = lib.mkIf pkgs.stdenv.isLinux {
     enable = true;
@@ -518,6 +529,86 @@ in
       OnCalendar = "daily";
       Persistent = true;
       Unit = "google-drive-storage-sync.service";
+    };
+    Install.WantedBy = [ "timers.target" ];
+  };
+
+  systemd.user.services.storage-offsite-backup = lib.mkIf storageOffsiteBackup {
+    Unit = {
+      Description = "Back up irreplaceable Storage data to Google Drive";
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
+      ConditionPathExists = [
+        "%h/.config/rclone/rclone.conf"
+        "%h/.config/restic/storage-backup-password"
+        "%h/.local/state/dotfiles/storage-offsite-backup-initialized"
+      ];
+      ConditionPathIsMountPoint = "/mnt/storage";
+      ConditionPathIsDirectory = [
+        "/mnt/storage/Storage/Documents"
+        "/mnt/storage/Storage/Book"
+        "/mnt/storage/Storage/Music"
+      ];
+    };
+    Service = {
+      Type = "oneshot";
+      UMask = "0077";
+      Environment = [
+        "PATH=${lib.makeBinPath [ pkgs.rclone pkgs.coreutils ]}"
+        "RESTIC_REPOSITORY=rclone:gdrive:ServerBackup/restic"
+        "RESTIC_PASSWORD_FILE=${homeDir}/.config/restic/storage-backup-password"
+        "RESTIC_CACHE_DIR=${homeDir}/.cache/restic"
+      ];
+      # ponytail: one lock serializes backup and maintenance; split only if throughput requires it.
+      ExecStart = "${pkgs.util-linux}/bin/flock --no-fork %t/storage-offsite-backup.lock ${pkgs.restic}/bin/restic backup --tag storage-offsite --exclude-caches --iexclude-file=${homeDir}/.config/restic/storage-offsite-excludes /mnt/storage/Storage/Documents /mnt/storage/Storage/Book /mnt/storage/Storage/Music";
+      TimeoutStartSec = "infinity";
+    };
+  };
+
+  systemd.user.timers.storage-offsite-backup = lib.mkIf storageOffsiteBackup {
+    Unit.Description = "Back up irreplaceable Storage data daily";
+    Timer = {
+      OnCalendar = "*-*-* 06:00:00";
+      Persistent = true;
+      Unit = "storage-offsite-backup.service";
+    };
+    Install.WantedBy = [ "timers.target" ];
+  };
+
+  systemd.user.services.storage-offsite-maintenance = lib.mkIf storageOffsiteBackup {
+    Unit = {
+      Description = "Prune and check the off-site restic repository";
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
+      ConditionPathExists = [
+        "%h/.config/rclone/rclone.conf"
+        "%h/.config/restic/storage-backup-password"
+        "%h/.local/state/dotfiles/storage-offsite-backup-initialized"
+      ];
+    };
+    Service = {
+      Type = "oneshot";
+      UMask = "0077";
+      Environment = [
+        "PATH=${lib.makeBinPath [ pkgs.rclone pkgs.coreutils ]}"
+        "RESTIC_REPOSITORY=rclone:gdrive:ServerBackup/restic"
+        "RESTIC_PASSWORD_FILE=${homeDir}/.config/restic/storage-backup-password"
+        "RESTIC_CACHE_DIR=${homeDir}/.cache/restic"
+      ];
+      ExecStart = [
+        "${pkgs.util-linux}/bin/flock --no-fork %t/storage-offsite-backup.lock ${pkgs.restic}/bin/restic forget --keep-daily 7 --keep-weekly 5 --keep-monthly 12 --prune"
+        "${pkgs.util-linux}/bin/flock --no-fork %t/storage-offsite-backup.lock ${pkgs.restic}/bin/restic check --read-data-subset=5%"
+      ];
+      TimeoutStartSec = "infinity";
+    };
+  };
+
+  systemd.user.timers.storage-offsite-maintenance = lib.mkIf storageOffsiteBackup {
+    Unit.Description = "Maintain the off-site restic repository monthly";
+    Timer = {
+      OnCalendar = "*-*-08 07:00:00";
+      Persistent = true;
+      Unit = "storage-offsite-maintenance.service";
     };
     Install.WantedBy = [ "timers.target" ];
   };

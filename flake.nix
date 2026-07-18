@@ -74,6 +74,13 @@
 
       homeConfigurations."${machine.username}@linux" = home-manager.lib.homeManagerConfiguration {
         pkgs = linuxPkgs;
+        extraSpecialArgs.storageOffsiteBackup = false;
+        modules = [ ./config/home.nix ];
+      };
+
+      homeConfigurations."${machine.username}@arch-server" = home-manager.lib.homeManagerConfiguration {
+        pkgs = linuxPkgs;
+        extraSpecialArgs.storageOffsiteBackup = true;
         modules = [ ./config/home.nix ];
       };
 
