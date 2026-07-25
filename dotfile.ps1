@@ -557,10 +557,6 @@ function Get-WindowsLinkSpecs {
     # starship prompt config — shared with zsh, read from ~/.config/starship.toml.
     $specs += New-LinkSpec 'File' (Join-Path $sharedPath "config\starship.toml") (Join-Path $userHome ".config\starship.toml")
 
-    # AI tool configs live in their own dotfolders (not ~/.config) alongside
-    # runtime state we don't track, so link only the tracked files.
-    $specs += New-LinkSpec 'File' (Join-Path $sharedPath "ai\claude\settings.json") "$userHome\.claude\settings.json"
-
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
     $binDest = "$userHome\.local\bin"
     $specs += New-LinkSpec 'File' (Join-Path $script:DotfilesDir "dotfile.ps1") (Join-Path $binDest "dotfile.ps1") $true
