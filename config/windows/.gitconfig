@@ -1,2 +1,4 @@
 [gpg]
     program = C:/Program Files/GnuPG/bin/gpg.exe
+[windows]
+    appendAtomically = false
