@@ -9,7 +9,7 @@ function TestTeardown {
     foreach ($command in 'npm', 'py', 'jq', 'Get-Command', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod') {
         Clear-CommandMock $command
     }
-    Set-Item -Path function:global:InstallCodex -Value $script:OriginalInstallCodex
+    Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
     Remove-Variable -Name PiInstalled -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
 }
@@ -43,7 +43,7 @@ function test_synccodexconfig_creates_writable_seed_file {
 
 function test_installai_fails_when_codebase_memory_update_fails {
     $script:Dry = $false
-    Set-Item -Path function:global:InstallCodex -Value { }
+    Set-FunctionMock 'InstallCodex' { }
     Set-CommandMock 'Get-Command' {
         param($Name)
         if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'mock-codebase-memory-mcp' } }
@@ -56,13 +56,13 @@ function test_installai_fails_when_codebase_memory_update_fails {
 
 function test_installai_fails_when_codebase_memory_install_fails {
     $script:Dry = $false
-    Set-Item -Path function:global:InstallCodex -Value { }
+    Set-FunctionMock 'InstallCodex' { }
     Set-CommandMock 'Get-Command' {
         param($Name)
         if ($Name -eq 'codebase-memory-mcp') { return $null }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
-    Set-CommandMock 'irm' { 'function global:codebase-memory-mcp { $global:LASTEXITCODE = 1 }; codebase-memory-mcp install' }
+    Set-CommandMock 'Invoke-RestMethod' { 'function global:codebase-memory-mcp { $global:LASTEXITCODE = 1 }; codebase-memory-mcp install' }
 
     Assert-Throws { InstallAi 6>&1 | Out-Null } 'InstallAi should fail when codebase-memory-mcp install script fails'
 }

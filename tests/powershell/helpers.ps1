@@ -66,6 +66,7 @@ function Initialize-TestEnv {
     $script:_OrigLocalAppData = $env:LOCALAPPDATA
     $env:USERPROFILE = Join-Path $script:_TestTmp.FullName 'home'
     $env:HOME = $env:USERPROFILE
+    $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
     $env:DOTFILES_DIR = Join-Path $env:USERPROFILE 'dotfiles'
     New-Item -ItemType Directory -Force -Path $env:USERPROFILE | Out-Null
     return $script:_TestTmp.FullName
