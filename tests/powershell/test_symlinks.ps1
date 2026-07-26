@@ -38,12 +38,28 @@ function test_windows_gitconfig_uses_platform_gpg_program {
 }
 
 function test_windows_gpg_agent_caches_passphrase_for_eight_hours {
-    $destination = Join-Path $env:USERPROFILE '.gnupg\gpg-agent.conf'
-    $spec = Get-WindowsLinkSpecs | Where-Object Destination -eq $destination
-    $config = Get-Content -Raw $spec.Source
+    $oldAppData = $env:APPDATA
+    try {
+        $env:APPDATA = Join-Path $env:USERPROFILE 'AppData\Roaming'
+        $destination = Join-Path $env:APPDATA 'gnupg\gpg-agent.conf'
+        $spec = Get-WindowsLinkSpecs | Where-Object Destination -eq $destination
 
-    Assert-Contains $config 'default-cache-ttl 28800'
-    Assert-Contains $config 'max-cache-ttl 86400'
+        Assert-True ([bool]$spec) 'GPG agent config should target the Gpg4win home'
+        if ($spec) {
+            $config = Get-Content -Raw $spec.Source
+            Assert-Contains $config 'default-cache-ttl 28800'
+            Assert-Contains $config 'max-cache-ttl 86400'
+        }
+    } finally {
+        $env:APPDATA = $oldAppData
+    }
+}
+
+function test_setupsymlinks_reloads_gpg4win_agent {
+    $setup = (Get-Command SetupSymlinks).Definition
+
+    Assert-Contains $setup "Join-Path `$env:ProgramFiles 'GnuPG\bin\gpgconf.exe'"
+    Assert-False ($setup -match '(?m)^\s*gpgconf --reload') 'must not reload Git bundled GnuPG from PATH'
 }
 
 function test_windows_neovim_links_stable_files_not_whole_directory {
