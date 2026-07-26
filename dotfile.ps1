@@ -598,8 +598,9 @@ function Get-WindowsLinkSpecs {
     $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".gitconfig") "$userHome\.gitconfig"
     $specs += New-LinkSpec 'File' (Join-Path $configPath ".gitconfig") "$userHome\.gitconfig.windows"
 
-    # SSH config
+    # SSH and GnuPG configs
     $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".ssh\config") "$userHome\.ssh\config"
+    $specs += New-LinkSpec 'File' (Join-Path $configPath ".gnupg\gpg-agent.conf") "$userHome\.gnupg\gpg-agent.conf"
 
     # Neovim settings: keep LazyVim's runtime-written lazyvim.json writable.
     $nvimSource = Join-Path $sharedPath "config\nvim"
@@ -677,6 +678,9 @@ function SetupSymlinks {
         LinkPath -source $spec.Source -destination $spec.Destination -isDirectory ($spec.Kind -eq 'Dir')
     }
     Sync-LazyVimConfig
+    if (-not $script:Dry) {
+        Invoke-NativeChecked "GPG agent reload failed" { gpgconf --reload gpg-agent }
+    }
 
     Success "Finished setting up symlinks"
 }

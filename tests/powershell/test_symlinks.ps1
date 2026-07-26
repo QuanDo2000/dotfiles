@@ -37,6 +37,15 @@ function test_windows_gitconfig_uses_platform_gpg_program {
     Assert-Contains $windows 'C:/Program Files/GnuPG/bin/gpg.exe'
 }
 
+function test_windows_gpg_agent_caches_passphrase_for_eight_hours {
+    $destination = Join-Path $env:USERPROFILE '.gnupg\gpg-agent.conf'
+    $spec = Get-WindowsLinkSpecs | Where-Object Destination -eq $destination
+    $config = Get-Content -Raw $spec.Source
+
+    Assert-Contains $config 'default-cache-ttl 28800'
+    Assert-Contains $config 'max-cache-ttl 86400'
+}
+
 function test_windows_neovim_links_stable_files_not_whole_directory {
     $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
     $specs = @(Get-WindowsLinkSpecs)
