@@ -174,7 +174,7 @@ function Get-RequiredCommands {
     @(
         "git", "gpg", "nvim", "starship", "fzf", "fd", "rg", "lazygit",
         "fnm", "node", "jj", "zoxide", "jq", "ast-grep", "codex", "pi",
-        "codebase-memory-mcp", "py", "gh"
+        "codebase-memory-mcp", "fff-mcp", "py", "gh"
     )
 }
 
@@ -382,7 +382,62 @@ function SyncPiConfigs {
     Success "Finished syncing Pi configuration"
 }
 
-# Install or update agent CLIs during package setup.
+function InstallFffMcp {
+    param([switch]$Update)
+    Info "Installing FFF MCP server..."
+    if ($script:Dry) { return }
+
+    $binDir = Join-Path $env:USERPROFILE '.local\bin'
+    $destination = Join-Path $binDir 'fff-mcp.exe'
+    if ($Update -or -not (Test-Path -LiteralPath $destination)) {
+        $url = 'https://github.com/dmtrKovalenko/fff/releases/download/v0.9.6/fff-mcp-x86_64-pc-windows-msvc.exe'
+        $expectedHash = '7ff688d034aa42ff779a61ad12689794bdc253c895152796046f374390fb9cad'
+        $download = "$destination.download"
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $download
+            if ((Get-FileHash -Algorithm SHA256 $download).Hash -ne $expectedHash) {
+                throw 'FFF MCP download hash mismatch'
+            }
+            Move-Item -LiteralPath $download -Destination $destination -Force
+        } finally {
+            Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue
+        }
+    } else {
+        Info "Already installed FFF MCP server"
+    }
+    AddToUserPath $binDir
+
+    Success "Finished installing FFF MCP server"
+}
+
+function SyncAiInstructions {
+    Info "Syncing shared agent instructions..."
+    if ($script:Dry) { return }
+
+    $source = Join-Path $script:DotfilesDir 'config\shared\ai\AGENTS.md'
+    foreach ($target in @(
+            (Join-Path $env:USERPROFILE '.codex\AGENTS.md'),
+            (Join-Path $env:USERPROFILE '.pi\agent\AGENTS.md')
+        )) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+        Copy-Item -LiteralPath $source -Destination $target -Force
+    }
+}
+
+function InstallAiSkills {
+    Info "Installing shared agent skills..."
+    if ($script:Dry) { return }
+
+    Invoke-NativeChecked "caveman skill install failed" {
+        npx --yes skills add JuliusBrussee/caveman --skill caveman --global --agent codex --agent pi --copy --yes
+    }
+    Invoke-NativeChecked "superpowers skills install failed" {
+        npx --yes skills add obra/superpowers --skill systematic-debugging --skill test-driven-development --skill verification-before-completion --global --agent codex --agent pi --copy --yes
+    }
+}
+
+# Install or update agent CLIs and their shared skills.
 function InstallAi {
     param([switch]$Update)
     Info "Installing agent CLIs..."
@@ -403,11 +458,14 @@ function InstallAi {
         throw "codebase-memory-mcp command not found after installation"
     }
 
+    InstallFffMcp -Update:$Update
     SyncCodexConfig
     InstallPi -Update:$Update
     SyncPiConfigs
+    SyncAiInstructions
+    InstallAiSkills
 
-    Success "Finished installing agent CLIs"
+    Success "Finished installing agent CLIs and skills"
 }
 
 function Get-NeovimCommand {
@@ -754,6 +812,7 @@ Commands:
   all         Run full setup (default)
   update      Update system packages
   packages    Install all managed packages only
+  ai          Install AI tools and shared skills
   doctor      Detect Windows installation issues
   verify      Verify installation
 
@@ -772,6 +831,7 @@ if (-not $NoMain) {
         "all"       { SetupDotfiles }
         "update"    { Update-Packages }
         "packages"  { InstallManagedPackages }
+        "ai"        { InstallAi }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
         "verify"    { Verify; if ($script:VerifyFailed) { exit 1 } }
         default     { Fail "Unknown command: $Command" }

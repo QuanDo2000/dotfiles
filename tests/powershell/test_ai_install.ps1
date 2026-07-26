@@ -3,13 +3,15 @@
 function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:OriginalInstallCodex = (Get-Command InstallCodex).ScriptBlock
+    $script:OriginalAddToUserPath = (Get-Command AddToUserPath).ScriptBlock
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'py', 'jq', 'Get-Command', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod') {
+    foreach ($command in 'npm', 'npx', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
+    Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
     Remove-Variable -Name PiInstalled -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
 }
@@ -39,6 +41,56 @@ function test_synccodexconfig_creates_writable_seed_file {
             if (Test-Path -LiteralPath $path) { (Get-Item $path).IsReadOnly = $false }
         }
     }
+}
+
+function test_installfffmcp_installs_verified_windows_binary_for_codex {
+    $script:FffUrl = ''
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile)
+        $script:FffUrl = $Uri
+        'fff' | Set-Content -NoNewline $OutFile
+    }
+    Set-CommandMock 'Get-FileHash' {
+        [pscustomobject]@{ Hash = '7ff688d034aa42ff779a61ad12689794bdc253c895152796046f374390fb9cad' }
+    }
+    Set-FunctionMock 'AddToUserPath' { }
+
+    InstallFffMcp
+
+    Assert-FileExists (Join-Path $env:USERPROFILE '.local\bin\fff-mcp.exe')
+    Assert-Contains $script:FffUrl 'fff-mcp-x86_64-pc-windows-msvc.exe'
+    Assert-Contains (Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\codex\config.toml')) '[mcp_servers.fff]'
+}
+
+function test_syncaiinstructions_copies_shared_file_for_codex_and_pi {
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+    $source = Join-Path $script:DotfilesDir 'config\shared\ai\AGENTS.md'
+    New-Item -ItemType Directory -Force -Path (Split-Path $source -Parent) | Out-Null
+    'shared instructions' | Set-Content $source
+
+    SyncAiInstructions
+
+    foreach ($target in '.codex\AGENTS.md', '.pi\agent\AGENTS.md') {
+        $path = Join-Path $env:USERPROFILE $target
+        Assert-FileExists $path
+        Assert-Contains (Get-Content -Raw $path) 'shared instructions'
+    }
+}
+
+function test_installai_skills_installs_same_shared_skill_set {
+    $script:NpxCalls = @()
+    Set-CommandMock 'npx' {
+        $script:NpxCalls += ,($args -join ' ')
+        $global:LASTEXITCODE = 0
+    }
+
+    InstallAiSkills
+
+    $calls = $script:NpxCalls -join "`n"
+    foreach ($skill in 'caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion') {
+        Assert-Contains $calls "--skill $skill"
+    }
+    Assert-Contains $calls '--agent codex --agent pi'
 }
 
 function test_installai_fails_when_codebase_memory_update_fails {

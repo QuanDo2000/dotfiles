@@ -71,6 +71,9 @@ enabled = true
 [plugins."browser@openai-bundled"]
 enabled = true
 
+[mcp_servers.fff]
+command = "fff-mcp"
+
 [mcp_servers.codebase-memory-mcp]
 command = "codebase-memory-mcp"
 

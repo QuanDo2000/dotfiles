@@ -3,6 +3,10 @@ function test_parameter_binder_dispatches_dry_command {
     $output = pwsh -NoProfile -File $script:DotfileScript packages --dry 6>&1 | Out-String
     Assert-Equals 0 $LASTEXITCODE
     Assert-Contains $output 'Installing packages'
+
+    $output = pwsh -NoProfile -File $script:DotfileScript ai --dry 6>&1 | Out-String
+    Assert-Equals 0 $LASTEXITCODE
+    Assert-Contains $output 'Installing agent CLIs'
 }
 
 # Lock the short-form CLI aliases in place.

@@ -33,4 +33,5 @@ function test_windows_package_manifests_cover_parity_tools {
     Assert-True ($scoop -contains 'jq') 'Scoop should manage jq'
     Assert-True ($scoop -contains 'ast-grep') 'Scoop should manage ast-grep'
     Assert-True ($commands -contains 'gh') 'Doctor should verify GitHub CLI'
+    Assert-True ($commands -contains 'fff-mcp') 'Doctor should verify the Codex FFF MCP server'
 }

@@ -97,6 +97,7 @@ Commands:
   all         Run full setup (default)
   update      Update system packages
   packages    Install all managed packages only
+  ai          Install AI tools and shared skills
   doctor      Detect Windows installation issues
   verify      Verify installation
 
@@ -114,7 +115,9 @@ Run `./scripts/check.sh` from the repo root before pushing changes.
 Note: Home Manager seeds `~/.codex/config.toml` as a writable file for Codex
 runtime preferences and owns shared global skills under `~/.agents/skills/`.
 Codex discovers that standard location natively; Pi includes it through its
-settings. Agent-specific plugins, packages, hooks, and generated runtime state
+settings. On Windows, `dotfile.ps1 ai` copies the shared instructions and
+installs the latest versions of the same skill set for both agents. Agent-specific
+plugins, packages, hooks, and generated runtime state
 such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
 
 Note: Home Manager owns the `lazy.nvim` bootstrap package. LazyVim plugin state
