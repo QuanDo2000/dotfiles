@@ -79,6 +79,9 @@ function test_syncaiinstructions_copies_shared_file_for_codex_and_pi {
 
 function test_installai_skills_installs_same_shared_skill_set {
     $script:NpxCalls = @()
+    foreach ($skill in 'caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion') {
+        New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") | Out-Null
+    }
     Set-CommandMock 'npx' {
         $script:NpxCalls += ,($args -join ' ')
         $global:LASTEXITCODE = 0
@@ -89,8 +92,10 @@ function test_installai_skills_installs_same_shared_skill_set {
     $calls = $script:NpxCalls -join "`n"
     foreach ($skill in 'caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion') {
         Assert-Contains $calls "--skill $skill"
+        Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Stale Pi copy remains for $skill"
     }
-    Assert-Contains $calls '--agent codex --agent pi'
+    Assert-Contains $calls '--agent codex'
+    Assert-False ($calls -like '*--agent pi*') 'Pi discovers shared ~/.agents/skills; a Pi-specific copy causes collisions'
 }
 
 function test_installai_fails_when_codebase_memory_update_fails {

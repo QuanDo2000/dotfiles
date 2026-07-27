@@ -430,10 +430,13 @@ function InstallAiSkills {
     if ($script:Dry) { return }
 
     Invoke-NativeChecked "caveman skill install failed" {
-        npx --yes skills add JuliusBrussee/caveman --skill caveman --global --agent codex --agent pi --copy --yes
+        npx --yes skills add JuliusBrussee/caveman --skill caveman --global --agent codex --copy --yes
     }
     Invoke-NativeChecked "superpowers skills install failed" {
-        npx --yes skills add obra/superpowers --skill systematic-debugging --skill test-driven-development --skill verification-before-completion --global --agent codex --agent pi --copy --yes
+        npx --yes skills add obra/superpowers --skill systematic-debugging --skill test-driven-development --skill verification-before-completion --global --agent codex --copy --yes
+    }
+    foreach ($skill in 'caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion') {
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")
     }
 }
 
