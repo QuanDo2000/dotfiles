@@ -34,15 +34,18 @@ EOF
   home-manager() {
     printf 'home-manager-switch\n' >> "$calls"
   }
+  pi() {
+    printf 'pi %s\n' "$*" >> "$calls"
+  }
   _sync_fff_nvim() { :; }
 
   OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
 
   local output
   output="$(<"$calls")"
-  assert_equals $'pi-update\nhome-manager-switch' "$output"
+  assert_equals $'pi-update\nhome-manager-switch\npi update --extensions' "$output"
 
-  unset -f command _update_codex_release_package _update_pi_release_package home-manager _sync_fff_nvim
+  unset -f command _update_codex_release_package _update_pi_release_package home-manager pi _sync_fff_nvim
 }
 
 test_update_packages_fails_unsupported_before_codex_update() {

@@ -16,6 +16,7 @@ setup() {
     fi
     printf 'nix %s\n' "$*" >> "$calls"
   }
+  pi() { :; }
 }
 
 teardown() {

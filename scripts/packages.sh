@@ -312,6 +312,11 @@ function update_packages {
     mac)     update_mac ;;
   esac
   _cleanup_codex_runtime_after_update "$codex_version_before"
+  if [[ "$DRY" == "true" ]]; then
+    info "Would update Pi extensions"
+  else
+    pi update --extensions || fail "Failed to update Pi extensions"
+  fi
   _sync_fff_nvim
   success "Finished update"
   _report_fff_nvim_warning
