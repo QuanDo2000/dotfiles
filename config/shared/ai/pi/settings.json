@@ -22,5 +22,10 @@
   "terminal": {
     "showTerminalProgress": true,
     "clearOnShrink": true
-  }
+  },
+  "steeringMode": "all",
+  "followUpMode": "all",
+  "transport": "auto",
+  "hideThinkingBlock": true,
+  "collapseChangelog": true
 }
