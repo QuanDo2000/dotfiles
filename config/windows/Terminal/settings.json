@@ -32,6 +32,12 @@
     "copyFormatting": "none",
     "copyOnSelect": false,
     "defaultProfile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+    "disabledProfileSources": 
+    [
+        "CanonicalGroupLimited.Ubuntu_79rhkp1fndgsc",
+        "Windows.Terminal.Azure",
+        "Windows.Terminal.VisualStudio"
+    ],
     "firstWindowPreference": "defaultProfile",
     "keybindings": 
     [
