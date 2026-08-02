@@ -552,6 +552,7 @@ test_home_manager_enables_clipboard_persistence() {
 
   assert_contains "$config" "services.wl-clip-persist = lib.mkIf pkgs.stdenv.isLinux"
   assert_contains "$config" 'clipboardType = "regular";'
+  assert_contains "$config" 'systemd.user.services.wl-clip-persist.Unit.ConditionEnvironment = "WAYLAND_DISPLAY";'
 }
 
 test_home_manager_enables_mako() {
@@ -574,6 +575,7 @@ test_home_manager_enables_hyprpolkitagent() {
   local config="$HOME_CONFIG"
 
   assert_contains "$config" "services.hyprpolkitagent.enable = pkgs.stdenv.isLinux;"
+  assert_contains "$config" 'systemd.user.services.hyprpolkitagent.Unit.ConditionEnvironment = "WAYLAND_DISPLAY";'
 }
 
 test_home_manager_forces_jj_config_takeover() {

@@ -277,6 +277,7 @@ in
   programs.hyprlock.enable = pkgs.stdenv.isLinux;
   services.hypridle.enable = pkgs.stdenv.isLinux;
   services.hyprpolkitagent.enable = pkgs.stdenv.isLinux;
+  systemd.user.services.hyprpolkitagent.Unit.ConditionEnvironment = "WAYLAND_DISPLAY";
 
   services.hyprsunset.enable = pkgs.stdenv.isLinux;
   systemd.user.services.hyprsunset.Unit.X-Restart-Triggers =
@@ -286,6 +287,7 @@ in
     enable = true;
     clipboardType = "regular";
   };
+  systemd.user.services.wl-clip-persist.Unit.ConditionEnvironment = "WAYLAND_DISPLAY";
 
   services.mako = lib.mkIf pkgs.stdenv.isLinux {
     enable = true;
