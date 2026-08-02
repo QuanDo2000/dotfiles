@@ -147,6 +147,9 @@ trust_level = "trusted"
 [projects."g:\\my drive\\drive\\documents\\us\\gc"]
 trust_level = "trusted"
 
+[projects."c:\\users\\quan\\documents\\projects\\celeste-sim"]
+trust_level = "trusted"
+
 [windows]
 sandbox = "elevated"
 
@@ -162,6 +165,7 @@ followUpQueueMode = "steer"
 show-context-window-usage = true
 selected-avatar-id = "dewey"
 enabled-reasoning-efforts = ["low", "medium", "high", "xhigh"]
+worktree-keep-count = 10
 
 [desktop.open-in-target-preferences]
 global = "fileManager"

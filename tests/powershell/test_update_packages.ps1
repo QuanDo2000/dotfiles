@@ -15,6 +15,7 @@ function TestTeardown {
 function test_update_packages_reloads_installer_from_repo_update {
     $script:Dry = $true
     $global:UpdatedInstallerRan = $false
+    $global:UpdatedSymlinksRan = $false
     $originalDotfilesDir = $script:DotfilesDir
     $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'pulled-dotfiles'
@@ -25,7 +26,7 @@ param([switch]$NoMain, [switch]$Dry, [switch]$Force, [switch]$Quiet)
 function InstallPackages { $global:UpdatedInstallerRan = $true }
 function InstallExtras { param([switch]$Update) }
 function InstallAi { param([switch]$Update) }
-function Sync-LazyVimConfig { }
+function SetupSymlinks { $global:UpdatedSymlinksRan = $true }
 function Sync-LazyVim { }
 '@ | Set-Content -LiteralPath (Join-Path $script:DotfilesDir 'dotfile.ps1')
     }
@@ -33,19 +34,25 @@ function Sync-LazyVim { }
     try {
         Update-Packages 6>&1 | Out-Null
         $updatedInstallerRan = $global:UpdatedInstallerRan
+        $updatedSymlinksRan = $global:UpdatedSymlinksRan
     } finally {
         Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
         $script:DotfilesDir = $originalDotfilesDir
-        Remove-Variable UpdatedInstallerRan -Scope Global
+        Remove-Variable UpdatedInstallerRan, UpdatedSymlinksRan -Scope Global
     }
 
     Assert-True $updatedInstallerRan 'update should run the installer loaded after the pull'
+    Assert-True $updatedSymlinksRan 'update should reconcile managed symlinks'
 }
 
 function test_update_packages_dry_run_does_not_call_winget {
     $script:Dry = $true
     $script:Called = $false
     Set-CommandMock 'winget' { $script:Called = $true }
+    New-Item -ItemType Directory -Force -Path @(
+        (Join-Path $env:DOTFILES_DIR 'config\windows\Powershell'),
+        (Join-Path $env:DOTFILES_DIR 'config\windows\Notepad++\themes')
+    ) | Out-Null
 
     Invoke-UpdatedPackageInstall $script:DotfileScript $true $false $false 6>&1 | Out-Null
 

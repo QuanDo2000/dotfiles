@@ -2,6 +2,48 @@
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.6-sol",
   "defaultThinkingLevel": "medium",
+  "subagents": {
+    "defaultModel": "openai-codex/gpt-5.6-luna",
+    "defaultThinking": "max",
+    "agentOverrides": {
+      "advisor": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "max"
+      },
+      "context-builder": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "max"
+      },
+      "delegate": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "max"
+      },
+      "oracle": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "max"
+      },
+      "planner": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "max"
+      },
+      "researcher": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "max"
+      },
+      "reviewer": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "max"
+      },
+      "scout": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "max"
+      },
+      "worker": {
+        "model": "openai-codex/gpt-5.6-luna",
+        "thinking": "max"
+      }
+    }
+  },
   "defaultProjectTrust": "ask",
   "enableInstallTelemetry": false,
   "enableSkillCommands": true,
@@ -13,7 +55,8 @@
     "npm:@dietrichgebert/ponytail@4.8.4",
     "npm:pi-hermes-memory@0.7.23",
     "npm:@ff-labs/pi-fff@0.9.6",
-    "npm:pi-web-access"
+    "npm:pi-web-access",
+    "npm:pi-subagents@0.40.0"
   ],
   "lastChangelogVersion": "0.80.6",
   "theme": "dark",

@@ -339,7 +339,7 @@ function InstallPi {
         throw "pi command not found after installation"
     }
     if ($Update) {
-        Invoke-NativeChecked "Pi extension update failed" { pi update extensions }
+        Invoke-NativeChecked "Pi extension update failed" { pi update --extensions }
     }
     Success "Finished installing Pi coding agent"
 }
@@ -453,7 +453,8 @@ function InstallAi {
 
     $codebaseMemory = Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue
     if ($Update -and $codebaseMemory) {
-        Invoke-NativeChecked "codebase-memory-mcp update failed" { codebase-memory-mcp update }
+        # The updater has no variant flag; choose standard on stdin.
+        Invoke-NativeChecked "codebase-memory-mcp update failed" { '1' | codebase-memory-mcp update -y }
     } elseif (-not $codebaseMemory) {
         irm https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 | iex
     } else {
@@ -530,7 +531,7 @@ function Invoke-UpdatedPackageInstall($DotfileScript, [bool]$DryRun, [bool]$Forc
         InstallPackages
         InstallExtras -Update
         InstallAi -Update
-        Sync-LazyVimConfig
+        SetupSymlinks
         Sync-LazyVim
         if (-not $script:Dry) { Assert-WindowsHealthy }
     } $DotfileScript $DryRun $ForceRun $QuietRun

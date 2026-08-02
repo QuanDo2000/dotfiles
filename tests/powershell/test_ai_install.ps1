@@ -100,15 +100,23 @@ function test_installai_skills_installs_same_shared_skill_set {
 
 function test_installai_fails_when_codebase_memory_update_fails {
     $script:Dry = $false
+    $script:CodebaseMemoryCalls = @()
+    $script:CodebaseMemoryInput = @()
     Set-FunctionMock 'InstallCodex' { }
     Set-CommandMock 'Get-Command' {
         param($Name)
         if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'mock-codebase-memory-mcp' } }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
-    Set-CommandMock 'codebase-memory-mcp' { $global:LASTEXITCODE = 1 }
+    Set-CommandMock 'codebase-memory-mcp' {
+        $script:CodebaseMemoryCalls += ,($args -join ' ')
+        $script:CodebaseMemoryInput = @($input)
+        $global:LASTEXITCODE = 1
+    }
 
     Assert-Throws { InstallAi -Update 6>&1 | Out-Null } 'InstallAi should fail when codebase-memory-mcp update fails'
+    Assert-True ($script:CodebaseMemoryCalls -contains 'update -y') 'codebase-memory-mcp updates should be non-interactive'
+    Assert-True ($script:CodebaseMemoryInput -contains '1') 'codebase-memory-mcp should select the standard variant'
 }
 
 function test_installai_fails_when_codebase_memory_install_fails {
@@ -173,7 +181,7 @@ function test_installpi_updates_extensions_during_update {
 
     InstallPi -Update
 
-    Assert-True ($script:PiCalls -contains 'update extensions') 'Pi extensions should update during dotfile update'
+    Assert-True ($script:PiCalls -contains 'update --extensions') 'Pi extensions should update during dotfile update'
 }
 
 function test_installpi_fails_when_command_is_missing_after_install {
@@ -185,6 +193,23 @@ function test_installpi_fails_when_command_is_missing_after_install {
     Set-CommandMock 'npm' { $global:LASTEXITCODE = 0 }
 
     Assert-Throws { InstallPi } 'Pi installation should fail when pi is still unavailable'
+}
+
+function test_pi_subagents_package_routes_all_agents_to_luna_max {
+    $path = Join-Path $script:RepoDir 'config\shared\ai\pi\settings.json'
+    $settings = Get-Content -Raw $path | ConvertFrom-Json
+
+    Assert-True (@($settings.packages) -contains 'npm:pi-subagents@0.40.0') 'Pi should install the pinned pi-subagents package'
+    Assert-Equals 'gpt-5.6-sol' $settings.defaultModel
+    Assert-Equals 'medium' $settings.defaultThinkingLevel
+    Assert-Equals 'openai-codex/gpt-5.6-luna' $settings.subagents.defaultModel
+    Assert-Equals 'max' $settings.subagents.defaultThinking
+
+    foreach ($agent in 'advisor', 'context-builder', 'delegate', 'oracle', 'planner', 'researcher', 'reviewer', 'scout', 'worker') {
+        $override = $settings.subagents.agentOverrides.PSObject.Properties[$agent].Value
+        Assert-Equals 'openai-codex/gpt-5.6-luna' $override.model
+        Assert-Equals 'max' $override.thinking
+    }
 }
 
 function test_syncpiconfigs_creates_writable_seed_files {
