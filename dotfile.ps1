@@ -162,7 +162,7 @@ function Get-WingetPackages {
         "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "junegunn.fzf",
         "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide",
-        "Python.Python.3.14", "GitHub.cli"
+        "Python.Python.3.14", "GitHub.cli", "Notepad++.Notepad++"
     )
 }
 
@@ -337,6 +337,9 @@ function InstallPi {
     Refresh-ProcessPath
     if (-not (Get-Command pi -ErrorAction SilentlyContinue)) {
         throw "pi command not found after installation"
+    }
+    if ($Update) {
+        Invoke-NativeChecked "Pi extension update failed" { pi update extensions }
     }
     Success "Finished installing Pi coding agent"
 }
@@ -605,6 +608,16 @@ function Get-WindowsLinkSpecs {
     $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".ssh\config") "$userHome\.ssh\config"
     $specs += New-LinkSpec 'File' (Join-Path $configPath ".gnupg\gpg-agent.conf") "$env:APPDATA\gnupg\gpg-agent.conf"
 
+    # Notepad++ settings: keep runtime-written config.xml writable.
+    $notepadSource = Join-Path $configPath "Notepad++"
+    $notepadTarget = Join-Path $env:APPDATA "Notepad++"
+    foreach ($name in "contextMenu.xml", "shortcuts.xml") {
+        $specs += New-LinkSpec 'File' (Join-Path $notepadSource $name) (Join-Path $notepadTarget $name)
+    }
+    Get-ChildItem (Join-Path $notepadSource "themes") -File | ForEach-Object {
+        $specs += New-LinkSpec 'File' $_.FullName (Join-Path $notepadTarget "themes\$($_.Name)")
+    }
+
     # Neovim settings: keep LazyVim's runtime-written lazyvim.json writable.
     $nvimSource = Join-Path $sharedPath "config\nvim"
     $nvimTarget = "$env:LOCALAPPDATA\nvim"
@@ -624,6 +637,19 @@ function Get-WindowsLinkSpecs {
     $specs += New-LinkSpec 'File' (Join-Path $script:DotfilesDir "dotfile.ps1") (Join-Path $binDest "dotfile.ps1") $true
 
     return $specs
+}
+
+function Sync-NotepadPlusPlusConfig {
+    Info "Syncing writable Notepad++ configuration..."
+    if ($script:Dry) { return }
+
+    $source = Join-Path $script:DotfilesDir "config\windows\Notepad++\config.xml"
+    $target = Join-Path $env:APPDATA "Notepad++\config.xml"
+    if (-not (Test-Path -LiteralPath $target)) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+        Copy-Item -LiteralPath $source -Destination $target
+    }
+    (Get-Item -LiteralPath $target).IsReadOnly = $false
 }
 
 function Migrate-WindowsNvimConfig {
@@ -680,6 +706,7 @@ function SetupSymlinks {
         }
         LinkPath -source $spec.Source -destination $spec.Destination -isDirectory ($spec.Kind -eq 'Dir')
     }
+    Sync-NotepadPlusPlusConfig
     Sync-LazyVimConfig
     if (-not $script:Dry) {
         $gpgconf = Join-Path $env:ProgramFiles 'GnuPG\bin\gpgconf.exe'

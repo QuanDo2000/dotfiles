@@ -74,6 +74,46 @@ function test_windows_neovim_links_stable_files_not_whole_directory {
     Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lazyvim.json') })) 'lazyvim.json should remain writable'
 }
 
+function test_windows_notepadplusplus_links_stable_settings_and_themes {
+    $oldAppData = $env:APPDATA
+    try {
+        $env:APPDATA = Join-Path $env:USERPROFILE 'AppData\Roaming'
+        $root = Join-Path $env:APPDATA 'Notepad++'
+        $specs = @(Get-WindowsLinkSpecs | Where-Object { $_.Destination -like "$root*" })
+
+        foreach ($name in 'contextMenu.xml', 'shortcuts.xml', 'themes\catppuccin-macchiato.xml', 'themes\DarkModeDefault.xml') {
+            Assert-True ([bool]($specs | Where-Object Destination -eq (Join-Path $root $name))) "$name should be linked"
+        }
+        Assert-False ([bool]($specs | Where-Object Destination -eq (Join-Path $root 'themes'))) 'whole themes directory should remain writable'
+        Assert-False ([bool]($specs | Where-Object Destination -eq (Join-Path $root 'config.xml'))) 'runtime-written config.xml should remain writable'
+    } finally {
+        $env:APPDATA = $oldAppData
+    }
+}
+
+function test_sync_notepadplusplus_config_seeds_writable_settings {
+    $oldAppData = $env:APPDATA
+    $oldDotfilesDir = $script:DotfilesDir
+    try {
+        $env:APPDATA = Join-Path $env:USERPROFILE 'AppData\Roaming'
+        $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+        $source = Join-Path $script:DotfilesDir 'config\windows\Notepad++\config.xml'
+        New-Item -ItemType Directory -Force -Path (Split-Path $source -Parent) | Out-Null
+        '<NotepadPlus><GUIConfigs /></NotepadPlus>' | Set-Content $source
+
+        Sync-NotepadPlusPlusConfig
+
+        $target = Join-Path $env:APPDATA 'Notepad++\config.xml'
+        Assert-FileExists $target
+        Assert-Contains (Get-Content -Raw $target) '<GUIConfigs />'
+        Assert-False ([bool](Get-Item $target).LinkType) 'Notepad++ config should be a regular file'
+        Assert-False (Get-Item $target).IsReadOnly 'Notepad++ config should be writable'
+    } finally {
+        $script:DotfilesDir = $oldDotfilesDir
+        $env:APPDATA = $oldAppData
+    }
+}
+
 function test_migrate_windows_nvim_config_replaces_legacy_directory_link {
     $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
     New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null

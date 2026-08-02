@@ -7,7 +7,7 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'npx', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest') {
+    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
@@ -156,6 +156,24 @@ function test_installpi_installs_official_package_and_checks_command {
     InstallPi
 
     Assert-Contains $script:NpmCalls[0] 'install --global @earendil-works/pi-coding-agent'
+}
+
+function test_installpi_updates_extensions_during_update {
+    $script:PiCalls = @()
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'pi') { return [pscustomobject]@{ Source = 'mock-pi' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'npm' { $global:LASTEXITCODE = 0 }
+    Set-CommandMock 'pi' {
+        $script:PiCalls += ,($args -join ' ')
+        $global:LASTEXITCODE = 0
+    }
+
+    InstallPi -Update
+
+    Assert-True ($script:PiCalls -contains 'update extensions') 'Pi extensions should update during dotfile update'
 }
 
 function test_installpi_fails_when_command_is_missing_after_install {

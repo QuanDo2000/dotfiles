@@ -6,7 +6,9 @@
 function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
-    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config\windows\Powershell') -Force | Out-Null
+    foreach ($path in 'config\windows\Powershell', 'config\windows\Notepad++\themes') {
+        New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir $path) -Force | Out-Null
+    }
     # Verify's informational output flows through Info/Success, which are
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.
