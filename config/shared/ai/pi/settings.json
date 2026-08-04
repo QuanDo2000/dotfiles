@@ -1,36 +1,20 @@
 {
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.6-sol",
-  "defaultThinkingLevel": "medium",
+  "defaultThinkingLevel": "high",
   "subagents": {
-    "defaultModel": "openai-codex/gpt-5.6-luna",
-    "defaultThinking": "max",
+    "defaultModel": "openai-codex/gpt-5.6-terra",
+    "defaultThinking": "xhigh",
     "agentOverrides": {
       "advisor": {
-        "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "max"
-      },
-      "context-builder": {
-        "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "max"
-      },
-      "delegate": {
-        "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "max"
+        "model": "openai-codex/gpt-5.6-sol",
+        "thinking": "xhigh"
       },
       "oracle": {
-        "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "max"
+        "model": "openai-codex/gpt-5.6-sol",
+        "thinking": "xhigh"
       },
-      "planner": {
-        "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "max"
-      },
-      "researcher": {
-        "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "max"
-      },
-      "reviewer": {
+      "delegate": {
         "model": "openai-codex/gpt-5.6-luna",
         "thinking": "max"
       },
