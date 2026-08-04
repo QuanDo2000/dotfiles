@@ -195,17 +195,25 @@ function test_installpi_fails_when_command_is_missing_after_install {
     Assert-Throws { InstallPi } 'Pi installation should fail when pi is still unavailable'
 }
 
-function test_pi_subagents_package_routes_all_agents_to_luna_max {
+function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
     $path = Join-Path $script:RepoDir 'config\shared\ai\pi\settings.json'
     $settings = Get-Content -Raw $path | ConvertFrom-Json
 
     Assert-True (@($settings.packages) -contains 'npm:pi-subagents@0.40.0') 'Pi should install the pinned pi-subagents package'
     Assert-Equals 'gpt-5.6-sol' $settings.defaultModel
-    Assert-Equals 'medium' $settings.defaultThinkingLevel
-    Assert-Equals 'openai-codex/gpt-5.6-luna' $settings.subagents.defaultModel
-    Assert-Equals 'max' $settings.subagents.defaultThinking
+    Assert-Equals 'high' $settings.defaultThinkingLevel
+    Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.defaultModel
+    Assert-Equals 'xhigh' $settings.subagents.defaultThinking
+    Assert-True $settings.subagents.modelScope.enforce
+    Assert-Equals 1 @($settings.subagents.modelScope.allow).Count
+    Assert-Equals 'openai-codex/*' @($settings.subagents.modelScope.allow)[0]
 
-    foreach ($agent in 'advisor', 'context-builder', 'delegate', 'oracle', 'planner', 'researcher', 'reviewer', 'scout', 'worker') {
+    foreach ($agent in 'advisor', 'oracle') {
+        $override = $settings.subagents.agentOverrides.PSObject.Properties[$agent].Value
+        Assert-Equals 'openai-codex/gpt-5.6-sol' $override.model
+        Assert-Equals 'xhigh' $override.thinking
+    }
+    foreach ($agent in 'delegate', 'scout', 'worker') {
         $override = $settings.subagents.agentOverrides.PSObject.Properties[$agent].Value
         Assert-Equals 'openai-codex/gpt-5.6-luna' $override.model
         Assert-Equals 'max' $override.thinking
