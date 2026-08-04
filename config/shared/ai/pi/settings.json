@@ -5,6 +5,12 @@
   "subagents": {
     "defaultModel": "openai-codex/gpt-5.6-terra",
     "defaultThinking": "xhigh",
+    "modelScope": {
+      "enforce": true,
+      "allow": [
+        "openai-codex/*"
+      ]
+    },
     "agentOverrides": {
       "advisor": {
         "model": "openai-codex/gpt-5.6-sol",
