@@ -372,7 +372,7 @@ function SyncPiConfigs {
             py -3.14 $mergeScript $target $source $applySeed
         }
         $mergeSource = if ($applySeed) { $applySeed } else { $source }
-        $merged = & jq -s '.[0] * .[1]' $target $mergeSource
+        $merged = & jq -s '.[0] as $live | .[1] as $seed | ($live * $seed) | if ($seed | has("subagents")) then .subagents = $seed.subagents else . end' $target $mergeSource
         if ($LASTEXITCODE -ne 0) { throw "Pi $name merge failed" }
         Set-Content -LiteralPath $target -Value ($merged -join "`n") -Encoding utf8
     }
@@ -443,6 +443,28 @@ function InstallAiSkills {
     }
 }
 
+function UpdateCodebaseMemory {
+    $versionOutput = & codebase-memory-mcp --version 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "codebase-memory-mcp version check failed" }
+
+    $versionMatch = [regex]::Match(($versionOutput -join ' '), '\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?')
+    if (-not $versionMatch.Success) { throw "Could not parse installed codebase-memory-mcp version" }
+    $installedVersion = $versionMatch.Value
+
+    $release = Invoke-RestMethod `
+        -Uri 'https://api.github.com/repos/DeusData/codebase-memory-mcp/releases/latest' `
+        -Headers @{ Accept = 'application/vnd.github+json'; 'User-Agent' = 'dotfiles' }
+    $latestVersion = ([string]$release.tag_name).TrimStart('v')
+    if (-not $latestVersion) { throw "Could not determine latest codebase-memory-mcp version" }
+    if ($installedVersion -eq $latestVersion) {
+        Info "Already installed codebase-memory-mcp $installedVersion"
+        return
+    }
+
+    # The updater has no variant flag; choose standard on stdin.
+    Invoke-NativeChecked "codebase-memory-mcp update failed" { '1' | codebase-memory-mcp update -y }
+}
+
 # Install or update agent CLIs and their shared skills.
 function InstallAi {
     param([switch]$Update)
@@ -453,8 +475,7 @@ function InstallAi {
 
     $codebaseMemory = Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue
     if ($Update -and $codebaseMemory) {
-        # The updater has no variant flag; choose standard on stdin.
-        Invoke-NativeChecked "codebase-memory-mcp update failed" { '1' | codebase-memory-mcp update -y }
+        UpdateCodebaseMemory
     } elseif (-not $codebaseMemory) {
         irm https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 | iex
     } else {

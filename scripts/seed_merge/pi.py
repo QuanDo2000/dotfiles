@@ -7,13 +7,15 @@ from common import load_json, write_json
 live_path, seed_path, apply_path = sys.argv[1:]
 
 
-def missing_from_seed(live, seed):
+def missing_from_seed(live, seed, root=True):
     missing = {}
     for key, value in live.items():
+        if root and key == "subagents":
+            continue
         if key not in seed or (key == "defaultModel" and seed[key] != value):
             missing[key] = value
         elif isinstance(value, dict) and isinstance(seed[key], dict):
-            nested = missing_from_seed(value, seed[key])
+            nested = missing_from_seed(value, seed[key], root=False)
             if nested:
                 missing[key] = nested
     return missing

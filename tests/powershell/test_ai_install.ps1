@@ -98,6 +98,21 @@ function test_installai_skills_installs_same_shared_skill_set {
     Assert-False ($calls -like '*--agent pi*') 'Pi discovers shared ~/.agents/skills; a Pi-specific copy causes collisions'
 }
 
+function test_updatecodebasememory_skips_current_version {
+    $script:CodebaseMemoryCalls = @()
+    Set-CommandMock 'codebase-memory-mcp' {
+        $script:CodebaseMemoryCalls += ,($args -join ' ')
+        $global:LASTEXITCODE = 0
+        'codebase-memory-mcp 0.9.0'
+    }
+    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
+
+    UpdateCodebaseMemory
+
+    Assert-Equals 1 $script:CodebaseMemoryCalls.Count
+    Assert-Equals '--version' $script:CodebaseMemoryCalls[0]
+}
+
 function test_installai_fails_when_codebase_memory_update_fails {
     $script:Dry = $false
     $script:CodebaseMemoryCalls = @()
@@ -108,8 +123,14 @@ function test_installai_fails_when_codebase_memory_update_fails {
         if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'mock-codebase-memory-mcp' } }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
+    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
     Set-CommandMock 'codebase-memory-mcp' {
-        $script:CodebaseMemoryCalls += ,($args -join ' ')
+        $call = $args -join ' '
+        $script:CodebaseMemoryCalls += ,$call
+        if ($call -eq '--version') {
+            $global:LASTEXITCODE = 0
+            return 'codebase-memory-mcp 0.8.0'
+        }
         $script:CodebaseMemoryInput = @($input)
         $global:LASTEXITCODE = 1
     }
@@ -239,4 +260,55 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
     Assert-FileExists (Join-Path $extensionDir 'windows-exit.js')
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
+}
+
+function test_syncpiconfigs_replaces_stale_live_subagents {
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+    $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
+    $mergeDir = Join-Path $script:DotfilesDir 'scripts\seed_merge'
+    $targetDir = Join-Path $env:USERPROFILE '.pi\agent'
+    New-Item -ItemType Directory -Force -Path $seedDir, $mergeDir, $targetDir | Out-Null
+    Copy-Item (Join-Path $script:RepoDir 'scripts\seed_merge\*') $mergeDir
+
+    @'
+{
+  "theme": "dark",
+  "subagents": {
+    "defaultModel": "openai-codex/gpt-5.6-terra",
+    "agentOverrides": {
+      "worker": {"model": "openai-codex/gpt-5.6-luna"}
+    }
+  }
+}
+'@ | Set-Content (Join-Path $seedDir 'settings.json')
+    '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
+    'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
+    'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
+    @'
+{
+  "theme": "light",
+  "runtimeOnly": true,
+  "subagents": {
+    "defaultModel": "openai-codex/gpt-5.6-luna",
+    "agentOverrides": {
+      "worker": {"model": "openai-codex/gpt-5.6-luna"},
+      "reviewer": {"model": "openai-codex/gpt-5.6-luna"}
+    }
+  }
+}
+'@ | Set-Content (Join-Path $targetDir 'settings.json')
+
+    $seed = Join-Path $seedDir 'settings.json'
+    try {
+        (Get-Item $seed).IsReadOnly = $true
+        SyncPiConfigs
+
+        $settings = Get-Content -Raw (Join-Path $targetDir 'settings.json') | ConvertFrom-Json
+        Assert-Equals 'dark' $settings.theme
+        Assert-True $settings.runtimeOnly 'Live-only unrelated settings should be preserved'
+        Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.defaultModel
+        Assert-False ($settings.subagents.agentOverrides.PSObject.Properties.Name -contains 'reviewer') 'Removed tracked subagent overrides should stay removed'
+    } finally {
+        (Get-Item $seed).IsReadOnly = $false
+    }
 }

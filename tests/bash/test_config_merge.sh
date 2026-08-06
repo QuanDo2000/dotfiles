@@ -163,3 +163,39 @@ EOF
   assert_exit_code 0 jq empty "$seed"
   rm -rf "$tmp"
 }
+
+test_pi_seed_merge_keeps_tracked_subagents_authoritative() {
+  local tmp script live seed
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/pi.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+
+  cat > "$live" <<'EOF'
+{
+  "subagents": {
+    "defaultModel": "openai-codex/gpt-5.6-luna",
+    "agentOverrides": {
+      "worker": {"model": "openai-codex/gpt-5.6-luna"},
+      "reviewer": {"model": "openai-codex/gpt-5.6-luna"}
+    }
+  }
+}
+EOF
+  cat > "$seed" <<'EOF'
+{
+  "subagents": {
+    "defaultModel": "openai-codex/gpt-5.6-terra",
+    "agentOverrides": {
+      "worker": {"model": "openai-codex/gpt-5.6-luna"}
+    }
+  }
+}
+EOF
+
+  python3 "$script" "$live" "$seed" "$seed" >/dev/null
+
+  assert_equals "openai-codex/gpt-5.6-terra" "$(jq -r '.subagents.defaultModel' "$seed")"
+  assert_equals "false" "$(jq '.subagents.agentOverrides | has("reviewer")' "$seed")"
+  rm -rf "$tmp"
+}

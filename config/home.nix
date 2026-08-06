@@ -699,7 +699,7 @@ in
         "${pkgs.python3}/bin/python3" "${../scripts/seed_merge}/pi.py" "$target" "$source" "$apply_seed" || echo "Warning: failed to sync Pi $name seed" >&2
         merge_source="''${apply_seed:-$source}"
         merged="$(mktemp)"
-        "${pkgs.jq}/bin/jq" -s '.[0] * .[1]' "$target" "$merge_source" > "$merged"
+        "${pkgs.jq}/bin/jq" -s '.[0] as $live | .[1] as $seed | ($live * $seed) | if ($seed | has("subagents")) then .subagents = $seed.subagents else . end' "$target" "$merge_source" > "$merged"
         mv "$merged" "$target"
       else
         rm -f "$target"
