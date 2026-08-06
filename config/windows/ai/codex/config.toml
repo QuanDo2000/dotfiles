@@ -74,6 +74,15 @@ enabled = true
 [mcp_servers.fff]
 command = "fff-mcp"
 
+[mcp_servers.fff.tools.find_files]
+approval_mode = "approve"
+
+[mcp_servers.fff.tools.grep]
+approval_mode = "approve"
+
+[mcp_servers.fff.tools.multi_grep]
+approval_mode = "approve"
+
 [mcp_servers.codebase-memory-mcp]
 command = "codebase-memory-mcp"
 
@@ -96,6 +105,9 @@ approval_mode = "approve"
 approval_mode = "approve"
 
 [mcp_servers.codebase-memory-mcp.tools.get_architecture]
+approval_mode = "approve"
+
+[mcp_servers.codebase-memory-mcp.tools.detect_changes]
 approval_mode = "approve"
 
 [mcp_servers.codebase-memory-mcp.tools.query_graph]

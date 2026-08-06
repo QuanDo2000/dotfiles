@@ -51,7 +51,7 @@ function test_installfffmcp_installs_verified_windows_binary_for_codex {
         'fff' | Set-Content -NoNewline $OutFile
     }
     Set-CommandMock 'Get-FileHash' {
-        [pscustomobject]@{ Hash = '7ff688d034aa42ff779a61ad12689794bdc253c895152796046f374390fb9cad' }
+        [pscustomobject]@{ Hash = 'e341b78464095c349b0c6b0a32b146fd217b542d973917b89645a5aa511640d8' }
     }
     Set-FunctionMock 'AddToUserPath' { }
 
@@ -98,59 +98,52 @@ function test_installai_skills_installs_same_shared_skill_set {
     Assert-False ($calls -like '*--agent pi*') 'Pi discovers shared ~/.agents/skills; a Pi-specific copy causes collisions'
 }
 
-function test_updatecodebasememory_skips_current_version {
-    $script:CodebaseMemoryCalls = @()
-    Set-CommandMock 'codebase-memory-mcp' {
-        $script:CodebaseMemoryCalls += ,($args -join ' ')
-        $global:LASTEXITCODE = 0
-        'codebase-memory-mcp 0.9.0'
-    }
-    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
-
-    UpdateCodebaseMemory
-
-    Assert-Equals 1 $script:CodebaseMemoryCalls.Count
-    Assert-Equals '--version' $script:CodebaseMemoryCalls[0]
-}
-
-function test_installai_fails_when_codebase_memory_update_fails {
+function test_installcodebasememory_updates_with_full_ui_installer {
     $script:Dry = $false
-    $script:CodebaseMemoryCalls = @()
-    $script:CodebaseMemoryInput = @()
-    Set-FunctionMock 'InstallCodex' { }
+    $script:CodebaseInstallerArgsPath = Join-Path $env:USERPROFILE 'codebase-installer-args.txt'
     Set-CommandMock 'Get-Command' {
         param($Name)
         if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'mock-codebase-memory-mcp' } }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
-    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
-    Set-CommandMock 'codebase-memory-mcp' {
-        $call = $args -join ' '
-        $script:CodebaseMemoryCalls += ,$call
-        if ($call -eq '--version') {
-            $global:LASTEXITCODE = 0
-            return 'codebase-memory-mcp 0.8.0'
-        }
-        $script:CodebaseMemoryInput = @($input)
-        $global:LASTEXITCODE = 1
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile)
+        "Set-Content -Path '$script:CodebaseInstallerArgsPath' -Value (`$args -join ' '); `$global:LASTEXITCODE = 0" | Set-Content $OutFile
     }
 
-    Assert-Throws { InstallAi -Update 6>&1 | Out-Null } 'InstallAi should fail when codebase-memory-mcp update fails'
-    Assert-True ($script:CodebaseMemoryCalls -contains 'update -y') 'codebase-memory-mcp updates should be non-interactive'
-    Assert-True ($script:CodebaseMemoryInput -contains '1') 'codebase-memory-mcp should select the standard variant'
+    InstallCodebaseMemory -Update 6>&1 | Out-Null
+
+    Assert-Contains (Get-Content -Raw $script:CodebaseInstallerArgsPath) '--ui'
 }
 
-function test_installai_fails_when_codebase_memory_install_fails {
+function test_installcodebasememory_enables_automatic_indexing {
     $script:Dry = $false
-    Set-FunctionMock 'InstallCodex' { }
+    $script:CodebaseMemoryCalls = @()
     Set-CommandMock 'Get-Command' {
         param($Name)
-        if ($Name -eq 'codebase-memory-mcp') { return $null }
+        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'mock-codebase-memory-mcp' } }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
-    Set-CommandMock 'Invoke-RestMethod' { 'function global:codebase-memory-mcp { $global:LASTEXITCODE = 1 }; codebase-memory-mcp install' }
+    Set-CommandMock 'codebase-memory-mcp' {
+        $script:CodebaseMemoryCalls += ,($args -join ' ')
+        $global:LASTEXITCODE = 0
+    }
 
-    Assert-Throws { InstallAi 6>&1 | Out-Null } 'InstallAi should fail when codebase-memory-mcp install script fails'
+    InstallCodebaseMemory 6>&1 | Out-Null
+
+    Assert-True ($script:CodebaseMemoryCalls -contains 'config set auto_index true') 'automatic indexing should be enabled'
+    Assert-True ($script:CodebaseMemoryCalls -contains 'config set auto_watch true') 'automatic watching should be enabled'
+}
+
+function test_installcodebasememory_fails_when_installer_fails {
+    $script:Dry = $false
+    Set-CommandMock 'Get-Command' { return $null }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile)
+        '$global:LASTEXITCODE = 1' | Set-Content $OutFile
+    }
+
+    Assert-Throws { InstallCodebaseMemory 6>&1 | Out-Null } 'InstallCodebaseMemory should fail when its installer fails'
 }
 
 function test_installcodex_fails_when_installer_exits_nonzero {
@@ -299,6 +292,10 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
 '@ | Set-Content (Join-Path $targetDir 'settings.json')
 
     $seed = Join-Path $seedDir 'settings.json'
+    Set-CommandMock 'py' {
+        $pythonArgs = @($args)
+        & python3 @($pythonArgs[1..($pythonArgs.Count - 1)])
+    }
     try {
         (Get-Item $seed).IsReadOnly = $true
         SyncPiConfigs

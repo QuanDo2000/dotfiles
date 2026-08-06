@@ -83,7 +83,7 @@ function test_verify_reports_missing_managed_ai_command {
 function test_verify_reports_missing_codex_config {
     $output = Verify 6>&1 | Out-String
 
-    Assert-Contains $output '.codex\config.toml'
+    Assert-Contains $output (Join-Path $env:USERPROFILE '.codex\config.toml')
     Assert-True $script:VerifyFailed 'missing Codex config should fail verification'
 }
 

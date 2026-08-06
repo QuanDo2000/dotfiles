@@ -26,6 +26,56 @@ test_arch_packages_are_bootstrap_only() {
   done
 }
 
+test_code_search_stack_uses_current_full_feature_packages() {
+  local fff codebase pi_settings
+  fff="$(<"$REPO_DIR/packages/fff-mcp.nix")"
+  codebase="$(<"$REPO_DIR/packages/codebase-memory-mcp.nix")"
+  pi_settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
+
+  assert_contains "$fff" 'version = "0.10.1";'
+  assert_contains "$codebase" 'version = "0.9.0";'
+  assert_contains "$codebase" 'codebase-memory-mcp-ui-'
+  assert_contains "$pi_settings" 'npm:@ff-labs/pi-fff@0.10.1'
+}
+
+test_code_search_stack_enables_auto_index_and_agent_workflows() {
+  local codex agents nvim_fff
+  codex="$(<"$REPO_DIR/config/shared/ai/codex/config.toml")"
+  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+  nvim_fff="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
+
+  assert_contains "$HOME_CONFIG" 'config set auto_index true'
+  assert_contains "$HOME_CONFIG" 'config set auto_watch true'
+  assert_contains "$HOME_CONFIG" 'FFF_FRECENCY_DB = "${homeDir}/.local/state/fff/frecency";'
+  assert_contains "$HOME_CONFIG" '".local/bin/fff-mcp-agent"'
+  assert_contains "$HOME_CONFIG" 'exec "${pkgs.fff-mcp}/bin/fff-mcp"'
+  assert_contains "$codex" 'args = ["fff-mcp-agent"]'
+  assert_contains "$nvim_fff" 'frecency = { db_path = vim.env.FFF_FRECENCY_DB or vim.fn.expand("~/.local/state/fff/frecency") }'
+  assert_contains "$nvim_fff" 'history = { db_path = vim.env.FFF_HISTORY_DB or vim.fn.expand("~/.local/state/fff/history") }'
+  assert_contains "$codex" '[mcp_servers.fff.tools.find_files]'
+  assert_contains "$codex" '[mcp_servers.fff.tools.grep]'
+  assert_contains "$codex" '[mcp_servers.fff.tools.multi_grep]'
+  assert_contains "$codex" '[mcp_servers.codebase-memory-mcp.tools.detect_changes]'
+  assert_contains "$agents" 'get_architecture'
+  assert_contains "$agents" 'detect_changes'
+  assert_contains "$agents" 'multi_grep'
+}
+
+
+test_all_ai_agents_start_with_ponytail_and_caveman() {
+  local agents soul
+  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+  soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
+
+  assert_contains "$agents" 'Ponytail and Caveman are active at `full`'
+  assert_contains "$agents" 'main-agent and subagent startup'
+  assert_contains "$soul" 'Ponytail and Caveman are active at `full`'
+  assert_contains "$soul" 'main-agent and subagent startup'
+  assert_contains "$HOME_CONFIG" '".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;'
+  assert_contains "$HOME_CONFIG" '".hermes/skills/productivity/ponytail/SKILL.md"'
+}
+
+
 test_install_arch_bootstraps_nix_and_switches_home_manager() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"

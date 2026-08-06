@@ -55,6 +55,37 @@ EOF
   rm -rf "$tmp"
 }
 
+
+test_codex_seed_merge_engine_applies_tracked_additions_to_live() {
+  local tmp script live seed
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/codex.py"
+  live="$tmp/live.toml"
+  seed="$tmp/seed.toml"
+
+  cat > "$live" <<'EOF'
+model = "gpt-5.5"
+
+[hooks.state]
+live_only = "keep"
+EOF
+
+  cat > "$seed" <<'EOF'
+model = "gpt-5.5"
+
+[mcp_servers.fff]
+command = "fff-mcp-agent"
+EOF
+
+  python3 "$script" "$live" "$seed" "$seed" >/dev/null
+
+  assert_contains "$(<"$live")" '[mcp_servers.fff]'
+  assert_contains "$(<"$live")" 'command = "fff-mcp-agent"'
+  assert_contains "$(<"$live")" 'live_only = "keep"'
+  assert_exit_code 0 python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$live"
+  rm -rf "$tmp"
+}
+
 test_lazyvim_three_way_merge_preserves_tracked_and_live_changes() {
   local tmp script live seed base
   tmp="$(mktemp -d)"

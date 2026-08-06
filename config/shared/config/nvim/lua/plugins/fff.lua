@@ -7,7 +7,10 @@ return {
     "dmtrKovalenko/fff.nvim",
     build = function() require("fff.download").download_or_build_binary() end,
     lazy = false,
-    opts = {},
+    opts = {
+      frecency = { db_path = vim.env.FFF_FRECENCY_DB or vim.fn.expand("~/.local/state/fff/frecency") },
+      history = { db_path = vim.env.FFF_HISTORY_DB or vim.fn.expand("~/.local/state/fff/history") },
+    },
     keys = {
       { "<leader>ff", function() require("fff").find_files() end, desc = "Find Files (FFF)" },
       { "<leader>sg", function() require("fff").live_grep() end, desc = "Grep (FFF)" },

@@ -31,7 +31,7 @@ test_ci_runs_direct_nix_checks() {
 
   assert_not_contains "$workflow" "run: ./scripts/check.sh"
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
-  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#fff-mcp --no-link'
+  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#fff-mcp .#codebase-memory-mcp --no-link'
 }
 
 test_ci_runs_windows_lazyvim_integration() {

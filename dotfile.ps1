@@ -393,8 +393,8 @@ function InstallFffMcp {
     $binDir = Join-Path $env:USERPROFILE '.local\bin'
     $destination = Join-Path $binDir 'fff-mcp.exe'
     if ($Update -or -not (Test-Path -LiteralPath $destination)) {
-        $url = 'https://github.com/dmtrKovalenko/fff/releases/download/v0.9.6/fff-mcp-x86_64-pc-windows-msvc.exe'
-        $expectedHash = '7ff688d034aa42ff779a61ad12689794bdc253c895152796046f374390fb9cad'
+        $url = 'https://github.com/dmtrKovalenko/fff/releases/download/v0.10.1/fff-mcp-x86_64-pc-windows-msvc.exe'
+        $expectedHash = 'e341b78464095c349b0c6b0a32b146fd217b542d973917b89645a5aa511640d8'
         $download = "$destination.download"
         New-Item -ItemType Directory -Force -Path $binDir | Out-Null
         try {
@@ -412,6 +412,33 @@ function InstallFffMcp {
     AddToUserPath $binDir
 
     Success "Finished installing FFF MCP server"
+}
+
+function InstallCodebaseMemory {
+    param([switch]$Update)
+    $installed = Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue
+    if ($Update -or -not $installed) {
+        $installer = Join-Path ([System.IO.Path]::GetTempPath()) 'codebase-memory-mcp-install.ps1'
+        try {
+            Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/v0.9.0/install.ps1' -OutFile $installer
+            Invoke-NativeChecked "codebase-memory-mcp install failed" { & $installer --ui }
+        } finally {
+            Remove-Item -LiteralPath $installer -Force -ErrorAction SilentlyContinue
+        }
+        Refresh-ProcessPath
+    } else {
+        Info "Already installed codebase-memory-mcp"
+    }
+
+    if (-not (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
+        throw "codebase-memory-mcp command not found after installation"
+    }
+    Invoke-NativeChecked "codebase-memory-mcp auto-index configuration failed" {
+        codebase-memory-mcp config set auto_index true
+    }
+    Invoke-NativeChecked "codebase-memory-mcp auto-watch configuration failed" {
+        codebase-memory-mcp config set auto_watch true
+    }
 }
 
 function SyncAiInstructions {
@@ -443,28 +470,6 @@ function InstallAiSkills {
     }
 }
 
-function UpdateCodebaseMemory {
-    $versionOutput = & codebase-memory-mcp --version 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "codebase-memory-mcp version check failed" }
-
-    $versionMatch = [regex]::Match(($versionOutput -join ' '), '\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?')
-    if (-not $versionMatch.Success) { throw "Could not parse installed codebase-memory-mcp version" }
-    $installedVersion = $versionMatch.Value
-
-    $release = Invoke-RestMethod `
-        -Uri 'https://api.github.com/repos/DeusData/codebase-memory-mcp/releases/latest' `
-        -Headers @{ Accept = 'application/vnd.github+json'; 'User-Agent' = 'dotfiles' }
-    $latestVersion = ([string]$release.tag_name).TrimStart('v')
-    if (-not $latestVersion) { throw "Could not determine latest codebase-memory-mcp version" }
-    if ($installedVersion -eq $latestVersion) {
-        Info "Already installed codebase-memory-mcp $installedVersion"
-        return
-    }
-
-    # The updater has no variant flag; choose standard on stdin.
-    Invoke-NativeChecked "codebase-memory-mcp update failed" { '1' | codebase-memory-mcp update -y }
-}
-
 # Install or update agent CLIs and their shared skills.
 function InstallAi {
     param([switch]$Update)
@@ -473,19 +478,7 @@ function InstallAi {
 
     InstallCodex -Update:$Update
 
-    $codebaseMemory = Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue
-    if ($Update -and $codebaseMemory) {
-        UpdateCodebaseMemory
-    } elseif (-not $codebaseMemory) {
-        irm https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 | iex
-    } else {
-        Info "Already installed codebase-memory-mcp"
-    }
-    Refresh-ProcessPath
-    if (-not (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
-        throw "codebase-memory-mcp command not found after installation"
-    }
-
+    InstallCodebaseMemory -Update:$Update
     InstallFffMcp -Update:$Update
     SyncCodexConfig
     InstallPi -Update:$Update
@@ -628,7 +621,7 @@ function Get-WindowsLinkSpecs {
 
     # SSH and GnuPG configs
     $specs += New-LinkSpec 'File' (Join-Path $sharedPath ".ssh\config") "$userHome\.ssh\config"
-    $specs += New-LinkSpec 'File' (Join-Path $configPath ".gnupg\gpg-agent.conf") "$env:APPDATA\gnupg\gpg-agent.conf"
+    $specs += New-LinkSpec 'File' (Join-Path $configPath ".gnupg\gpg-agent.conf") (Join-Path $env:APPDATA "gnupg\gpg-agent.conf")
 
     # Notepad++ settings: keep runtime-written config.xml writable.
     $notepadSource = Join-Path $configPath "Notepad++"

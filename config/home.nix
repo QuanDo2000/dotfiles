@@ -18,6 +18,12 @@ let
     rev = "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0";
     hash = "sha256-VqRHx3/4SSCnEh3cUJ/he5saIfwNhS0hOzoH/wwtU2o=";
   };
+  ponytailSrc = pkgs.fetchFromGitHub {
+    owner = "DietrichGebert";
+    repo = "ponytail";
+    rev = "40e50d9e03242aa5dd53ac771950f9127362b25f";
+    hash = "sha256-Pn6gPg0luOO0/I3dP4DzdvFn4Z7rjrK4Bbxf+4VBiYo=";
+  };
   superpowersSrc = pkgs.fetchFromGitHub {
     owner = "obra";
     repo = "superpowers";
@@ -144,6 +150,10 @@ in
   home.sessionPath = [
     "${homeDir}/.local/bin"
   ];
+  home.sessionVariables = {
+    FFF_FRECENCY_DB = "${homeDir}/.local/state/fff/frecency";
+    FFF_HISTORY_DB = "${homeDir}/.local/state/fff/history";
+  };
   home.packages = devTerminalPackages
   ++ lib.optionals (!nixosSystem) [
     pkgs.nerd-fonts.fira-code
@@ -157,6 +167,8 @@ in
     ".ssh/config" = forceSource ./shared/.ssh/config;
     ".codex/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
+    ".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;
+    ".hermes/skills/productivity/ponytail/SKILL.md" = forceSource "${ponytailSrc}/skills/ponytail/SKILL.md";
     ".agents/skills/caveman/README.md" = forceSource "${cavemanSrc}/skills/caveman/README.md";
     ".agents/skills/caveman/SKILL.md" = forceSource "${cavemanSrc}/skills/caveman/SKILL.md";
     ".agents/skills/systematic-debugging" = forceSource "${superpowersSrc}/skills/systematic-debugging";
@@ -168,6 +180,17 @@ in
         #!/usr/bin/env bash
         dotfiles_dir="''${DOTFILES_DIR:-$HOME/dotfiles}"
         exec "$dotfiles_dir/dotfile" "$@"
+      '';
+      executable = true;
+      force = true;
+    };
+    ".local/bin/fff-mcp-agent" = {
+      text = ''
+        #!${pkgs.runtimeShell}
+        exec "${pkgs.fff-mcp}/bin/fff-mcp" \
+          --frecency-db "''${FFF_FRECENCY_DB:-$HOME/.local/state/fff/frecency}" \
+          --history-db "''${FFF_HISTORY_DB:-$HOME/.local/state/fff/history}" \
+          "$@"
       '';
       executable = true;
       force = true;
@@ -651,6 +674,11 @@ in
       mkdir -p "$(dirname "$terminfo_target")"
       cp "$terminfo_source" "$terminfo_target"
     fi
+  '';
+
+  home.activation.configureCodebaseMemory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    "${pkgs.codebase-memory-mcp}/bin/codebase-memory-mcp" config set auto_index true
+    "${pkgs.codebase-memory-mcp}/bin/codebase-memory-mcp" config set auto_watch true
   '';
 
   home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

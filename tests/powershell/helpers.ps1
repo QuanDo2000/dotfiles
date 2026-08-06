@@ -63,9 +63,11 @@ function Initialize-TestEnv {
     $script:_TestTmp = New-Item -ItemType Directory -Force -Path (Join-Path ([IO.Path]::GetTempPath()) ("dot_" + [Guid]::NewGuid().ToString('N')))
     $script:_OrigHome = $env:USERPROFILE
     $script:_OrigDotfiles = $env:DOTFILES_DIR
+    $script:_OrigAppData = $env:APPDATA
     $script:_OrigLocalAppData = $env:LOCALAPPDATA
     $env:USERPROFILE = Join-Path $script:_TestTmp.FullName 'home'
     $env:HOME = $env:USERPROFILE
+    $env:APPDATA = Join-Path $env:USERPROFILE 'AppData\Roaming'
     $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
     $env:DOTFILES_DIR = Join-Path $env:USERPROFILE 'dotfiles'
     New-Item -ItemType Directory -Force -Path $env:USERPROFILE | Out-Null
@@ -101,6 +103,11 @@ function Clear-TestEnv {
     $env:USERPROFILE = $script:_OrigHome
     $env:HOME = $script:_OrigHome
     $env:DOTFILES_DIR = $script:_OrigDotfiles
+    if ($null -eq $script:_OrigAppData) {
+        Remove-Item Env:APPDATA -ErrorAction SilentlyContinue
+    } else {
+        $env:APPDATA = $script:_OrigAppData
+    }
     if ($null -eq $script:_OrigLocalAppData) {
         Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue
     } else {

@@ -5,17 +5,17 @@
 }:
 
 let
-  version = "0.9.6";
+  version = "0.10.1";
   platform = stdenvNoCC.hostPlatform.system;
   source =
     {
       x86_64-linux = {
         target = "x86_64-unknown-linux-musl";
-        hash = "sha256-ECzq8XPvd2vsszIiFun2tcrvmXxADF0V8RLOTeQKH1o=";
+        hash = "sha256-wXY3wzOvu73qSwPPPhVzJAxBR64SF1bjY6r6PJ0O+1g=";
       };
       aarch64-darwin = {
         target = "aarch64-apple-darwin";
-        hash = "sha256-Kaf63q+wYvPllUsauMaeFNyiT14GHNjTseobqzhaN1Q=";
+        hash = "sha256-7/ZmCpxI4+GXLVV8EAPgV+X/mdYDn1+BBnHyEjCT/fw=";
       };
     }.${platform} or (throw "Unsupported FFF MCP platform: ${platform}");
 in

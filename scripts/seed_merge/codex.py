@@ -37,6 +37,16 @@ def merge_missing(seed, missing):
     return seed
 
 
+def overlay_tracked(live, seed):
+    merged = dict(live)
+    for key, value in seed.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = overlay_tracked(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 def quote(value):
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -128,3 +138,5 @@ if missing:
         print("Review these additions for config/shared/ai/codex/config.toml:")
         print()
         print(render(missing), end="")
+
+write_toml(live_path, overlay_tracked(live_config, seed_config))
