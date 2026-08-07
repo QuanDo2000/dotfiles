@@ -13,6 +13,7 @@ dotfile                      # Full setup
 dotfile packages             # Install system packages only
 dotfile doctor               # Detect dotfile and Nix issues
 dotfile update               # Update Nix-managed packages, including Pi
+dotfile update ai            # Update only AI tools and configs
 dotfile obsidian             # Bootstrap Obsidian Sync login and vault setup
 dotfile codex                # Update pinned Codex release package
 dotfile obsidian-headless    # Update pinned Obsidian Headless package

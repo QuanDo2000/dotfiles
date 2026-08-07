@@ -295,6 +295,37 @@ function _report_fff_nvim_warning {
   [ -z "${FFF_NVIM_WARNING:-}" ] || warn "fff.nvim setup failed; Neovim may start without FFF.\n$FFF_NVIM_WARNING"
 }
 
+function _update_pi_extensions {
+  if [[ "$DRY" == "true" ]]; then
+    info "Would update Pi extensions"
+  else
+    pi update --extensions || fail "Failed to update Pi extensions"
+  fi
+}
+
+function update_ai {
+  info "Updating AI tools and configs..."
+  local platform codex_version_before
+  codex_version_before="$(_codex_version)"
+  platform="$(detect_platform)"
+  case "$platform" in
+    nixos|debian|arch|mac) ;;
+    unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
+  esac
+
+  _update_codex_release_package
+  _update_pi_release_package
+  case "$platform" in
+    nixos)   _nixos_rebuild_switch ;;
+    debian)  _home_manager_switch linux ;;
+    arch)    _home_manager_switch arch-server ;;
+    mac)     _darwin_rebuild_switch ;;
+  esac
+  _cleanup_codex_runtime_after_update "$codex_version_before"
+  _update_pi_extensions
+  success "Finished AI update"
+}
+
 function update_packages {
   info "Updating packages..."
   local platform codex_version_before
@@ -312,11 +343,7 @@ function update_packages {
     mac)     update_mac ;;
   esac
   _cleanup_codex_runtime_after_update "$codex_version_before"
-  if [[ "$DRY" == "true" ]]; then
-    info "Would update Pi extensions"
-  else
-    pi update --extensions || fail "Failed to update Pi extensions"
-  fi
+  _update_pi_extensions
   _sync_fff_nvim
   success "Finished update"
   _report_fff_nvim_warning

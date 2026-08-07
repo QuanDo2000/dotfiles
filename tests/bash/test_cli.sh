@@ -54,8 +54,9 @@ test_help_exits_zero() {
   assert_contains "$output" "Usage"
   assert_contains "$output" "Commands"
   assert_contains "$output" "Options"
-  assert_contains "$output" "update"
+  assert_contains "$output" "update [ai]"
   assert_contains "$output" "Update Nix-managed packages"
+  assert_contains "$output" "Update only AI tools and configs"
   assert_contains "$output" "codex"
   assert_contains "$output" "Update pinned Codex release package"
   assert_contains "$output" "obsidian-headless"
@@ -149,6 +150,8 @@ test_readme_matches_key_help_text() {
   local readme_text
   readme_text="$(<"$REPO_DIR/README.md")"
   assert_contains "$readme_text" "### Unix Commands"
+  assert_contains "$readme_text" "update [ai]"
+  assert_contains "$readme_text" "Update only AI tools and configs"
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
   assert_contains "$readme_text" "codex       Update pinned Codex release package"
   assert_contains "$readme_text" "obsidian-headless"
@@ -186,6 +189,26 @@ test_dry_run_update_command() {
   assert_contains "$output" "Updating packages"
   assert_not_contains "$output" "Would update Codex package"
   assert_not_contains "$output" "language toolchains"
+}
+
+test_dry_run_update_ai_command_only_updates_ai() {
+  is_windows_bash && return 0
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=arch\n' > "$osrel"
+  link_core_dotfiles
+  with_nix_agent_tools
+
+  local output
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry update ai 2>&1)
+
+  assert_checked_flow "$output" true
+  assert_contains "$output" "Updating AI tools and configs"
+  assert_contains "$output" "Would update Codex package from the latest GitHub release"
+  assert_contains "$output" "Would update Pi package from the latest npm release"
+  assert_contains "$output" "Would update Pi extensions"
+  assert_not_contains "$output" "Updating packages"
+  assert_not_contains "$output" "fff.nvim"
 }
 
 test_dry_run_codex_command_updates_release_pin_only() {
@@ -282,6 +305,15 @@ test_help_flags_exit_zero() {
   assert_exit_code 0 bash "$DOTFILE_CMD" --force --help
   assert_exit_code 0 bash "$DOTFILE_CMD" --quiet --help
   assert_exit_code 0 bash "$DOTFILE_CMD" --help
+}
+
+test_update_ai_rejects_extra_arguments() {
+  local output exit_code=0
+  output=$(bash "$DOTFILE_CMD" update ai extra 2>&1) || exit_code=$?
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "Unexpected update argument: extra"
+  assert_not_contains "$output" "Verifying symlinks"
 }
 
 test_unknown_command_fails() {

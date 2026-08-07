@@ -72,7 +72,8 @@ dotfile [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update Nix-managed packages, including Pi
+  update [ai] Update Nix-managed packages, including Pi
+              Update only AI tools and configs with `update ai`
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package
@@ -158,7 +159,9 @@ sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
 ```
 
 After provisioning, use `dotfile update` as the normal Nix-managed update
-command. On NixOS it wraps:
+command. Use `dotfile update ai` to update only tracked AI configs, Codex and
+Pi release pins, managed AI packages, and Pi extensions. On NixOS the full
+update wraps:
 
 ```bash
 nix flake update --flake ~/dotfiles

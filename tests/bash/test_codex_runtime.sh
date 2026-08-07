@@ -48,6 +48,66 @@ EOF
   unset -f command _update_codex_release_package _update_pi_release_package home-manager pi _sync_fff_nvim
 }
 
+test_update_ai_updates_only_ai_tools_and_configs() {
+  DRY=false
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  local calls="$TEST_TMPDIR/calls.log"
+  printf 'ID=arch\n' > "$osrel"
+
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      case "${2:-}" in
+        nix|home-manager) return 0 ;;
+        codex) return 1 ;;
+      esac
+    fi
+    builtin command "$@"
+  }
+  _update_codex_release_package() {
+    printf 'codex-update\n' >> "$calls"
+  }
+  _update_pi_release_package() {
+    printf 'pi-update\n' >> "$calls"
+  }
+  home-manager() {
+    printf 'home-manager-switch\n' >> "$calls"
+  }
+  _cleanup_codex_runtime_after_update() {
+    printf 'codex-runtime-cleanup\n' >> "$calls"
+  }
+  pi() {
+    printf 'pi %s\n' "$*" >> "$calls"
+  }
+  _sync_fff_nvim() {
+    printf 'fff.nvim\n' >> "$calls"
+  }
+
+  OS_RELEASE="$osrel" update_ai >/dev/null 2>&1
+
+  assert_equals $'codex-update\npi-update\nhome-manager-switch\ncodex-runtime-cleanup\npi update --extensions' "$(<"$calls")"
+
+  unset -f command _update_codex_release_package _update_pi_release_package home-manager \
+    _cleanup_codex_runtime_after_update pi _sync_fff_nvim
+}
+
+test_update_ai_nixos_rebuilds_without_updating_flake() {
+  DRY=true
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  _update_codex_release_package() { :; }
+  _update_pi_release_package() { :; }
+
+  local output
+  output=$(OS_RELEASE="$osrel" update_ai 2>&1)
+
+  assert_contains "$output" "Would run: sudo nixos-rebuild switch --flake $DOTFILES_DIR#testhost"
+  assert_not_contains "$output" "nix flake update"
+
+  unset -f _update_codex_release_package _update_pi_release_package
+}
+
 test_update_packages_fails_unsupported_before_codex_update() {
   DRY=false
   mock_uname FreeBSD

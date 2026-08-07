@@ -73,7 +73,8 @@ Usage: $(basename "$0") [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update Nix-managed packages, including Pi
+  update [ai] Update Nix-managed packages, including Pi
+              Update only AI tools and configs with 'update ai'
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package
@@ -118,7 +119,16 @@ done
 # Run command
 case "${1:-all}" in
 all) setup_dotfiles ;;
-update) run_checked_flow true true update_packages ;;
+update)
+  case "${2:-}" in
+    "") run_checked_flow true true update_packages ;;
+    ai)
+      [[ $# -eq 2 ]] || fail "Unexpected update argument: ${3:-}"
+      run_checked_flow true true update_ai
+      ;;
+    *) fail "Unknown update target: $2" ;;
+  esac
+  ;;
 packages) run_checked_flow false false install_packages ;;
 obsidian) setup_obsidian ;;
 codex) update_codex_release ;;
