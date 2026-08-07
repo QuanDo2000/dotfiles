@@ -76,6 +76,23 @@ test_all_ai_agents_start_with_ponytail_and_caveman() {
 }
 
 
+test_all_ai_agents_delegate_efficiently() {
+  local agents soul
+  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+  soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
+
+  for guidance in "$agents" "$soul"; do
+    assert_contains "$guidance" 'multiple independent, substantial lanes'
+    assert_contains "$guidance" 'parallel and asynchronously when supported'
+    assert_contains "$guidance" 'one writer per worktree'
+    assert_contains "$guidance" 'Do not delegate tiny, tightly serial, or duplicate work.'
+    assert_contains "$guidance" 'Prefer 1–3 narrow children with only the context they need'
+    assert_contains "$guidance" 'cheapest capable model'
+    assert_contains "$guidance" 'Parent owns synthesis and final verification.'
+  done
+}
+
+
 test_install_arch_bootstraps_nix_and_switches_home_manager() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"

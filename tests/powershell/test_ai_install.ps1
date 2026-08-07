@@ -290,6 +290,7 @@ function test_syncpiconfigs_creates_writable_seed_files {
     New-Item -ItemType Directory -Force -Path $seedDir | Out-Null
     '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
+    'extension' | Set-Content (Join-Path $seedDir 'caveman-default.js')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
 
@@ -300,6 +301,7 @@ function test_syncpiconfigs_creates_writable_seed_files {
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     Assert-FileExists $settings
     Assert-FileExists $mcp
+    Assert-FileExists (Join-Path $extensionDir 'caveman-default.js')
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
     Assert-FileExists (Join-Path $extensionDir 'windows-exit.js')
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
@@ -325,6 +327,7 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
 }
 '@ | Set-Content (Join-Path $seedDir 'settings.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
+    'extension' | Set-Content (Join-Path $seedDir 'caveman-default.js')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
     @'

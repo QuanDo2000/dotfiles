@@ -174,6 +174,7 @@ in
     ".agents/skills/systematic-debugging" = forceSource "${superpowersSrc}/skills/systematic-debugging";
     ".agents/skills/test-driven-development" = forceSource "${superpowersSrc}/skills/test-driven-development";
     ".agents/skills/verification-before-completion" = forceSource "${superpowersSrc}/skills/verification-before-completion";
+    ".pi/agent/extensions/caveman-default.js" = forceSource ./shared/ai/pi/caveman-default.js;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".local/bin/dotfile" = {
       text = ''
