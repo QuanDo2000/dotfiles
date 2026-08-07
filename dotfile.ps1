@@ -6,7 +6,8 @@ param(
     [Alias('f')][switch]$Force,
     [Alias('q')][switch]$Quiet,
     [Alias('h')][switch]$Help,
-    [Parameter(Position = 0)][string]$Command = 'all'
+    [Parameter(Position = 0)][string]$Command = 'all',
+    [Parameter(Position = 1)][string]$UpdateTarget = ''
 )
 
 $ErrorActionPreference = "Stop"
@@ -571,27 +572,33 @@ function Sync-LazyVim {
     }
 }
 
-function Invoke-UpdatedPackageInstall($DotfileScript, [bool]$DryRun, [bool]$ForceRun, [bool]$QuietRun) {
+function Invoke-UpdatedPackageInstall($DotfileScript, [bool]$DryRun, [bool]$ForceRun, [bool]$QuietRun, [bool]$AiOnly = $false) {
     & {
-        param($ScriptPath, $IsDry, $IsForce, $IsQuiet)
+        param($ScriptPath, $IsDry, $IsForce, $IsQuiet, $OnlyAi)
         . $ScriptPath -NoMain -Dry:$IsDry -Force:$IsForce -Quiet:$IsQuiet
         $script:Dry = $IsDry
         $script:Force = $IsForce
         $script:Quiet = $IsQuiet
-        InstallPackages
-        InstallExtras -Update
-        InstallAi -Update
-        SetupSymlinks
-        Sync-LazyVim
+        if ($OnlyAi) {
+            InstallAi -Update
+        } else {
+            InstallPackages
+            InstallExtras -Update
+            InstallAi -Update
+            SetupSymlinks
+            Sync-LazyVim
+        }
         if (-not $script:Dry) { Assert-WindowsHealthy }
-    } $DotfileScript $DryRun $ForceRun $QuietRun
+    } $DotfileScript $DryRun $ForceRun $QuietRun $AiOnly
 }
 
-function Update-Packages {
-    Info "Updating packages..."
+function Update-Packages($Target = '') {
+    if ($Target -and $Target -ne 'ai') { Fail "Unknown update target: $Target" }
+    $aiOnly = $Target -eq 'ai'
+    Info $(if ($aiOnly) { "Updating AI tools and configs..." } else { "Updating packages..." })
     UpdateRepo
-    Invoke-UpdatedPackageInstall (Join-Path $script:DotfilesDir 'dotfile.ps1') $script:Dry $script:Force $script:Quiet
-    Success "Finished updating packages"
+    Invoke-UpdatedPackageInstall (Join-Path $script:DotfilesDir 'dotfile.ps1') $script:Dry $script:Force $script:Quiet $aiOnly
+    Success $(if ($aiOnly) { "Finished AI update" } else { "Finished updating packages" })
 }
 
 function AddToUserPath($dir) {
@@ -896,7 +903,8 @@ Usage: dotfile.ps1 [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update system packages
+  update [ai] Update system packages
+              Update only AI tools and configs with update ai
   packages    Install all managed packages only
   ai          Install AI tools and shared skills
   doctor      Detect Windows installation issues
@@ -912,10 +920,11 @@ Options:
 
 if (-not $NoMain) {
     if ($Help) { ShowUsage; exit 0 }
+    if ($UpdateTarget -and $Command -ne 'update') { Fail "Unexpected argument after ${Command}: $UpdateTarget" }
 
     switch ($Command) {
         "all"       { SetupDotfiles }
-        "update"    { Update-Packages }
+        "update"    { Update-Packages $UpdateTarget }
         "packages"  { InstallManagedPackages }
         "ai"        { InstallAi }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }

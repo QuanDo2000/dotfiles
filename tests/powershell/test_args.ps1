@@ -7,6 +7,13 @@ function test_parameter_binder_dispatches_dry_command {
     $output = pwsh -NoProfile -File $script:DotfileScript ai --dry 6>&1 | Out-String
     Assert-Equals 0 $LASTEXITCODE
     Assert-Contains $output 'Installing agent CLIs'
+
+    $output = pwsh -NoProfile -File $script:DotfileScript update ai --dry 6>&1 | Out-String
+    Assert-Equals 0 $LASTEXITCODE
+    Assert-Contains $output 'Updating AI tools and configs'
+    Assert-Contains $output 'Installing agent CLIs'
+    Assert-False ($output -like '*Installing packages*') 'AI update should skip system packages'
+    Assert-False ($output -like '*LazyVim*') 'AI update should skip LazyVim'
 }
 
 # Lock the short-form CLI aliases in place.

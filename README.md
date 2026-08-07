@@ -96,7 +96,8 @@ dotfile.ps1 [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update      Update system packages
+  update [ai] Update system packages
+              Update only AI tools and configs with `update ai`
   packages    Install all managed packages only
   ai          Install AI tools and shared skills
   doctor      Detect Windows installation issues

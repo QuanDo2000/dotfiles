@@ -45,6 +45,52 @@ function Sync-LazyVim { }
     Assert-True $updatedSymlinksRan 'update should reconcile managed symlinks'
 }
 
+function test_update_ai_reloads_installer_and_only_updates_ai {
+    $script:Dry = $true
+    $global:UpdatedAiRan = $false
+    $global:UpdatedAiFlag = $false
+    $global:UpdatedPackagesRan = $false
+    $global:UpdatedSymlinksRan = $false
+    $global:UpdatedLazyVimRan = $false
+    $originalDotfilesDir = $script:DotfilesDir
+    $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'pulled-dotfiles'
+    New-Item -ItemType Directory -Force -Path $script:DotfilesDir | Out-Null
+    Set-FunctionMock 'UpdateRepo' {
+        @'
+param([switch]$NoMain, [switch]$Dry, [switch]$Force, [switch]$Quiet)
+function InstallPackages { $global:UpdatedPackagesRan = $true }
+function InstallExtras { param([switch]$Update) }
+function InstallAi {
+    param([switch]$Update)
+    $global:UpdatedAiRan = $true
+    $global:UpdatedAiFlag = $Update.IsPresent
+}
+function SetupSymlinks { $global:UpdatedSymlinksRan = $true }
+function Sync-LazyVim { $global:UpdatedLazyVimRan = $true }
+'@ | Set-Content -LiteralPath (Join-Path $script:DotfilesDir 'dotfile.ps1')
+    }
+
+    try {
+        Update-Packages ai 6>&1 | Out-Null
+        $updatedAiRan = $global:UpdatedAiRan
+        $updatedAiFlag = $global:UpdatedAiFlag
+        $updatedPackagesRan = $global:UpdatedPackagesRan
+        $updatedSymlinksRan = $global:UpdatedSymlinksRan
+        $updatedLazyVimRan = $global:UpdatedLazyVimRan
+    } finally {
+        Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
+        $script:DotfilesDir = $originalDotfilesDir
+        Remove-Variable UpdatedAiRan, UpdatedAiFlag, UpdatedPackagesRan, UpdatedSymlinksRan, UpdatedLazyVimRan -Scope Global
+    }
+
+    Assert-True $updatedAiRan 'AI update should use installer loaded after pull'
+    Assert-True $updatedAiFlag 'AI update should force tool updates'
+    Assert-False $updatedPackagesRan 'AI update should skip system packages'
+    Assert-False $updatedSymlinksRan 'AI update should skip general symlinks'
+    Assert-False $updatedLazyVimRan 'AI update should skip LazyVim'
+}
+
 function test_update_packages_dry_run_does_not_call_winget {
     $script:Dry = $true
     $script:Called = $false
