@@ -98,14 +98,63 @@ function test_installai_skills_installs_same_shared_skill_set {
     Assert-False ($calls -like '*--agent pi*') 'Pi discovers shared ~/.agents/skills; a Pi-specific copy causes collisions'
 }
 
+function test_installcodebasememory_skips_current_version {
+    $script:Dry = $false
+    $script:CodebaseInstallerDownloaded = $false
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'codebase-memory-mcp' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'codebase-memory-mcp' {
+        $global:LASTEXITCODE = 0
+        if (($args -join ' ') -eq '--version') { 'codebase-memory-mcp 0.9.0' }
+    }
+    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile)
+        $script:CodebaseInstallerDownloaded = $true
+        '$global:LASTEXITCODE = 0' | Set-Content $OutFile
+    }
+
+    InstallCodebaseMemory -Update 6>&1 | Out-Null
+
+    Assert-False $script:CodebaseInstallerDownloaded 'current codebase-memory-mcp should not be downloaded again'
+}
+
+function test_installcodebasememory_removes_legacy_executable {
+    $script:Dry = $false
+    $legacy = Join-Path $env:USERPROFILE '.local\bin\codebase-memory-mcp.exe'
+    $installed = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp\codebase-memory-mcp.exe'
+    New-Item -ItemType Directory -Force -Path (Split-Path $legacy -Parent), (Split-Path $installed -Parent) | Out-Null
+    'legacy' | Set-Content $legacy
+    'installed' | Set-Content $installed
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = $installed } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'codebase-memory-mcp' { $global:LASTEXITCODE = 0 }
+
+    InstallCodebaseMemory 6>&1 | Out-Null
+
+    Assert-False (Test-Path -LiteralPath $legacy) 'legacy codebase-memory-mcp executable should be removed'
+    Assert-FileExists $installed
+}
+
 function test_installcodebasememory_updates_with_full_ui_installer {
     $script:Dry = $false
     $script:CodebaseInstallerArgsPath = Join-Path $env:USERPROFILE 'codebase-installer-args.txt'
     Set-CommandMock 'Get-Command' {
         param($Name)
-        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'mock-codebase-memory-mcp' } }
+        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'codebase-memory-mcp' } }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
+    Set-CommandMock 'codebase-memory-mcp' {
+        $global:LASTEXITCODE = 0
+        if (($args -join ' ') -eq '--version') { 'codebase-memory-mcp 0.8.0' }
+    }
+    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
     Set-CommandMock 'Invoke-WebRequest' {
         param($Uri, $OutFile)
         "Set-Content -Path '$script:CodebaseInstallerArgsPath' -Value (`$args -join ' '); `$global:LASTEXITCODE = 0" | Set-Content $OutFile
@@ -138,6 +187,7 @@ function test_installcodebasememory_enables_automatic_indexing {
 function test_installcodebasememory_fails_when_installer_fails {
     $script:Dry = $false
     Set-CommandMock 'Get-Command' { return $null }
+    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
     Set-CommandMock 'Invoke-WebRequest' {
         param($Uri, $OutFile)
         '$global:LASTEXITCODE = 1' | Set-Content $OutFile

@@ -416,11 +416,36 @@ function InstallFffMcp {
 
 function InstallCodebaseMemory {
     param([switch]$Update)
-    $installed = Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue
-    if ($Update -or -not $installed) {
+    $destination = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp\codebase-memory-mcp.exe'
+    $legacy = Join-Path $env:USERPROFILE '.local\bin\codebase-memory-mcp.exe'
+    $installed = if (Test-Path -LiteralPath $destination) {
+        [pscustomobject]@{ Source = $destination }
+    } else {
+        Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue
+    }
+    $needsInstall = -not $installed
+    $releaseTag = $null
+
+    if ($Update -or $needsInstall) {
+        $release = Invoke-RestMethod `
+            -Uri 'https://api.github.com/repos/DeusData/codebase-memory-mcp/releases/latest' `
+            -Headers @{ Accept = 'application/vnd.github+json'; 'User-Agent' = 'dotfiles' }
+        $releaseTag = ([string]$release.tag_name).Trim()
+        if (-not $releaseTag) { throw "Could not determine latest codebase-memory-mcp version" }
+
+        if ($installed) {
+            $versionOutput = & $installed.Source --version 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "codebase-memory-mcp version check failed" }
+            $versionMatch = [regex]::Match(($versionOutput -join ' '), '\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?')
+            if (-not $versionMatch.Success) { throw "Could not parse installed codebase-memory-mcp version" }
+            $needsInstall = $versionMatch.Value -ne $releaseTag.TrimStart('v')
+        }
+    }
+
+    if ($needsInstall) {
         $installer = Join-Path ([System.IO.Path]::GetTempPath()) 'codebase-memory-mcp-install.ps1'
         try {
-            Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/v0.9.0/install.ps1' -OutFile $installer
+            Invoke-WebRequest -Uri "https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/$releaseTag/install.ps1" -OutFile $installer
             Invoke-NativeChecked "codebase-memory-mcp install failed" { & $installer --ui }
         } finally {
             Remove-Item -LiteralPath $installer -Force -ErrorAction SilentlyContinue
@@ -430,6 +455,9 @@ function InstallCodebaseMemory {
         Info "Already installed codebase-memory-mcp"
     }
 
+    if ((Test-Path -LiteralPath $destination) -and (Test-Path -LiteralPath $legacy)) {
+        Remove-Item -LiteralPath $legacy -Force -ErrorAction SilentlyContinue
+    }
     if (-not (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
         throw "codebase-memory-mcp command not found after installation"
     }
