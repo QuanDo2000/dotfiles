@@ -248,6 +248,33 @@ function test_installpi_updates_extensions_during_update {
     Assert-True ($script:PiCalls -contains 'update --extensions') 'Pi extensions should update during dotfile update'
 }
 
+function test_installpi_skips_current_package_during_update {
+    $script:NpmCalls = @()
+    $script:PiCalls = @()
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'pi') { return [pscustomobject]@{ Source = 'mock-pi' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'npm' {
+        $call = $args -join ' '
+        $script:NpmCalls += ,$call
+        if ($call -eq 'view @earendil-works/pi-coding-agent version') { '0.84.0' }
+        $global:LASTEXITCODE = 0
+    }
+    Set-CommandMock 'pi' {
+        $call = $args -join ' '
+        $script:PiCalls += ,$call
+        if ($call -eq '--version') { '0.84.0' }
+        $global:LASTEXITCODE = 0
+    }
+
+    InstallPi -Update
+
+    Assert-False ($script:NpmCalls -contains 'install --global @earendil-works/pi-coding-agent') 'current Pi package should not reinstall'
+    Assert-True ($script:PiCalls -contains 'update --extensions') 'Pi extensions should still update'
+}
+
 function test_installpi_fails_when_command_is_missing_after_install {
     Set-CommandMock 'Get-Command' {
         param($Name)

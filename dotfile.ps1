@@ -327,7 +327,15 @@ function InstallPi {
     Info "Installing Pi coding agent..."
     if ($script:Dry) { return }
 
-    if ($Update -or -not (Get-Command pi -ErrorAction SilentlyContinue)) {
+    $piCommand = Get-Command pi -ErrorAction SilentlyContinue
+    $install = -not $piCommand
+    if ($Update -and $piCommand) {
+        $currentVersion = & pi --version 2>$null | Select-Object -Last 1
+        $latestVersion = & npm view @earendil-works/pi-coding-agent version 2>$null | Select-Object -Last 1
+        $install = -not $currentVersion -or -not $latestVersion -or $currentVersion.Trim() -ne $latestVersion.Trim()
+    }
+
+    if ($install) {
         Invoke-NativeChecked "Pi install failed" {
             npm install --global @earendil-works/pi-coding-agent
         }
