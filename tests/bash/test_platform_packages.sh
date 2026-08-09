@@ -38,6 +38,13 @@ test_code_search_stack_uses_current_full_feature_packages() {
   assert_contains "$pi_settings" 'npm:@ff-labs/pi-fff@0.10.1'
 }
 
+test_pi_web_access_is_pinned() {
+  assert_equals "npm:pi-web-access@0.19.0" "$(
+    jq -r '.packages[] | select(startswith("npm:pi-web-access"))' \
+      "$REPO_DIR/config/shared/ai/pi/settings.json"
+  )"
+}
+
 test_pi_lsp_uses_pinned_package_and_nix_servers() {
   local lsp_config pi_settings
   pi_settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
