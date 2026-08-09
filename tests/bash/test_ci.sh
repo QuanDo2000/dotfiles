@@ -60,10 +60,20 @@ test_ci_pins_nix_installer_action() {
   assert_not_contains "$workflow" "DeterminateSystems/nix-installer-action@main"
 }
 
-test_lint_ci_uses_pinned_nix_shellcheck() {
-  local workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/lint.yml")"
+test_ci_checker_jobs_provision_dependencies() {
+  local lint prefix workflows="" workflow
+  lint="$(<"$REPO_DIR/.github/workflows/lint.yml")"
 
-  assert_contains "$workflow" "DeterminateSystems/nix-installer-action@v"
-  assert_contains "$workflow" "nix develop . -c shellcheck"
+  shopt -s nullglob
+  for workflow in "$REPO_DIR"/.github/workflows/*.{yml,yaml}; do
+    workflows+="$(<"$workflow")"$'\n'
+  done
+  shopt -u nullglob
+
+  assert_not_contains "${workflows,,}" "cspell"
+  assert_not_contains "${workflows,,}" "codespell"
+  assert_contains "$lint" "nix develop . -c shellcheck"
+  prefix="${lint%%nix develop . -c shellcheck*}"
+  assert_contains "$prefix" "DeterminateSystems/nix-installer-action@v"
+  assert_contains "$(<"$REPO_DIR/flake.nix")" "shellcheck"
 }

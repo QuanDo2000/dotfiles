@@ -163,7 +163,7 @@ function Get-WingetPackages {
         "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "junegunn.fzf",
         "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide",
-        "Python.Python.3.14", "GitHub.cli", "Notepad++.Notepad++"
+        "Python.Python.3.14", "GitHub.cli", "Notepad++.Notepad++", "koalaman.shellcheck"
     )
 }
 
@@ -175,7 +175,8 @@ function Get-RequiredCommands {
     @(
         "git", "gpg", "nvim", "starship", "fzf", "fd", "rg", "lazygit",
         "fnm", "node", "jj", "zoxide", "jq", "ast-grep", "codex", "pi",
-        "codebase-memory-mcp", "fff-mcp", "py", "gh"
+        "codebase-memory-mcp", "fff-mcp", "py", "gh", "vtsls",
+        "bash-language-server", "shellcheck"
     )
 }
 
@@ -353,6 +354,49 @@ function InstallPi {
     Success "Finished installing Pi coding agent"
 }
 
+function InstallPiLanguageServers {
+    param([switch]$Update)
+    Info "Installing Pi language servers..."
+    if ($script:Dry) { return }
+
+    $servers = [ordered]@{
+        'vtsls' = '0.3.0'
+        'bash-language-server' = '5.6.0'
+    }
+    $needsInstall = [bool]$Update
+    foreach ($name in $servers.Keys) {
+        if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
+            $needsInstall = $true
+            continue
+        }
+        $version = & $name --version 2>$null | Select-Object -Last 1
+        if ($LASTEXITCODE -ne 0 -or -not $version -or $version.Trim() -ne $servers[$name]) {
+            $needsInstall = $true
+        }
+    }
+
+    if ($needsInstall) {
+        Invoke-NativeChecked "Pi language-server install failed" {
+            npm install --global @vtsls/language-server@0.3.0 bash-language-server@5.6.0
+        }
+    }
+    if (-not (Get-Command shellcheck -ErrorAction SilentlyContinue)) {
+        Invoke-Winget "ShellCheck install failed" @('install', '--id', 'koalaman.shellcheck', '--exact')
+    }
+    Refresh-ProcessPath
+
+    foreach ($name in $servers.Keys) {
+        $version = & $name --version 2>$null | Select-Object -Last 1
+        if ($LASTEXITCODE -ne 0 -or -not $version -or $version.Trim() -ne $servers[$name]) {
+            throw "$name $($servers[$name]) not found after installation"
+        }
+    }
+    if (-not (Get-Command shellcheck -ErrorAction SilentlyContinue)) {
+        throw "shellcheck not found after installation"
+    }
+    Success "Finished installing Pi language servers"
+}
+
 function SyncPiConfigs {
     Info "Syncing Pi configuration..."
     if ($script:Dry) { return }
@@ -385,6 +429,9 @@ function SyncPiConfigs {
         if ($LASTEXITCODE -ne 0) { throw "Pi $name merge failed" }
         Set-Content -LiteralPath $target -Value ($merged -join "`n") -Encoding utf8
     }
+
+    $lspSource = Join-Path $script:DotfilesDir 'config\windows\ai\pi\pi-lsp.json'
+    Copy-Item -LiteralPath $lspSource -Destination (Join-Path $targetDir 'pi-lsp.json') -Force
 
     $extensionDir = Join-Path $targetDir "extensions"
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
@@ -526,6 +573,7 @@ function InstallAi {
     InstallFffMcp -Update:$Update
     SyncCodexConfig
     InstallPi -Update:$Update
+    InstallPiLanguageServers -Update:$Update
     SyncPiConfigs
     SyncAiInstructions
     InstallAiSkills

@@ -7,7 +7,7 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest') {
+    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'vtsls', 'bash-language-server', 'shellcheck') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
@@ -262,6 +262,32 @@ function test_installcodex_fails_when_installer_exits_nonzero {
     Assert-Throws { InstallCodex 6>&1 | Out-Null } 'InstallCodex should fail when installer exits nonzero'
 }
 
+function test_installpilanguageservers_installs_pinned_npm_servers {
+    $script:LspInstalled = $false
+    $script:NpmCalls = @()
+    Set-CommandMock 'vtsls' {
+        if ($script:LspInstalled) { '0.3.0' } else { '0.0.0' }
+        $global:LASTEXITCODE = 0
+    }
+    Set-CommandMock 'bash-language-server' {
+        if ($script:LspInstalled) { '5.6.0' } else { '0.0.0' }
+        $global:LASTEXITCODE = 0
+    }
+    Set-CommandMock 'npm' {
+        $script:NpmCalls += ,($args -join ' ')
+        $script:LspInstalled = $true
+        $global:LASTEXITCODE = 0
+    }
+    Set-CommandMock 'shellcheck' { $global:LASTEXITCODE = 0 }
+
+    InstallPiLanguageServers
+
+    $install = $script:NpmCalls -join "`n"
+    Assert-Contains $install 'install --global'
+    Assert-Contains $install '@vtsls/language-server@0.3.0'
+    Assert-Contains $install 'bash-language-server@5.6.0'
+}
+
 function test_installpi_installs_official_package_and_checks_command {
     $script:PiInstalled = $false
     $script:NpmCalls = @()
@@ -372,12 +398,23 @@ function test_pi_lsp_package_is_pinned {
     Assert-True (@($settings.packages) -contains 'npm:@narumitw/pi-lsp@0.49.4') 'Pi should install the pinned LSP package'
 }
 
+function test_windows_pi_lsp_config_uses_only_supported_servers {
+    $path = Join-Path $script:RepoDir 'config\windows\ai\pi\pi-lsp.json'
+    $config = Get-Content -Raw $path | ConvertFrom-Json
+
+    Assert-Equals 'vtsls' @($config.servers.vtsls.command)[0]
+    Assert-Equals 'bash-language-server' @($config.servers.'bash-language-server'.command)[0]
+    Assert-False ($config.servers.PSObject.Properties.Name -contains 'nil') 'Windows LSP config should not advertise unavailable nil'
+}
+
 function test_syncpiconfigs_creates_writable_seed_files {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
-    New-Item -ItemType Directory -Force -Path $seedDir | Out-Null
+    $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
+    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir | Out-Null
     '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
+    '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'caveman-default.js')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
@@ -386,9 +423,12 @@ function test_syncpiconfigs_creates_writable_seed_files {
 
     $settings = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
     $mcp = Join-Path $env:USERPROFILE '.pi\agent\mcp.json'
+    $lsp = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     Assert-FileExists $settings
     Assert-FileExists $mcp
+    Assert-FileExists $lsp
+    Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
     Assert-FileExists (Join-Path $extensionDir 'caveman-default.js')
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
     Assert-FileExists (Join-Path $extensionDir 'windows-exit.js')
@@ -398,9 +438,10 @@ function test_syncpiconfigs_creates_writable_seed_files {
 function test_syncpiconfigs_replaces_stale_live_subagents {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
+    $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     $mergeDir = Join-Path $script:DotfilesDir 'scripts\seed_merge'
     $targetDir = Join-Path $env:USERPROFILE '.pi\agent'
-    New-Item -ItemType Directory -Force -Path $seedDir, $mergeDir, $targetDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $mergeDir, $targetDir | Out-Null
     Copy-Item (Join-Path $script:RepoDir 'scripts\seed_merge\*') $mergeDir
 
     @'
@@ -415,6 +456,8 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
 }
 '@ | Set-Content (Join-Path $seedDir 'settings.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
+    '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
+    '{"servers":{"nil":{"command":["nil"]}}}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'caveman-default.js')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
@@ -446,6 +489,9 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
         Assert-True $settings.runtimeOnly 'Live-only unrelated settings should be preserved'
         Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.defaultModel
         Assert-False ($settings.subagents.agentOverrides.PSObject.Properties.Name -contains 'reviewer') 'Removed tracked subagent overrides should stay removed'
+        $lsp = Get-Content -Raw (Join-Path $targetDir 'pi-lsp.json') | ConvertFrom-Json
+        Assert-True ($lsp.servers.PSObject.Properties.Name -contains 'vtsls') 'Windows LSP config should be copied'
+        Assert-False ($lsp.servers.PSObject.Properties.Name -contains 'nil') 'Authoritative Windows LSP config should remove stale servers'
     } finally {
         (Get-Item $seed).IsReadOnly = $false
     }

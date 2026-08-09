@@ -30,9 +30,13 @@ function test_windows_package_manifests_cover_parity_tools {
     Assert-True ($winget -contains 'GitHub.cli') 'Winget should manage GitHub CLI'
     Assert-True ($winget -contains 'GnuPG.Gpg4win') 'Winget should manage Gpg4win'
     Assert-True ($winget -contains 'Notepad++.Notepad++') 'Winget should manage Notepad++'
+    Assert-True ($winget -contains 'koalaman.shellcheck') 'Winget should manage ShellCheck for Bash diagnostics'
     Assert-True ($scoop -contains 'FiraCode') 'Scoop should manage FiraCode'
     Assert-True ($scoop -contains 'jq') 'Scoop should manage jq'
     Assert-True ($scoop -contains 'ast-grep') 'Scoop should manage ast-grep'
     Assert-True ($commands -contains 'gh') 'Doctor should verify GitHub CLI'
     Assert-True ($commands -contains 'fff-mcp') 'Doctor should verify the Codex FFF MCP server'
+    foreach ($command in 'vtsls', 'bash-language-server', 'shellcheck') {
+        Assert-True ($commands -contains $command) "Doctor should verify Windows LSP dependency: $command"
+    }
 }
