@@ -5,8 +5,129 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'Get-Command', 'scoop', 'fnm') { Clear-CommandMock $command }
+    foreach ($command in 'Get-Command', 'Invoke-WebRequest', 'Set-ExecutionPolicy', 'scoop', 'fnm') { Clear-CommandMock $command }
+    Remove-Variable ScoopBootstrapCalls, ScoopBootstrapExecuted -Scope Global -ErrorAction SilentlyContinue
     Clear-TestEnv
+}
+
+function test_installscoop_executes_only_verified_pinned_script {
+    $global:ScoopBootstrapCalls = @()
+    $global:ScoopBootstrapExecuted = $false
+    $script:DownloadedInstaller = $null
+    $script:RequestedInstallerUri = $null
+    $originalHash = $script:ScoopInstallerSha256
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'scoop') {
+            if ($global:ScoopBootstrapExecuted) { return [pscustomobject]@{ Source = 'mock-scoop' } }
+            return $null
+        }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile, [switch]$UseBasicParsing)
+        $script:DownloadedInstaller = $OutFile
+        $script:RequestedInstallerUri = [string]$Uri
+        $global:ScoopBootstrapCalls += 'download'
+        $source = @'
+param([switch]$RunAsAdmin)
+$global:ScoopBootstrapCalls += "execute:$([bool]$RunAsAdmin)"
+$global:ScoopBootstrapExecuted = $true
+'@
+        [IO.File]::WriteAllText($OutFile, $source, [Text.UTF8Encoding]::new($false))
+        $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    Set-CommandMock 'Set-ExecutionPolicy' { $global:ScoopBootstrapCalls += 'policy' }
+
+    try {
+        InstallScoop
+    } finally {
+        $script:ScoopInstallerSha256 = $originalHash
+    }
+
+    Assert-Equals 'download policy execute:True' ($global:ScoopBootstrapCalls -join ' ')
+    Assert-Equals "https://raw.githubusercontent.com/ScoopInstaller/Install/$script:ScoopInstallerCommit/install.ps1" $script:RequestedInstallerUri
+    Assert-False (Test-Path -LiteralPath $script:DownloadedInstaller) 'Scoop installer temp file should be removed'
+}
+
+function test_installscoop_rejects_checksum_mismatch_before_execution {
+    $global:ScoopBootstrapCalls = @()
+    $global:ScoopBootstrapExecuted = $false
+    $script:DownloadedInstaller = $null
+    Set-CommandMock 'Get-Command' { return $null }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile, [switch]$UseBasicParsing)
+        $script:DownloadedInstaller = $OutFile
+        $global:ScoopBootstrapCalls += 'download'
+        [IO.File]::WriteAllText($OutFile, '$global:ScoopBootstrapExecuted = $true', [Text.UTF8Encoding]::new($false))
+    }
+    Set-CommandMock 'Set-ExecutionPolicy' { $global:ScoopBootstrapCalls += 'policy' }
+
+    Assert-Throws { InstallScoop } 'Scoop checksum mismatch should fail'
+    Assert-Equals 'download' ($global:ScoopBootstrapCalls -join ' ')
+    Assert-False $global:ScoopBootstrapExecuted 'Mismatched Scoop installer should not execute'
+    Assert-False (Test-Path -LiteralPath $script:DownloadedInstaller) 'Rejected Scoop installer should be removed'
+}
+
+function test_installscoop_fails_when_temp_cleanup_fails {
+    $global:ScoopBootstrapExecuted = $false
+    $script:DownloadedInstaller = $null
+    $originalHash = $script:ScoopInstallerSha256
+    Set-CommandMock 'Get-Command' { return $null }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile, [switch]$UseBasicParsing)
+        $script:DownloadedInstaller = $OutFile
+        [IO.File]::WriteAllText($OutFile, '$global:ScoopBootstrapExecuted = $true', [Text.UTF8Encoding]::new($false))
+        $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    Set-CommandMock 'Set-ExecutionPolicy' { }
+    Set-CommandMock 'Remove-Item' {
+        param($LiteralPath, $Path, [switch]$Force, $ErrorAction)
+        if ([string]$ErrorAction -eq 'SilentlyContinue') { return }
+        throw 'locked installer'
+    }
+
+    try {
+        Assert-Throws { InstallScoop } 'Scoop cleanup failure should fail installation'
+        Assert-False $global:ScoopBootstrapExecuted 'Scoop installer should not execute when cleanup fails'
+    } finally {
+        $script:ScoopInstallerSha256 = $originalHash
+        Microsoft.PowerShell.Management\Remove-Item Function:\Remove-Item -Force -ErrorAction SilentlyContinue
+        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $script:DownloadedInstaller -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function test_installscoop_surfaces_in_memory_bootstrap_break_failure {
+    $originalHash = $script:ScoopInstallerSha256
+    Set-CommandMock 'Get-Command' { return $null }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile, [switch]$UseBasicParsing)
+        $source = '$global:LASTEXITCODE = 23; break'
+        [IO.File]::WriteAllText($OutFile, $source, [Text.UTF8Encoding]::new($false))
+        $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    Set-CommandMock 'Set-ExecutionPolicy' { }
+
+    try {
+        Assert-Throws { InstallScoop } 'Failed in-memory Scoop bootstrap should reach command verification'
+        Assert-Equals 23 $global:LASTEXITCODE
+    } finally {
+        $script:ScoopInstallerSha256 = $originalHash
+        $global:LASTEXITCODE = 0
+    }
+}
+
+function test_scoop_bootstrap_uses_immutable_reviewed_pin {
+    Assert-Equals 'b0ee913725139b816f9178163af0aecdba07a7ed' $script:ScoopInstallerCommit
+    Assert-Equals '48f6ea398b3a3fa26fae0093d37bd85b13e7eaa5d1d4a3e208408768408e35ae' $script:ScoopInstallerSha256
+    $scriptText = Get-Content -Raw $script:DotfileScript
+    Assert-Contains $scriptText 'raw.githubusercontent.com/ScoopInstaller/Install/$script:ScoopInstallerCommit/install.ps1'
+    Assert-False ($scriptText -like '*get.scoop.sh*') 'Mutable Scoop bootstrap URL should be removed'
+    Assert-False ($scriptText -like '*Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression*') 'Remote Scoop script should not be piped to execution'
+    Assert-Contains $scriptText 'ReadAllBytes($installer)'
+    Assert-Contains $scriptText 'Create($source)'
+    Assert-Contains $scriptText 'do { & $bootstrap -RunAsAdmin } while ($false)'
+    Assert-False ($scriptText -like '*& $installer -RunAsAdmin*') 'Verified bytes should execute from memory, not a reopenable temp path'
 }
 
 function test_installscooppackages_fails_when_scoop_install_fails {

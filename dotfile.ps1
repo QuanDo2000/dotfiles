@@ -29,6 +29,9 @@ function Resolve-DotfilesDir($Override, $ScriptPath) {
 # Resolve symlink so invoking via ~\.local\bin points back to the real repo.
 # Allow override via $env:DOTFILES_DIR so the install path is not hardcoded.
 $script:DotfilesDir = Resolve-DotfilesDir $env:DOTFILES_DIR $PSCommandPath
+# Reviewed immutable installer pin; Scoop publishes no checksum or signed release.
+$script:ScoopInstallerCommit = 'b0ee913725139b816f9178163af0aecdba07a7ed'
+$script:ScoopInstallerSha256 = '48f6ea398b3a3fa26fae0093d37bd85b13e7eaa5d1d4a3e208408768408e35ae'
 
 # Logging helpers
 function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }
@@ -212,15 +215,46 @@ function InstallPackages {
     Success "Finished installing packages"
 }
 
+function InstallScoop {
+    if (Get-Command scoop -ErrorAction SilentlyContinue) { return }
+
+    $uri = "https://raw.githubusercontent.com/ScoopInstaller/Install/$script:ScoopInstallerCommit/install.ps1"
+    $installer = Join-Path ([IO.Path]::GetTempPath()) "scoop-install-$([Guid]::NewGuid().ToString('N')).ps1"
+    $bootstrap = $null
+    try {
+        Invoke-WebRequest -Uri $uri -OutFile $installer -UseBasicParsing
+        $bytes = [IO.File]::ReadAllBytes($installer)
+        $sha256 = [Security.Cryptography.SHA256]::Create()
+        try {
+            $digest = $sha256.ComputeHash($bytes)
+        } finally {
+            $sha256.Dispose()
+        }
+        $actual = ([BitConverter]::ToString($digest) -replace '-', '').ToLowerInvariant()
+        if ($actual -ne $script:ScoopInstallerSha256) {
+            throw "Scoop installer checksum mismatch"
+        }
+        $source = [Text.Encoding]::UTF8.GetString($bytes)
+        $bootstrap = [ScriptBlock]::Create($source)
+    } finally {
+        if (Test-Path -LiteralPath $installer) {
+            Remove-Item -LiteralPath $installer -Force -ErrorAction Stop
+        }
+    }
+
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+    do { & $bootstrap -RunAsAdmin } while ($false)
+    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        throw "scoop command not found after installation"
+    }
+}
+
 function InstallScoopPackages {
     param([switch]$Update)
     Info "Installing Scoop packages..."
     if ($script:Dry) { return }
 
-    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-        Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-    }
+    InstallScoop
     $buckets = scoop bucket list
     if ($LASTEXITCODE -ne 0) { throw "scoop bucket list failed" }
     if ($buckets.Name -notcontains "nerd-fonts") {
