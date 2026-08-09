@@ -108,11 +108,15 @@ let
   '';
   devTerminalPackages = with pkgs; [
     ast-grep
+    bash-language-server
     codex
     codebase-memory-mcp
     fff-mcp
     jq
+    nil
     pi-agent
+    shellcheck
+    vtsls
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     gcc
   ];
@@ -171,6 +175,7 @@ in
     ".hermes/skills/productivity/ponytail/SKILL.md" = forceSource "${ponytailSrc}/skills/ponytail/SKILL.md";
     ".agents/skills/caveman/README.md" = forceSource "${cavemanSrc}/skills/caveman/README.md";
     ".agents/skills/caveman/SKILL.md" = forceSource "${cavemanSrc}/skills/caveman/SKILL.md";
+    ".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;
     ".agents/skills/systematic-debugging" = forceSource "${superpowersSrc}/skills/systematic-debugging";
     ".agents/skills/test-driven-development" = forceSource "${superpowersSrc}/skills/test-driven-development";
     ".agents/skills/verification-before-completion" = forceSource "${superpowersSrc}/skills/verification-before-completion";
@@ -714,7 +719,7 @@ in
   '';
 
   home.activation.seedPiConfigs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    for name in settings.json mcp.json; do
+    for name in settings.json mcp.json pi-lsp.json; do
       target="$HOME/.pi/agent/$name"
       source="${./shared/ai/pi}/$name"
       repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/pi/$name"

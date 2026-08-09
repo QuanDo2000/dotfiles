@@ -38,6 +38,28 @@ test_code_search_stack_uses_current_full_feature_packages() {
   assert_contains "$pi_settings" 'npm:@ff-labs/pi-fff@0.10.1'
 }
 
+test_pi_lsp_uses_pinned_package_and_nix_servers() {
+  local lsp_config pi_settings
+  pi_settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
+  lsp_config="$REPO_DIR/config/shared/ai/pi/pi-lsp.json"
+
+  assert_contains "$pi_settings" 'npm:@narumitw/pi-lsp@0.49.4'
+  assert_file_exists "$lsp_config"
+  if [[ -f "$lsp_config" ]]; then
+    assert_exit_code 0 jq -e '
+      .timeout == 30000 and
+      .servers.vtsls.command == ["vtsls", "--stdio"] and
+      .servers.nil.command == ["nil"] and
+      .servers.nil.pushDiagnosticsGraceMs == 3000 and
+      .servers["bash-language-server"].command == ["bash-language-server", "start"]
+    ' "$lsp_config"
+  fi
+  for package in vtsls nil bash-language-server shellcheck; do
+    assert_contains "$HOME_CONFIG" "$package"
+  done
+  assert_contains "$HOME_CONFIG" 'settings.json mcp.json pi-lsp.json'
+}
+
 test_code_search_stack_enables_auto_index_and_agent_workflows() {
   local codex agents nvim_fff
   codex="$(<"$REPO_DIR/config/shared/ai/codex/config.toml")"
@@ -90,6 +112,9 @@ test_all_ai_agents_delegate_efficiently() {
     assert_contains "$guidance" 'cheapest capable model'
     assert_contains "$guidance" 'Parent owns synthesis and final verification.'
   done
+
+  assert_file_exists "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md"
+  assert_contains "$HOME_CONFIG" '".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;'
 }
 
 

@@ -96,6 +96,8 @@ function test_installai_skills_installs_same_shared_skill_set {
     }
     Assert-Contains $calls '--agent codex'
     Assert-False ($calls -like '*--agent pi*') 'Pi discovers shared ~/.agents/skills; a Pi-specific copy causes collisions'
+    Assert-Contains (Get-Content -Raw $script:DotfileScript) 'config\shared\ai\skills\diff-review-qa'
+    Assert-FileExists (Join-Path $env:USERPROFILE '.agents\skills\diff-review-qa\SKILL.md')
 }
 
 function test_installcodebasememory_skips_current_version {
@@ -309,6 +311,13 @@ function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
         Assert-Equals 'openai-codex/gpt-5.6-luna' $override.model
         Assert-Equals 'max' $override.thinking
     }
+}
+
+function test_pi_lsp_package_is_pinned {
+    $path = Join-Path $script:RepoDir 'config\shared\ai\pi\settings.json'
+    $settings = Get-Content -Raw $path | ConvertFrom-Json
+
+    Assert-True (@($settings.packages) -contains 'npm:@narumitw/pi-lsp@0.49.4') 'Pi should install the pinned LSP package'
 }
 
 function test_syncpiconfigs_creates_writable_seed_files {

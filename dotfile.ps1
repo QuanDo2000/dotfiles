@@ -502,6 +502,13 @@ function InstallAiSkills {
     Invoke-NativeChecked "superpowers skills install failed" {
         npx --yes skills add obra/superpowers --skill systematic-debugging --skill test-driven-development --skill verification-before-completion --global --agent codex --copy --yes
     }
+
+    $reviewSkillSource = Join-Path $script:DotfilesDir 'config\shared\ai\skills\diff-review-qa'
+    $reviewSkillTarget = Join-Path $env:USERPROFILE '.agents\skills\diff-review-qa'
+    New-Item -ItemType Directory -Force -Path (Split-Path $reviewSkillTarget -Parent) | Out-Null
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $reviewSkillTarget
+    Copy-Item -Recurse -Force $reviewSkillSource $reviewSkillTarget
+
     foreach ($skill in 'caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion') {
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")
     }
