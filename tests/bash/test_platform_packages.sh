@@ -172,7 +172,7 @@ test_update_arch_uses_existing_home_manager() {
   local output
   output="$(<"$calls")"
   assert_not_contains "$output" "sudo pacman"
-  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@arch-server"
+  assert_equals "$(printf 'nix flake update --flake %s\nhome-manager switch --flake %s#testuser@arch-server' "$DOTFILES_DIR" "$DOTFILES_DIR")" "$output"
   assert_not_contains "$output" "@linux@linux"
 
   unset -f command sudo _load_nix_profile home-manager
@@ -204,12 +204,13 @@ test_update_arch_bootstraps_home_manager_when_missing() {
   unset -f command sudo _load_nix_profile
 }
 
-test_update_arch_dry_run_shows_home_manager_switch() {
+test_update_arch_dry_run_shows_flake_update_then_home_manager_switch() {
   DRY=true
 
   local output
   output=$(update_arch 2>&1)
 
+  assert_contains "$output" "nix flake update --flake $DOTFILES_DIR"
   assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@arch-server"
 }
 
@@ -272,7 +273,7 @@ test_update_debian_uses_existing_home_manager() {
   local output
   output="$(<"$calls")"
   assert_not_contains "$output" "sudo apt"
-  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_equals "$(printf 'nix flake update --flake %s\nhome-manager switch --flake %s#testuser@linux' "$DOTFILES_DIR" "$DOTFILES_DIR")" "$output"
   assert_not_contains "$output" "@linux@linux"
 
   unset -f command sudo _load_nix_profile home-manager
@@ -304,12 +305,13 @@ test_update_debian_bootstraps_home_manager_when_missing() {
   unset -f command sudo _load_nix_profile
 }
 
-test_update_debian_dry_run_shows_home_manager_switch() {
+test_update_debian_dry_run_shows_flake_update_then_home_manager_switch() {
   DRY=true
 
   local output
   output=$(update_debian 2>&1)
 
+  assert_contains "$output" "nix flake update --flake $DOTFILES_DIR"
   assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
 }
 
@@ -734,8 +736,7 @@ test_update_nixos_updates_flake_then_switches() {
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "nix flake update --flake $DOTFILES_DIR"
-  assert_contains "$output" "sudo nixos-rebuild switch --flake $DOTFILES_DIR#testhost"
+  assert_equals "$(printf 'nix flake update --flake %s\nsudo nixos-rebuild switch --flake %s#testhost' "$DOTFILES_DIR" "$DOTFILES_DIR")" "$output"
   assert_not_contains "$output" "--upgrade"
   assert_not_contains "$output" "--impure"
 

@@ -28,11 +28,12 @@ test_install_mac_dry_run_no_brew_calls() {
   assert_contains "$output" "Finished install for Mac"
 }
 
-test_update_mac_dry_run_shows_darwin_rebuild() {
+test_update_mac_dry_run_shows_flake_update_then_darwin_rebuild() {
   local output
   output=$(update_mac 2>&1)
 
   assert_contains "$output" "Updating packages for Mac"
+  assert_contains "$output" "nix flake update --flake $DOTFILES_DIR"
   assert_contains "$output" "sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
 }
 
@@ -83,16 +84,17 @@ test_update_mac_switches_existing_darwin_rebuild() {
     builtin command "$@"
   }
   _load_nix_profile() { :; }
+  nix() { printf 'nix %s\n' "$*" >> "$calls"; }
   sudo() { printf '%s\n' "$*" >> "$calls"; }
 
   update_mac >/dev/null 2>&1
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
+  assert_equals "$(printf 'nix flake update --flake %s\nHOME=/var/root darwin-rebuild switch --flake %s#mac' "$DOTFILES_DIR" "$DOTFILES_DIR")" "$output"
   assert_not_contains "$output" "brew"
 
-  unset -f command _load_nix_profile sudo
+  unset -f command _load_nix_profile nix sudo
 }
 
 test_update_mac_bootstraps_nix_darwin_when_missing() {
@@ -108,16 +110,17 @@ test_update_mac_bootstraps_nix_darwin_when_missing() {
     builtin command "$@"
   }
   _load_nix_profile() { :; }
+  nix() { printf 'nix %s\n' "$*" >> "$calls"; }
   sudo() { printf '%s\n' "$*" >> "$calls"; }
 
   update_mac >/dev/null 2>&1
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "HOME=/var/root nix run $DOTFILES_DIR#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
+  assert_equals "$(printf 'nix flake update --flake %s\nHOME=/var/root nix run %s#darwin-rebuild -- switch --flake %s#mac' "$DOTFILES_DIR" "$DOTFILES_DIR" "$DOTFILES_DIR")" "$output"
   assert_not_contains "$output" "brew"
 
-  unset -f command _load_nix_profile sudo
+  unset -f command _load_nix_profile nix sudo
 }
 
 test_ensure_nix_loads_profile_before_installing() {

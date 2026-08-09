@@ -46,6 +46,7 @@ DOCKERFILE
     local docker_args=(
         docker run --rm
         -v "${REPO_DIR}:/home/testuser/dotfiles:ro"
+        -w /home/testuser/dotfiles
         "$image_name"
         bash /home/testuser/dotfiles/tests/bash/runner.sh --no-docker
     )

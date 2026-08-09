@@ -10,10 +10,21 @@ DEBIAN_PACKAGES=(
   curl git zsh procps file
 )
 
+function _update_flake_inputs {
+  if [[ "$DRY" == "true" ]]; then
+    _dry_run_nix_managed_switch nix flake update --flake "$DOTFILES_DIR"
+    return
+  fi
+
+  _ensure_nix
+  _run_nix_managed_switch "nix flake update failed" nix flake update --flake "$DOTFILES_DIR"
+}
+
 function _update_home_manager_platform {
   local platform="$1"
   local profile="${2:-linux}"
   info "Updating packages for $platform..."
+  _update_flake_inputs
   _home_manager_switch "$profile"
   success "Finished update for $platform"
 }
@@ -195,6 +206,7 @@ function _darwin_rebuild_switch {
 
 function update_mac {
   info "Updating packages for Mac..."
+  _update_flake_inputs
   _darwin_rebuild_switch
   success "Finished update for Mac"
 }
@@ -259,11 +271,7 @@ function install_nixos {
 # Usage: update_nixos
 function update_nixos {
   info "Updating packages for NixOS..."
-  if [[ "$DRY" == "true" ]]; then
-    _dry_run_nix_managed_switch nix flake update --flake "$DOTFILES_DIR"
-  else
-    _run_nix_managed_switch "nix flake update failed" nix flake update --flake "$DOTFILES_DIR"
-  fi
+  _update_flake_inputs
   _nixos_rebuild_switch
   success "Finished update for NixOS"
 }

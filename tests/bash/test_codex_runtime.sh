@@ -43,7 +43,7 @@ EOF
 
   local output
   output="$(<"$calls")"
-  assert_equals $'pi-update\nhome-manager-switch\npi update --extensions' "$output"
+  assert_equals "$(printf 'pi-update\nnix flake update --flake %s\nhome-manager-switch\npi update --extensions' "$DOTFILES_DIR")" "$output"
 
   unset -f command _update_codex_release_package _update_pi_release_package home-manager pi _sync_fff_nvim
 }
@@ -103,6 +103,26 @@ test_update_ai_nixos_rebuilds_without_updating_flake() {
   output=$(OS_RELEASE="$osrel" update_ai 2>&1)
 
   assert_contains "$output" "Would run: sudo nixos-rebuild switch --flake $DOTFILES_DIR#testhost"
+  assert_not_contains "$output" "nix flake update"
+
+  unset -f _update_codex_release_package _update_pi_release_package
+}
+
+test_update_ai_debian_and_mac_rebuild_without_updating_flake() {
+  DRY=true
+  _update_codex_release_package() { :; }
+  _update_pi_release_package() { :; }
+
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release" output
+  printf 'ID=debian\n' > "$osrel"
+  output="$(OS_RELEASE="$osrel" update_ai 2>&1)"
+  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
+  assert_not_contains "$output" "nix flake update"
+
+  mock_uname Darwin
+  output="$(update_ai 2>&1)"
+  assert_contains "$output" "darwin-rebuild switch --flake $DOTFILES_DIR#mac"
   assert_not_contains "$output" "nix flake update"
 
   unset -f _update_codex_release_package _update_pi_release_package
@@ -215,7 +235,7 @@ test_update_packages_skips_codex_runtime_cleanup_when_version_is_same() {
 
   local output
   output="$(<"$calls")"
-  assert_equals "home-manager-switch" "$output"
+  assert_equals "$(printf 'nix flake update --flake %s\nhome-manager-switch' "$DOTFILES_DIR")" "$output"
 
   unset -f command codex home-manager rm
   unset MOCK_CODEX_CALLS MOCK_CODEX_VERSION
