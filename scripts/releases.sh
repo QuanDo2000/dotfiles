@@ -3,6 +3,58 @@ set -eo pipefail
 
 # Release pin discovery, hashing, and tracked package updates.
 
+function _write_lix_installer_pins {
+  local linux_hash="$1" darwin_hash="$2"
+  local packages_file="${3:-$DOTFILES_DIR/scripts/packages.sh}" tmp
+  [[ -f "$packages_file" ]] || return 1
+  tmp="$(mktemp "${packages_file}.tmp.XXXXXX")" || return 1
+  cp -p "$packages_file" "$tmp" || { rm -f "$tmp"; return 1; }
+  if ! sed -E \
+    -e 's#^LIX_INSTALLER_X86_64_LINUX_SHA256="[0-9a-f]+"#LIX_INSTALLER_X86_64_LINUX_SHA256="'"$linux_hash"'"#' \
+    -e 's#^LIX_INSTALLER_AARCH64_DARWIN_SHA256="[0-9a-f]+"#LIX_INSTALLER_AARCH64_DARWIN_SHA256="'"$darwin_hash"'"#' \
+    "$packages_file" > "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! grep -qxF "LIX_INSTALLER_X86_64_LINUX_SHA256=\"$linux_hash\"" "$tmp" \
+    || ! grep -qxF "LIX_INSTALLER_AARCH64_DARWIN_SHA256=\"$darwin_hash\"" "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$packages_file" || { rm -f "$tmp"; return 1; }
+}
+
+function _update_lix_installer_pins {
+  if [[ "$DRY" == "true" ]]; then
+    info "Would update Lix installer checksums from official binaries"
+    return
+  fi
+
+  local tmp_dir linux_file darwin_file linux_hash darwin_hash
+  tmp_dir="$(mktemp -d)" || fail "Failed to create Lix installer temp directory"
+  linux_file="$tmp_dir/lix-installer-x86_64-linux"
+  darwin_file="$tmp_dir/lix-installer-aarch64-darwin"
+  if ! _download_lix_installer x86_64-linux "$linux_file" \
+    || ! _download_lix_installer aarch64-darwin "$darwin_file"; then
+    rm -rf "$tmp_dir"
+    fail "Failed to download Lix installers"
+  fi
+  if ! linux_hash="$(_file_sha256 "$linux_file")" \
+    || ! darwin_hash="$(_file_sha256 "$darwin_file")"; then
+    rm -rf "$tmp_dir"
+    fail "Failed to hash Lix installers"
+  fi
+  if [[ ! "$linux_hash" =~ ^[0-9a-f]{64}$ || ! "$darwin_hash" =~ ^[0-9a-f]{64}$ ]]; then
+    rm -rf "$tmp_dir"
+    fail "Invalid Lix installer checksum"
+  fi
+  if ! _write_lix_installer_pins "$linux_hash" "$darwin_hash"; then
+    rm -rf "$tmp_dir"
+    fail "Failed to update Lix installer checksums"
+  fi
+  rm -rf "$tmp_dir"
+}
+
 function _latest_codex_release_tag {
   local release_url tag
   release_url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/openai/codex/releases/latest)" \
@@ -281,6 +333,12 @@ function _update_obsidian_headless_package {
   mv "$tmp_package" "$package_file" \
     && mv "$tmp_lock" "$lock_file" \
     || fail "Failed to install updated Obsidian Headless package files"
+}
+
+function update_lix_installer_pins {
+  info "Updating pinned Lix installer checksums..."
+  _update_lix_installer_pins
+  success "Finished updating pinned Lix installer checksums"
 }
 
 function update_codex_release {

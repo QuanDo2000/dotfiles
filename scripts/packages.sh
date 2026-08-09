@@ -81,10 +81,111 @@ function _load_nix_profile {
   done
 }
 
+# Rolling official binaries stay blocked unless their reviewed hashes match.
+LIX_INSTALLER_X86_64_LINUX_SHA256="57564e78a6d57126661fe5e793de70a72bacf9835ddb7c5c0cbfadf3db21545e"
+LIX_INSTALLER_AARCH64_DARWIN_SHA256="3c71fdcfeddac8fa075b626b6e0ddd9ba73af930e47b4fa027e22c7279f596ae"
+LIX_BOOTSTRAP_VERSION="2.95.2"
+LIX_PACKAGE_X86_64_LINUX_SHA256="1f3265d3ef821e723f8c538bca71b537b68553cd7a8cd423e54bdc1185ab5616"
+LIX_PACKAGE_AARCH64_DARWIN_SHA256="e913209b741e4633acc8cd16e28c395163b5064f8f3211877baaab42d7372f1d"
+
+function _lix_installer_target {
+  case "$(uname -s):$(uname -m)" in
+    Linux:x86_64) printf 'x86_64-linux\n' ;;
+    Darwin:arm64|Darwin:aarch64) printf 'aarch64-darwin\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+function _lix_installer_sha256 {
+  case "$1" in
+    x86_64-linux) printf '%s\n' "$LIX_INSTALLER_X86_64_LINUX_SHA256" ;;
+    aarch64-darwin) printf '%s\n' "$LIX_INSTALLER_AARCH64_DARWIN_SHA256" ;;
+    *) return 1 ;;
+  esac
+}
+
+function _lix_package_sha256 {
+  case "$1" in
+    x86_64-linux) printf '%s\n' "$LIX_PACKAGE_X86_64_LINUX_SHA256" ;;
+    aarch64-darwin) printf '%s\n' "$LIX_PACKAGE_AARCH64_DARWIN_SHA256" ;;
+    *) return 1 ;;
+  esac
+}
+
+function _lix_installer_url {
+  printf 'https://install.lix.systems/lix/lix-installer-%s\n' "$1"
+}
+
+function _lix_package_url {
+  printf 'https://releases.lix.systems/lix/lix-%s/lix-%s-%s.tar.xz\n' \
+    "$LIX_BOOTSTRAP_VERSION" "$LIX_BOOTSTRAP_VERSION" "$1"
+}
+
+function _download_lix_installer {
+  local target="$1" output="$2"
+  curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location --silent --show-error \
+    "$(_lix_installer_url "$target")" --output "$output"
+}
+
+function _download_lix_package {
+  local target="$1" output="$2"
+  curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location --silent --show-error \
+    "$(_lix_package_url "$target")" --output "$output"
+}
+
+function _file_sha256 {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    return 1
+  fi
+}
+
 function _install_lix {
+  local target expected actual package_expected package_actual tmp_dir installer package
   info "Installing Lix/Nix..."
-  curl -sSf -L https://install.lix.systems/lix | sh -s -- install \
-    || fail "Failed to install Lix/Nix"
+  target="$(_lix_installer_target)" \
+    || fail "Unsupported Lix installer platform: $(uname -s) $(uname -m)"
+  expected="$(_lix_installer_sha256 "$target")" \
+    || fail "Missing Lix installer checksum for $target"
+  package_expected="$(_lix_package_sha256 "$target")" \
+    || fail "Missing Lix package checksum for $target"
+  tmp_dir="$(mktemp -d)" || fail "Failed to create Lix installer temp directory"
+  installer="$tmp_dir/lix-installer"
+  package="$tmp_dir/lix-package.tar.xz"
+
+  if ! _download_lix_installer "$target" "$installer"; then
+    rm -rf "$tmp_dir"
+    fail "Failed to download Lix installer"
+  fi
+  if ! actual="$(_file_sha256 "$installer")"; then
+    rm -rf "$tmp_dir"
+    fail "Failed to hash Lix installer"
+  fi
+  if [[ "$actual" != "$expected" ]]; then
+    rm -rf "$tmp_dir"
+    fail "Lix installer checksum mismatch for $target"
+  fi
+  if ! _download_lix_package "$target" "$package"; then
+    rm -rf "$tmp_dir"
+    fail "Failed to download Lix package"
+  fi
+  if ! package_actual="$(_file_sha256 "$package")"; then
+    rm -rf "$tmp_dir"
+    fail "Failed to hash Lix package"
+  fi
+  if [[ "$package_actual" != "$package_expected" ]]; then
+    rm -rf "$tmp_dir"
+    fail "Lix package checksum mismatch for $target"
+  fi
+  chmod 0700 "$installer" || { rm -rf "$tmp_dir"; fail "Failed to prepare Lix installer"; }
+  if ! "$installer" install --no-confirm --nix-package-url "$package"; then
+    rm -rf "$tmp_dir"
+    fail "Failed to install Lix/Nix"
+  fi
+  rm -rf "$tmp_dir"
 }
 
 function _ensure_nix {

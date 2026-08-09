@@ -54,7 +54,9 @@ git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
 The Linux Home Manager output is `${username}@linux`, where `username` comes
 from `config/host.nix`. `dotfile packages` installs Lix/Nix if missing, uses
 an existing `home-manager` when available, and falls back to the pinned
-`~/dotfiles#home-manager` app for bootstrap.
+`~/dotfiles#home-manager` app for bootstrap. Lix installer and package artifacts
+are used only after their tracked SHA-256 matches; review changes from
+`dotfile lix-installer` before committing updated installer pins.
 
 ### Windows
 
@@ -77,6 +79,8 @@ Commands:
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package
+  lix-installer
+              Update pinned Lix installer checksums
   obsidian-headless
               Update pinned Obsidian Headless package
   doctor [--fast]

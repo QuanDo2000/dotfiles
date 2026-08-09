@@ -78,6 +78,8 @@ Commands:
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package
+  lix-installer
+              Update pinned Lix installer checksums
   obsidian-headless
               Update pinned Obsidian Headless package
   doctor [--fast]
@@ -132,6 +134,10 @@ update)
 packages) run_checked_flow false false install_packages ;;
 obsidian) setup_obsidian ;;
 codex) update_codex_release ;;
+lix-installer)
+  [[ $# -eq 1 ]] || fail "Unexpected lix-installer argument: ${2:-}"
+  update_lix_installer_pins
+  ;;
 obsidian-headless) update_obsidian_headless_release ;;
 doctor)
   case "${2:-}" in
