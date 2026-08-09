@@ -135,7 +135,7 @@ if missing:
         print(f"Applied Codex live config additions to tracked seed: {apply_path}")
     else:
         print("Codex live config has settings missing from the tracked seed.")
-        print("Review these additions for config/shared/ai/codex/config.toml:")
+        print(f"Review these additions for {seed_path}:")
         print()
         print(render(missing), end="")
 

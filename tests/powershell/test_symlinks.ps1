@@ -14,6 +14,11 @@ function TestTeardown {
     Clear-TestEnv
 }
 
+function test_windows_terminal_does_not_elevate_every_profile {
+    $settings = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\Terminal\settings.json') | ConvertFrom-Json
+    Assert-False ($settings.profiles.defaults.elevate -eq $true) 'Windows Terminal profiles should run unelevated by default'
+}
+
 function test_windows_neovim_bootstraps_lazy_without_tracking_lockfile {
     $lazyConfig = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/lua/config/lazy.lua')
     $gitignore = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/.gitignore')

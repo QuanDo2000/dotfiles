@@ -43,6 +43,58 @@ function test_synccodexconfig_creates_writable_seed_file {
     }
 }
 
+function test_windows_codex_seed_contains_only_portable_state {
+    $seed = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\codex\config.toml')
+
+    foreach ($runtimeState in @(
+            'C:\\Users\\',
+            'notify =',
+            '[marketplaces.openai-bundled]',
+            '[marketplaces.openai-primary-runtime]',
+            '[mcp_servers.node_repl]',
+            '[projects.',
+            'SKY_CUA_NATIVE_PIPE',
+            'CODEX_CLI_PATH',
+            '[shell_environment_policy.set]'
+        )) {
+        Assert-False ($seed.Contains($runtimeState)) "Codex seed should not track runtime state: $runtimeState"
+    }
+    foreach ($portableSetting in @(
+            '[windows]',
+            'sandbox = "elevated"',
+            'network_access = false',
+            '[mcp_servers.fff]',
+            '[mcp_servers.codebase-memory-mcp]'
+        )) {
+        Assert-True ($seed.Contains($portableSetting)) "Codex seed should retain portable setting: $portableSetting"
+    }
+}
+
+function test_synccodexconfig_does_not_apply_live_state_to_tracked_seed {
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+    $source = Join-Path $script:DotfilesDir 'config\windows\ai\codex\config.toml'
+    $target = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $source -Parent) | Out-Null
+    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+    'model = "tracked"' | Set-Content $source
+    'model = "live"' | Set-Content $target
+    $script:CodexApplyPath = $null
+
+    Set-CommandMock 'py' {
+        $script:CodexApplyPath = $args[-1]
+        $global:LASTEXITCODE = 0
+    }
+    Set-CommandMock 'jq' {
+        $global:LASTEXITCODE = 0
+        '{"model":"tracked"}'
+    }
+
+    SyncCodexConfig
+
+    Assert-Equals '' $script:CodexApplyPath
+    Assert-Equals 'model = "tracked"' ((Get-Content -Raw $source).Trim())
+}
+
 function test_installfffmcp_installs_verified_windows_binary_for_codex {
     $script:FffUrl = ''
     Set-CommandMock 'Invoke-WebRequest' {

@@ -315,7 +315,7 @@ function SyncCodexConfig {
     if (-not (Test-Path -LiteralPath $target)) {
         Copy-Item -LiteralPath $source -Destination $target
     } else {
-        $applySeed = if ((Get-Item -LiteralPath $source).IsReadOnly) { '' } else { $source }
+        $applySeed = ''
         Invoke-NativeChecked 'Codex config seed comparison failed' {
             py -3.14 (Join-Path $script:DotfilesDir 'scripts\seed_merge\codex.py') $target $source $applySeed
         }

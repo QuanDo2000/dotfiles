@@ -56,6 +56,43 @@ EOF
 }
 
 
+test_codex_seed_merge_read_only_mode_preserves_live_runtime_state() {
+  local tmp script live seed before output
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/codex.py"
+  live="$tmp/live.toml"
+  seed="$tmp/windows-seed.toml"
+
+  cat > "$live" <<'EOF'
+model = "live"
+
+[mcp_servers.node_repl]
+command = "C:\\Users\\Quan\\runtime\\node_repl.exe"
+
+[projects."C:\\Users\\Quan\\project"]
+trust_level = "trusted"
+EOF
+
+  cat > "$seed" <<'EOF'
+model = "tracked"
+
+[mcp_servers.fff]
+command = "fff-mcp"
+EOF
+
+  before="$(sha256sum "$seed")"
+  output="$(python3 "$script" "$live" "$seed" '')"
+
+  assert_contains "$output" "$seed"
+  assert_equals "$before" "$(sha256sum "$seed")"
+  assert_equals "tracked" "$(python3 -c 'import sys,tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["model"])' "$live")"
+  assert_contains "$(<"$live")" '[mcp_servers.node_repl]'
+  assert_contains "$(<"$live")" '[projects."C:\\Users\\Quan\\project"]'
+  assert_contains "$(<"$live")" '[mcp_servers.fff]'
+  rm -rf "$tmp"
+}
+
+
 test_codex_seed_merge_engine_applies_tracked_additions_to_live() {
   local tmp script live seed
   tmp="$(mktemp -d)"
