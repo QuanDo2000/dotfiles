@@ -365,9 +365,9 @@ function test_installscooppackages_updates_only_managed_packages {
     $script:Dry = $false
     $script:ScoopCalls = @()
     $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
-    $installedFont = Join-Path $script:_TestTmp.FullName 'installed-font'
-    New-Item -ItemType Directory -Path $installedFont | Out-Null
-    Copy-Item -LiteralPath $fontManifest -Destination (Join-Path $installedFont 'manifest.json')
+    $installedFontDir = Join-Path $script:_TestTmp.FullName 'installed-font'
+    New-Item -ItemType Directory -Path $installedFontDir | Out-Null
+    Copy-Item -LiteralPath $fontManifest -Destination (Join-Path $installedFontDir 'manifest.json')
     Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
     Set-CommandMock 'scoop' {
         $script:ScoopCalls += ,($args -join ' ')
@@ -376,7 +376,7 @@ function test_installscooppackages_updates_only_managed_packages {
             [pscustomobject]@{ Name = 'jq'; Source = 'main' }
             [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
         }
-        if ($args[0] -eq 'prefix') { $installedFont }
+        if ($args[0] -eq 'prefix') { $installedFontDir }
         $global:LASTEXITCODE = 0
     }
 
