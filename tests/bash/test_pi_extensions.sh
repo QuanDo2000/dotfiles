@@ -15,6 +15,12 @@ print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())
 PY
 }
 
+test_pi_extension_lock_keeps_lf_bytes_on_windows() {
+  assert_file_exists "$REPO_DIR/.gitattributes"
+  [ -f "$REPO_DIR/.gitattributes" ] || return
+  assert_contains "$(<"$REPO_DIR/.gitattributes")" 'config/shared/ai/pi/extensions/package-lock.json text eol=lf'
+}
+
 test_pi_extension_settings_use_locked_local_release() {
   assert_file_exists "$release_file"
   assert_file_exists "$extension_dir/package.json"
