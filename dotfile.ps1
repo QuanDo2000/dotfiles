@@ -32,6 +32,10 @@ $script:DotfilesDir = Resolve-DotfilesDir $env:DOTFILES_DIR $PSCommandPath
 # Reviewed immutable installer pin; Scoop publishes no checksum or signed release.
 $script:ScoopInstallerCommit = 'b0ee913725139b816f9178163af0aecdba07a7ed'
 $script:ScoopInstallerSha256 = '48f6ea398b3a3fa26fae0093d37bd85b13e7eaa5d1d4a3e208408768408e35ae'
+$script:ScoopCoreCommit = 'b588a06e41d920d2123ec70aee682bae14935939'
+$script:ScoopCoreSha256 = '630206995f30866a0b25b00c14c74be9ef9b79c4911f72f6efd2625cfe19a645'
+$script:ScoopMainCommit = '72a1eb40859d2a17614bf187570e4275c43e84a3'
+$script:ScoopMainSha256 = '88eff1564c463157958bc817ac30d6111f2e7c01fec702e67fef5cad96a4bc07'
 
 # Logging helpers
 function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }
@@ -215,37 +219,100 @@ function InstallPackages {
     Success "Finished installing packages"
 }
 
+function Get-StreamSha256($Stream) {
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash($Stream)
+    } finally {
+        $sha256.Dispose()
+        $Stream.Position = 0
+    }
+    return ([BitConverter]::ToString($digest) -replace '-', '').ToLowerInvariant()
+}
+
+function Set-ScoopBootstrapArchives($Source, $CoreUri, $MainUri) {
+    $CoreUri = $CoreUri.Replace("'", "''")
+    $MainUri = $MainUri.Replace("'", "''")
+    $replacements = [ordered]@{
+        "if (Test-CommandAvailable('git')) {" = 'if ($false) {'
+        "`$SCOOP_PACKAGE_REPO = 'https://github.com/ScoopInstaller/Scoop/archive/master.zip'" = "`$SCOOP_PACKAGE_REPO = '$CoreUri'"
+        "`$SCOOP_MAIN_BUCKET_REPO = 'https://github.com/ScoopInstaller/Main/archive/master.zip'" = "`$SCOOP_MAIN_BUCKET_REPO = '$MainUri'"
+    }
+    foreach ($entry in $replacements.GetEnumerator()) {
+        if ([regex]::Matches($Source, [regex]::Escape($entry.Key)).Count -ne 1) {
+            throw "Unexpected Scoop installer source"
+        }
+        $Source = $Source.Replace($entry.Key, $entry.Value)
+    }
+    return $Source
+}
+
 function InstallScoop {
     if (Get-Command scoop -ErrorAction SilentlyContinue) { return }
 
     $uri = "https://raw.githubusercontent.com/ScoopInstaller/Install/$script:ScoopInstallerCommit/install.ps1"
     $installer = Join-Path ([IO.Path]::GetTempPath()) "scoop-install-$([Guid]::NewGuid().ToString('N')).ps1"
-    $bootstrap = $null
     try {
         Invoke-WebRequest -Uri $uri -OutFile $installer -UseBasicParsing
         $bytes = [IO.File]::ReadAllBytes($installer)
-        $sha256 = [Security.Cryptography.SHA256]::Create()
+        $stream = [IO.MemoryStream]::new($bytes, $false)
         try {
-            $digest = $sha256.ComputeHash($bytes)
+            $actual = Get-StreamSha256 $stream
         } finally {
-            $sha256.Dispose()
+            $stream.Dispose()
         }
-        $actual = ([BitConverter]::ToString($digest) -replace '-', '').ToLowerInvariant()
         if ($actual -ne $script:ScoopInstallerSha256) {
             throw "Scoop installer checksum mismatch"
         }
         $source = [Text.Encoding]::UTF8.GetString($bytes)
-        $bootstrap = [ScriptBlock]::Create($source)
     } finally {
         if (Test-Path -LiteralPath $installer) {
             Remove-Item -LiteralPath $installer -Force -ErrorAction Stop
         }
     }
 
-    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-    do { & $bootstrap -RunAsAdmin } while ($false)
-    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-        throw "scoop command not found after installation"
+    $temp = [IO.Path]::GetTempPath()
+    $coreArchive = Join-Path $temp "scoop-core-$([Guid]::NewGuid().ToString('N')).zip"
+    $mainArchive = Join-Path $temp "scoop-main-$([Guid]::NewGuid().ToString('N')).zip"
+    $coreLock = $null
+    $mainLock = $null
+    try {
+        $coreUri = "https://github.com/ScoopInstaller/Scoop/archive/$script:ScoopCoreCommit.zip"
+        $mainUri = "https://github.com/ScoopInstaller/Main/archive/$script:ScoopMainCommit.zip"
+        Invoke-WebRequest -Uri $coreUri -OutFile $coreArchive -UseBasicParsing
+        Invoke-WebRequest -Uri $mainUri -OutFile $mainArchive -UseBasicParsing
+        $coreLock = [IO.File]::Open($coreArchive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        $mainLock = [IO.File]::Open($mainArchive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        if ((Get-StreamSha256 $coreLock) -ne $script:ScoopCoreSha256) {
+            throw "Scoop core archive checksum mismatch"
+        }
+        if ((Get-StreamSha256 $mainLock) -ne $script:ScoopMainSha256) {
+            throw "Scoop Main archive checksum mismatch"
+        }
+        $coreLocalUri = [Uri]::new((Resolve-Path -LiteralPath $coreArchive).Path).AbsoluteUri
+        $mainLocalUri = [Uri]::new((Resolve-Path -LiteralPath $mainArchive).Path).AbsoluteUri
+        $source = Set-ScoopBootstrapArchives $source $coreLocalUri $mainLocalUri
+        $bootstrap = [ScriptBlock]::Create($source)
+
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+        do { & $bootstrap -RunAsAdmin } while ($false)
+        if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+            throw "scoop command not found after installation"
+        }
+    } finally {
+        if ($coreLock) { $coreLock.Dispose() }
+        if ($mainLock) { $mainLock.Dispose() }
+        $cleanupError = $null
+        foreach ($path in $coreArchive, $mainArchive) {
+            try {
+                if (Test-Path -LiteralPath $path) {
+                    Remove-Item -LiteralPath $path -Force -ErrorAction Stop
+                }
+            } catch {
+                if (-not $cleanupError) { $cleanupError = $_.Exception }
+            }
+        }
+        if ($cleanupError) { throw $cleanupError }
     }
 }
 

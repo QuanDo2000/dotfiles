@@ -10,12 +10,25 @@ function TestTeardown {
     Clear-TestEnv
 }
 
+function Write-TestScoopBootstrap($Path, $Body) {
+    $source = @'
+param([switch]$RunAsAdmin)
+function Test-CommandAvailable { return $true }
+$SCOOP_PACKAGE_REPO = 'https://github.com/ScoopInstaller/Scoop/archive/master.zip'
+$SCOOP_MAIN_BUCKET_REPO = 'https://github.com/ScoopInstaller/Main/archive/master.zip'
+$downloadPath = 'zip'
+if (Test-CommandAvailable('git')) { $downloadPath = 'git' }
+__BODY__
+'@
+    [IO.File]::WriteAllText($Path, $source.Replace('__BODY__', $Body), [Text.UTF8Encoding]::new($false))
+}
+
 function test_installscoop_executes_only_verified_pinned_script {
     $global:ScoopBootstrapCalls = @()
     $global:ScoopBootstrapExecuted = $false
-    $script:DownloadedInstaller = $null
+    $script:DownloadedFiles = @()
     $script:RequestedInstallerUri = $null
-    $originalHash = $script:ScoopInstallerSha256
+    $originalHashes = @($script:ScoopInstallerSha256, $script:ScoopCoreSha256, $script:ScoopMainSha256)
     Set-CommandMock 'Get-Command' {
         param($Name)
         if ($Name -eq 'scoop') {
@@ -26,28 +39,75 @@ function test_installscoop_executes_only_verified_pinned_script {
     }
     Set-CommandMock 'Invoke-WebRequest' {
         param($Uri, $OutFile, [switch]$UseBasicParsing)
-        $script:DownloadedInstaller = $OutFile
-        $script:RequestedInstallerUri = [string]$Uri
-        $global:ScoopBootstrapCalls += 'download'
-        $source = @'
-param([switch]$RunAsAdmin)
-$global:ScoopBootstrapCalls += "execute:$([bool]$RunAsAdmin)"
-$global:ScoopBootstrapExecuted = $true
-'@
-        [IO.File]::WriteAllText($OutFile, $source, [Text.UTF8Encoding]::new($false))
-        $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+        $script:DownloadedFiles += $OutFile
+        switch -Wildcard ([string]$Uri) {
+            '*ScoopInstaller/Install/*' {
+                $script:RequestedInstallerUri = [string]$Uri
+                $global:ScoopBootstrapCalls += 'download:installer'
+                Write-TestScoopBootstrap $OutFile '$global:ScoopBootstrapCalls += "execute:$([bool]$RunAsAdmin):${downloadPath}:${SCOOP_PACKAGE_REPO}:${SCOOP_MAIN_BUCKET_REPO}"; $global:ScoopBootstrapExecuted = $true'
+                $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+            '*ScoopInstaller/Scoop/archive/*' {
+                $global:ScoopBootstrapCalls += 'download:core'
+                [IO.File]::WriteAllText($OutFile, 'core', [Text.UTF8Encoding]::new($false))
+                $script:ScoopCoreSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+            '*ScoopInstaller/Main/archive/*' {
+                $global:ScoopBootstrapCalls += 'download:main'
+                [IO.File]::WriteAllText($OutFile, 'main', [Text.UTF8Encoding]::new($false))
+                $script:ScoopMainSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+        }
     }
     Set-CommandMock 'Set-ExecutionPolicy' { $global:ScoopBootstrapCalls += 'policy' }
 
     try {
         InstallScoop
     } finally {
-        $script:ScoopInstallerSha256 = $originalHash
+        $script:ScoopInstallerSha256, $script:ScoopCoreSha256, $script:ScoopMainSha256 = $originalHashes
     }
 
-    Assert-Equals 'download policy execute:True' ($global:ScoopBootstrapCalls -join ' ')
+    Assert-Equals 'download:installer download:core download:main policy' (($global:ScoopBootstrapCalls | Select-Object -First 4) -join ' ')
+    $calls = $global:ScoopBootstrapCalls -join ' '
+    Assert-Contains $calls 'execute:True:zip:file:'
+    Assert-False ($calls -like '*master.zip*') 'Executed Scoop bootstrap should use only local pinned archives'
     Assert-Equals "https://raw.githubusercontent.com/ScoopInstaller/Install/$script:ScoopInstallerCommit/install.ps1" $script:RequestedInstallerUri
-    Assert-False (Test-Path -LiteralPath $script:DownloadedInstaller) 'Scoop installer temp file should be removed'
+    foreach ($path in $script:DownloadedFiles) {
+        Assert-False (Test-Path -LiteralPath $path) 'Scoop bootstrap temp files should be removed'
+    }
+}
+
+function test_installscoop_rejects_core_archive_mismatch_before_execution {
+    $global:ScoopBootstrapCalls = @()
+    $script:DownloadedFiles = @()
+    $originalHashes = @($script:ScoopInstallerSha256, $script:ScoopMainSha256)
+    Set-CommandMock 'Get-Command' { return $null }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile, [switch]$UseBasicParsing)
+        $script:DownloadedFiles += $OutFile
+        switch -Wildcard ([string]$Uri) {
+            '*ScoopInstaller/Install/*' {
+                Write-TestScoopBootstrap $OutFile '$global:ScoopBootstrapCalls += "execute"'
+                $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+            '*ScoopInstaller/Scoop/archive/*' { [IO.File]::WriteAllText($OutFile, 'wrong core') }
+            '*ScoopInstaller/Main/archive/*' {
+                [IO.File]::WriteAllText($OutFile, 'main')
+                $script:ScoopMainSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+        }
+    }
+    Set-CommandMock 'Set-ExecutionPolicy' { $global:ScoopBootstrapCalls += 'policy' }
+
+    try {
+        Assert-Throws { InstallScoop } 'Scoop core checksum mismatch should fail'
+    } finally {
+        $script:ScoopInstallerSha256, $script:ScoopMainSha256 = $originalHashes
+    }
+    Assert-Equals '' ($global:ScoopBootstrapCalls -join ' ')
+    foreach ($path in $script:DownloadedFiles) {
+        Assert-False (Test-Path -LiteralPath $path) 'Rejected Scoop archives should be removed'
+    }
 }
 
 function test_installscoop_rejects_checksum_mismatch_before_execution {
@@ -98,13 +158,24 @@ function test_installscoop_fails_when_temp_cleanup_fails {
 }
 
 function test_installscoop_surfaces_in_memory_bootstrap_break_failure {
-    $originalHash = $script:ScoopInstallerSha256
+    $originalHashes = @($script:ScoopInstallerSha256, $script:ScoopCoreSha256, $script:ScoopMainSha256)
     Set-CommandMock 'Get-Command' { return $null }
     Set-CommandMock 'Invoke-WebRequest' {
         param($Uri, $OutFile, [switch]$UseBasicParsing)
-        $source = '$global:LASTEXITCODE = 23; break'
-        [IO.File]::WriteAllText($OutFile, $source, [Text.UTF8Encoding]::new($false))
-        $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+        switch -Wildcard ([string]$Uri) {
+            '*ScoopInstaller/Install/*' {
+                Write-TestScoopBootstrap $OutFile '$global:LASTEXITCODE = 23; break'
+                $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+            '*ScoopInstaller/Scoop/archive/*' {
+                [IO.File]::WriteAllText($OutFile, 'core', [Text.UTF8Encoding]::new($false))
+                $script:ScoopCoreSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+            '*ScoopInstaller/Main/archive/*' {
+                [IO.File]::WriteAllText($OutFile, 'main', [Text.UTF8Encoding]::new($false))
+                $script:ScoopMainSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+        }
     }
     Set-CommandMock 'Set-ExecutionPolicy' { }
 
@@ -112,9 +183,85 @@ function test_installscoop_surfaces_in_memory_bootstrap_break_failure {
         Assert-Throws { InstallScoop } 'Failed in-memory Scoop bootstrap should reach command verification'
         Assert-Equals 23 $global:LASTEXITCODE
     } finally {
-        $script:ScoopInstallerSha256 = $originalHash
+        $script:ScoopInstallerSha256, $script:ScoopCoreSha256, $script:ScoopMainSha256 = $originalHashes
         $global:LASTEXITCODE = 0
     }
+}
+
+function test_scoop_bootstrap_archive_patch_rejects_source_drift {
+    Assert-Throws { Set-ScoopBootstrapArchives 'unexpected source' 'file:///core.zip' 'file:///main.zip' } 'Scoop source drift should fail closed'
+}
+
+function test_scoop_bootstrap_archive_patch_escapes_apostrophes {
+    $source = @'
+if (Test-CommandAvailable('git')) {
+}
+$SCOOP_PACKAGE_REPO = 'https://github.com/ScoopInstaller/Scoop/archive/master.zip'
+$SCOOP_MAIN_BUCKET_REPO = 'https://github.com/ScoopInstaller/Main/archive/master.zip'
+'@
+
+    $patched = Set-ScoopBootstrapArchives $source "file:///C:/Users/O'Neil/core.zip" "file:///C:/Users/O'Neil/main.zip"
+    $tokens = $null
+    $errors = $null
+    [Management.Automation.Language.Parser]::ParseInput($patched, [ref]$tokens, [ref]$errors) | Out-Null
+
+    Assert-Equals 0 $errors.Count
+    Assert-Contains $patched "O''Neil/core.zip"
+    Assert-Contains $patched "O''Neil/main.zip"
+}
+
+function test_scoop_locked_local_archive_works_in_windows_powershell {
+    $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if (-not $windowsPowerShell) { return }
+
+    $source = Join-Path $script:_TestTmp.FullName 'locked-source.zip'
+    $destination = Join-Path $script:_TestTmp.FullName 'locked-copy.zip'
+    [IO.File]::WriteAllText($source, 'locked archive', [Text.UTF8Encoding]::new($false))
+    $oldSource = $env:SCOOP_TEST_SOURCE
+    $oldDestination = $env:SCOOP_TEST_DESTINATION
+    $env:SCOOP_TEST_SOURCE = $source
+    $env:SCOOP_TEST_DESTINATION = $destination
+    $probe = @'
+$ErrorActionPreference = 'Stop'
+$lock = [IO.File]::Open($env:SCOOP_TEST_SOURCE, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+try {
+    $uri = [Uri]::new((Resolve-Path -LiteralPath $env:SCOOP_TEST_SOURCE).Path)
+    (New-Object Net.WebClient).DownloadFile($uri, $env:SCOOP_TEST_DESTINATION)
+} finally {
+    $lock.Dispose()
+}
+if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($env:SCOOP_TEST_SOURCE)) -ne
+    [Convert]::ToBase64String([IO.File]::ReadAllBytes($env:SCOOP_TEST_DESTINATION))) { exit 1 }
+'@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($probe))
+
+    try {
+        & $windowsPowerShell.Source -NoProfile -NonInteractive -EncodedCommand $encoded
+        Assert-Equals 0 $LASTEXITCODE
+    } finally {
+        $env:SCOOP_TEST_SOURCE = $oldSource
+        $env:SCOOP_TEST_DESTINATION = $oldDestination
+    }
+}
+
+function test_scoop_bootstrap_pins_core_and_main_archives {
+    Assert-Equals 'b588a06e41d920d2123ec70aee682bae14935939' $script:ScoopCoreCommit
+    Assert-Equals '630206995f30866a0b25b00c14c74be9ef9b79c4911f72f6efd2625cfe19a645' $script:ScoopCoreSha256
+    Assert-Equals '72a1eb40859d2a17614bf187570e4275c43e84a3' $script:ScoopMainCommit
+    Assert-Equals '88eff1564c463157958bc817ac30d6111f2e7c01fec702e67fef5cad96a4bc07' $script:ScoopMainSha256
+    $source = @'
+if (Test-CommandAvailable('git')) {
+}
+$SCOOP_PACKAGE_REPO = 'https://github.com/ScoopInstaller/Scoop/archive/master.zip'
+$SCOOP_MAIN_BUCKET_REPO = 'https://github.com/ScoopInstaller/Main/archive/master.zip'
+'@
+
+    $patched = Set-ScoopBootstrapArchives $source 'file:///core.zip' 'file:///main.zip'
+
+    Assert-Contains $patched 'if ($false) {'
+    Assert-Contains $patched "`$SCOOP_PACKAGE_REPO = 'file:///core.zip'"
+    Assert-Contains $patched "`$SCOOP_MAIN_BUCKET_REPO = 'file:///main.zip'"
+    Assert-False ($patched -like '*master.zip*') 'Patched bootstrap should not retain mutable archives'
 }
 
 function test_scoop_bootstrap_uses_immutable_reviewed_pin {
