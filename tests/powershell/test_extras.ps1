@@ -531,6 +531,24 @@ function test_installscooppackages_keeps_reviewed_scoop_snapshot_during_update {
     Assert-False (($script:ScoopCalls -join "`n") -like 'update *') 'Scoop packages should remain on reviewed manifests'
 }
 
+function test_installfnm_uses_pi_extension_node_pin {
+    $script:Dry = $false
+    $script:FnmCalls = @()
+    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-fnm' } }
+    Set-CommandMock 'fnm' {
+        $script:FnmCalls += ,($args -join ' ')
+        if ($args[0] -eq 'env') { '' }
+        $global:LASTEXITCODE = 0
+    }
+
+    InstallFnm 6>&1 | Out-Null
+
+    Assert-True ($script:FnmCalls -contains 'install 24.18.0') 'fnm should install locked Node version'
+    Assert-True ($script:FnmCalls -contains 'use 24.18.0') 'fnm should use locked Node version'
+    Assert-True ($script:FnmCalls -contains 'default 24.18.0') 'fnm should default to locked Node version'
+    Assert-False (($script:FnmCalls -join "`n") -like '*lts-latest*') 'Node version should not float'
+}
+
 function test_installfnm_fails_when_fnm_command_fails {
     $script:Dry = $false
     Set-CommandMock 'Get-Command' {

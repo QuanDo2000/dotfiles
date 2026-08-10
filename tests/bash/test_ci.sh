@@ -32,8 +32,8 @@ test_ci_runs_direct_nix_checks() {
 
   assert_not_contains "$workflow" "run: ./scripts/check.sh"
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
-  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#fff-mcp .#fff-nvim-backend .#codebase-memory-mcp --no-link'
-  assert_contains "$workflow" 'nix build .#fff-nvim-backend --no-link'
+  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions .#fff-mcp .#fff-nvim-backend .#codebase-memory-mcp --no-link'
+  assert_contains "$workflow" 'nix build .#fff-nvim-backend .#pi-extensions --no-link'
   assert_contains "$check" '"$repo_dir#fff-nvim-backend"'
 }
 
@@ -45,6 +45,9 @@ test_ci_runs_windows_lazyvim_integration() {
   assert_contains "$workflow" 'Microsoft\WinGet\Links\nvim.exe'
   assert_contains "$workflow" 'Neovim\bin\nvim.exe'
   assert_contains "$workflow" "tests/powershell/integration_lazyvim.ps1"
+  assert_contains "$workflow" "actions/setup-node@v4"
+  assert_contains "$workflow" "node-version: 24.18.0"
+  assert_contains "$workflow" "tests/powershell/integration_pi_extensions.ps1"
 
   local integration
   integration="$(<"$REPO_DIR/tests/powershell/integration_lazyvim.ps1")"

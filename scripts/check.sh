@@ -14,5 +14,5 @@ run nix develop "$repo_dir" -c bash "$repo_dir/tests/bash/runner.sh" --no-docker
 run nix develop "$repo_dir" -c pwsh "$repo_dir/tests/powershell/runner.ps1"
 
 run nix flake check --no-build --all-systems
-run nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" "$repo_dir#fff-mcp" "$repo_dir#fff-nvim-backend" "$repo_dir#codebase-memory-mcp" --no-link
+run nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" "$repo_dir#pi-extensions" "$repo_dir#fff-mcp" "$repo_dir#fff-nvim-backend" "$repo_dir#codebase-memory-mcp" --no-link
 run nix develop "$repo_dir" -c shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Integrity-locked Pi extension package tests.
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
+
+extension_dir="$REPO_DIR/config/shared/ai/pi/extensions"
+release_file="$REPO_DIR/packages/pi-extensions-release.json"
+
+_lock_sha256() {
+  python3 - "$extension_dir/package-lock.json" <<'PY'
+import hashlib
+import sys
+
+print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())
+PY
+}
+
+test_pi_extension_settings_use_locked_local_release() {
+  assert_file_exists "$release_file"
+  assert_file_exists "$extension_dir/package.json"
+  assert_file_exists "$extension_dir/package-lock.json"
+  [ -f "$release_file" ] && [ -f "$extension_dir/package-lock.json" ] || return
+
+  local release_id settings package
+  release_id="$(jq -r .releaseId "$release_file")"
+  settings="$REPO_DIR/config/shared/ai/pi/settings.json"
+  package="$extension_dir/package.json"
+
+  assert_equals "$release_id" "$(_lock_sha256)"
+  assert_equals 7 "$(jq '.packages | length' "$settings")"
+  assert_equals 7 "$(jq '.dependencies | length' "$package")"
+  assert_equals 0 "$(jq --arg id "$release_id" '[.packages[] | select(startswith("./locked-extensions/releases/" + $id + "/node_modules/") | not)] | length' "$settings")"
+  assert_equals 0 "$(jq '[.packages[] | select(startswith("npm:"))] | length' "$settings")"
+}
+
+test_pi_extension_lock_has_integrity_for_every_tarball() {
+  [ -f "$extension_dir/package-lock.json" ] || return
+
+  assert_equals 0 "$(jq '[.packages | to_entries[] | select(.key != "" and (.value.link != true)) | select((.value.resolved | type) != "string" or (.value.integrity | startswith("sha512-") | not))] | length' "$extension_dir/package-lock.json")"
+  assert_equals 'node_modules/better-sqlite3' "$(jq -r '[.packages | to_entries[] | select(.value.hasInstallScript == true) | .key] | join(" ")' "$extension_dir/package-lock.json")"
+  assert_equals '12.11.1' "$(jq -r '.packages["node_modules/better-sqlite3"].version' "$extension_dir/package-lock.json")"
+}
+
+test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
+  local package home flake check
+  package="$(<"$REPO_DIR/packages/pi-extensions.nix")"
+  home="$(<"$REPO_DIR/config/home.nix")"
+  flake="$(<"$REPO_DIR/flake.nix")"
+  check="$(<"$REPO_DIR/scripts/check.sh")"
+
+  assert_contains "$package" 'pi-extensions-release.json'
+  assert_contains "$package" 'npmDepsHash = "sha256-u1XeyrVDi10ewl1Bn7IK+PMXEO2Bf5i2ZwwdVBtezjg="'
+  assert_contains "$package" '"--ignore-scripts"'
+  assert_contains "$package" 'better-sqlite3'
+  assert_contains "$package" 'better_sqlite3.node'
+  assert_contains "$home" 'locked-extensions/releases/${piExtensionsReleaseId}'
+  assert_contains "$flake" 'packages.x86_64-linux.pi-extensions'
+  assert_contains "$flake" 'packages.aarch64-darwin.pi-extensions'
+  assert_contains "$check" '"$repo_dir#pi-extensions"'
+}
+
+test_pi_extension_update_reconciles_local_packages_only() {
+  local settings packages
+  settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
+  packages="$(<"$REPO_DIR/scripts/packages.sh")"
+
+  assert_not_contains "$settings" '"npm:'
+  assert_contains "$packages" 'pi update --extensions'
+}

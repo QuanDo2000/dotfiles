@@ -20,13 +20,14 @@ test_check_script_runs_repo_verification() {
   assert_contains "$check_text" 'nix develop "$repo_dir" -c pwsh "$repo_dir/tests/powershell/runner.ps1"'
   assert_not_contains "$check_text" 'command -v pwsh'
   assert_contains "$check_text" 'nix flake check --no-build --all-systems'
-  assert_contains "$check_text" 'nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" "$repo_dir#fff-mcp" "$repo_dir#fff-nvim-backend" "$repo_dir#codebase-memory-mcp" --no-link'
+  assert_contains "$check_text" 'nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" "$repo_dir#pi-extensions" "$repo_dir#fff-mcp" "$repo_dir#fff-nvim-backend" "$repo_dir#codebase-memory-mcp" --no-link'
   assert_contains "$check_text" 'nix develop "$repo_dir" -c shellcheck'
   assert_contains "$flake_text" "pi-agent = final.callPackage ./packages/pi-agent.nix"
   assert_contains "$flake_text" "fff-mcp = final.callPackage ./packages/fff-mcp.nix"
   assert_contains "$flake_text" "fff-nvim-backend = final.callPackage ./packages/fff-nvim-backend.nix"
   assert_contains "$flake_text" "codebase-memory-mcp = final.callPackage ./packages/codebase-memory-mcp.nix"
   assert_contains "$flake_text" "packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent"
+  assert_contains "$flake_text" "packages.x86_64-linux.pi-extensions = linuxPkgs.pi-extensions"
   assert_contains "$flake_text" "packages.x86_64-linux.fff-mcp = linuxPkgs.fff-mcp"
   assert_contains "$flake_text" "packages.x86_64-linux.codebase-memory-mcp = linuxPkgs.codebase-memory-mcp"
   assert_contains "$flake_text" "devShells.aarch64-darwin.default"

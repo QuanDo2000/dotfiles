@@ -240,6 +240,11 @@ function Get-StreamSha256($Stream) {
     return ([BitConverter]::ToString($digest) -replace '-', '').ToLowerInvariant()
 }
 
+function Get-FileSha256($Path) {
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+    try { return Get-StreamSha256 $stream } finally { $stream.Dispose() }
+}
+
 function Set-ScoopBootstrapArchives($Source, $CoreUri, $MainUri) {
     $CoreUri = $CoreUri.Replace("'", "''")
     $MainUri = $MainUri.Replace("'", "''")
@@ -395,6 +400,23 @@ function Refresh-ProcessPath {
     $env:Path = "$machinePath;$userPath"
 }
 
+function Get-PiExtensionsPins {
+    $path = Join-Path $script:DotfilesDir "packages\pi-extensions-release.json"
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Pi extension release pins not found: $path" }
+    $pins = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+    if ([string]$pins.releaseId -notmatch '^[0-9a-f]{64}$') { throw "Invalid Pi extension release ID" }
+    if ([string]$pins.node.version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid Pi extension Node version" }
+    if ([string]$pins.node.abi -notmatch '^\d+$') { throw "Invalid Pi extension Node ABI" }
+    if ([string]$pins.betterSqlite3.version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid better-sqlite3 version" }
+    foreach ($key in 'windows-x64', 'windows-arm64') {
+        $asset = $pins.betterSqlite3.assets.$key
+        if (-not $asset -or [string]$asset.file -notmatch '^better-sqlite3-[0-9A-Za-z.-]+\.tar\.gz$' -or [string]$asset.sha256 -notmatch '^[0-9a-f]{64}$') {
+            throw "Invalid better-sqlite3 asset pins for $key"
+        }
+    }
+    return $pins
+}
+
 function InstallFnm {
     Info "Installing Node.js LTS via fnm..."
     if ($script:Dry) { return }
@@ -407,12 +429,13 @@ function InstallFnm {
         return
     }
 
+    $nodeVersion = [string](Get-PiExtensionsPins).node.version
     fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
-    Invoke-NativeChecked "fnm install --lts failed" { fnm install --lts }
-    Invoke-NativeChecked "fnm use lts-latest failed" { fnm use lts-latest }
-    Invoke-NativeChecked "fnm default lts-latest failed" { fnm default lts-latest }
+    Invoke-NativeChecked "fnm install $nodeVersion failed" { fnm install $nodeVersion }
+    Invoke-NativeChecked "fnm use $nodeVersion failed" { fnm use $nodeVersion }
+    Invoke-NativeChecked "fnm default $nodeVersion failed" { fnm default $nodeVersion }
 
-    Success "Finished installing Node.js LTS"
+    Success "Finished installing pinned Node.js"
 }
 
 function InstallExtras {
@@ -583,6 +606,101 @@ function Get-PinnedPiVersion {
     return $version
 }
 
+function Get-PiExtensionsWindowsArch($Architecture = $env:PROCESSOR_ARCHITECTURE) {
+    switch ([string]$Architecture) {
+        'AMD64' { return 'windows-x64' }
+        'X64' { return 'windows-x64' }
+        'ARM64' { return 'windows-arm64' }
+        'Arm64' { return 'windows-arm64' }
+        default { throw "Unsupported Pi extension Windows architecture: $Architecture" }
+    }
+}
+
+function Test-PiExtensionsRelease($ReleaseDir, $Pins) {
+    if (-not (Test-Path -LiteralPath $ReleaseDir -PathType Container)) { return $false }
+    $releaseItem = Get-Item -LiteralPath $ReleaseDir -Force
+    if (($releaseItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { return $false }
+    $lockPath = Join-Path $ReleaseDir 'package-lock.json'
+    $packagePath = Join-Path $ReleaseDir 'package.json'
+    if (-not (Test-Path -LiteralPath $lockPath -PathType Leaf) -or -not (Test-Path -LiteralPath $packagePath -PathType Leaf)) { return $false }
+    if ((Get-FileSha256 $lockPath) -ne [string]$Pins.releaseId) { return $false }
+    try { $manifest = Get-Content -Raw -LiteralPath $packagePath | ConvertFrom-Json } catch { return $false }
+    $nodeModules = Join-Path $ReleaseDir 'node_modules'
+    foreach ($dependency in $manifest.dependencies.PSObject.Properties) {
+        $installedManifest = Join-Path (Join-Path $nodeModules $dependency.Name) 'package.json'
+        if (-not (Test-Path -LiteralPath $installedManifest -PathType Leaf)) { return $false }
+        try { $installed = Get-Content -Raw -LiteralPath $installedManifest | ConvertFrom-Json } catch { return $false }
+        if ([string]$installed.version -ne [string]$dependency.Value) { return $false }
+    }
+    $betterManifest = Join-Path $nodeModules 'better-sqlite3\package.json'
+    $betterBinary = Join-Path $nodeModules 'better-sqlite3\build\Release\better_sqlite3.node'
+    if (-not (Test-Path -LiteralPath $betterManifest -PathType Leaf) -or -not (Test-Path -LiteralPath $betterBinary -PathType Leaf)) { return $false }
+    try { $better = Get-Content -Raw -LiteralPath $betterManifest | ConvertFrom-Json } catch { return $false }
+    return [string]$better.version -eq [string]$Pins.betterSqlite3.version
+}
+
+function InstallPiExtensions {
+    Info "Installing integrity-locked Pi extensions..."
+    if ($script:Dry) { return }
+
+    $pins = Get-PiExtensionsPins
+    $source = Join-Path $script:DotfilesDir 'config\shared\ai\pi\extensions'
+    $sourceLock = Join-Path $source 'package-lock.json'
+    if (-not (Test-Path -LiteralPath $sourceLock -PathType Leaf) -or (Get-FileSha256 $sourceLock) -ne [string]$pins.releaseId) {
+        throw "Pi extension package lock does not match release pins"
+    }
+    foreach ($command in 'node', 'npm', 'tar') {
+        if (-not (Get-Command $command -ErrorAction SilentlyContinue)) { throw "$command command not found for Pi extensions" }
+    }
+    $nodeVersion = (& node --version 2>$null | Select-Object -Last 1).TrimStart('v')
+    if ($LASTEXITCODE -ne 0 -or $nodeVersion -ne [string]$pins.node.version) { throw "Pi extensions require Node $($pins.node.version)" }
+    $nodeAbi = (& node -p 'process.versions.modules' 2>$null | Select-Object -Last 1).Trim()
+    if ($LASTEXITCODE -ne 0 -or $nodeAbi -ne [string]$pins.node.abi) { throw "Pi extensions require Node ABI $($pins.node.abi)" }
+
+    $asset = $pins.betterSqlite3.assets.(Get-PiExtensionsWindowsArch)
+    $root = Join-Path $env:USERPROFILE '.pi\agent\locked-extensions'
+    $releases = Join-Path $root 'releases'
+    $release = Join-Path $releases ([string]$pins.releaseId)
+    New-Item -ItemType Directory -Force -Path $root | Out-Null
+    $installLock = [IO.File]::Open((Join-Path $root 'install.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    try {
+        if (Test-Path -LiteralPath $release) {
+            if (-not (Test-PiExtensionsRelease $release $pins)) { throw "Pinned Pi extension release is incomplete: $release" }
+            return
+        }
+
+        New-Item -ItemType Directory -Force -Path $releases | Out-Null
+        $staging = Join-Path $releases ".staging.$([Guid]::NewGuid().ToString('N'))"
+        $archive = Join-Path $staging ([string]$asset.file)
+        try {
+            New-Item -ItemType Directory -Force -Path $staging | Out-Null
+            Copy-Item -LiteralPath (Join-Path $source 'package.json'), $sourceLock -Destination $staging
+            $stagedLock = Join-Path $staging 'package-lock.json'
+            $lockStream = [IO.File]::Open($stagedLock, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            try {
+                if ((Get-StreamSha256 $lockStream) -ne [string]$pins.releaseId) { throw "Staged Pi extension package lock mismatch" }
+                Invoke-NativeChecked "Pi extension npm ci failed" { npm ci --prefix $staging --omit=dev --ignore-scripts --legacy-peer-deps }
+            } finally { $lockStream.Dispose() }
+
+            $uri = "https://github.com/WiseLibs/better-sqlite3/releases/download/v$($pins.betterSqlite3.version)/$($asset.file)"
+            Invoke-WebRequest -Uri $uri -OutFile $archive -UseBasicParsing
+            $archiveStream = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            try {
+                if ((Get-StreamSha256 $archiveStream) -ne [string]$asset.sha256) { throw "better-sqlite3 package checksum mismatch" }
+                $betterDir = Join-Path $staging 'node_modules\better-sqlite3'
+                Invoke-NativeChecked "better-sqlite3 package extraction failed" { tar -xzf $archive -C $betterDir }
+            } finally { $archiveStream.Dispose() }
+            Remove-Item -LiteralPath $archive -Force -ErrorAction Stop
+            if (-not (Test-PiExtensionsRelease $staging $pins)) { throw "Installed Pi extension release verification failed" }
+            Move-Item -LiteralPath $staging -Destination $release
+        } finally {
+            if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction Stop }
+        }
+    } finally { $installLock.Dispose() }
+
+    Success "Finished installing integrity-locked Pi extensions"
+}
+
 function InstallPi {
     param([switch]$Update)
     Info "Installing Pi coding agent..."
@@ -606,9 +724,6 @@ function InstallPi {
     Refresh-ProcessPath
     if (-not (Get-Command pi -ErrorAction SilentlyContinue)) {
         throw "pi command not found after installation"
-    }
-    if ($Update) {
-        Invoke-NativeChecked "Pi extension update failed" { pi update --extensions }
     }
     Success "Finished installing Pi coding agent"
 }
@@ -967,7 +1082,11 @@ function InstallAi {
     SyncCodexConfig
     InstallPi -Update:$Update
     InstallPiLanguageServers -Update:$Update
+    InstallPiExtensions
     SyncPiConfigs
+    if ($Update) {
+        Invoke-NativeChecked "Pi extension reconciliation failed" { pi update --extensions }
+    }
     SyncAiInstructions
     InstallAiSkills
 

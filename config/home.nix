@@ -28,6 +28,9 @@ let
     hash = "sha256-Pn6gPg0luOO0/I3dP4DzdvFn4Z7rjrK4Bbxf+4VBiYo=";
   };
   fffNvimBinary = pkgs.callPackage ../packages/fff-nvim-backend.nix { };
+  piExtensionsPins = builtins.fromJSON (builtins.readFile ../packages/pi-extensions-release.json);
+  piExtensionsReleaseId = piExtensionsPins.releaseId;
+  piExtensions = pkgs.callPackage ../packages/pi-extensions.nix { };
   pi-agent = pkgs.callPackage ../packages/pi-agent.nix { };
   ankiWithAddons = pkgs.anki.withAddons [
     (pkgs.ankiAddons.passfail2.withConfig {
@@ -179,6 +182,7 @@ in
     ".agents/skills/verification-before-completion" = forceSource ./shared/ai/skills/verification-before-completion;
     ".pi/agent/extensions/caveman-default.js" = forceSource ./shared/ai/pi/caveman-default.js;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
+    ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource piExtensions;
     ".local/bin/dotfile" = {
       text = ''
         #!/usr/bin/env bash

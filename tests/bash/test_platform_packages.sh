@@ -35,32 +35,28 @@ test_arch_packages_are_bootstrap_only() {
 }
 
 test_code_search_stack_uses_current_full_feature_packages() {
-  local fff codebase codebase_pins pi_settings
+  local fff codebase codebase_pins pi_extensions
   fff="$(<"$REPO_DIR/packages/fff-mcp.nix")"
   codebase="$(<"$REPO_DIR/packages/codebase-memory-mcp.nix")"
   codebase_pins="$REPO_DIR/packages/codebase-memory-mcp-release.json"
-  pi_settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
+  pi_extensions="$REPO_DIR/config/shared/ai/pi/extensions/package.json"
 
   assert_contains "$fff" 'version = "0.10.1";'
   assert_equals "0.9.0" "$(jq -r .version "$codebase_pins")"
   assert_contains "$codebase" 'codebase-memory-mcp-release.json'
   assert_contains "$codebase" 'codebase-memory-mcp-ui-'
-  assert_contains "$pi_settings" 'npm:@ff-labs/pi-fff@0.10.1'
+  assert_equals "0.10.1" "$(jq -r '.dependencies["@ff-labs/pi-fff"]' "$pi_extensions")"
 }
 
 test_pi_web_access_is_pinned() {
-  assert_equals "npm:pi-web-access@0.19.0" "$(
-    jq -r '.packages[] | select(startswith("npm:pi-web-access"))' \
-      "$REPO_DIR/config/shared/ai/pi/settings.json"
-  )"
+  assert_equals "0.19.0" "$(jq -r '.dependencies["pi-web-access"]' "$REPO_DIR/config/shared/ai/pi/extensions/package.json")"
 }
 
 test_pi_lsp_uses_pinned_package_and_nix_servers() {
-  local lsp_config pi_settings
-  pi_settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
+  local lsp_config
   lsp_config="$REPO_DIR/config/shared/ai/pi/pi-lsp.json"
 
-  assert_contains "$pi_settings" 'npm:@narumitw/pi-lsp@0.49.4'
+  assert_equals "0.49.4" "$(jq -r '.dependencies["@narumitw/pi-lsp"]' "$REPO_DIR/config/shared/ai/pi/extensions/package.json")"
   assert_file_exists "$lsp_config"
   if [[ -f "$lsp_config" ]]; then
     assert_exit_code 0 jq -e '

@@ -682,7 +682,7 @@ function test_installpi_installs_official_package_and_checks_command {
     Assert-Equals "install --global @earendil-works/pi-coding-agent@$pinnedVersion" $script:NpmCalls[0]
 }
 
-function test_installpi_updates_extensions_during_update {
+function test_installpi_does_not_reconcile_extensions_before_locked_config {
     $script:PiCalls = @()
     Set-CommandMock 'Get-Command' {
         param($Name)
@@ -697,7 +697,7 @@ function test_installpi_updates_extensions_during_update {
 
     InstallPi -Update
 
-    Assert-True ($script:PiCalls -contains 'update --extensions') 'Pi extensions should update during dotfile update'
+    Assert-False ($script:PiCalls -contains 'update --extensions') 'Pi install should not reconcile extensions before locked config is active'
 }
 
 function test_installpi_skips_current_package_during_update {
@@ -723,7 +723,7 @@ function test_installpi_skips_current_package_during_update {
     InstallPi -Update
 
     Assert-Equals 0 $script:NpmCalls.Count 'current pinned Pi package should not query npm or reinstall'
-    Assert-True ($script:PiCalls -contains 'update --extensions') 'Pi extensions should still update'
+    Assert-False ($script:PiCalls -contains 'update --extensions') 'Pi package update should leave extension reconciliation to InstallAi'
 }
 
 function test_installpi_replaces_unpinned_version_during_update {
@@ -763,7 +763,8 @@ function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
     $path = Join-Path $script:RepoDir 'config\shared\ai\pi\settings.json'
     $settings = Get-Content -Raw $path | ConvertFrom-Json
 
-    Assert-True (@($settings.packages) -contains 'npm:pi-subagents@0.40.0') 'Pi should install the pinned pi-subagents package'
+    $extensions = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package.json') | ConvertFrom-Json
+    Assert-Equals '0.40.0' $extensions.dependencies.'pi-subagents'
     Assert-Equals 'gpt-5.6-sol' $settings.defaultModel
     Assert-Equals 'high' $settings.defaultThinkingLevel
     Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.defaultModel
@@ -785,10 +786,10 @@ function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
 }
 
 function test_pi_lsp_package_is_pinned {
-    $path = Join-Path $script:RepoDir 'config\shared\ai\pi\settings.json'
-    $settings = Get-Content -Raw $path | ConvertFrom-Json
+    $path = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package.json'
+    $extensions = Get-Content -Raw $path | ConvertFrom-Json
 
-    Assert-True (@($settings.packages) -contains 'npm:@narumitw/pi-lsp@0.49.4') 'Pi should install the pinned LSP package'
+    Assert-Equals '0.49.4' $extensions.dependencies.'@narumitw/pi-lsp'
 }
 
 function test_windows_pi_lsp_config_uses_only_supported_servers {

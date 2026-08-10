@@ -1,0 +1,32 @@
+{
+  "releaseId": "1d62b513ae196d8e2db2512f3c2cde798f2aab9d5cade28b19b192fafa0c966c",
+  "node": {
+    "version": "24.18.0",
+    "abi": "137"
+  },
+  "betterSqlite3": {
+    "version": "12.11.1",
+    "assets": {
+      "x86_64-linux": {
+        "file": "better-sqlite3-v12.11.1-node-v137-linux-x64.tar.gz",
+        "sha256": "99c43785639d5d3690c396ba245ee680ac8b469a46b19233a3546f0eb7f8e312",
+        "hash": "sha256-mcQ3hWOdXTaQw5a6JF7mgKyLRppGsZIzo1RvDrf44xI="
+      },
+      "aarch64-darwin": {
+        "file": "better-sqlite3-v12.11.1-node-v137-darwin-arm64.tar.gz",
+        "sha256": "6eaefc8a9c088fea873365f7db2c0f89be6ea021ede62f6a71832f5130826a93",
+        "hash": "sha256-bq78ipwIj+qHM2X32ywPib5uoCHt5i9qcYMvUTCCapM="
+      },
+      "windows-x64": {
+        "file": "better-sqlite3-v12.11.1-node-v137-win32-x64.tar.gz",
+        "sha256": "4ee5e653174d6ddd301605d351798cdae2613da06c4f37ecdce263021fcf1255",
+        "hash": "sha256-TuXmUxdNbd0wFgXTUXmM2uJhPaBsTzfs3OJjAh/PElU="
+      },
+      "windows-arm64": {
+        "file": "better-sqlite3-v12.11.1-node-v137-win32-arm64.tar.gz",
+        "sha256": "a6d712a918ece580882f83aee8c02d37c8841036eef68d208d71eb255d041e80",
+        "hash": "sha256-ptcSqRjs5YCIL4Ou6MAtN8iEEDbu9o0gjXHrJV0EHoA="
+      }
+    }
+  }
+}
