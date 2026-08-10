@@ -279,6 +279,7 @@ function test_scoop_bootstrap_uses_immutable_reviewed_pin {
 }
 
 function test_font_manifest_installs_new_version_while_old_font_is_locked {
+    if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { return }
     $manifest = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json') | ConvertFrom-Json
     $dir = Join-Path $script:_TestTmp.FullName 'font-source'
     $fontInstallDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
@@ -318,6 +319,7 @@ function test_font_manifest_installs_new_version_while_old_font_is_locked {
 }
 
 function test_font_manifest_upgrades_while_installed_version_is_locked {
+    if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { return }
     $manifest = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json') | ConvertFrom-Json
     Assert-False ($manifest.PSObject.Properties.Name -contains 'pre_uninstall') 'locked old font must not block versioned upgrade'
     $dir = Join-Path $script:_TestTmp.FullName 'font-source'
@@ -419,12 +421,14 @@ function test_installscooppackages_recovers_after_legacy_font_bucket_was_removed
     $script:Dry = $false
     $script:ScoopCalls = @()
     $script:LegacyFontInstalled = $true
+    $legacyFontDir = Join-Path $script:_TestTmp.FullName 'legacy-font'
+    New-Item -ItemType Directory -Path $legacyFontDir | Out-Null
     Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
     Set-CommandMock 'scoop' {
         $script:ScoopCalls += ,($args -join ' ')
         if ($args[0] -eq 'prefix') {
             if ($args[1] -eq 'FiraCode' -and $script:LegacyFontInstalled) {
-                'C:\Users\test\scoop\apps\FiraCode\current'
+                $legacyFontDir
                 $global:LASTEXITCODE = 0
             } else {
                 $global:LASTEXITCODE = 1
