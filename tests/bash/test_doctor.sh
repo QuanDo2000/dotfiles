@@ -5,7 +5,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 setup() {
   init_test_env
   unset -f command 2>/dev/null || true
-  source_scripts utils.sh doctor.sh
+  source_scripts utils.sh releases.sh doctor.sh
 }
 
 teardown() {
@@ -38,6 +38,48 @@ test_doctor_file_not_symlink() {
     echo "  File should be regular, not a symlink" >> "$ERROR_FILE"
   fi
   assert_file_exists "$HOME/.zshrc"
+}
+
+test_doctor_recovers_interrupted_release_transaction() {
+  mkdir -p "$DOTFILES_DIR/packages/.pi-update.transaction"
+  printf 'new package\n' > "$DOTFILES_DIR/packages/pi-agent.nix"
+  printf 'new lock\n' > "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
+  printf '99999999|dead\n' > "$DOTFILES_DIR/packages/.pi-update.transaction/pid"
+  printf 'prepared\n' > "$DOTFILES_DIR/packages/.pi-update.transaction/state"
+  printf 'old package\n' > "$DOTFILES_DIR/packages/.pi-update.transaction/package.backup"
+  printf 'old lock\n' > "$DOTFILES_DIR/packages/.pi-update.transaction/lock.backup"
+
+  local output
+  output="$(_check_release_transactions 2>&1)"
+
+  assert_contains "$output" "Recovered interrupted Pi package update"
+  assert_equals "old package" "$(<"$DOTFILES_DIR/packages/pi-agent.nix")"
+  assert_equals "old lock" "$(<"$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json")"
+}
+
+test_doctor_recovers_orphaned_release_journal_without_fixed_lock() {
+  local transaction="$DOTFILES_DIR/packages/.pi-update.transaction"
+  local claim="$transaction.claim.old"
+  local journal="$claim.journal"
+  local owner_dir="$transaction.owner.old"
+  mkdir -p "$owner_dir"
+  printf 'new package\n' > "$DOTFILES_DIR/packages/pi-agent.nix"
+  printf 'new lock\n' > "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
+  printf '99999999|dead\n' > "$claim"
+  ln -s "$(basename "$owner_dir")" "$journal"
+  printf 'prepared\n' > "$journal/state"
+  printf 'old package\n' > "$journal/package.backup"
+  printf 'old lock\n' > "$journal/lock.backup"
+
+  local output
+  output="$(_check_release_transactions 2>&1)"
+
+  assert_contains "$output" "Recovered interrupted Pi package update"
+  assert_equals "old package" "$(<"$DOTFILES_DIR/packages/pi-agent.nix")"
+  assert_equals "old lock" "$(<"$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json")"
+  if [[ -e "$claim" || -e "$journal" || -e "$owner_dir" ]]; then
+    echo "  FAILED: doctor should clear orphaned release journal" >> "$ERROR_FILE"
+  fi
 }
 
 test_doctor_error_count() {

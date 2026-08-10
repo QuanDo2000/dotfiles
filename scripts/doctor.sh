@@ -83,6 +83,41 @@ _check_nix_eval() {
   fi
 }
 
+_check_release_transaction() {
+  local label="$1" transaction_dir="$2" package_file="$3" lock_file="$4" output
+  _release_transaction_pending "$transaction_dir" || return 0
+  if [[ "$DRY" == "true" ]]; then
+    fail_soft "Interrupted $label update needs recovery"
+    errors=$((errors + 1))
+    return
+  fi
+  if output="$(
+    (
+      trap '_release_release_transaction "$transaction_dir"' EXIT
+      _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "$label"
+    ) 2>&1
+  )"; then
+    success "Recovered interrupted $label update"
+  else
+    output="${output//$'\n'/ }"
+    fail_soft "Failed to recover interrupted $label update: $output"
+    errors=$((errors + 1))
+  fi
+}
+
+_check_release_transactions() {
+  _check_release_transaction \
+    "Pi package" \
+    "$DOTFILES_DIR/packages/.pi-update.transaction" \
+    "$DOTFILES_DIR/packages/pi-agent.nix" \
+    "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
+  _check_release_transaction \
+    "Obsidian Headless package" \
+    "$DOTFILES_DIR/packages/.obsidian-update.transaction" \
+    "$DOTFILES_DIR/packages/obsidian-headless.nix" \
+    "$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
+}
+
 _check_nix_config() {
   local platform="$1"
   is_home_manager_platform "$platform" || return 0
@@ -138,6 +173,7 @@ function doctor {
   local platform
   platform="$(detect_platform)"
 
+  _check_release_transactions
   info "Verifying symlinks..."
   _check_symlink .zshrc "$platform"
   _check_dotfile_command "$platform"

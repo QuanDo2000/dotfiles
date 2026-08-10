@@ -155,6 +155,157 @@ test_update_codex_release_package_dry_run_skips_network() {
   unset -f curl
 }
 
+test_release_owner_identity_rejects_pid_reuse() {
+  local pid="${BASHPID:-$$}" start status=0
+  start="$(_release_process_start "$pid")"
+
+  _release_owner_is_live "$pid|wrong start" || status=$?
+  assert_equals "1" "$status"
+  status=0
+  _release_owner_is_live "$pid|$start" || status=$?
+  assert_equals "0" "$status"
+}
+
+test_release_transaction_fails_closed_on_incomplete_lock_owner() {
+  local package_file="$TEST_TMPDIR/package.nix"
+  local lock_file="$TEST_TMPDIR/package-lock.json"
+  local transaction_dir="$TEST_TMPDIR/release.transaction"
+  printf 'package\n' > "$package_file"
+  printf 'lock\n' > "$lock_file"
+  mkdir -p "$transaction_dir"
+  printf 'initializing\n' > "$transaction_dir/partial"
+
+  local output exit_code=0
+  output=$(_acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "test release" 2>&1) || exit_code=$?
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "update lock owner is incomplete"
+  if [[ ! -d "$transaction_dir" ]]; then
+    echo "  FAILED: incomplete update lock should remain for manual inspection" >> "$ERROR_FILE"
+  fi
+}
+
+test_release_transaction_rejects_linked_owner_directory() {
+  local package_file="$TEST_TMPDIR/package.nix"
+  local lock_file="$TEST_TMPDIR/package-lock.json"
+  local transaction_dir="$TEST_TMPDIR/release.transaction"
+  local outside="$TEST_TMPDIR/outside"
+  local linked_owner="$transaction_dir.owner.evil"
+  printf 'current package\n' > "$package_file"
+  printf 'current lock\n' > "$lock_file"
+  mkdir "$outside"
+  printf '99999999|dead\n' > "$outside/pid"
+  printf 'prepared\n' > "$outside/state"
+  printf 'attacker package\n' > "$outside/package.backup"
+  printf 'attacker lock\n' > "$outside/lock.backup"
+  ln -s "$outside" "$linked_owner"
+  ln -s "$(basename "$linked_owner")" "$transaction_dir"
+
+  local output exit_code=0
+  output=$(_acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "test release" 2>&1) || exit_code=$?
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "owner directory is invalid"
+  assert_equals "current package" "$(<"$package_file")"
+  assert_equals "current lock" "$(<"$lock_file")"
+}
+
+test_release_transaction_cleans_unpublished_owner_when_lock_publish_fails() {
+  local package_file="$TEST_TMPDIR/package.nix"
+  local lock_file="$TEST_TMPDIR/package-lock.json"
+  local transaction_dir="$TEST_TMPDIR/release.transaction"
+  printf 'package\n' > "$package_file"
+  printf 'lock\n' > "$lock_file"
+  ln() { return 1; }
+
+  local output exit_code=0
+  output=$(_acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "test release" 2>&1) || exit_code=$?
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "Failed to publish test release update lock"
+  if [[ -e "$transaction_dir" ]] || compgen -G "$transaction_dir.owner.*" >/dev/null; then
+    echo "  FAILED: unpublished transaction owner should be cleaned" >> "$ERROR_FILE"
+  fi
+  unset -f ln
+}
+
+test_release_transaction_rejects_live_owner() {
+  local package_file="$TEST_TMPDIR/package.nix"
+  local lock_file="$TEST_TMPDIR/package-lock.json"
+  local transaction_dir="$TEST_TMPDIR/release.transaction"
+  printf 'old package\n' > "$package_file"
+  printf 'old lock\n' > "$lock_file"
+  _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "test release"
+
+  local output exit_code=0
+  output=$(_acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "test release" 2>&1) || exit_code=$?
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "test release update already running"
+  _release_release_transaction "$transaction_dir"
+}
+
+test_release_transaction_recovers_orphaned_recovery_journal() {
+  local package_file="$TEST_TMPDIR/package.nix"
+  local lock_file="$TEST_TMPDIR/package-lock.json"
+  local transaction_dir="$TEST_TMPDIR/release.transaction"
+  local claim="$transaction_dir.claim.old"
+  local journal="$claim.journal"
+  local owner_dir="$transaction_dir.owner.old"
+  printf 'new package\n' > "$package_file"
+  printf 'new lock\n' > "$lock_file"
+  printf '99999999|dead\n' > "$claim"
+  mkdir "$owner_dir"
+  ln -s "$(basename "$owner_dir")" "$journal"
+  printf 'prepared\n' > "$journal/state"
+  printf 'old package\n' > "$journal/package.backup"
+  printf 'old lock\n' > "$journal/lock.backup"
+
+  _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "test release"
+
+  assert_equals "old package" "$(<"$package_file")"
+  assert_equals "old lock" "$(<"$lock_file")"
+  if [[ -e "$claim" || -e "$journal" || -e "$owner_dir" ]]; then
+    echo "  FAILED: orphaned recovery journal should be cleared" >> "$ERROR_FILE"
+  fi
+  _release_release_transaction "$transaction_dir"
+}
+
+test_release_transaction_recovers_interrupted_pair() {
+  local package_file="$TEST_TMPDIR/package.nix"
+  local lock_file="$TEST_TMPDIR/package-lock.json"
+  local transaction_dir="$TEST_TMPDIR/release.transaction"
+  printf 'new package\n' > "$package_file"
+  printf 'new lock\n' > "$lock_file"
+  mkdir "$transaction_dir"
+  printf '99999999|dead\n' > "$transaction_dir/pid"
+  printf 'prepared\n' > "$transaction_dir/state"
+  printf 'old package\n' > "$transaction_dir/package.backup"
+  printf 'old lock\n' > "$transaction_dir/lock.backup"
+  mkdir "$transaction_dir/stage"
+  printf 'partial download\n' > "$transaction_dir/stage/archive.tgz"
+  sync() {
+    local count=0
+    [[ ! -f "$TEST_TMPDIR/sync-count" ]] || count="$(<"$TEST_TMPDIR/sync-count")"
+    printf '%s\n' "$((count + 1))" > "$TEST_TMPDIR/sync-count"
+    printf '%s|%s\n' "$(<"$package_file")" "$(<"$lock_file")" > "$TEST_TMPDIR/synced-release"
+  }
+
+  _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "test release"
+
+  assert_equals "old package" "$(<"$package_file")"
+  assert_equals "old lock" "$(<"$lock_file")"
+  assert_equals "old package|old lock" "$(<"$TEST_TMPDIR/synced-release")"
+  if [[ "$(<"$TEST_TMPDIR/sync-count")" -lt 3 ]]; then
+    echo "  FAILED: recovery should sync restored files, state deletion, and cleanup" >> "$ERROR_FILE"
+  fi
+  if [[ -e "$transaction_dir/state" || -e "$transaction_dir/package.backup" || -e "$transaction_dir/lock.backup" || -e "$transaction_dir/stage" ]]; then
+    echo "  FAILED: recovered transaction journal and staging should be cleared" >> "$ERROR_FILE"
+  fi
+  _release_release_transaction "$transaction_dir"
+  unset -f sync
+}
+
 test_release_file_pair_rolls_back_when_second_replace_fails() {
   local package_file="$TEST_TMPDIR/package.nix"
   local lock_file="$TEST_TMPDIR/package-lock.json"
@@ -162,17 +313,20 @@ test_release_file_pair_rolls_back_when_second_replace_fails() {
   local staged_lock="$TEST_TMPDIR/package-lock.json.staged"
   printf 'old package\n' > "$package_file"
   printf 'old lock\n' > "$lock_file"
+  local transaction_dir="$TEST_TMPDIR/release.transaction"
   printf 'new package\n' > "$staged_package"
   printf 'new lock\n' > "$staged_lock"
+  _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "test release"
   mv() {
-    if [[ "${2:-}" == "$lock_file" ]]; then
+    if [[ "${2:-}" == "$lock_file" && ! -e "$TEST_TMPDIR/lock-move-failed" ]]; then
+      : > "$TEST_TMPDIR/lock-move-failed"
       return 1
     fi
     command mv "$@"
   }
 
   local output exit_code=0
-  output=$(_install_release_file_pair "$staged_package" "$package_file" "$staged_lock" "$lock_file" "test release" 2>&1) || exit_code=$?
+  output=$(_install_release_file_pair "$staged_package" "$package_file" "$staged_lock" "$lock_file" "test release" "$transaction_dir" 2>&1) || exit_code=$?
 
   assert_equals "1" "$exit_code"
   assert_contains "$output" "Failed to install test release files"
@@ -181,6 +335,7 @@ test_release_file_pair_rolls_back_when_second_replace_fails() {
   if [[ -e "$staged_package" || -e "$staged_lock" ]]; then
     echo "  FAILED: staged release files should be cleaned after rollback" >> "$ERROR_FILE"
   fi
+  _release_release_transaction "$transaction_dir"
 
   unset -f mv
 }
