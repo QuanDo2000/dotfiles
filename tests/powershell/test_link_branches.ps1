@@ -68,7 +68,8 @@ function test_linkpath_file_backup_all_renames_existing {
     Assert-Equals 'SymbolicLink' $item.LinkType
 }
 
-function test_linkpath_file_backup_fails_when_single_backup_exists {
+function test_linkpath_file_backup_replaces_single_existing_backup {
+    if (Try-Skip-If-No-Symlink-Privilege) { return }
     $src = Join-Path $env:USERPROFILE 'src.txt'
     $dst = Join-Path $env:USERPROFILE 'dst.txt'
     'new' | Set-Content -LiteralPath $src
@@ -76,11 +77,12 @@ function test_linkpath_file_backup_fails_when_single_backup_exists {
     'existing backup' | Set-Content -LiteralPath "$dst.bak"
     $script:BackupAll = $true
 
-    Assert-Throws { LinkPath $src $dst } 'existing single backup should stop replacement'
+    LinkPath $src $dst
 
-    Assert-Equals 'existing backup' ((Get-Content -LiteralPath "$dst.bak") -join '')
-    Assert-Equals 'current' ((Get-Content -LiteralPath $dst) -join '')
+    Assert-Equals 'current' ((Get-Content -LiteralPath "$dst.bak") -join '')
     Assert-False (Test-Path -LiteralPath "$dst.bak.1") 'numbered backup should not be created'
+    $item = Get-Item -LiteralPath $dst -Force
+    Assert-Equals $src $item.Target
 }
 
 function test_linkpath_file_backup_preserves_dangling_link {

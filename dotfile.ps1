@@ -132,8 +132,10 @@ function LinkPath($source, $destination, [bool]$isDirectory = $false) {
         }
         if ($script:BackupAll -or $backup) {
             $backupPath = "$destination.bak"
-            if (Get-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue) {
-                throw "Backup already exists: $backupPath"
+            $oldBackup = Get-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+            if ($oldBackup) {
+                $recurse = $oldBackup.PSIsContainer -and -not $oldBackup.LinkType
+                Remove-Item -LiteralPath $backupPath -Force -Recurse:$recurse -ErrorAction Stop
             }
             Rename-Item -LiteralPath $destination -NewName (Split-Path $backupPath -Leaf) -ErrorAction Stop
             Success "Moved $destination to $backupPath"
