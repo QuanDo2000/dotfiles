@@ -3,6 +3,17 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
+test_npm_prefetch_uses_repo_locked_nixpkgs() {
+  local releases flake
+  releases="$(<"$REPO_DIR/scripts/releases.sh")"
+  flake="$(<"$REPO_DIR/flake.nix")"
+
+  assert_contains "$releases" 'path:$DOTFILES_DIR#prefetch-npm-deps'
+  assert_not_contains "$releases" 'nixpkgs#prefetch-npm-deps'
+  assert_contains "$flake" 'packages.x86_64-linux.prefetch-npm-deps = linuxPkgs.prefetch-npm-deps;'
+  assert_contains "$flake" 'packages.aarch64-darwin.prefetch-npm-deps = darwinPkgs.prefetch-npm-deps;'
+}
+
 test_latest_codex_release_tag_reads_github_redirect() {
   curl() {
     printf 'https://github.com/openai/codex/releases/tag/rust-v0.144.1'

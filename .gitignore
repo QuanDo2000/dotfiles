@@ -4,7 +4,6 @@ __pycache__/
 
 node_modules
 
-lazy-lock.json
 package.json
 package-lock.json
 

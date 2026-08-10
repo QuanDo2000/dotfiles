@@ -221,8 +221,10 @@ function InstallPackages {
         Success "All winget packages already installed"
     }
 
-    Info "Upgrading all winget packages..."
-    Invoke-Winget "winget upgrade failed" @('upgrade', '--all')
+    Info "Upgrading managed winget packages..."
+    foreach ($pkg in $wingetPkgs) {
+        Invoke-Winget "winget upgrade $pkg failed" @('upgrade', '--id', $pkg, '--exact')
+    }
 
     Success "Finished installing packages"
 }
@@ -325,7 +327,6 @@ function InstallScoop {
 }
 
 function InstallScoopPackages {
-    param([switch]$Update)
     Info "Installing Scoop packages..."
     if ($script:Dry) { return }
 
@@ -384,11 +385,6 @@ function InstallScoopPackages {
             Invoke-NativeChecked "scoop install $package failed" { scoop install $target }
         }
     }
-    if ($Update) {
-        Invoke-NativeChecked "scoop update failed" { scoop update }
-        $packages = @(Get-ScoopPackages | Where-Object { $_ -ne "FiraCode-NF" })
-        Invoke-NativeChecked "scoop package update failed" { scoop update @packages }
-    }
 
     Success "Finished installing Scoop packages"
 }
@@ -421,7 +417,7 @@ function InstallFnm {
 
 function InstallExtras {
     param([switch]$Update)
-    InstallScoopPackages -Update:$Update
+    InstallScoopPackages
     InstallFnm
 }
 
@@ -575,22 +571,34 @@ function SyncCodexConfig {
     (Get-Item -LiteralPath $target).IsReadOnly = $false
 }
 
+function Get-PinnedPiVersion {
+    $lockPath = Join-Path $script:DotfilesDir 'packages\pi-agent-npm-shrinkwrap.json'
+    if (-not (Test-Path -LiteralPath $lockPath)) { throw "Missing Pi package lock: $lockPath" }
+    $lock = Get-Content -Raw -LiteralPath $lockPath
+    if ($lock -notmatch '^\s*\{\s*"name"\s*:\s*"@earendil-works/pi-coding-agent"\s*,\s*"version"\s*:\s*"([^"]+)"') {
+        throw "Failed to parse pinned Pi version: $lockPath"
+    }
+    $version = $Matches[1]
+    if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw "Invalid pinned Pi version: $version" }
+    return $version
+}
+
 function InstallPi {
     param([switch]$Update)
     Info "Installing Pi coding agent..."
     if ($script:Dry) { return }
 
+    $pinnedVersion = Get-PinnedPiVersion
     $piCommand = Get-Command pi -ErrorAction SilentlyContinue
     $install = -not $piCommand
     if ($Update -and $piCommand) {
         $currentVersion = & pi --version 2>$null | Select-Object -Last 1
-        $latestVersion = & npm view @earendil-works/pi-coding-agent version 2>$null | Select-Object -Last 1
-        $install = -not $currentVersion -or -not $latestVersion -or $currentVersion.Trim() -ne $latestVersion.Trim()
+        $install = -not $currentVersion -or $currentVersion.Trim() -ne $pinnedVersion
     }
 
     if ($install) {
         Invoke-NativeChecked "Pi install failed" {
-            npm install --global @earendil-works/pi-coding-agent
+            npm install --global "@earendil-works/pi-coding-agent@$pinnedVersion"
         }
     } else {
         Info "Already installed Pi coding agent"
@@ -1142,6 +1150,7 @@ function Get-WindowsLinkSpecs {
     $specs += New-LinkSpec 'Dir' (Join-Path $nvimSource "lua") (Join-Path $nvimTarget "lua")
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource ".gitignore") (Join-Path $nvimTarget ".gitignore")
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource "stylua.toml") (Join-Path $nvimTarget "stylua.toml")
+    $specs += New-LinkSpec 'File' (Join-Path $nvimSource "lazy-lock.json") (Join-Path $nvimTarget "lazy-lock.json")
 
     # Jujutsu config (lives at %APPDATA%\jj\config.toml on Windows)
     $specs += New-LinkSpec 'Dir' (Join-Path $sharedPath "config\jj") "$env:APPDATA\jj"

@@ -17,6 +17,20 @@ test_home_manager_seeds_writable_lazyvim_config() {
   assert_not_contains "$config" 'xdg.configFile."nvim/lazyvim.json"'
 }
 
+test_neovim_uses_reviewed_plugin_lock() {
+  local config lazy lock
+  config="$(<"$REPO_DIR/config/home.nix")"
+  lazy="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/lazy.lua")"
+  lock="$REPO_DIR/config/shared/config/nvim/lazy-lock.json"
+
+  assert_contains "$config" "home.activation.seedLazyLock"
+  assert_contains "$lazy" 'lazy-lock.json'
+  assert_contains "$lazy" 'git", "-C", lazypath, "checkout", "--force", lazy_commit'
+  assert_not_contains "$lazy" '"--branch=stable"'
+  assert_equals "686a84959ddc72185a7cacaf00145af5ccac7a83" "$(jq -r '."fff.nvim".commit' "$lock")"
+  assert_contains "$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")" 'version = "v0.10.1"'
+}
+
 test_install_packages_syncs_fff_nvim() {
   local calls="$TEST_TMPDIR/calls.log"
   detect_platform() { printf 'nixos\n'; }

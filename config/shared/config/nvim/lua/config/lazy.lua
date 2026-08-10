@@ -1,17 +1,25 @@
 if vim.fn.has("win32") == 1 then
   local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+  local lock_path = vim.fn.stdpath("config") .. "/lazy-lock.json"
+  local lock = vim.json.decode(table.concat(vim.fn.readfile(lock_path), "\n"))
+  local lazy_commit = assert(lock["lazy.nvim"] and lock["lazy.nvim"].commit, "lazy.nvim lock is missing")
   if not (vim.uv or vim.loop).fs_stat(lazypath) then
     vim.fn.system({
       "git",
       "clone",
       "--filter=blob:none",
-      "--branch=stable",
+      "--no-checkout",
       "https://github.com/folke/lazy.nvim.git",
       lazypath,
     })
     if vim.v.shell_error ~= 0 then
+      vim.fn.delete(lazypath, "rf")
       error("Failed to clone lazy.nvim")
     end
+  end
+  vim.fn.system({ "git", "-C", lazypath, "checkout", "--force", lazy_commit })
+  if vim.v.shell_error ~= 0 then
+    error("Failed to checkout locked lazy.nvim")
   end
   vim.opt.rtp:prepend(lazypath)
 end

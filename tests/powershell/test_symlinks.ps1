@@ -19,14 +19,15 @@ function test_windows_terminal_does_not_elevate_every_profile {
     Assert-False ($settings.profiles.defaults.elevate -eq $true) 'Windows Terminal profiles should run unelevated by default'
 }
 
-function test_windows_neovim_bootstraps_lazy_without_tracking_lockfile {
+function test_windows_neovim_bootstraps_lazy_at_reviewed_lock {
     $lazyConfig = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/lua/config/lazy.lua')
-    $gitignore = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/.gitignore')
+    $lock = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/lazy-lock.json') | ConvertFrom-Json
     Assert-Contains $lazyConfig 'vim.fn.has("win32") == 1'
     Assert-Contains $lazyConfig 'https://github.com/folke/lazy.nvim.git'
-    Assert-Contains $lazyConfig 'local lazy_spec = vim.fn.has("win32") == 1'
-    Assert-Contains $lazyConfig '{ "folke/lazy.nvim" }'
-    Assert-Contains $gitignore 'lazy-lock.json'
+    Assert-Contains $lazyConfig 'lazy-lock.json'
+    Assert-Contains $lazyConfig '"checkout", "--force", lazy_commit'
+    Assert-False ($lazyConfig -like '*--branch=stable*') 'lazy.nvim bootstrap should use reviewed commit'
+    Assert-Equals '85c7ff3711b730b4030d03144f6db6375044ae82' $lock.'lazy.nvim'.commit
 }
 
 function test_windows_neovim_disables_fff_plugin {
@@ -76,6 +77,7 @@ function test_windows_neovim_links_stable_files_not_whole_directory {
     Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq $nvimRoot })) 'whole Neovim directory should not be linked'
     Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'init.lua') })) 'init.lua should be linked'
     Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lua') })) 'lua directory should be linked'
+    Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lazy-lock.json') })) 'reviewed plugin lock should be linked'
     Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lazyvim.json') })) 'lazyvim.json should remain writable'
 }
 

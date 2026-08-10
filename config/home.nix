@@ -768,6 +768,15 @@ in
     chmod u+w "$target"
   '';
 
+  home.activation.seedLazyLock = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    target="$HOME/.config/nvim/lazy-lock.json"
+    mkdir -p "$(dirname "$target")"
+    tmp="$(mktemp "$target.tmp.XXXXXX")"
+    cp "${./shared/config/nvim/lazy-lock.json}" "$tmp"
+    chmod 600 "$tmp"
+    mv "$tmp" "$target"
+  '';
+
   xdg.configFile."nvim/init.lua".force = true;
   xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;
   xdg.configFile."nvim/.gitignore" = forceSource ./shared/config/nvim/.gitignore;

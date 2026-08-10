@@ -506,7 +506,7 @@ function test_installscooppackages_rejects_unexpected_nerd_fonts_bucket {
     Assert-False ($script:ScoopCalls -contains 'bucket rm nerd-fonts') 'custom bucket should not be deleted'
 }
 
-function test_installscooppackages_updates_only_managed_packages {
+function test_installscooppackages_keeps_reviewed_scoop_snapshot_during_update {
     $script:Dry = $false
     $script:ScoopCalls = @()
     $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
@@ -525,11 +525,10 @@ function test_installscooppackages_updates_only_managed_packages {
         $global:LASTEXITCODE = 0
     }
 
-    InstallScoopPackages -Update 6>&1 | Out-Null
+    InstallScoopPackages 6>&1 | Out-Null
 
-    Assert-True ($script:ScoopCalls -contains 'update') 'Scoop manifests should update'
-    Assert-True ($script:ScoopCalls -contains 'update jq ast-grep') 'tracked local font manifest should not float during Scoop updates'
-    Assert-False ($script:ScoopCalls -contains 'update FiraCode-NF jq ast-grep') 'font updates should require a reviewed manifest change'
+    Assert-False ($script:ScoopCalls -contains 'update') 'Scoop code and manifests should require reviewed pin changes'
+    Assert-False (($script:ScoopCalls -join "`n") -like 'update *') 'Scoop packages should remain on reviewed manifests'
 }
 
 function test_installfnm_fails_when_fnm_command_fails {

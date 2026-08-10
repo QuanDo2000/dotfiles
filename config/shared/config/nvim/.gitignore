@@ -1,7 +1,6 @@
 tt.*
 .tests
 doc/tags
-lazy-lock.json
 debug
 .repro
 foo.*

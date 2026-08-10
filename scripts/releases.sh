@@ -207,7 +207,7 @@ function _download_pi_package_lock {
 }
 
 function _prefetch_pi_npm_deps_hash {
-  nix shell nixpkgs#prefetch-npm-deps -c prefetch-npm-deps "$1" \
+  nix run "path:$DOTFILES_DIR#prefetch-npm-deps" -- "$1" \
     || fail "Failed to prefetch Pi npm deps"
 }
 
@@ -541,7 +541,7 @@ function _download_obsidian_headless_package_lock {
 function _prefetch_obsidian_headless_npm_deps_hash {
   local lock_file
   lock_file="${1:-$DOTFILES_DIR/packages/obsidian-headless-package-lock.json}"
-  nix run nixpkgs#prefetch-npm-deps -- "$lock_file" \
+  nix run "path:$DOTFILES_DIR#prefetch-npm-deps" -- "$lock_file" \
     || fail "Failed to prefetch Obsidian Headless npm deps"
 }
 
