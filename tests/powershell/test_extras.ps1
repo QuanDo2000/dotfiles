@@ -2,6 +2,7 @@
 
 function TestSetup {
     Initialize-TestEnv | Out-Null
+    $script:DotfilesDir = $script:RepoDir
 }
 
 function TestTeardown {
@@ -289,7 +290,7 @@ function test_installscooppackages_fails_when_scoop_install_fails {
     Assert-Throws { InstallScoopPackages 6>&1 | Out-Null } 'InstallScoopPackages should fail when scoop install fails'
 }
 
-function test_installscooppackages_skips_existing_nerd_fonts_bucket {
+function test_installscooppackages_replaces_mutable_font_bucket_with_local_manifest {
     $script:Dry = $false
     $script:ScoopCalls = @()
     Set-CommandMock 'Get-Command' {
@@ -301,38 +302,89 @@ function test_installscooppackages_skips_existing_nerd_fonts_bucket {
         $script:ScoopCalls += ,($args -join ' ')
         if ($args[0] -eq 'bucket' -and $args[1] -eq 'list') {
             [pscustomobject]@{ Name = 'main' }
-            [pscustomobject]@{ Name = 'nerd-fonts' }
+            [pscustomobject]@{ Name = 'nerd-fonts'; Source = 'https://github.com/matthewjberger/scoop-nerd-fonts' }
+        }
+        if ($args[0] -eq 'list') {
+            [pscustomobject]@{ Name = 'FiraCode' }
         }
         $global:LASTEXITCODE = 0
     }
 
     InstallScoopPackages 6>&1 | Out-Null
 
-    Assert-False ($script:ScoopCalls -contains 'bucket add nerd-fonts') 'existing nerd-fonts bucket should not be added again'
-    Assert-True ($script:ScoopCalls -contains 'install FiraCode') 'FiraCode install should still run'
+    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
+    Assert-True ($script:ScoopCalls -contains 'bucket rm nerd-fonts') 'legacy mutable font bucket should be removed'
+    Assert-False ($script:ScoopCalls -contains 'bucket add nerd-fonts') 'mutable font bucket should not be added'
+    Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'tracked FiraCode Nerd Font manifest should be installed'
+    Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode') 'obsolete non-Nerd Font package should be removed'
     Assert-True ($script:ScoopCalls -contains 'install jq') 'jq should be managed by Scoop'
     Assert-True ($script:ScoopCalls -contains 'install ast-grep') 'ast-grep should be managed by Scoop'
 }
 
-function test_installscooppackages_updates_only_managed_packages {
+function test_installscooppackages_reinstalls_bucket_managed_firacode_nf {
     $script:Dry = $false
     $script:ScoopCalls = @()
     Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
     Set-CommandMock 'scoop' {
         $script:ScoopCalls += ,($args -join ' ')
         if ($args[0] -eq 'bucket' -and $args[1] -eq 'list') {
-            [pscustomobject]@{ Name = 'nerd-fonts' }
+            [pscustomobject]@{ Name = 'nerd-fonts'; Source = 'https://github.com/matthewjberger/scoop-nerd-fonts' }
         }
         if ($args[0] -eq 'list') {
-            Get-ScoopPackages | ForEach-Object { [pscustomobject]@{ Name = $_ } }
+            [pscustomobject]@{ Name = 'FiraCode-NF'; Source = 'nerd-fonts' }
+            [pscustomobject]@{ Name = 'jq'; Source = 'main' }
+            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
         }
+        $global:LASTEXITCODE = 0
+    }
+
+    InstallScoopPackages 6>&1 | Out-Null
+
+    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
+    Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode-NF') 'bucket-managed font should be replaced'
+    Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'reviewed local font manifest should replace bucket package'
+}
+
+function test_installscooppackages_rejects_unexpected_nerd_fonts_bucket {
+    $script:Dry = $false
+    $script:ScoopCalls = @()
+    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
+    Set-CommandMock 'scoop' {
+        $script:ScoopCalls += ,($args -join ' ')
+        if ($args[0] -eq 'bucket' -and $args[1] -eq 'list') {
+            [pscustomobject]@{ Name = 'nerd-fonts'; Source = 'https://example.com/custom-fonts' }
+        }
+        $global:LASTEXITCODE = 0
+    }
+
+    Assert-Throws { InstallScoopPackages 6>&1 | Out-Null } 'unexpected bucket source should fail closed'
+    Assert-False ($script:ScoopCalls -contains 'bucket rm nerd-fonts') 'custom bucket should not be deleted'
+}
+
+function test_installscooppackages_updates_only_managed_packages {
+    $script:Dry = $false
+    $script:ScoopCalls = @()
+    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
+    $installedFont = Join-Path $script:_TestTmp.FullName 'installed-font'
+    New-Item -ItemType Directory -Path $installedFont | Out-Null
+    Copy-Item -LiteralPath $fontManifest -Destination (Join-Path $installedFont 'manifest.json')
+    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
+    Set-CommandMock 'scoop' {
+        $script:ScoopCalls += ,($args -join ' ')
+        if ($args[0] -eq 'list') {
+            [pscustomobject]@{ Name = 'FiraCode-NF'; Source = $fontManifest }
+            [pscustomobject]@{ Name = 'jq'; Source = 'main' }
+            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
+        }
+        if ($args[0] -eq 'prefix') { $installedFont }
         $global:LASTEXITCODE = 0
     }
 
     InstallScoopPackages -Update 6>&1 | Out-Null
 
     Assert-True ($script:ScoopCalls -contains 'update') 'Scoop manifests should update'
-    Assert-True ($script:ScoopCalls -contains 'update FiraCode jq ast-grep') 'only managed Scoop packages should update'
+    Assert-True ($script:ScoopCalls -contains 'update jq ast-grep') 'tracked local font manifest should not float during Scoop updates'
+    Assert-False ($script:ScoopCalls -contains 'update FiraCode-NF jq ast-grep') 'font updates should require a reviewed manifest change'
 }
 
 function test_installfnm_fails_when_fnm_command_fails {

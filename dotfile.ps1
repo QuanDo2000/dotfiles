@@ -175,7 +175,7 @@ function Get-WingetPackages {
 }
 
 function Get-ScoopPackages {
-    @("FiraCode", "jq", "ast-grep")
+    @("FiraCode-NF", "jq", "ast-grep")
 }
 
 function Get-RequiredCommands {
@@ -324,20 +324,47 @@ function InstallScoopPackages {
     InstallScoop
     $buckets = scoop bucket list
     if ($LASTEXITCODE -ne 0) { throw "scoop bucket list failed" }
-    if ($buckets.Name -notcontains "nerd-fonts") {
-        Invoke-NativeChecked "scoop bucket add nerd-fonts failed" { scoop bucket add nerd-fonts }
+    $fontBucket = @($buckets | Where-Object { $_.Name -eq "nerd-fonts" }) | Select-Object -First 1
+    if ($fontBucket) {
+        if ($fontBucket.Source -notmatch '^https://github\.com/matthewjberger/scoop-nerd-fonts(?:\.git)?/?$') {
+            throw "Unexpected nerd-fonts bucket source: $($fontBucket.Source)"
+        }
+        Invoke-NativeChecked "scoop bucket rm nerd-fonts failed" { scoop bucket rm nerd-fonts }
     }
 
     $installed = @(scoop list)
     if ($LASTEXITCODE -ne 0) { throw "scoop list failed" }
+    $fontManifest = Join-Path $script:DotfilesDir "config\windows\scoop\FiraCode-NF.json"
+    $installedFont = @($installed | Where-Object { $_.Name -eq "FiraCode-NF" }) | Select-Object -First 1
+    if ($installedFont) {
+        $fontIsCurrent = $false
+        if ($installedFont.Source -eq $fontManifest) {
+            $fontPrefix = @(scoop prefix FiraCode-NF)
+            if ($LASTEXITCODE -ne 0) { throw "scoop prefix FiraCode-NF failed" }
+            $installedManifest = Join-Path ($fontPrefix | Select-Object -Last 1) "manifest.json"
+            if (Test-Path -LiteralPath $installedManifest) {
+                $trackedJson = Get-Content -Raw -LiteralPath $fontManifest | ConvertFrom-Json | ConvertTo-Json -Depth 20 -Compress
+                $installedJson = Get-Content -Raw -LiteralPath $installedManifest | ConvertFrom-Json | ConvertTo-Json -Depth 20 -Compress
+                $fontIsCurrent = $trackedJson -ceq $installedJson
+            }
+        }
+        if (-not $fontIsCurrent) {
+            Invoke-NativeChecked "scoop uninstall FiraCode-NF failed" { scoop uninstall FiraCode-NF }
+            $installed = @($installed | Where-Object { $_.Name -ne "FiraCode-NF" })
+        }
+    }
     foreach ($package in Get-ScoopPackages) {
         if ($installed.Name -notcontains $package) {
-            Invoke-NativeChecked "scoop install $package failed" { scoop install $package }
+            $target = if ($package -eq "FiraCode-NF") { $fontManifest } else { $package }
+            Invoke-NativeChecked "scoop install $package failed" { scoop install $target }
         }
+    }
+    if ($installed.Name -contains "FiraCode") {
+        Invoke-NativeChecked "scoop uninstall FiraCode failed" { scoop uninstall FiraCode }
     }
     if ($Update) {
         Invoke-NativeChecked "scoop update failed" { scoop update }
-        $packages = @(Get-ScoopPackages)
+        $packages = @(Get-ScoopPackages | Where-Object { $_ -ne "FiraCode-NF" })
         Invoke-NativeChecked "scoop package update failed" { scoop update @packages }
     }
 
