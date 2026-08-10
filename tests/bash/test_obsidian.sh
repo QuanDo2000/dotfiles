@@ -158,6 +158,20 @@ test_vault_path_accepts_single_component_inside_base() {
   assert_equals "$(realpath -m -- "$OBSIDIAN_VAULT_BASE/Team Notes")" "$actual"
 }
 
+test_require_vault_path_accepts_symlinked_parent_spelling() {
+  local real_root="$TEST_TMPDIR/real-home"
+  local linked_root="$TEST_TMPDIR/linked-home"
+  command mkdir -p "$real_root/Documents"
+  ln -s "$real_root" "$linked_root"
+  OBSIDIAN_VAULT_BASE="$linked_root/Documents"
+
+  local output exit_code=0
+  output=$(_obsidian_require_vault_path "test-vault" "$linked_root/Documents/test-vault" 2>&1) || exit_code=$?
+
+  assert_equals 0 "$exit_code"
+  assert_equals "" "$output"
+}
+
 test_setup_obsidian_rejects_traversal_vault_name() {
   export OBSIDIAN_TEST_CANARY="$TEST_TMPDIR/sync-setup-called"
   mock_cmd ob 'case "$1" in

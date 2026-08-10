@@ -69,9 +69,10 @@ function _obsidian_vault_path {
 function _obsidian_require_vault_path {
   local vault_name="$1"
   local vault_path="$2"
-  local expected_path
+  local expected_path actual_path
   expected_path="$(_obsidian_vault_path "$vault_name")" || fail "Invalid vault name: $vault_name"
-  [[ "$vault_path" == "$expected_path" ]] || fail "Invalid vault path: $vault_path"
+  actual_path="$(realpath -m -- "$vault_path")" || fail "Invalid vault path: $vault_path"
+  [[ "$actual_path" == "$expected_path" ]] || fail "Invalid vault path: $vault_path"
 }
 
 function _obsidian_setup_vault {
