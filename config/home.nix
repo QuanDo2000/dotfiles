@@ -12,6 +12,15 @@ let
     force = true;
   };
   linuxConfig = source: lib.mkIf pkgs.stdenv.isLinux (forceSource source);
+  networkServiceHardening = {
+    UMask = "0077";
+    NoNewPrivileges = true;
+    RestrictSUIDSGID = true;
+    RestrictRealtime = true;
+    LockPersonality = true;
+    SystemCallArchitectures = "native";
+    RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
+  };
   ponytailSrc = pkgs.fetchFromGitHub {
     owner = "DietrichGebert";
     repo = "ponytail";
@@ -473,7 +482,9 @@ in
       ConditionPathExists = "%h/.config/rclone/rclone.conf";
     };
 
-    Service = {
+    Service = networkServiceHardening // {
+      # fusermount3 needs its setuid wrapper to create the user mount.
+      NoNewPrivileges = false;
       Type = "notify";
       UMask = "0077";
       Environment = "PATH=/run/wrappers/bin:/run/current-system/sw/bin:/usr/bin:/bin";
@@ -497,7 +508,7 @@ in
       ];
     };
 
-    Service = {
+    Service = networkServiceHardening // {
       Type = "oneshot";
       UMask = "0077";
       ExecStartPre = "${pkgs.coreutils}/bin/install -d -m 700 ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
@@ -532,7 +543,7 @@ in
       ];
       ConditionPathIsMountPoint = "/mnt/storage";
     };
-    Service = {
+    Service = networkServiceHardening // {
       Type = "oneshot";
       Environment = "RCLONE=${pkgs.rclone}/bin/rclone";
       UMask = "0077";
@@ -568,7 +579,7 @@ in
         "/mnt/storage/Storage/Music"
       ];
     };
-    Service = {
+    Service = networkServiceHardening // {
       Type = "oneshot";
       UMask = "0077";
       Environment = [
@@ -604,7 +615,7 @@ in
         "%h/.local/state/dotfiles/storage-offsite-backup-initialized"
       ];
     };
-    Service = {
+    Service = networkServiceHardening // {
       Type = "oneshot";
       UMask = "0077";
       Environment = [
@@ -638,7 +649,7 @@ in
       Wants = [ "network-online.target" ];
     };
 
-    Service = {
+    Service = networkServiceHardening // {
       Type = "simple";
       ExecStart = "${obsidianSync}";
       Restart = "on-failure";

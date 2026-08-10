@@ -462,6 +462,28 @@ test_home_manager_secures_google_drive_sync() {
   assert_contains "$HOME_CONFIG" 'ExecStopPost = "${pkgs.coreutils}/bin/chmod -R u=rwX,go= ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";'
 }
 
+test_network_services_apply_safe_process_sandbox() {
+  local mount_service
+  mount_service="$(awk '
+    /systemd.user.services.google-drive-mount =/ { found = 1 }
+    /systemd.user.services.google-drive-bisync =/ { exit }
+    found { print }
+  ' <<< "$HOME_CONFIG")"
+  for setting in \
+    'NoNewPrivileges = true;' \
+    'RestrictSUIDSGID = true;' \
+    'RestrictRealtime = true;' \
+    'LockPersonality = true;' \
+    'SystemCallArchitectures = "native";' \
+    'RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];'; do
+    assert_contains "$HOME_CONFIG" "$setting"
+  done
+  assert_equals "6" "$(grep -c 'Service = networkServiceHardening //' <<< "$HOME_CONFIG")"
+  assert_equals "6" "$(grep -c 'UMask = "0077";' <<< "$HOME_CONFIG")"
+  assert_equals "1" "$(grep -c 'NoNewPrivileges = false;' <<< "$HOME_CONFIG")"
+  assert_contains "$mount_service" 'NoNewPrivileges = false;'
+}
+
 test_google_drive_storage_sync() {
   local exit_code=0
   python3 "$REPO_DIR/scripts/google-drive-storage-sync.py" --self-test >/dev/null 2>&1 || exit_code=$?
