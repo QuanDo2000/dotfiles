@@ -60,7 +60,9 @@ test_update_packages_syncs_fff_nvim() {
 test_sync_fff_nvim_runs_headless_lazy_sync_and_links_nix_backend() {
   local calls="$TEST_TMPDIR/nvim.log"
   local source="$HOME/.config/nvim/fff-nvim-backend"
-  local target="$HOME/.local/share/nvim/lazy/fff.nvim/target/release/libfff_nvim.so"
+  local extension=so
+  [ "$(uname -s)" = Darwin ] && extension=dylib
+  local target="$HOME/.local/share/nvim/lazy/fff.nvim/target/release/libfff_nvim.$extension"
   DRY=false
   mkdir -p "$(dirname "$source")"
   touch "$source"
