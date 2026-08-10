@@ -89,23 +89,45 @@ function _prefetch_codex_release_hash {
   printf '%s\n' "$hash"
 }
 
+function _codex_windows_release_hashes {
+  local tag metadata x64_digest arm64_digest
+  tag="$1"
+  metadata="$(curl -fsSL \
+    -H 'Accept: application/vnd.github+json' \
+    -H 'User-Agent: dotfiles' \
+    "https://api.github.com/repos/openai/codex/releases/tags/$tag")" \
+    || fail "Failed to read Codex Windows release metadata"
+  x64_digest="$(jq -r '.assets[] | select(.name == "codex-package-x86_64-pc-windows-msvc.tar.gz") | .digest // empty' <<< "$metadata")"
+  arm64_digest="$(jq -r '.assets[] | select(.name == "codex-package-aarch64-pc-windows-msvc.tar.gz") | .digest // empty' <<< "$metadata")"
+  [[ "$x64_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "Invalid Codex Windows x64 checksum"
+  [[ "$arm64_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "Invalid Codex Windows ARM64 checksum"
+  printf '%s\n%s\n' "${x64_digest#sha256:}" "${arm64_digest#sha256:}"
+}
+
 function _write_codex_release_package {
-  local tag linux_hash darwin_hash version package_file tmp
+  local tag linux_hash darwin_hash windows_x64_hash windows_arm64_hash version package_file tmp
   tag="$1"
   linux_hash="$2"
   darwin_hash="$3"
+  windows_x64_hash="$4"
+  windows_arm64_hash="$5"
   version="${tag#rust-v}"
-  package_file="$DOTFILES_DIR/packages/codex-release.nix"
-  [[ -f "$package_file" ]] || fail "Missing Codex package file: $package_file"
+  package_file="$DOTFILES_DIR/packages/codex-release.json"
+  [[ -f "$package_file" ]] || fail "Missing Codex pin file: $package_file"
 
-  tmp="$(mktemp)" || fail "Failed to create temp file"
-  sed -E \
-    -e 's#version = "[^"]+";#version = "'"$version"'";#' \
-    -e 's#linuxHash = "[^"]+";#linuxHash = "'"$linux_hash"'";#' \
-    -e 's#darwinHash = "[^"]+";#darwinHash = "'"$darwin_hash"'";#' \
-    "$package_file" > "$tmp" \
-    && mv "$tmp" "$package_file" \
-    || fail "Failed to update Codex package file"
+  tmp="$(mktemp "${package_file}.tmp.XXXXXX")" || fail "Failed to create Codex pin temp file"
+  if ! jq -n \
+    --arg version "$version" \
+    --arg linuxHash "$linux_hash" \
+    --arg darwinHash "$darwin_hash" \
+    --arg windowsX64 "$windows_x64_hash" \
+    --arg windowsArm64 "$windows_arm64_hash" \
+    '{version: $version, linuxHash: $linuxHash, darwinHash: $darwinHash, windows: {x86_64: $windowsX64, aarch64: $windowsArm64}}' > "$tmp" \
+    || ! chmod 644 "$tmp" \
+    || ! mv "$tmp" "$package_file"; then
+    rm -f "$tmp"
+    fail "Failed to update Codex pin file"
+  fi
 }
 
 function _update_codex_release_package {
@@ -114,12 +136,12 @@ function _update_codex_release_package {
     return
   fi
 
-  local tag linux_hash darwin_hash version package_file current_version
-  package_file="$DOTFILES_DIR/packages/codex-release.nix"
-  [[ -f "$package_file" ]] || fail "Missing Codex package file: $package_file"
+  local tag linux_hash darwin_hash windows_hashes windows_x64_hash windows_arm64_hash version package_file current_version
+  package_file="$DOTFILES_DIR/packages/codex-release.json"
+  [[ -f "$package_file" ]] || fail "Missing Codex pin file: $package_file"
   tag="$(_latest_codex_release_tag)"
   version="${tag#rust-v}"
-  current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
+  current_version="$(jq -r '.version // empty' "$package_file")"
   if [[ "$current_version" == "$version" ]]; then
     info "Codex package already at $tag"
     return
@@ -129,7 +151,11 @@ function _update_codex_release_package {
   _ensure_nix
   linux_hash="$(_prefetch_codex_release_hash "$tag" linux)"
   darwin_hash="$(_prefetch_codex_release_hash "$tag" darwin)"
-  _write_codex_release_package "$tag" "$linux_hash" "$darwin_hash"
+  windows_hashes="$(_codex_windows_release_hashes "$tag")" \
+    || fail "Failed to resolve Codex Windows checksums"
+  windows_x64_hash="$(sed -n '1p' <<< "$windows_hashes")"
+  windows_arm64_hash="$(sed -n '2p' <<< "$windows_hashes")"
+  _write_codex_release_package "$tag" "$linux_hash" "$darwin_hash" "$windows_x64_hash" "$windows_arm64_hash"
 }
 
 function _latest_npm_package_version {

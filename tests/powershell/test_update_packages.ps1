@@ -12,6 +12,25 @@ function TestTeardown {
     Clear-TestEnv
 }
 
+function test_assertwindowshealthy_preserves_caller_process_path {
+    $originalDoctor = (Get-Command Doctor).ScriptBlock
+    $originalPath = $env:Path
+    Set-FunctionMock 'Doctor' {
+        $env:Path = 'refreshed-for-verification'
+        $script:VerifyFailed = $false
+    }
+
+    try {
+        Assert-WindowsHealthy
+        $actualPath = $env:Path
+    } finally {
+        Set-FunctionMock 'Doctor' $originalDoctor
+        $env:Path = $originalPath
+    }
+
+    Assert-Equals $originalPath $actualPath
+}
+
 function test_update_packages_reloads_installer_from_repo_update {
     $script:Dry = $true
     $global:UpdatedInstallerRan = $false

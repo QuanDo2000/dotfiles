@@ -2,24 +2,85 @@
 
 function TestSetup {
     Initialize-TestEnv | Out-Null
+    $script:DotfilesDir = $script:RepoDir
     $script:OriginalInstallCodex = (Get-Command InstallCodex).ScriptBlock
     $script:OriginalAddToUserPath = (Get-Command AddToUserPath).ScriptBlock
+    $releaseCheck = Get-Command Test-CodexRelease -ErrorAction SilentlyContinue
+    $pathSetter = Get-Command Set-CodexActivePath -ErrorAction SilentlyContinue
+    $script:OriginalTestCodexRelease = if ($releaseCheck) { $releaseCheck.ScriptBlock } else { $null }
+    $script:OriginalSetCodexActivePath = if ($pathSetter) { $pathSetter.ScriptBlock } else { $null }
+    $script:OriginalCodexHome = $env:CODEX_HOME
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'vtsls', 'bash-language-server', 'shellcheck') {
+    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'New-Item', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
     Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
+    if ($script:OriginalTestCodexRelease) { Set-FunctionMock 'Test-CodexRelease' $script:OriginalTestCodexRelease }
+    if ($script:OriginalSetCodexActivePath) { Set-FunctionMock 'Set-CodexActivePath' $script:OriginalSetCodexActivePath }
+    if ($null -eq $script:OriginalCodexHome) { Remove-Item Env:CODEX_HOME -ErrorAction SilentlyContinue } else { $env:CODEX_HOME = $script:OriginalCodexHome }
     Remove-Variable -Name PiInstalled -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
 }
 
-function test_windows_installs_codex_cli_with_official_installer {
+function Get-TestSha256($Text) {
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text))) -replace '-', '').ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+}
+
+function Write-TestCodexPins($Version = '1.2.3', $X64Hash = ('a' * 64), $Arm64Hash = ('b' * 64)) {
+    $pinsPath = Join-Path $script:DotfilesDir 'packages\codex-release.json'
+    New-Item -ItemType Directory -Force -Path (Split-Path $pinsPath -Parent) | Out-Null
+    @{ version = $Version; linuxHash = 'sha256-linux'; darwinHash = 'sha256-darwin'; windows = @{ x86_64 = $X64Hash; aarch64 = $Arm64Hash } } |
+        ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $pinsPath -Encoding utf8
+}
+
+function test_windows_codex_uses_pinned_release_packages {
     $text = Get-Content -Raw $script:DotfileScript
-    Assert-Contains $text 'https://chatgpt.com/codex/install.ps1'
-    Assert-Contains $text 'CODEX_NON_INTERACTIVE'
+    $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\codex-release.json') | ConvertFrom-Json
+
+    Assert-False ($text -like '*https://chatgpt.com/codex/install.ps1*') 'mutable Codex installer should not execute'
+    Assert-False ($text -like '*Invoke-RestMethod https://chatgpt.com/codex/install.ps1*') 'remote Codex script should not be piped to execution'
+    Assert-Equals '0.147.0' $pins.version
+    Assert-Equals 'c156c8feb8cb20197bf74d2c6daffed1fec0a8c21a03bc2ca90d7ff81927b0c5' $pins.windows.x86_64
+    Assert-Equals '4533928d72ac4d7c19f16e8c4acdfd02dc255d2aeeb2f6d7dfd45493ec4c0806' $pins.windows.aarch64
+    Assert-Contains $text 'codex-package-$target.tar.gz'
+}
+
+function test_getcodexwindowstarget_supports_x64_and_arm64 {
+    Assert-Equals 'x86_64-pc-windows-msvc' (Get-CodexWindowsTarget 'X64')
+    Assert-Equals 'aarch64-pc-windows-msvc' (Get-CodexWindowsTarget 'Arm64')
+    Assert-Throws { Get-CodexWindowsTarget 'X86' } '32-bit Windows should be rejected'
+}
+
+function test_setcodexactivepath_preserves_current_process_path {
+    $script:Dry = $false
+    $oldUserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $oldProcessPath = $env:Path
+    try {
+        Set-CodexActivePath 'C:\Codex\new\bin' 'C:\Codex\releases'
+        Assert-Equals $oldProcessPath $env:Path
+    } finally {
+        [Environment]::SetEnvironmentVariable('Path', $oldUserPath, 'User')
+        $env:Path = $oldProcessPath
+    }
+}
+
+function test_getcodexpathvalue_prepends_release_and_removes_old_managed_paths {
+    $managedRoot = 'C:\Users\test\.codex\packages\standalone\releases'
+    $legacyBin = Join-Path $env:LOCALAPPDATA 'Programs\OpenAI\Codex\bin'
+    $old = "$managedRoot\old\bin;C:\Tools;$legacyBin"
+    $current = "$managedRoot\new\bin"
+
+    $result = Get-CodexPathValue $old $current $managedRoot
+
+    Assert-Equals "$current;C:\Tools" $result
 }
 
 function test_synccodexconfig_creates_writable_seed_file {
@@ -250,16 +311,137 @@ function test_installcodebasememory_fails_when_installer_fails {
     Assert-Throws { InstallCodebaseMemory 6>&1 | Out-Null } 'InstallCodebaseMemory should fail when its installer fails'
 }
 
-function test_installcodex_fails_when_installer_exits_nonzero {
+function test_codex_tar_extracts_locked_archive_in_windows_powershell {
+    $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    $tarCommand = Get-Command tar.exe -ErrorAction SilentlyContinue
+    if (-not $windowsPowerShell -or -not $tarCommand) { return }
+
+    $source = Join-Path $script:_TestTmp.FullName 'codex-package-source'
+    $archive = Join-Path $script:_TestTmp.FullName 'codex-package.tar.gz'
+    $destination = Join-Path $script:_TestTmp.FullName 'codex-package-extracted'
+    foreach ($relativePath in 'codex-package.json', 'bin\codex.exe', 'bin\codex-code-mode-host.exe', 'codex-path\rg.exe', 'codex-resources\codex-command-runner.exe', 'codex-resources\codex-windows-sandbox-setup.exe') {
+        $path = Join-Path $source $relativePath
+        New-Item -ItemType Directory -Force -Path (Split-Path $path -Parent) | Out-Null
+        [IO.File]::WriteAllText($path, $relativePath)
+    }
+    & $tarCommand.Source -czf $archive -C $source .
+    Assert-Equals 0 $LASTEXITCODE
+    New-Item -ItemType Directory -Force -Path $destination | Out-Null
+
+    $oldArchive = $env:CODEX_TEST_ARCHIVE
+    $oldDestination = $env:CODEX_TEST_DESTINATION
+    $env:CODEX_TEST_ARCHIVE = $archive
+    $env:CODEX_TEST_DESTINATION = $destination
+    $probe = @'
+$ErrorActionPreference = 'Stop'
+$lock = [IO.File]::Open($env:CODEX_TEST_ARCHIVE, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+try {
+    tar.exe -xzf $env:CODEX_TEST_ARCHIVE -C $env:CODEX_TEST_DESTINATION
+    if ($LASTEXITCODE -ne 0) { exit 1 }
+} finally {
+    $lock.Dispose()
+}
+if (-not (Test-Path -LiteralPath (Join-Path $env:CODEX_TEST_DESTINATION 'codex-resources\codex-windows-sandbox-setup.exe'))) { exit 2 }
+'@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($probe))
+
+    try {
+        & $windowsPowerShell.Source -NoProfile -NonInteractive -EncodedCommand $encoded
+        Assert-Equals 0 $LASTEXITCODE
+    } finally {
+        $env:CODEX_TEST_ARCHIVE = $oldArchive
+        $env:CODEX_TEST_DESTINATION = $oldDestination
+    }
+}
+
+function test_installcodex_rejects_checksum_mismatch_before_extraction {
     $script:Dry = $false
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    $env:CODEX_HOME = Join-Path $script:_TestTmp.FullName 'codex-home'
+    Write-TestCodexPins
+    $script:CodexTarCalled = $false
     Set-CommandMock 'Get-Command' {
         param($Name)
-        if ($Name -eq 'codex') { return $null }
+        if ($Name -eq 'tar') { return [pscustomobject]@{ Source = 'mock-tar' } }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
-    Set-CommandMock 'Invoke-RestMethod' { '$global:LASTEXITCODE = 1' }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile)
+        [IO.File]::WriteAllText($OutFile, 'wrong archive')
+    }
+    Set-CommandMock 'tar' { $script:CodexTarCalled = $true; $global:LASTEXITCODE = 0 }
 
-    Assert-Throws { InstallCodex 6>&1 | Out-Null } 'InstallCodex should fail when installer exits nonzero'
+    Assert-Throws { InstallCodex 6>&1 | Out-Null } 'Codex archive checksum mismatch should fail'
+    Assert-False $script:CodexTarCalled 'unverified Codex archive should not be extracted'
+}
+
+function test_installcodex_cleans_temp_when_staging_creation_fails {
+    $script:Dry = $false
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    $env:CODEX_HOME = Join-Path $script:_TestTmp.FullName 'codex-home'
+    Write-TestCodexPins
+    $script:CodexTempCreated = $null
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'tar') { return [pscustomobject]@{ Source = 'mock-tar' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'New-Item' {
+        param($ItemType, [switch]$Force, $Path)
+        if ($Path -is [array] -and $Path.Count -eq 2 -and [string]$Path[0] -like '*codex-install-*') {
+            $script:CodexTempCreated = [string]$Path[0]
+            Microsoft.PowerShell.Management\New-Item -ItemType Directory -Force -Path $script:CodexTempCreated | Out-Null
+            throw 'staging creation failed'
+        }
+        Microsoft.PowerShell.Management\New-Item @PSBoundParameters
+    }
+
+    Assert-Throws { InstallCodex 6>&1 | Out-Null } 'staging creation failure should surface'
+    Assert-False (Test-Path -LiteralPath $script:CodexTempCreated) 'partial Codex temp directory should be removed'
+}
+
+function test_installcodex_stages_verified_package_before_activation {
+    $script:Dry = $false
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    $env:CODEX_HOME = Join-Path $script:_TestTmp.FullName 'codex-home'
+    $archiveHash = Get-TestSha256 'archive'
+    Write-TestCodexPins -X64Hash $archiveHash
+    $script:CodexCalls = @()
+    $script:ActivatedCodexBin = $null
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'tar') { return [pscustomobject]@{ Source = 'mock-tar' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile)
+        $script:CodexCalls += "download:$Uri"
+        [IO.File]::WriteAllText($OutFile, 'archive')
+    }
+    Set-CommandMock 'tar' {
+        $script:CodexCalls += "extract:$($args -join ' ')"
+        $global:LASTEXITCODE = 0
+    }
+    Set-FunctionMock 'Test-CodexRelease' {
+        param($ReleaseDir, $ExpectedVersion)
+        $script:CodexCalls += "verify:$ReleaseDir"
+        $true
+    }
+    Set-FunctionMock 'Set-CodexActivePath' {
+        param($BinDir, $ManagedRoot)
+        $script:ActivatedCodexBin = $BinDir
+        $script:CodexCalls += "activate:$BinDir"
+    }
+
+    InstallCodex 6>&1 | Out-Null
+
+    $release = Join-Path $env:CODEX_HOME "packages\standalone\releases\1.2.3-x86_64-pc-windows-msvc-$($archiveHash.Substring(0, 12))"
+    Assert-FileExists $release
+    Assert-Equals (Join-Path $release 'bin') $script:ActivatedCodexBin
+    Assert-Contains ($script:CodexCalls -join "`n") 'download:https://github.com/openai/codex/releases/download/rust-v1.2.3/codex-package-x86_64-pc-windows-msvc.tar.gz'
+    $finalVerification = [Array]::IndexOf($script:CodexCalls, "verify:$release")
+    $activation = [Array]::IndexOf($script:CodexCalls, "activate:$($script:ActivatedCodexBin)")
+    Assert-True ($finalVerification -ge 0 -and $finalVerification -lt $activation) 'final release should be verified before PATH activation'
 }
 
 function test_installpilanguageservers_installs_pinned_npm_servers {

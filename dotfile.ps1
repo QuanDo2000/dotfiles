@@ -409,29 +409,130 @@ function InstallManagedPackages {
     InstallAi
 }
 
+function Get-CodexWindowsTarget($Architecture) {
+    switch ([string]$Architecture) {
+        "X64" { return "x86_64-pc-windows-msvc" }
+        "Arm64" { return "aarch64-pc-windows-msvc" }
+        default { throw "Unsupported Codex Windows architecture: $Architecture" }
+    }
+}
+
+function Get-CodexPathValue($PathValue, $BinDir, $ManagedRoot) {
+    $managedRootNormalized = $ManagedRoot.TrimEnd("\", "/")
+    $legacyBin = Join-Path $env:LOCALAPPDATA "Programs\OpenAI\Codex\bin"
+    $entries = @($PathValue -split ";" | Where-Object {
+        if (-not $_) { return $false }
+        $entry = $_.TrimEnd("\", "/")
+        return $entry -ine $BinDir.TrimEnd("\", "/") -and
+            $entry -ine $legacyBin.TrimEnd("\", "/") -and
+            -not $entry.StartsWith("$managedRootNormalized\", [StringComparison]::OrdinalIgnoreCase) -and
+            -not $entry.StartsWith("$managedRootNormalized/", [StringComparison]::OrdinalIgnoreCase)
+    })
+    return (@($BinDir) + $entries) -join ";"
+}
+
+function Test-CodexRelease($ReleaseDir, $ExpectedVersion) {
+    foreach ($relativePath in @(
+        "codex-package.json",
+        "bin\codex.exe",
+        "bin\codex-code-mode-host.exe",
+        "codex-path\rg.exe",
+        "codex-resources\codex-command-runner.exe",
+        "codex-resources\codex-windows-sandbox-setup.exe"
+    )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $ReleaseDir $relativePath) -PathType Leaf)) { return $false }
+    }
+
+    try {
+        $versionOutput = & (Join-Path $ReleaseDir "bin\codex.exe") --version 2>$null
+    } catch {
+        return $false
+    }
+    if ($LASTEXITCODE -ne 0) { return $false }
+    $match = [regex]::Match(($versionOutput -join " "), "([0-9][0-9A-Za-z.+-]*)$")
+    return $match.Success -and $match.Groups[1].Value -ceq $ExpectedVersion
+}
+
+function Set-CodexActivePath($BinDir, $ManagedRoot) {
+    $oldUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    try {
+        [Environment]::SetEnvironmentVariable("Path", (Get-CodexPathValue $oldUserPath $BinDir $ManagedRoot), "User")
+    } catch {
+        [Environment]::SetEnvironmentVariable("Path", $oldUserPath, "User")
+        throw
+    }
+}
+
 function InstallCodex {
     param([switch]$Update)
     Info "Installing Codex CLI..."
     if ($script:Dry) { return }
+    if (-not [Environment]::Is64BitOperatingSystem) { throw "Codex requires 64-bit Windows" }
 
-    if ($Update -or -not (Get-Command codex -ErrorAction SilentlyContinue)) {
-        $oldNonInteractive = $env:CODEX_NON_INTERACTIVE
-        try {
-            $env:CODEX_NON_INTERACTIVE = "1"
-            Invoke-RestMethod https://chatgpt.com/codex/install.ps1 | Invoke-Expression
-        } finally {
-            if ($null -eq $oldNonInteractive) {
-                Remove-Item Env:CODEX_NON_INTERACTIVE -ErrorAction SilentlyContinue
-            } else {
-                $env:CODEX_NON_INTERACTIVE = $oldNonInteractive
+    $pinsPath = Join-Path $script:DotfilesDir "packages\codex-release.json"
+    if (-not (Test-Path -LiteralPath $pinsPath -PathType Leaf)) { throw "Missing Codex pin file: $pinsPath" }
+    $pins = Get-Content -Raw -LiteralPath $pinsPath | ConvertFrom-Json
+    $version = [string]$pins.version
+    if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw "Invalid pinned Codex version: $version" }
+
+    $target = Get-CodexWindowsTarget ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture)
+    $architecture = if ($target.StartsWith("x86_64")) { "x86_64" } else { "aarch64" }
+    $expectedHash = [string]$pins.windows.$architecture
+    if ($expectedHash -notmatch '^[0-9a-f]{64}$') { throw "Invalid pinned Codex checksum for $architecture" }
+
+    $codexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { Join-Path $env:USERPROFILE ".codex" } else { $env:CODEX_HOME }
+    $standaloneRoot = Join-Path $codexHome "packages\standalone"
+    $releasesDir = Join-Path $standaloneRoot "releases"
+    $releaseDir = Join-Path $releasesDir "$version-$target-$($expectedHash.Substring(0, 12))"
+    $binDir = Join-Path $releaseDir "bin"
+    New-Item -ItemType Directory -Force -Path $standaloneRoot | Out-Null
+    $installLock = [IO.File]::Open((Join-Path $standaloneRoot "install.lock"), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+
+    try {
+        if ((Test-Path -LiteralPath $releaseDir) -and -not (Test-CodexRelease $releaseDir $version)) {
+            throw "Pinned Codex release is incomplete: $releaseDir"
+        }
+        if (-not (Test-Path -LiteralPath $releaseDir)) {
+            if (-not (Get-Command tar -ErrorAction SilentlyContinue)) { throw "tar command not found for Codex package extraction" }
+            New-Item -ItemType Directory -Force -Path $releasesDir | Out-Null
+            $tempDir = Join-Path ([IO.Path]::GetTempPath()) "codex-install-$([Guid]::NewGuid().ToString('N'))"
+            $stagingDir = Join-Path $releasesDir ".staging.$([Guid]::NewGuid().ToString('N'))"
+            $archive = Join-Path $tempDir "codex-package-$target.tar.gz"
+            $archiveLock = $null
+            try {
+                New-Item -ItemType Directory -Force -Path $tempDir, $stagingDir | Out-Null
+                $uri = "https://github.com/openai/codex/releases/download/rust-v$version/codex-package-$target.tar.gz"
+                Invoke-WebRequest -Uri $uri -OutFile $archive -UseBasicParsing
+                $archiveLock = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+                if ((Get-StreamSha256 $archiveLock) -ne $expectedHash) { throw "Codex package checksum mismatch" }
+                Invoke-NativeChecked "Codex package extraction failed" { tar -xzf $archive -C $stagingDir }
+                if (-not (Test-CodexRelease $stagingDir $version)) { throw "Codex package is incomplete or has wrong version" }
+                $archiveLock.Dispose()
+                $archiveLock = $null
+                Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction Stop
+                Move-Item -LiteralPath $stagingDir -Destination $releaseDir
+            } catch {
+                $operationError = $_
+                if ($archiveLock) { $archiveLock.Dispose(); $archiveLock = $null }
+                $cleanupError = $null
+                foreach ($path in $tempDir, $stagingDir) {
+                    try {
+                        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop }
+                    } catch {
+                        if (-not $cleanupError) { $cleanupError = $_.Exception }
+                    }
+                }
+                if ($cleanupError) { throw "Codex cleanup failed after '$($operationError.Exception.Message)': $($cleanupError.Message)" }
+                throw $operationError
+            } finally {
+                if ($archiveLock) { $archiveLock.Dispose() }
             }
         }
-    } else {
-        Info "Already installed Codex CLI"
-    }
-    Refresh-ProcessPath
-    if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
-        throw "codex command not found after installation"
+
+        if (-not (Test-CodexRelease $releaseDir $version)) { throw "Installed Codex release verification failed" }
+        Set-CodexActivePath $binDir $releasesDir
+    } finally {
+        $installLock.Dispose()
     }
 
     Success "Finished installing Codex CLI"
@@ -1066,7 +1167,12 @@ function Doctor {
 }
 
 function Assert-WindowsHealthy {
-    Doctor
+    $callerPath = $env:Path
+    try {
+        Doctor
+    } finally {
+        $env:Path = $callerPath
+    }
     if ($script:VerifyFailed) { throw "Windows installation verification failed" }
 }
 

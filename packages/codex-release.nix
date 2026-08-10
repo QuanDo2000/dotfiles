@@ -6,9 +6,8 @@
 }:
 
 let
-  version = "0.147.0";
-  linuxHash = "sha256-vXWNU9VuQdxl4EX0WJ33mgOO0ZegEa3LUqJY5q1kz9o=";
-  darwinHash = "sha256-uFGUP//EiqfFwTC2o0vgmWSDPSeFVG7altdJQnxuJPI=";
+  pins = builtins.fromJSON (builtins.readFile ./codex-release.json);
+  inherit (pins) version linuxHash darwinHash;
   platform = stdenvNoCC.hostPlatform.system;
   source =
     {

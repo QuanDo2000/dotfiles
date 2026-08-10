@@ -19,16 +19,19 @@ test_latest_codex_release_tag_reads_github_redirect() {
 test_update_codex_release_package_pins_latest_binary() {
   DRY=false
   mkdir -p "$DOTFILES_DIR/packages"
-  cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
-{
-  version = "0.0.0";
-  linuxHash = "sha256-old-linux";
-  darwinHash = "sha256-old-darwin";
-}
+  cat > "$DOTFILES_DIR/packages/codex-release.json" <<'EOF'
+{"version":"0.0.0","linuxHash":"sha256-old-linux","darwinHash":"sha256-old-darwin","windows":{"x86_64":"old-x64","aarch64":"old-arm64"}}
 EOF
   local calls="$TEST_TMPDIR/codex-prefetch.log"
   curl() {
-    printf 'https://github.com/openai/codex/releases/tag/rust-v0.144.1'
+    case "$*" in
+      *releases/latest*) printf 'https://github.com/openai/codex/releases/tag/rust-v0.144.1' ;;
+      *api.github.com*) cat <<'EOF'
+{"assets":[{"name":"codex-package-x86_64-pc-windows-msvc.tar.gz","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},{"name":"codex-package-aarch64-pc-windows-msvc.tar.gz","digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}]}
+EOF
+        ;;
+      *) return 1 ;;
+    esac
   }
   nix() {
     printf '%s\n' "$*" >> "$calls"
@@ -42,28 +45,55 @@ EOF
   _update_codex_release_package >/dev/null 2>&1
 
   local output
-  output="$(<"$DOTFILES_DIR/packages/codex-release.nix")"
-  assert_contains "$output" 'version = "0.144.1";'
-  assert_contains "$output" 'linuxHash = "sha256-new-linux";'
-  assert_contains "$output" 'darwinHash = "sha256-new-darwin";'
+  output="$(<"$DOTFILES_DIR/packages/codex-release.json")"
+  assert_equals "0.144.1" "$(jq -r .version <<< "$output")"
+  assert_equals "sha256-new-linux" "$(jq -r .linuxHash <<< "$output")"
+  assert_equals "sha256-new-darwin" "$(jq -r .darwinHash <<< "$output")"
+  assert_equals "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" "$(jq -r .windows.x86_64 <<< "$output")"
+  assert_equals "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" "$(jq -r .windows.aarch64 <<< "$output")"
   assert_contains "$(<"$calls")" "codex-package-x86_64-unknown-linux-musl.tar.gz"
   assert_contains "$(<"$calls")" "openai_codex_cli_bin-0.144.1-py3-none-macosx_11_0_arm64.whl"
 
   unset -f curl nix
 }
 
+test_update_codex_release_package_keeps_existing_pins_when_windows_metadata_fails() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages"
+  local pins="$DOTFILES_DIR/packages/codex-release.json"
+  local original='{"version":"0.0.0","linuxHash":"sha256-old-linux","darwinHash":"sha256-old-darwin","windows":{"x86_64":"old-x64","aarch64":"old-arm64"}}'
+  printf '%s\n' "$original" > "$pins"
+  _latest_codex_release_tag() { printf 'rust-v0.144.1\n'; }
+  _ensure_nix() { :; }
+  _prefetch_codex_release_hash() { printf 'sha256-new\n'; }
+  _codex_windows_release_hashes() { fail 'Invalid Codex Windows ARM64 checksum'; }
+
+  local output exit_code
+  exit_code=0
+  output=$(_update_codex_release_package 2>&1) || exit_code=$?
+
+  assert_equals '1' "$exit_code"
+  assert_contains "$output" 'Failed to resolve Codex Windows checksums'
+  assert_equals "$original" "$(<"$pins")"
+
+  unset -f _latest_codex_release_tag _ensure_nix _prefetch_codex_release_hash _codex_windows_release_hashes
+}
+
 test_update_codex_release_package_parses_spaced_prefetch_json() {
   DRY=false
   mkdir -p "$DOTFILES_DIR/packages"
-  cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
-{
-  version = "0.0.0";
-  linuxHash = "sha256-old-linux";
-  darwinHash = "sha256-old-darwin";
-}
+  cat > "$DOTFILES_DIR/packages/codex-release.json" <<'EOF'
+{"version":"0.0.0","linuxHash":"sha256-old-linux","darwinHash":"sha256-old-darwin","windows":{"x86_64":"old-x64","aarch64":"old-arm64"}}
 EOF
   curl() {
-    printf 'https://github.com/openai/codex/releases/tag/rust-v0.144.1'
+    case "$*" in
+      *releases/latest*) printf 'https://github.com/openai/codex/releases/tag/rust-v0.144.1' ;;
+      *api.github.com*) cat <<'EOF'
+{"assets":[{"name":"codex-package-x86_64-pc-windows-msvc.tar.gz","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},{"name":"codex-package-aarch64-pc-windows-msvc.tar.gz","digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}]}
+EOF
+        ;;
+      *) return 1 ;;
+    esac
   }
   nix() {
     printf '{ "hash": "sha256-new" }\n'
@@ -72,9 +102,9 @@ EOF
   _update_codex_release_package >/dev/null 2>&1
 
   local output
-  output="$(<"$DOTFILES_DIR/packages/codex-release.nix")"
-  assert_contains "$output" 'linuxHash = "sha256-new";'
-  assert_contains "$output" 'darwinHash = "sha256-new";'
+  output="$(<"$DOTFILES_DIR/packages/codex-release.json")"
+  assert_equals "sha256-new" "$(jq -r .linuxHash <<< "$output")"
+  assert_equals "sha256-new" "$(jq -r .darwinHash <<< "$output")"
 
   unset -f curl nix
 }
@@ -82,11 +112,8 @@ EOF
 test_update_codex_release_package_skips_current_version() {
   DRY=false
   mkdir -p "$DOTFILES_DIR/packages"
-  cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
-{
-  version = "0.144.1";
-  hash = "sha256-current";
-}
+  cat > "$DOTFILES_DIR/packages/codex-release.json" <<'EOF'
+{"version":"0.144.1","linuxHash":"sha256-current","darwinHash":"sha256-current","windows":{"x86_64":"current","aarch64":"current"}}
 EOF
   local calls="$TEST_TMPDIR/calls.log"
   _latest_codex_release_tag() {
