@@ -543,9 +543,9 @@ function test_installfnm_uses_pi_extension_node_pin {
 
     InstallFnm 6>&1 | Out-Null
 
-    Assert-True ($script:FnmCalls -contains 'install 24.18.0') 'fnm should install locked Node version'
-    Assert-True ($script:FnmCalls -contains 'use 24.18.0') 'fnm should use locked Node version'
-    Assert-True ($script:FnmCalls -contains 'default 24.18.0') 'fnm should default to locked Node version'
+    Assert-True ($script:FnmCalls -contains 'install 24.18.1') 'fnm should install locked Node version'
+    Assert-True ($script:FnmCalls -contains 'use 24.18.1') 'fnm should use locked Node version'
+    Assert-True ($script:FnmCalls -contains 'default 24.18.1') 'fnm should default to locked Node version'
     Assert-False (($script:FnmCalls -join "`n") -like '*lts-latest*') 'Node version should not float'
 }
 

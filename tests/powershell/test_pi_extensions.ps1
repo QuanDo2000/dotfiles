@@ -31,7 +31,7 @@ function New-PiExtensionTestFixture($Root, [switch]$WrongLockHash) {
     if ($WrongLockHash) { $lockHash = '0' * 64 }
     @{
         releaseId = $lockHash
-        node = @{ version = '24.18.0'; abi = '137' }
+        node = @{ version = '24.18.1'; abi = '137' }
         betterSqlite3 = @{
             version = '12.11.1'
             assets = @{
@@ -99,7 +99,7 @@ function test_installpiextensions_rechecks_staged_lock_before_npm {
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
     Set-CommandMock 'node' {
-        if ($args[0] -eq '--version') { 'v24.18.0' } else { '137' }
+        if ($args[0] -eq '--version') { 'v24.18.1' } else { '137' }
         $global:LASTEXITCODE = 0
     }
     Set-CommandMock 'Copy-Item' {
@@ -133,7 +133,7 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
     Set-CommandMock 'node' {
-        if ($args[0] -eq '--version') { 'v24.18.0' } else { '137' }
+        if ($args[0] -eq '--version') { 'v24.18.1' } else { '137' }
         $global:LASTEXITCODE = 0
     }
     Set-CommandMock 'npm' {

@@ -46,7 +46,7 @@ test_ci_runs_windows_lazyvim_integration() {
   assert_contains "$workflow" 'Neovim\bin\nvim.exe'
   assert_contains "$workflow" "tests/powershell/integration_lazyvim.ps1"
   assert_contains "$workflow" "actions/setup-node@v4"
-  assert_contains "$workflow" "node-version: 24.18.0"
+  assert_contains "$workflow" "node-version: 24.18.1"
   assert_contains "$workflow" "tests/powershell/integration_pi_extensions.ps1"
 
   local integration
