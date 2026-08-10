@@ -121,8 +121,8 @@ Run `./scripts/check.sh` from the repo root before pushing changes.
 Note: Home Manager seeds `~/.codex/config.toml` as a writable file for Codex
 runtime preferences and owns shared global skills under `~/.agents/skills/`.
 Codex discovers that standard location natively; Pi includes it through its
-settings. On Windows, `dotfile.ps1 ai` copies the shared instructions and
-installs the latest versions of the same skill set for both agents. Agent-specific
+settings. Windows copies the same reviewed, vendored skill set through
+`dotfile.ps1 ai`; no remote skill installer runs during setup. Agent-specific
 plugins, packages, hooks, and generated runtime state
 such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
 

@@ -21,7 +21,7 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'New-Item', 'Expand-Archive', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck') {
+    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'New-Item', 'Copy-Item', 'Expand-Archive', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
@@ -295,27 +295,74 @@ function test_syncaiinstructions_copies_shared_file_for_codex_and_pi {
     }
 }
 
-function test_installai_skills_installs_same_shared_skill_set {
-    $script:NpxCalls = @()
-    foreach ($skill in 'caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion') {
+function test_install_skill_directory_rejects_linked_source_root {
+    $realSource = Join-Path $script:_TestTmp.FullName 'real-source-skill'
+    $linkedSource = Join-Path $script:_TestTmp.FullName 'linked-source-skill'
+    $target = Join-Path $script:_TestTmp.FullName 'target-skill'
+    New-Item -ItemType Directory -Force -Path $realSource, $target | Out-Null
+    'new' | Set-Content (Join-Path $realSource 'SKILL.md')
+    'old' | Set-Content (Join-Path $target 'SKILL.md')
+    $linkType = if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) { 'Junction' } else { 'SymbolicLink' }
+    New-Item -ItemType $linkType -Path $linkedSource -Target $realSource | Out-Null
+
+    Assert-Throws { Install-SkillDirectory $linkedSource $target } 'linked source root should fail closed'
+    Assert-Contains (Get-Content -Raw (Join-Path $target 'SKILL.md')) 'old'
+}
+
+function test_install_skill_directory_rejects_linked_skill_file {
+    $source = Join-Path $script:_TestTmp.FullName 'source-skill'
+    $external = Join-Path $script:_TestTmp.FullName 'external-SKILL.md'
+    $target = Join-Path $script:_TestTmp.FullName 'target-skill'
+    New-Item -ItemType Directory -Force -Path $source, $target | Out-Null
+    'external' | Set-Content $external
+    'old' | Set-Content (Join-Path $target 'SKILL.md')
+    New-Item -ItemType SymbolicLink -Path (Join-Path $source 'SKILL.md') -Target $external | Out-Null
+
+    Assert-Throws { Install-SkillDirectory $source $target } 'linked SKILL.md should fail closed'
+    Assert-Contains (Get-Content -Raw (Join-Path $target 'SKILL.md')) 'old'
+}
+
+function test_install_skill_directory_preserves_current_copy_when_staging_fails {
+    $source = Join-Path $script:_TestTmp.FullName 'source-skill'
+    $target = Join-Path $script:_TestTmp.FullName 'target-skill'
+    New-Item -ItemType Directory -Force -Path $source, $target | Out-Null
+    'new' | Set-Content (Join-Path $source 'SKILL.md')
+    'old' | Set-Content (Join-Path $target 'SKILL.md')
+    Set-CommandMock 'Copy-Item' { throw 'copy failed' }
+
+    Assert-Throws { Install-SkillDirectory $source $target } 'staging copy failure should surface'
+    Assert-Contains (Get-Content -Raw (Join-Path $target 'SKILL.md')) 'old'
+}
+
+function test_installai_skills_copies_only_vendored_shared_skills {
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
+    $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
+    $skills = @('caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion', 'diff-review-qa')
+    foreach ($skill in $skills) {
+        $source = Join-Path $sourceRoot $skill
+        $target = Join-Path $targetRoot $skill
+        New-Item -ItemType Directory -Force -Path (Join-Path $source 'references'), $target | Out-Null
+        "vendored $skill" | Set-Content (Join-Path $source 'SKILL.md')
+        'relative file' | Set-Content (Join-Path $source 'references\details.md')
+        'stale' | Set-Content (Join-Path $target 'stale.md')
+    }
+    foreach ($skill in $skills) {
         New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") | Out-Null
     }
-    Set-CommandMock 'npx' {
-        $script:NpxCalls += ,($args -join ' ')
-        $global:LASTEXITCODE = 0
-    }
+    Set-CommandMock 'npx' { throw 'npx must not install shared skills' }
 
     InstallAiSkills
 
-    $calls = $script:NpxCalls -join "`n"
-    foreach ($skill in 'caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion') {
-        Assert-Contains $calls "--skill $skill"
+    foreach ($skill in $skills) {
+        $target = Join-Path $targetRoot $skill
+        Assert-Contains (Get-Content -Raw (Join-Path $target 'SKILL.md')) "vendored $skill"
+        Assert-FileExists (Join-Path $target 'references\details.md')
+        Assert-False (Test-Path (Join-Path $target 'stale.md')) "Stale shared skill file remains for $skill"
+    }
+    foreach ($skill in $skills) {
         Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Stale Pi copy remains for $skill"
     }
-    Assert-Contains $calls '--agent codex'
-    Assert-False ($calls -like '*--agent pi*') 'Pi discovers shared ~/.agents/skills; a Pi-specific copy causes collisions'
-    Assert-Contains (Get-Content -Raw $script:DotfileScript) 'config\shared\ai\skills\diff-review-qa'
-    Assert-FileExists (Join-Path $env:USERPROFILE '.agents\skills\diff-review-qa\SKILL.md')
 }
 
 function test_installcodebasememory_skips_current_pinned_release {

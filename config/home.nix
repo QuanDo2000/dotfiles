@@ -12,23 +12,11 @@ let
     force = true;
   };
   linuxConfig = source: lib.mkIf pkgs.stdenv.isLinux (forceSource source);
-  cavemanSrc = pkgs.fetchFromGitHub {
-    owner = "JuliusBrussee";
-    repo = "caveman";
-    rev = "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0";
-    hash = "sha256-VqRHx3/4SSCnEh3cUJ/he5saIfwNhS0hOzoH/wwtU2o=";
-  };
   ponytailSrc = pkgs.fetchFromGitHub {
     owner = "DietrichGebert";
     repo = "ponytail";
     rev = "40e50d9e03242aa5dd53ac771950f9127362b25f";
     hash = "sha256-Pn6gPg0luOO0/I3dP4DzdvFn4Z7rjrK4Bbxf+4VBiYo=";
-  };
-  superpowersSrc = pkgs.fetchFromGitHub {
-    owner = "obra";
-    repo = "superpowers";
-    rev = "c984ea2e7aeffdcc865784fd6c5e3ab75da0209a";
-    hash = "sha256-kHdQ9e44doBk2yYW88tMSCqVG8ycYcvJSZlrIziXhpA=";
   };
   pi-agent = pkgs.callPackage ../packages/pi-agent.nix { };
   ankiWithAddons = pkgs.anki.withAddons [
@@ -173,12 +161,12 @@ in
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;
     ".hermes/skills/productivity/ponytail/SKILL.md" = forceSource "${ponytailSrc}/skills/ponytail/SKILL.md";
-    ".agents/skills/caveman/README.md" = forceSource "${cavemanSrc}/skills/caveman/README.md";
-    ".agents/skills/caveman/SKILL.md" = forceSource "${cavemanSrc}/skills/caveman/SKILL.md";
+    ".agents/skills/caveman/README.md" = forceSource ./shared/ai/skills/caveman/README.md;
+    ".agents/skills/caveman/SKILL.md" = forceSource ./shared/ai/skills/caveman/SKILL.md;
     ".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;
-    ".agents/skills/systematic-debugging" = forceSource "${superpowersSrc}/skills/systematic-debugging";
-    ".agents/skills/test-driven-development" = forceSource "${superpowersSrc}/skills/test-driven-development";
-    ".agents/skills/verification-before-completion" = forceSource "${superpowersSrc}/skills/verification-before-completion";
+    ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
+    ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;
+    ".agents/skills/verification-before-completion" = forceSource ./shared/ai/skills/verification-before-completion;
     ".pi/agent/extensions/caveman-default.js" = forceSource ./shared/ai/pi/caveman-default.js;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".local/bin/dotfile" = {

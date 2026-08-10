@@ -107,6 +107,27 @@ test_all_ai_agents_start_with_ponytail_and_caveman() {
 }
 
 
+test_shared_agent_skills_use_vendored_pinned_sources() {
+  local pins windows
+  pins="$REPO_DIR/config/shared/ai/skills/sources.json"
+  windows="$(<"$REPO_DIR/dotfile.ps1")"
+
+  assert_equals "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0" "$(jq -r .caveman.commit "$pins")"
+  assert_equals "c984ea2e7aeffdcc865784fd6c5e3ab75da0209a" "$(jq -r .superpowers.commit "$pins")"
+  for skill in caveman systematic-debugging test-driven-development verification-before-completion diff-review-qa; do
+    assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
+  done
+  assert_contains "$HOME_CONFIG" '".agents/skills/caveman/README.md" = forceSource ./shared/ai/skills/caveman/README.md;'
+  assert_contains "$HOME_CONFIG" '".agents/skills/caveman/SKILL.md" = forceSource ./shared/ai/skills/caveman/SKILL.md;'
+  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa; do
+    assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
+  done
+  assert_not_contains "$HOME_CONFIG" 'cavemanSrc = pkgs.fetchFromGitHub'
+  assert_not_contains "$HOME_CONFIG" 'superpowersSrc = pkgs.fetchFromGitHub'
+  assert_not_contains "$windows" 'npx --yes skills add'
+}
+
+
 test_all_ai_agents_delegate_efficiently() {
   local agents soul
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"

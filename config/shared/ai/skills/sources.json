@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "caveman": {
+    "repository": "https://github.com/JuliusBrussee/caveman",
+    "commit": "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0",
+    "path": "skills/caveman",
+    "observedArchiveSha256": "0e80b27bf50b7b2bad467a927740017ddade56920611c7215468178811226480",
+    "license": "licenses/caveman-MIT.txt"
+  },
+  "superpowers": {
+    "repository": "https://github.com/obra/superpowers",
+    "commit": "c984ea2e7aeffdcc865784fd6c5e3ab75da0209a",
+    "paths": [
+      "skills/systematic-debugging",
+      "skills/test-driven-development",
+      "skills/verification-before-completion"
+    ],
+    "observedArchiveSha256": "5c7db58c3b2e9c6a8e5a255d9eebd3d57db840b68e65e62fe7a3714cd478ad18",
+    "license": "licenses/superpowers-MIT.txt"
+  }
+}

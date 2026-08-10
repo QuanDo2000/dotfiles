@@ -869,25 +869,58 @@ function SyncAiInstructions {
     }
 }
 
+function Install-SkillDirectory($Source, $Destination) {
+    if (-not (Test-Path -LiteralPath $Source -PathType Container)) { throw "Missing vendored skill: $Source" }
+    if (-not (Test-Path -LiteralPath (Join-Path $Source 'SKILL.md') -PathType Leaf)) { throw "Vendored skill has no SKILL.md: $Source" }
+    $sourceItems = @((Get-Item -LiteralPath $Source -Force)) + @(Get-ChildItem -LiteralPath $Source -Recurse -Force)
+    $sourceReparsePoint = $sourceItems | Where-Object {
+        $_.Attributes -band [IO.FileAttributes]::ReparsePoint
+    } | Select-Object -First 1
+    if ($sourceReparsePoint) { throw "Vendored skill contains a reparse point: $($sourceReparsePoint.FullName)" }
+
+    $parent = Split-Path $Destination -Parent
+    $name = Split-Path $Destination -Leaf
+    $staging = Join-Path $parent ".$name.staging.$([Guid]::NewGuid().ToString('N'))"
+    $backup = Join-Path $parent ".$name.backup.$([Guid]::NewGuid().ToString('N'))"
+    New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    try {
+        Copy-Item -LiteralPath $Source -Destination $staging -Recurse -Force -ErrorAction Stop
+        if (-not (Test-Path -LiteralPath (Join-Path $staging 'SKILL.md') -PathType Leaf)) { throw "Staged skill has no SKILL.md: $Source" }
+        $reparsePoint = Get-ChildItem -LiteralPath $staging -Recurse -Force | Where-Object {
+            $_.Attributes -band [IO.FileAttributes]::ReparsePoint
+        } | Select-Object -First 1
+        if ($reparsePoint) { throw "Vendored skill contains a reparse point: $($reparsePoint.FullName)" }
+
+        if (Test-Path -LiteralPath $Destination) { Move-Item -LiteralPath $Destination -Destination $backup }
+        Move-Item -LiteralPath $staging -Destination $Destination
+        if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction Stop }
+    } catch {
+        $operationError = $_
+        $cleanupError = $null
+        try {
+            if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction Stop }
+            if (Test-Path -LiteralPath $backup) {
+                if (Test-Path -LiteralPath $Destination) { Remove-Item -LiteralPath $Destination -Recurse -Force -ErrorAction Stop }
+                Move-Item -LiteralPath $backup -Destination $Destination -ErrorAction Stop
+            }
+        } catch {
+            $cleanupError = $_.Exception
+        }
+        if ($cleanupError) { throw "Skill rollback failed after '$($operationError.Exception.Message)': $($cleanupError.Message)" }
+        throw $operationError
+    }
+}
+
 function InstallAiSkills {
     Info "Installing shared agent skills..."
     if ($script:Dry) { return }
 
-    Invoke-NativeChecked "caveman skill install failed" {
-        npx --yes skills add JuliusBrussee/caveman --skill caveman --global --agent codex --copy --yes
-    }
-    Invoke-NativeChecked "superpowers skills install failed" {
-        npx --yes skills add obra/superpowers --skill systematic-debugging --skill test-driven-development --skill verification-before-completion --global --agent codex --copy --yes
-    }
-
-    $reviewSkillSource = Join-Path $script:DotfilesDir 'config\shared\ai\skills\diff-review-qa'
-    $reviewSkillTarget = Join-Path $env:USERPROFILE '.agents\skills\diff-review-qa'
-    New-Item -ItemType Directory -Force -Path (Split-Path $reviewSkillTarget -Parent) | Out-Null
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $reviewSkillTarget
-    Copy-Item -Recurse -Force $reviewSkillSource $reviewSkillTarget
-
-    foreach ($skill in 'caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion') {
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")
+    $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
+    $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
+    $skills = @('caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion', 'diff-review-qa')
+    foreach ($skill in $skills) {
+        Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill)
+        Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
