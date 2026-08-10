@@ -295,7 +295,6 @@ function test_font_manifest_installs_new_version_while_old_font_is_locked {
         $script:RegisteredFontValue = $Value
     }
     $global = $false
-    $app = 'FiraCode-NF'
     $version = $manifest.version
 
     try {
@@ -326,18 +325,16 @@ function test_font_manifest_upgrades_while_installed_version_is_locked {
     New-Item -ItemType Directory -Force -Path $dir, $fontInstallDir | Out-Null
     $fontName = 'FiraCodeNerdFont-Bold.ttf'
     [IO.File]::WriteAllText((Join-Path $dir $fontName), 'new font')
-    $oldFont = Join-Path $fontInstallDir 'FiraCodeNerdFont-Bold-3.4.0.ttf'
+    $oldFont = Join-Path $fontInstallDir 'FiraCodeNerdFont-Bold-previous.ttf'
     [IO.File]::WriteAllText($oldFont, 'locked old font')
     $lock = [IO.File]::Open($oldFont, 'Open', 'Read', 'Read')
     Set-CommandMock 'Get-ItemProperty' { [pscustomobject]@{ CurrentBuildNumber = 22631 } }
     Set-CommandMock 'New-ItemProperty' { }
     Set-CommandMock 'Remove-ItemProperty' { }
     $global = $false
-    $app = 'FiraCode-NF'
-    $cmd = 'update'
 
     try {
-        $version = '3.4.0'
+        $version = 'previous'
         & ([scriptblock]::Create(($manifest.uninstaller.script -join "`n")))
         $version = $manifest.version
         & ([scriptblock]::Create(($manifest.installer.script -join "`n")))
