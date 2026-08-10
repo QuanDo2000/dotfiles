@@ -699,59 +699,160 @@ function InstallFffMcp {
     Success "Finished installing FFF MCP server"
 }
 
+function Get-CodebaseMemoryWindowsArch($Architecture) {
+    switch ([string]$Architecture) {
+        "X64" { return "amd64" }
+        "Arm64" { return "arm64" }
+        default { throw "Unsupported codebase-memory Windows architecture: $Architecture" }
+    }
+}
+
+function Get-CodebaseMemoryPathValue($PathValue, $ReleaseDir, $ReleasesRoot, $LegacyRoot) {
+    $releasesNormalized = $ReleasesRoot.TrimEnd("\", "/")
+    $releaseNormalized = $ReleaseDir.TrimEnd("\", "/")
+    $legacyNormalized = $LegacyRoot.TrimEnd("\", "/")
+    $entries = @($PathValue -split ";" | Where-Object {
+        if (-not $_) { return $false }
+        $entry = $_.TrimEnd("\", "/")
+        return $entry -ine $releaseNormalized -and
+            $entry -ine $legacyNormalized -and
+            -not $entry.StartsWith("$releasesNormalized\", [StringComparison]::OrdinalIgnoreCase) -and
+            -not $entry.StartsWith("$releasesNormalized/", [StringComparison]::OrdinalIgnoreCase)
+    })
+    return (@($ReleaseDir) + $entries) -join ";"
+}
+
+function Set-CodebaseMemoryActivePath($ReleaseDir, $ReleasesRoot, $LegacyRoot) {
+    $oldUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    try {
+        $newUserPath = Get-CodebaseMemoryPathValue $oldUserPath $ReleaseDir $ReleasesRoot $LegacyRoot
+        [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
+    } catch {
+        [Environment]::SetEnvironmentVariable("Path", $oldUserPath, "User")
+        throw
+    }
+}
+
+function Test-CodebaseMemoryArchive($Archive) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = $null
+    try {
+        $zip = [IO.Compression.ZipFile]::OpenRead($Archive)
+        $names = @($zip.Entries | ForEach-Object { $_.FullName })
+        $expected = @("codebase-memory-mcp.exe", "LICENSE", "install.ps1", "THIRD_PARTY_NOTICES.md")
+        if ($names.Count -ne $expected.Count) { return $false }
+        foreach ($name in $expected) {
+            if ($names -cnotcontains $name) { return $false }
+        }
+        return $true
+    } catch {
+        return $false
+    } finally {
+        if ($zip) { $zip.Dispose() }
+    }
+}
+
+function Get-CodebaseMemoryVersionFromOutput($Output) {
+    $match = [regex]::Match(($Output -join " "), "(?:^|\s)(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$")
+    if ($match.Success) { return $match.Groups[1].Value }
+    return ""
+}
+
+function Test-CodebaseMemoryRelease($ReleaseDir, $ExpectedVersion) {
+    $executable = Join-Path $ReleaseDir "codebase-memory-mcp.exe"
+    if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { return $false }
+    if ((Get-Item -LiteralPath $executable -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { return $false }
+    try {
+        $versionOutput = & $executable --version 2>$null
+    } catch {
+        return $false
+    }
+    if ($LASTEXITCODE -ne 0) { return $false }
+    return (Get-CodebaseMemoryVersionFromOutput $versionOutput) -ceq $ExpectedVersion
+}
+
+function Invoke-CodebaseMemoryCommand($Executable, $FailureMessage, [string[]]$Arguments) {
+    & $Executable @Arguments
+    if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
+}
+
 function InstallCodebaseMemory {
     param([switch]$Update)
-    $destination = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp\codebase-memory-mcp.exe'
-    $legacy = Join-Path $env:USERPROFILE '.local\bin\codebase-memory-mcp.exe'
-    $installed = if (Test-Path -LiteralPath $destination) {
-        [pscustomobject]@{ Source = $destination }
-    } else {
-        Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue
-    }
-    $needsInstall = -not $installed
-    $releaseTag = $null
+    Info "Installing codebase-memory-mcp..."
+    if ($script:Dry) { return }
+    if (-not [Environment]::Is64BitOperatingSystem) { throw "codebase-memory-mcp requires 64-bit Windows" }
 
-    if ($Update -or $needsInstall) {
-        $release = Invoke-RestMethod `
-            -Uri 'https://api.github.com/repos/DeusData/codebase-memory-mcp/releases/latest' `
-            -Headers @{ Accept = 'application/vnd.github+json'; 'User-Agent' = 'dotfiles' }
-        $releaseTag = ([string]$release.tag_name).Trim()
-        if (-not $releaseTag) { throw "Could not determine latest codebase-memory-mcp version" }
+    $pinsPath = Join-Path $script:DotfilesDir "packages\codebase-memory-mcp-release.json"
+    if (-not (Test-Path -LiteralPath $pinsPath -PathType Leaf)) { throw "Missing codebase-memory-mcp pin file: $pinsPath" }
+    $pins = Get-Content -Raw -LiteralPath $pinsPath | ConvertFrom-Json
+    $version = [string]$pins.version
+    if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw "Invalid pinned codebase-memory-mcp version: $version" }
+    $architecture = Get-CodebaseMemoryWindowsArch ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture)
+    $expectedHash = [string]$pins.windows.$architecture.sha256
+    if ($expectedHash -notmatch '^[0-9a-f]{64}$') { throw "Invalid pinned codebase-memory-mcp checksum for $architecture" }
 
-        if ($installed) {
-            $versionOutput = & $installed.Source --version 2>&1
-            if ($LASTEXITCODE -ne 0) { throw "codebase-memory-mcp version check failed" }
-            $versionMatch = [regex]::Match(($versionOutput -join ' '), '\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?')
-            if (-not $versionMatch.Success) { throw "Could not parse installed codebase-memory-mcp version" }
-            $needsInstall = $versionMatch.Value -ne $releaseTag.TrimStart('v')
+    $legacyRoot = Join-Path $env:LOCALAPPDATA "Programs\codebase-memory-mcp"
+    $releasesRoot = Join-Path $legacyRoot "releases"
+    $releaseDir = Join-Path $releasesRoot "$version-windows-$architecture-$($expectedHash.Substring(0, 12))"
+    $executable = Join-Path $releaseDir "codebase-memory-mcp.exe"
+    $legacyExecutable = Join-Path $env:USERPROFILE ".local\bin\codebase-memory-mcp.exe"
+    New-Item -ItemType Directory -Force -Path $legacyRoot | Out-Null
+    $installLock = [IO.File]::Open((Join-Path $legacyRoot "install.lock"), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+
+    try {
+        if ((Test-Path -LiteralPath $releaseDir) -and -not (Test-CodebaseMemoryRelease $releaseDir $version)) {
+            throw "Pinned codebase-memory-mcp release is incomplete: $releaseDir"
         }
-    }
-
-    if ($needsInstall) {
-        $installer = Join-Path ([System.IO.Path]::GetTempPath()) 'codebase-memory-mcp-install.ps1'
-        try {
-            Invoke-WebRequest -Uri "https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/$releaseTag/install.ps1" -OutFile $installer
-            Invoke-NativeChecked "codebase-memory-mcp install failed" { & $installer --ui }
-        } finally {
-            Remove-Item -LiteralPath $installer -Force -ErrorAction SilentlyContinue
+        if (-not (Test-Path -LiteralPath $releaseDir)) {
+            New-Item -ItemType Directory -Force -Path $releasesRoot | Out-Null
+            $tempDir = Join-Path ([IO.Path]::GetTempPath()) "codebase-memory-install-$([Guid]::NewGuid().ToString('N'))"
+            $stagingDir = Join-Path $releasesRoot ".staging.$([Guid]::NewGuid().ToString('N'))"
+            $archive = Join-Path $tempDir "codebase-memory-mcp-ui-windows-$architecture.zip"
+            $archiveLock = $null
+            try {
+                New-Item -ItemType Directory -Force -Path $tempDir, $stagingDir | Out-Null
+                $uri = "https://github.com/DeusData/codebase-memory-mcp/releases/download/v$version/codebase-memory-mcp-ui-windows-$architecture.zip"
+                Invoke-WebRequest -Uri $uri -OutFile $archive -UseBasicParsing
+                $archiveLock = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+                if ((Get-StreamSha256 $archiveLock) -ne $expectedHash) { throw "codebase-memory-mcp package checksum mismatch" }
+                if (-not (Test-CodebaseMemoryArchive $archive)) { throw "Unexpected codebase-memory-mcp archive layout" }
+                Expand-Archive -LiteralPath $archive -DestinationPath $stagingDir -Force
+                if (-not (Test-CodebaseMemoryRelease $stagingDir $version)) { throw "codebase-memory-mcp package is incomplete or has wrong version" }
+                $archiveLock.Dispose()
+                $archiveLock = $null
+                Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction Stop
+                Move-Item -LiteralPath $stagingDir -Destination $releaseDir
+            } catch {
+                $operationError = $_
+                if ($archiveLock) { $archiveLock.Dispose(); $archiveLock = $null }
+                $cleanupError = $null
+                foreach ($path in $tempDir, $stagingDir) {
+                    try {
+                        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop }
+                    } catch {
+                        if (-not $cleanupError) { $cleanupError = $_.Exception }
+                    }
+                }
+                if ($cleanupError) { throw "codebase-memory cleanup failed after '$($operationError.Exception.Message)': $($cleanupError.Message)" }
+                throw $operationError
+            } finally {
+                if ($archiveLock) { $archiveLock.Dispose() }
+            }
         }
-        Refresh-ProcessPath
-    } else {
-        Info "Already installed codebase-memory-mcp"
+
+        if (-not (Test-CodebaseMemoryRelease $releaseDir $version)) { throw "Installed codebase-memory-mcp release verification failed" }
+        Invoke-CodebaseMemoryCommand $executable "codebase-memory-mcp agent configuration failed" @("install", "-y")
+        Invoke-CodebaseMemoryCommand $executable "codebase-memory-mcp auto-index configuration failed" @("config", "set", "auto_index", "true")
+        Invoke-CodebaseMemoryCommand $executable "codebase-memory-mcp auto-watch configuration failed" @("config", "set", "auto_watch", "true")
+        Set-CodebaseMemoryActivePath $releaseDir $releasesRoot $legacyRoot
+        if (Test-Path -LiteralPath $legacyExecutable) {
+            Remove-Item -LiteralPath $legacyExecutable -Force -ErrorAction SilentlyContinue
+        }
+    } finally {
+        $installLock.Dispose()
     }
 
-    if ((Test-Path -LiteralPath $destination) -and (Test-Path -LiteralPath $legacy)) {
-        Remove-Item -LiteralPath $legacy -Force -ErrorAction SilentlyContinue
-    }
-    if (-not (Get-Command codebase-memory-mcp -ErrorAction SilentlyContinue)) {
-        throw "codebase-memory-mcp command not found after installation"
-    }
-    Invoke-NativeChecked "codebase-memory-mcp auto-index configuration failed" {
-        codebase-memory-mcp config set auto_index true
-    }
-    Invoke-NativeChecked "codebase-memory-mcp auto-watch configuration failed" {
-        codebase-memory-mcp config set auto_watch true
-    }
+    Success "Finished installing codebase-memory-mcp"
 }
 
 function SyncAiInstructions {

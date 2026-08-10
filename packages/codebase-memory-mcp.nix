@@ -7,18 +7,13 @@
 }:
 
 let
-  version = "0.9.0";
+  pins = builtins.fromJSON (builtins.readFile ./codebase-memory-mcp-release.json);
+  inherit (pins) version;
   platform = stdenv.hostPlatform.system;
   source =
     {
-      x86_64-linux = {
-        target = "linux-amd64";
-        hash = "sha256-wwkBkhugJzjnWdmkY78gWi/jH9j+7UH7hO02TxgBXeo=";
-      };
-      aarch64-darwin = {
-        target = "darwin-arm64";
-        hash = "sha256-WS+E5E1ejqua5xNOmbFUDOPCjoS2hCBPjznN5RYg0O4=";
-      };
+      x86_64-linux = pins.linux.amd64;
+      aarch64-darwin = pins.darwin.arm64;
     }.${platform} or (throw "Unsupported codebase-memory-mcp platform: ${platform}");
 in
 stdenv.mkDerivation {
@@ -27,7 +22,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://github.com/DeusData/codebase-memory-mcp/releases/download/v${version}/codebase-memory-mcp-ui-${source.target}.tar.gz";
-    inherit (source) hash;
+    hash = source.nixHash;
   };
 
   sourceRoot = ".";

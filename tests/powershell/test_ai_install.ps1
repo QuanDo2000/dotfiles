@@ -7,19 +7,31 @@ function TestSetup {
     $script:OriginalAddToUserPath = (Get-Command AddToUserPath).ScriptBlock
     $releaseCheck = Get-Command Test-CodexRelease -ErrorAction SilentlyContinue
     $pathSetter = Get-Command Set-CodexActivePath -ErrorAction SilentlyContinue
+    $codebaseReleaseCheck = Get-Command Test-CodebaseMemoryRelease -ErrorAction SilentlyContinue
+    $codebasePathSetter = Get-Command Set-CodebaseMemoryActivePath -ErrorAction SilentlyContinue
+    $codebaseInvoker = Get-Command Invoke-CodebaseMemoryCommand -ErrorAction SilentlyContinue
+    $codebaseArchiveCheck = Get-Command Test-CodebaseMemoryArchive -ErrorAction SilentlyContinue
     $script:OriginalTestCodexRelease = if ($releaseCheck) { $releaseCheck.ScriptBlock } else { $null }
     $script:OriginalSetCodexActivePath = if ($pathSetter) { $pathSetter.ScriptBlock } else { $null }
+    $script:OriginalTestCodebaseMemoryRelease = if ($codebaseReleaseCheck) { $codebaseReleaseCheck.ScriptBlock } else { $null }
+    $script:OriginalSetCodebaseMemoryActivePath = if ($codebasePathSetter) { $codebasePathSetter.ScriptBlock } else { $null }
+    $script:OriginalInvokeCodebaseMemoryCommand = if ($codebaseInvoker) { $codebaseInvoker.ScriptBlock } else { $null }
+    $script:OriginalTestCodebaseMemoryArchive = if ($codebaseArchiveCheck) { $codebaseArchiveCheck.ScriptBlock } else { $null }
     $script:OriginalCodexHome = $env:CODEX_HOME
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'New-Item', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck') {
+    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'New-Item', 'Expand-Archive', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
     Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
     if ($script:OriginalTestCodexRelease) { Set-FunctionMock 'Test-CodexRelease' $script:OriginalTestCodexRelease }
     if ($script:OriginalSetCodexActivePath) { Set-FunctionMock 'Set-CodexActivePath' $script:OriginalSetCodexActivePath }
+    if ($script:OriginalTestCodebaseMemoryRelease) { Set-FunctionMock 'Test-CodebaseMemoryRelease' $script:OriginalTestCodebaseMemoryRelease }
+    if ($script:OriginalSetCodebaseMemoryActivePath) { Set-FunctionMock 'Set-CodebaseMemoryActivePath' $script:OriginalSetCodebaseMemoryActivePath }
+    if ($script:OriginalInvokeCodebaseMemoryCommand) { Set-FunctionMock 'Invoke-CodebaseMemoryCommand' $script:OriginalInvokeCodebaseMemoryCommand }
+    if ($script:OriginalTestCodebaseMemoryArchive) { Set-FunctionMock 'Test-CodebaseMemoryArchive' $script:OriginalTestCodebaseMemoryArchive }
     if ($null -eq $script:OriginalCodexHome) { Remove-Item Env:CODEX_HOME -ErrorAction SilentlyContinue } else { $env:CODEX_HOME = $script:OriginalCodexHome }
     Remove-Variable -Name PiInstalled -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
@@ -39,6 +51,99 @@ function Write-TestCodexPins($Version = '1.2.3', $X64Hash = ('a' * 64), $Arm64Ha
     New-Item -ItemType Directory -Force -Path (Split-Path $pinsPath -Parent) | Out-Null
     @{ version = $Version; linuxHash = 'sha256-linux'; darwinHash = 'sha256-darwin'; windows = @{ x86_64 = $X64Hash; aarch64 = $Arm64Hash } } |
         ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $pinsPath -Encoding utf8
+}
+
+function Write-TestCodebaseMemoryPins($Version = '1.2.3', $Amd64Hash = ('c' * 64), $Arm64Hash = ('d' * 64)) {
+    $pinsPath = Join-Path $script:DotfilesDir 'packages\codebase-memory-mcp-release.json'
+    New-Item -ItemType Directory -Force -Path (Split-Path $pinsPath -Parent) | Out-Null
+    @{
+        version = $Version
+        linux = @{ amd64 = @{ target = 'linux-amd64'; nixHash = 'sha256-linux' } }
+        darwin = @{ arm64 = @{ target = 'darwin-arm64'; nixHash = 'sha256-darwin' } }
+        windows = @{ amd64 = @{ sha256 = $Amd64Hash }; arm64 = @{ sha256 = $Arm64Hash } }
+    } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $pinsPath -Encoding utf8
+}
+
+function test_windows_codebase_memory_uses_pinned_release_packages {
+    $text = Get-Content -Raw $script:DotfileScript
+    $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\codebase-memory-mcp-release.json') | ConvertFrom-Json
+    $nixPackage = Get-Content -Raw (Join-Path $script:RepoDir 'packages\codebase-memory-mcp.nix')
+
+    Assert-False ($text -like '*codebase-memory-mcp/$releaseTag/install.ps1*') 'remote codebase-memory installer should not execute'
+    Assert-False ($text -like '*releases/latest*codebase-memory*') 'Windows codebase-memory release should not float'
+    Assert-Equals '0.9.0' $pins.version
+    Assert-Equals '9b53ebb86698776c4134747a2285643ce075268df3858f2f4dbb392eede2de17' $pins.windows.amd64.sha256
+    Assert-Equals '1de2aa3928368d1278ca51dc8d2661a778a038ffc4dced40874213e782d0cc07' $pins.windows.arm64.sha256
+    Assert-Contains $nixPackage 'codebase-memory-mcp-release.json'
+}
+
+function test_getcodebasememoryversion_requires_exact_semver_token {
+    Assert-Equals '0.9.0' (Get-CodebaseMemoryVersionFromOutput 'codebase-memory-mcp 0.9.0')
+    Assert-Equals '' (Get-CodebaseMemoryVersionFromOutput 'codebase-memory-mcp 0.9.0.1')
+}
+
+function test_getcodebasememorywindowsarch_supports_x64_and_arm64 {
+    Assert-Equals 'amd64' (Get-CodebaseMemoryWindowsArch 'X64')
+    Assert-Equals 'arm64' (Get-CodebaseMemoryWindowsArch 'Arm64')
+    Assert-Throws { Get-CodebaseMemoryWindowsArch 'X86' } '32-bit Windows should be rejected'
+}
+
+function test_codebasememory_archive_rejects_unexpected_members {
+    $source = Join-Path $script:_TestTmp.FullName 'codebase-archive-source'
+    $archive = Join-Path $script:_TestTmp.FullName 'codebase-archive.zip'
+    New-Item -ItemType Directory -Force -Path $source | Out-Null
+    foreach ($name in 'codebase-memory-mcp.exe', 'LICENSE', 'install.ps1', 'THIRD_PARTY_NOTICES.md', 'unexpected.ps1') {
+        [IO.File]::WriteAllText((Join-Path $source $name), $name)
+    }
+    Compress-Archive -Path (Join-Path $source '*') -DestinationPath $archive
+
+    Assert-False (Test-CodebaseMemoryArchive $archive) 'unexpected archive member should fail closed'
+}
+
+function test_codebasememory_expands_locked_zip_in_windows_powershell {
+    $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if (-not $windowsPowerShell) { return }
+
+    $source = Join-Path $script:_TestTmp.FullName 'codebase-zip-source'
+    $archive = Join-Path $script:_TestTmp.FullName 'codebase-package.zip'
+    $destination = Join-Path $script:_TestTmp.FullName 'codebase-package-extracted'
+    New-Item -ItemType Directory -Force -Path $source, $destination | Out-Null
+    foreach ($name in 'codebase-memory-mcp.exe', 'LICENSE', 'install.ps1', 'THIRD_PARTY_NOTICES.md') {
+        [IO.File]::WriteAllText((Join-Path $source $name), $name)
+    }
+    Compress-Archive -Path (Join-Path $source '*') -DestinationPath $archive
+    $oldArchive = $env:CODEBASE_TEST_ARCHIVE
+    $oldDestination = $env:CODEBASE_TEST_DESTINATION
+    $env:CODEBASE_TEST_ARCHIVE = $archive
+    $env:CODEBASE_TEST_DESTINATION = $destination
+    $probe = @'
+$ErrorActionPreference = 'Stop'
+$lock = [IO.File]::Open($env:CODEBASE_TEST_ARCHIVE, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+try {
+    Expand-Archive -LiteralPath $env:CODEBASE_TEST_ARCHIVE -DestinationPath $env:CODEBASE_TEST_DESTINATION -Force
+} finally {
+    $lock.Dispose()
+}
+if (-not (Test-Path -LiteralPath (Join-Path $env:CODEBASE_TEST_DESTINATION 'codebase-memory-mcp.exe'))) { exit 1 }
+'@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($probe))
+
+    try {
+        & $windowsPowerShell.Source -NoProfile -NonInteractive -EncodedCommand $encoded
+        Assert-Equals 0 $LASTEXITCODE
+    } finally {
+        $env:CODEBASE_TEST_ARCHIVE = $oldArchive
+        $env:CODEBASE_TEST_DESTINATION = $oldDestination
+    }
+}
+
+function test_getcodebasememorypathvalue_replaces_legacy_and_managed_paths {
+    $root = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp'
+    $releases = Join-Path $root 'releases'
+    $current = Join-Path $releases 'new-release'
+    $old = "$(Join-Path $releases 'old-release');C:\Tools;$root"
+
+    Assert-Equals "$current;C:\Tools" (Get-CodebaseMemoryPathValue $old $current $releases $root)
 }
 
 function test_windows_codex_uses_pinned_release_packages {
@@ -213,102 +318,139 @@ function test_installai_skills_installs_same_shared_skill_set {
     Assert-FileExists (Join-Path $env:USERPROFILE '.agents\skills\diff-review-qa\SKILL.md')
 }
 
-function test_installcodebasememory_skips_current_version {
+function test_installcodebasememory_skips_current_pinned_release {
     $script:Dry = $false
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    Write-TestCodebaseMemoryPins
+    $release = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp\releases\1.2.3-windows-amd64-cccccccccccc'
+    New-Item -ItemType Directory -Force -Path $release | Out-Null
     $script:CodebaseInstallerDownloaded = $false
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'codebase-memory-mcp' } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'codebase-memory-mcp' {
-        $global:LASTEXITCODE = 0
-        if (($args -join ' ') -eq '--version') { 'codebase-memory-mcp 0.9.0' }
-    }
-    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
-    Set-CommandMock 'Invoke-WebRequest' {
-        param($Uri, $OutFile)
-        $script:CodebaseInstallerDownloaded = $true
-        '$global:LASTEXITCODE = 0' | Set-Content $OutFile
-    }
+    Set-CommandMock 'Invoke-WebRequest' { $script:CodebaseInstallerDownloaded = $true }
+    Set-FunctionMock 'Test-CodebaseMemoryRelease' { $true }
+    Set-FunctionMock 'Set-CodebaseMemoryActivePath' { }
+    Set-FunctionMock 'Invoke-CodebaseMemoryCommand' { }
 
     InstallCodebaseMemory -Update 6>&1 | Out-Null
 
-    Assert-False $script:CodebaseInstallerDownloaded 'current codebase-memory-mcp should not be downloaded again'
+    Assert-False $script:CodebaseInstallerDownloaded 'current pinned codebase-memory release should not download again'
 }
 
-function test_installcodebasememory_removes_legacy_executable {
+function test_installcodebasememory_removes_legacy_executable_after_activation {
     $script:Dry = $false
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    Write-TestCodebaseMemoryPins
+    $release = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp\releases\1.2.3-windows-amd64-cccccccccccc'
     $legacy = Join-Path $env:USERPROFILE '.local\bin\codebase-memory-mcp.exe'
-    $installed = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp\codebase-memory-mcp.exe'
-    New-Item -ItemType Directory -Force -Path (Split-Path $legacy -Parent), (Split-Path $installed -Parent) | Out-Null
+    New-Item -ItemType Directory -Force -Path $release, (Split-Path $legacy -Parent) | Out-Null
     'legacy' | Set-Content $legacy
-    'installed' | Set-Content $installed
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = $installed } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'codebase-memory-mcp' { $global:LASTEXITCODE = 0 }
+    Set-FunctionMock 'Test-CodebaseMemoryRelease' { $true }
+    Set-FunctionMock 'Set-CodebaseMemoryActivePath' { }
+    Set-FunctionMock 'Invoke-CodebaseMemoryCommand' { }
 
     InstallCodebaseMemory 6>&1 | Out-Null
 
-    Assert-False (Test-Path -LiteralPath $legacy) 'legacy codebase-memory-mcp executable should be removed'
-    Assert-FileExists $installed
+    Assert-False (Test-Path -LiteralPath $legacy) 'legacy codebase-memory executable should be removed after activation'
+    Assert-FileExists $release
 }
 
-function test_installcodebasememory_updates_with_full_ui_installer {
+function test_installcodebasememory_does_not_activate_when_agent_configuration_fails {
     $script:Dry = $false
-    $script:CodebaseInstallerArgsPath = Join-Path $env:USERPROFILE 'codebase-installer-args.txt'
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'codebase-memory-mcp' } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    Write-TestCodebaseMemoryPins
+    $release = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp\releases\1.2.3-windows-amd64-cccccccccccc'
+    New-Item -ItemType Directory -Force -Path $release | Out-Null
+    $script:CodebaseMemoryActivated = $false
+    Set-FunctionMock 'Test-CodebaseMemoryRelease' { $true }
+    Set-FunctionMock 'Set-CodebaseMemoryActivePath' { $script:CodebaseMemoryActivated = $true }
+    Set-FunctionMock 'Invoke-CodebaseMemoryCommand' {
+        param($Executable, $FailureMessage, $Arguments)
+        if (($Arguments -join ' ') -eq 'install -y') { throw 'agent configuration failed' }
     }
-    Set-CommandMock 'codebase-memory-mcp' {
-        $global:LASTEXITCODE = 0
-        if (($args -join ' ') -eq '--version') { 'codebase-memory-mcp 0.8.0' }
+
+    Assert-Throws { InstallCodebaseMemory 6>&1 | Out-Null } 'agent configuration failure should surface'
+    Assert-False $script:CodebaseMemoryActivated 'failed agent configuration should not activate release'
+}
+
+function test_installcodebasememory_does_not_activate_when_runtime_configuration_fails {
+    $script:Dry = $false
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    Write-TestCodebaseMemoryPins
+    $release = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp\releases\1.2.3-windows-amd64-cccccccccccc'
+    New-Item -ItemType Directory -Force -Path $release | Out-Null
+    $script:CodebaseMemoryActivated = $false
+    Set-FunctionMock 'Test-CodebaseMemoryRelease' { $true }
+    Set-FunctionMock 'Set-CodebaseMemoryActivePath' { $script:CodebaseMemoryActivated = $true }
+    Set-FunctionMock 'Invoke-CodebaseMemoryCommand' {
+        param($Executable, $FailureMessage, $Arguments)
+        if (($Arguments -join ' ') -eq 'config set auto_index true') { throw 'runtime configuration failed' }
     }
-    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
+
+    Assert-Throws { InstallCodebaseMemory 6>&1 | Out-Null } 'runtime configuration failure should surface'
+    Assert-False $script:CodebaseMemoryActivated 'failed runtime configuration should not activate release'
+}
+
+function test_installcodebasememory_stages_verified_ui_archive_and_configures_direct_binary {
+    $script:Dry = $false
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    $archiveHash = Get-TestSha256 'archive'
+    Write-TestCodebaseMemoryPins -Amd64Hash $archiveHash
+    $script:CodebaseMemoryCalls = @()
+    $script:ActivatedCodebaseMemoryDir = $null
     Set-CommandMock 'Invoke-WebRequest' {
         param($Uri, $OutFile)
-        "Set-Content -Path '$script:CodebaseInstallerArgsPath' -Value (`$args -join ' '); `$global:LASTEXITCODE = 0" | Set-Content $OutFile
+        $script:CodebaseMemoryCalls += "download:$Uri"
+        [IO.File]::WriteAllText($OutFile, 'archive')
+    }
+    Set-FunctionMock 'Test-CodebaseMemoryArchive' { $true }
+    Set-CommandMock 'Expand-Archive' {
+        param($LiteralPath, $DestinationPath, [switch]$Force)
+        $script:CodebaseMemoryCalls += "extract:${LiteralPath}:$DestinationPath"
+    }
+    Set-FunctionMock 'Test-CodebaseMemoryRelease' {
+        param($ReleaseDir, $ExpectedVersion)
+        $script:CodebaseMemoryCalls += "verify:$ReleaseDir"
+        $true
+    }
+    Set-FunctionMock 'Set-CodebaseMemoryActivePath' {
+        param($ReleaseDir, $ReleasesRoot, $LegacyRoot)
+        $script:ActivatedCodebaseMemoryDir = $ReleaseDir
+        $script:CodebaseMemoryCalls += "activate:$ReleaseDir"
+    }
+    Set-FunctionMock 'Invoke-CodebaseMemoryCommand' {
+        param($Executable, $FailureMessage, $Arguments)
+        $script:CodebaseMemoryCalls += "run:${Executable}:$($Arguments -join ' ')"
     }
 
     InstallCodebaseMemory -Update 6>&1 | Out-Null
 
-    Assert-Contains (Get-Content -Raw $script:CodebaseInstallerArgsPath) '--ui'
+    $release = Join-Path $env:LOCALAPPDATA "Programs\codebase-memory-mcp\releases\1.2.3-windows-amd64-$($archiveHash.Substring(0, 12))"
+    $executable = Join-Path $release 'codebase-memory-mcp.exe'
+    Assert-FileExists $release
+    Assert-Equals $release $script:ActivatedCodebaseMemoryDir
+    $calls = $script:CodebaseMemoryCalls -join "`n"
+    Assert-Contains $calls 'download:https://github.com/DeusData/codebase-memory-mcp/releases/download/v1.2.3/codebase-memory-mcp-ui-windows-amd64.zip'
+    Assert-Contains $calls "run:${executable}:install -y"
+    Assert-Contains $calls "run:${executable}:config set auto_index true"
+    Assert-Contains $calls "run:${executable}:config set auto_watch true"
+    $finalVerification = [Array]::IndexOf($script:CodebaseMemoryCalls, "verify:$release")
+    $lastConfiguration = [Array]::IndexOf($script:CodebaseMemoryCalls, "run:${executable}:config set auto_watch true")
+    $activation = [Array]::IndexOf($script:CodebaseMemoryCalls, "activate:$release")
+    Assert-True ($finalVerification -ge 0 -and $finalVerification -lt $lastConfiguration -and $lastConfiguration -lt $activation) 'release should verify and configure before PATH activation'
 }
 
-function test_installcodebasememory_enables_automatic_indexing {
+function test_installcodebasememory_rejects_checksum_mismatch_before_extraction {
     $script:Dry = $false
-    $script:CodebaseMemoryCalls = @()
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'codebase-memory-mcp') { return [pscustomobject]@{ Source = 'mock-codebase-memory-mcp' } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'codebase-memory-mcp' {
-        $script:CodebaseMemoryCalls += ,($args -join ' ')
-        $global:LASTEXITCODE = 0
-    }
-
-    InstallCodebaseMemory 6>&1 | Out-Null
-
-    Assert-True ($script:CodebaseMemoryCalls -contains 'config set auto_index true') 'automatic indexing should be enabled'
-    Assert-True ($script:CodebaseMemoryCalls -contains 'config set auto_watch true') 'automatic watching should be enabled'
-}
-
-function test_installcodebasememory_fails_when_installer_fails {
-    $script:Dry = $false
-    Set-CommandMock 'Get-Command' { return $null }
-    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ tag_name = 'v0.9.0' } }
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
+    Write-TestCodebaseMemoryPins
+    $script:CodebaseExpandCalled = $false
     Set-CommandMock 'Invoke-WebRequest' {
         param($Uri, $OutFile)
-        '$global:LASTEXITCODE = 1' | Set-Content $OutFile
+        [IO.File]::WriteAllText($OutFile, 'wrong archive')
     }
+    Set-CommandMock 'Expand-Archive' { $script:CodebaseExpandCalled = $true }
 
-    Assert-Throws { InstallCodebaseMemory 6>&1 | Out-Null } 'InstallCodebaseMemory should fail when its installer fails'
+    Assert-Throws { InstallCodebaseMemory 6>&1 | Out-Null } 'codebase-memory checksum mismatch should fail'
+    Assert-False $script:CodebaseExpandCalled 'unverified codebase-memory archive should not extract'
 }
 
 function test_codex_tar_extracts_locked_archive_in_windows_powershell {

@@ -27,13 +27,15 @@ test_arch_packages_are_bootstrap_only() {
 }
 
 test_code_search_stack_uses_current_full_feature_packages() {
-  local fff codebase pi_settings
+  local fff codebase codebase_pins pi_settings
   fff="$(<"$REPO_DIR/packages/fff-mcp.nix")"
   codebase="$(<"$REPO_DIR/packages/codebase-memory-mcp.nix")"
+  codebase_pins="$REPO_DIR/packages/codebase-memory-mcp-release.json"
   pi_settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
 
   assert_contains "$fff" 'version = "0.10.1";'
-  assert_contains "$codebase" 'version = "0.9.0";'
+  assert_equals "0.9.0" "$(jq -r .version "$codebase_pins")"
+  assert_contains "$codebase" 'codebase-memory-mcp-release.json'
   assert_contains "$codebase" 'codebase-memory-mcp-ui-'
   assert_contains "$pi_settings" 'npm:@ff-labs/pi-fff@0.10.1'
 }
