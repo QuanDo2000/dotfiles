@@ -2,6 +2,8 @@ param(
     # When set, skip main dispatch so the script can be
     # dot-sourced by tests to load functions without side effects.
     [switch]$NoMain,
+    # Internal recursion guard used only after UpdateRepo starts this script again.
+    [switch]$AfterUpdate,
     [Alias('d')][switch]$Dry,
     [Alias('f')][switch]$Force,
     [Alias('q')][switch]$Quiet,
@@ -996,32 +998,51 @@ function Sync-LazyVim {
     }
 }
 
-function Invoke-UpdatedPackageInstall($DotfileScript, [bool]$DryRun, [bool]$ForceRun, [bool]$QuietRun, [bool]$AiOnly = $false) {
-    & {
-        param($ScriptPath, $IsDry, $IsForce, $IsQuiet, $OnlyAi)
-        . $ScriptPath -NoMain -Dry:$IsDry -Force:$IsForce -Quiet:$IsQuiet
-        $script:Dry = $IsDry
-        $script:Force = $IsForce
-        $script:Quiet = $IsQuiet
-        if ($OnlyAi) {
-            InstallAi -Update
+function Invoke-UpdatedDotfile($CommandName, $Target = '') {
+    $scriptPath = Join-Path $script:DotfilesDir 'dotfile.ps1'
+    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) { throw "Updated dotfile script not found: $scriptPath" }
+    $arguments = @('-NoProfile', '-File', $scriptPath, '-AfterUpdate')
+    if ($script:Dry) { $arguments += '-Dry' }
+    if ($script:Force) { $arguments += '-Force' }
+    if ($script:Quiet) { $arguments += '-Quiet' }
+    $arguments += $CommandName
+    if ($Target) { $arguments += $Target }
+
+    $previousSentinel = $env:DOTFILE_AFTER_UPDATE
+    try {
+        $env:DOTFILE_AFTER_UPDATE = '1'
+        & (Get-Process -Id $PID).Path @arguments
+        $exitCode = $LASTEXITCODE
+    } finally {
+        if ($null -eq $previousSentinel) {
+            Remove-Item Env:DOTFILE_AFTER_UPDATE -ErrorAction SilentlyContinue
         } else {
-            InstallPackages
-            InstallExtras -Update
-            InstallAi -Update
-            SetupSymlinks
-            Sync-LazyVim
+            $env:DOTFILE_AFTER_UPDATE = $previousSentinel
         }
-        if (-not $script:Dry) { Assert-WindowsHealthy }
-    } $DotfileScript $DryRun $ForceRun $QuietRun $AiOnly
+    }
+    if ($exitCode -ne 0) { throw "Updated dotfile process failed with exit code $exitCode" }
 }
 
-function Update-Packages($Target = '') {
+function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
     if ($Target -and $Target -ne 'ai') { Fail "Unknown update target: $Target" }
     $aiOnly = $Target -eq 'ai'
     Info $(if ($aiOnly) { "Updating AI tools and configs..." } else { "Updating packages..." })
-    UpdateRepo
-    Invoke-UpdatedPackageInstall (Join-Path $script:DotfilesDir 'dotfile.ps1') $script:Dry $script:Force $script:Quiet $aiOnly
+    if (-not $AfterRepoUpdate) {
+        UpdateRepo
+        Invoke-UpdatedDotfile 'update' $Target
+        return
+    }
+
+    if ($aiOnly) {
+        InstallAi -Update
+    } else {
+        InstallPackages
+        InstallExtras -Update
+        InstallAi -Update
+        SetupSymlinks
+        Sync-LazyVim
+    }
+    if (-not $script:Dry) { Assert-WindowsHealthy }
     Success $(if ($aiOnly) { "Finished AI update" } else { "Finished updating packages" })
 }
 
@@ -1316,9 +1337,14 @@ function Assert-WindowsHealthy {
     if ($script:VerifyFailed) { throw "Windows installation verification failed" }
 }
 
-function SetupDotfiles {
+function SetupDotfiles([switch]$AfterRepoUpdate) {
     Info "Setting up dotfiles..."
-    UpdateRepo
+    if (-not $AfterRepoUpdate) {
+        UpdateRepo
+        Invoke-UpdatedDotfile 'all'
+        return
+    }
+
     InstallManagedPackages
     SetupSymlinks
     Sync-LazyVim
@@ -1348,12 +1374,13 @@ Options:
 }
 
 if (-not $NoMain) {
+    if ($AfterUpdate -and $env:DOTFILE_AFTER_UPDATE -ne '1') { Fail "-AfterUpdate is internal and requires the parent updater" }
     if ($Help) { ShowUsage; exit 0 }
     if ($UpdateTarget -and $Command -ne 'update') { Fail "Unexpected argument after ${Command}: $UpdateTarget" }
 
     switch ($Command) {
-        "all"       { SetupDotfiles }
-        "update"    { Update-Packages $UpdateTarget }
+        "all"       { SetupDotfiles -AfterRepoUpdate:$AfterUpdate }
+        "update"    { Update-Packages $UpdateTarget -AfterRepoUpdate:$AfterUpdate }
         "packages"  { InstallManagedPackages }
         "ai"        { InstallAi }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }

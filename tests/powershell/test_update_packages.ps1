@@ -31,83 +31,93 @@ function test_assertwindowshealthy_preserves_caller_process_path {
     Assert-Equals $originalPath $actualPath
 }
 
-function test_update_packages_reloads_installer_from_repo_update {
+function Write-TestUpdatedEntrypoint($Path) {
+    @'
+param(
+    [switch]$AfterUpdate,
+    [switch]$NoMain,
+    [switch]$Dry,
+    [switch]$Force,
+    [switch]$Quiet,
+    [Parameter(Position = 0)][string]$Command = 'all',
+    [Parameter(Position = 1)][string]$UpdateTarget = ''
+)
+if ($NoMain) { throw 'updated script must start in a fresh process' }
+if (-not $AfterUpdate) { throw 'updated process missing recursion guard' }
+if ($env:DOTFILE_AFTER_UPDATE -ne '1') { throw 'updated process missing parent sentinel' }
+[IO.File]::WriteAllText($env:UPDATED_DOTFILE_MARKER, "$Command|$UpdateTarget|$Dry|$Force|$Quiet")
+'@ | Set-Content -LiteralPath $Path
+}
+
+function test_update_packages_starts_pulled_script_in_fresh_process {
     $script:Dry = $true
-    $global:UpdatedInstallerRan = $false
-    $global:UpdatedSymlinksRan = $false
+    $script:Force = $true
+    $script:Quiet = $true
     $originalDotfilesDir = $script:DotfilesDir
     $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'pulled-dotfiles'
+    $env:UPDATED_DOTFILE_MARKER = Join-Path $env:USERPROFILE 'updated-entrypoint.log'
     New-Item -ItemType Directory -Force -Path $script:DotfilesDir | Out-Null
     Set-FunctionMock 'UpdateRepo' {
-        @'
-param([switch]$NoMain, [switch]$Dry, [switch]$Force, [switch]$Quiet)
-function InstallPackages { $global:UpdatedInstallerRan = $true }
-function InstallExtras { param([switch]$Update) }
-function InstallAi { param([switch]$Update) }
-function SetupSymlinks { $global:UpdatedSymlinksRan = $true }
-function Sync-LazyVim { }
-'@ | Set-Content -LiteralPath (Join-Path $script:DotfilesDir 'dotfile.ps1')
+        Write-TestUpdatedEntrypoint (Join-Path $script:DotfilesDir 'dotfile.ps1')
     }
 
     try {
         Update-Packages 6>&1 | Out-Null
-        $updatedInstallerRan = $global:UpdatedInstallerRan
-        $updatedSymlinksRan = $global:UpdatedSymlinksRan
+        $actual = Get-Content -Raw -LiteralPath $env:UPDATED_DOTFILE_MARKER
     } finally {
         Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
         $script:DotfilesDir = $originalDotfilesDir
-        Remove-Variable UpdatedInstallerRan, UpdatedSymlinksRan -Scope Global
+        Remove-Item Env:UPDATED_DOTFILE_MARKER -ErrorAction SilentlyContinue
     }
 
-    Assert-True $updatedInstallerRan 'update should run the installer loaded after the pull'
-    Assert-True $updatedSymlinksRan 'update should reconcile managed symlinks'
+    Assert-Equals 'update||True|True|True' $actual
 }
 
-function test_update_ai_reloads_installer_and_only_updates_ai {
+function test_update_ai_preserves_target_in_fresh_process {
     $script:Dry = $true
-    $global:UpdatedAiRan = $false
-    $global:UpdatedAiFlag = $false
-    $global:UpdatedPackagesRan = $false
-    $global:UpdatedSymlinksRan = $false
-    $global:UpdatedLazyVimRan = $false
     $originalDotfilesDir = $script:DotfilesDir
     $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'pulled-dotfiles'
+    $env:UPDATED_DOTFILE_MARKER = Join-Path $env:USERPROFILE 'updated-ai-entrypoint.log'
     New-Item -ItemType Directory -Force -Path $script:DotfilesDir | Out-Null
     Set-FunctionMock 'UpdateRepo' {
-        @'
-param([switch]$NoMain, [switch]$Dry, [switch]$Force, [switch]$Quiet)
-function InstallPackages { $global:UpdatedPackagesRan = $true }
-function InstallExtras { param([switch]$Update) }
-function InstallAi {
-    param([switch]$Update)
-    $global:UpdatedAiRan = $true
-    $global:UpdatedAiFlag = $Update.IsPresent
-}
-function SetupSymlinks { $global:UpdatedSymlinksRan = $true }
-function Sync-LazyVim { $global:UpdatedLazyVimRan = $true }
-'@ | Set-Content -LiteralPath (Join-Path $script:DotfilesDir 'dotfile.ps1')
+        Write-TestUpdatedEntrypoint (Join-Path $script:DotfilesDir 'dotfile.ps1')
     }
 
     try {
         Update-Packages ai 6>&1 | Out-Null
-        $updatedAiRan = $global:UpdatedAiRan
-        $updatedAiFlag = $global:UpdatedAiFlag
-        $updatedPackagesRan = $global:UpdatedPackagesRan
-        $updatedSymlinksRan = $global:UpdatedSymlinksRan
-        $updatedLazyVimRan = $global:UpdatedLazyVimRan
+        $actual = Get-Content -Raw -LiteralPath $env:UPDATED_DOTFILE_MARKER
     } finally {
         Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
         $script:DotfilesDir = $originalDotfilesDir
-        Remove-Variable UpdatedAiRan, UpdatedAiFlag, UpdatedPackagesRan, UpdatedSymlinksRan, UpdatedLazyVimRan -Scope Global
+        Remove-Item Env:UPDATED_DOTFILE_MARKER -ErrorAction SilentlyContinue
     }
 
-    Assert-True $updatedAiRan 'AI update should use installer loaded after pull'
-    Assert-True $updatedAiFlag 'AI update should force tool updates'
-    Assert-False $updatedPackagesRan 'AI update should skip system packages'
-    Assert-False $updatedSymlinksRan 'AI update should skip general symlinks'
-    Assert-False $updatedLazyVimRan 'AI update should skip LazyVim'
+    Assert-Equals 'update|ai|True|False|False' $actual
+}
+
+function test_update_packages_propagates_updated_process_failure {
+    $script:Dry = $true
+    $originalDotfilesDir = $script:DotfilesDir
+    $originalUpdateRepo = (Get-Command UpdateRepo).ScriptBlock
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'failed-pulled-dotfiles'
+    New-Item -ItemType Directory -Force -Path $script:DotfilesDir | Out-Null
+    Set-FunctionMock 'UpdateRepo' {
+        'param([switch]$AfterUpdate); exit 23' | Set-Content -LiteralPath (Join-Path $script:DotfilesDir 'dotfile.ps1')
+    }
+
+    $message = ''
+    try {
+        Update-Packages 6>&1 | Out-Null
+    } catch {
+        $message = $_.Exception.Message
+    } finally {
+        Set-FunctionMock 'UpdateRepo' $originalUpdateRepo
+        $script:DotfilesDir = $originalDotfilesDir
+    }
+
+    Assert-Contains $message 'exit code 23'
 }
 
 function test_update_packages_dry_run_does_not_call_winget {
@@ -119,7 +129,7 @@ function test_update_packages_dry_run_does_not_call_winget {
         (Join-Path $env:DOTFILES_DIR 'config\windows\Notepad++\themes')
     ) | Out-Null
 
-    Invoke-UpdatedPackageInstall $script:DotfileScript $true $false $false 6>&1 | Out-Null
+    Update-Packages '' -AfterRepoUpdate 6>&1 | Out-Null
 
     Assert-False $script:Called 'winget should not be invoked in dry run'
 }
