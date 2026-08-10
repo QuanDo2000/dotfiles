@@ -96,16 +96,6 @@ function New-Symlink($source, $destination) {
     }
 }
 
-function Get-LinkBackupPath($Destination) {
-    $candidate = "$Destination.bak"
-    $suffix = 0
-    while (Get-Item -LiteralPath $candidate -Force -ErrorAction SilentlyContinue) {
-        $suffix++
-        $candidate = "$Destination.bak.$suffix"
-    }
-    return $candidate
-}
-
 function LinkPath($source, $destination, [bool]$isDirectory = $false) {
     Info "Linking $(if ($isDirectory) { 'directory ' })$source to $destination"
     if ($script:Dry) { return }
@@ -141,7 +131,10 @@ function LinkPath($source, $destination, [bool]$isDirectory = $false) {
             Success "Removed $destination"
         }
         if ($script:BackupAll -or $backup) {
-            $backupPath = Get-LinkBackupPath $destination
+            $backupPath = "$destination.bak"
+            if (Get-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue) {
+                throw "Backup already exists: $backupPath"
+            }
             Rename-Item -LiteralPath $destination -NewName (Split-Path $backupPath -Leaf) -ErrorAction Stop
             Success "Moved $destination to $backupPath"
         }
