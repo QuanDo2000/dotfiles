@@ -18,19 +18,10 @@ clear_terminal = []
 "gpt-5.5" = 4
 "gpt-5.6-sol" = 1
 
-[marketplaces.ponytail]
-last_updated = "2026-07-05T09:22:34Z"
-last_revision = "40e50d9e03242aa5dd53ac771950f9127362b25f"
-source_type = "git"
-source = "https://github.com/DietrichGebert/ponytail.git"
-
 [marketplaces.openai-bundled]
 last_updated = "2026-07-30T03:10:45Z"
 source_type = "local"
 source = "/home/quando/.codex/.tmp/bundled-marketplaces/openai-bundled"
-
-[plugins."ponytail@ponytail"]
-enabled = true
 
 [plugins."superpowers@openai-curated"]
 enabled = true

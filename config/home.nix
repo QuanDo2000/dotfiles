@@ -21,12 +21,6 @@ let
     SystemCallArchitectures = "native";
     RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
   };
-  ponytailSrc = pkgs.fetchFromGitHub {
-    owner = "DietrichGebert";
-    repo = "ponytail";
-    rev = "40e50d9e03242aa5dd53ac771950f9127362b25f";
-    hash = "sha256-Pn6gPg0luOO0/I3dP4DzdvFn4Z7rjrK4Bbxf+4VBiYo=";
-  };
   fffNvimBinary = pkgs.callPackage ../packages/fff-nvim-backend.nix { };
   piExtensionsPins = builtins.fromJSON (builtins.readFile ../packages/pi-extensions-release.json);
   piExtensionsReleaseId = piExtensionsPins.releaseId;
@@ -173,13 +167,19 @@ in
     ".codex/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;
-    ".hermes/skills/productivity/ponytail/SKILL.md" = forceSource "${ponytailSrc}/skills/ponytail/SKILL.md";
+    ".hermes/skills/productivity/ponytail/SKILL.md" = forceSource ./shared/ai/skills/ponytail/SKILL.md;
     ".agents/skills/caveman/README.md" = forceSource ./shared/ai/skills/caveman/README.md;
     ".agents/skills/caveman/SKILL.md" = forceSource ./shared/ai/skills/caveman/SKILL.md;
     ".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
     ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;
     ".agents/skills/verification-before-completion" = forceSource ./shared/ai/skills/verification-before-completion;
+    ".agents/skills/ponytail" = forceSource ./shared/ai/skills/ponytail;
+    ".agents/skills/ponytail-audit" = forceSource ./shared/ai/skills/ponytail-audit;
+    ".agents/skills/ponytail-debt" = forceSource ./shared/ai/skills/ponytail-debt;
+    ".agents/skills/ponytail-gain" = forceSource ./shared/ai/skills/ponytail-gain;
+    ".agents/skills/ponytail-help" = forceSource ./shared/ai/skills/ponytail-help;
+    ".agents/skills/ponytail-review" = forceSource ./shared/ai/skills/ponytail-review;
     ".pi/agent/extensions/caveman-default.js" = forceSource ./shared/ai/pi/caveman-default.js;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource piExtensions;
@@ -487,8 +487,8 @@ in
       ConditionPathExists = "%h/.config/rclone/rclone.conf";
     };
 
-    Service = networkServiceHardening // {
-      # fusermount3 needs its setuid wrapper to create the user mount.
+    Service = {
+      # fusermount3 needs its setuid wrapper; systemd seccomp restrictions block setuid helpers.
       NoNewPrivileges = false;
       Type = "notify";
       UMask = "0077";

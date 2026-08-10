@@ -215,6 +215,9 @@ function test_windows_codex_seed_contains_only_portable_state {
     foreach ($runtimeState in @(
             'C:\\Users\\',
             'notify =',
+            '[marketplaces.ponytail]',
+            '[plugins."ponytail@ponytail"]',
+            'source_type = "git"',
             '[marketplaces.openai-bundled]',
             '[marketplaces.openai-primary-runtime]',
             '[mcp_servers.node_repl]',
@@ -338,7 +341,7 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion', 'diff-review-qa')
+    $skills = @('caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion', 'diff-review-qa', 'ponytail', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help', 'ponytail-review')
     foreach ($skill in $skills) {
         $source = Join-Path $sourceRoot $skill
         $target = Join-Path $targetRoot $skill

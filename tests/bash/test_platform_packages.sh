@@ -118,17 +118,30 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
 
   assert_equals "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0" "$(jq -r .caveman.commit "$pins")"
   assert_equals "c984ea2e7aeffdcc865784fd6c5e3ab75da0209a" "$(jq -r .superpowers.commit "$pins")"
-  for skill in caveman systematic-debugging test-driven-development verification-before-completion diff-review-qa; do
+  assert_equals "40e50d9e03242aa5dd53ac771950f9127362b25f" "$(jq -r .ponytail.commit "$pins")"
+  for skill in caveman systematic-debugging test-driven-development verification-before-completion diff-review-qa ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
   assert_contains "$HOME_CONFIG" '".agents/skills/caveman/README.md" = forceSource ./shared/ai/skills/caveman/README.md;'
   assert_contains "$HOME_CONFIG" '".agents/skills/caveman/SKILL.md" = forceSource ./shared/ai/skills/caveman/SKILL.md;'
-  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa; do
+  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
     assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
   done
+  assert_not_contains "$HOME_CONFIG" 'ponytailSrc = pkgs.fetchFromGitHub'
   assert_not_contains "$HOME_CONFIG" 'cavemanSrc = pkgs.fetchFromGitHub'
   assert_not_contains "$HOME_CONFIG" 'superpowersSrc = pkgs.fetchFromGitHub'
   assert_not_contains "$windows" 'npx --yes skills add'
+}
+
+
+test_codex_seeds_have_no_remote_ponytail_marketplace() {
+  local seed contents
+  for seed in "$REPO_DIR/config/shared/ai/codex/config.toml" "$REPO_DIR/config/windows/ai/codex/config.toml"; do
+    contents="$(<"$seed")"
+    assert_not_contains "$contents" '[marketplaces.ponytail]'
+    assert_not_contains "$contents" '[plugins."ponytail@ponytail"]'
+    assert_not_contains "$contents" 'source_type = "git"'
+  done
 }
 
 
@@ -474,10 +487,18 @@ test_network_services_apply_safe_process_sandbox() {
     'RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];'; do
     assert_contains "$HOME_CONFIG" "$setting"
   done
-  assert_equals "6" "$(grep -c 'Service = networkServiceHardening //' <<< "$HOME_CONFIG")"
+  assert_equals "5" "$(grep -c 'Service = networkServiceHardening //' <<< "$HOME_CONFIG")"
   assert_equals "6" "$(grep -c 'UMask = "0077";' <<< "$HOME_CONFIG")"
   assert_equals "1" "$(grep -c 'NoNewPrivileges = false;' <<< "$HOME_CONFIG")"
   assert_contains "$mount_service" 'NoNewPrivileges = false;'
+  for setting in \
+    'RestrictSUIDSGID = true;' \
+    'RestrictRealtime = true;' \
+    'LockPersonality = true;' \
+    'SystemCallArchitectures = "native";' \
+    'RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];'; do
+    assert_not_contains "$mount_service" "$setting"
+  done
 }
 
 test_google_drive_storage_sync() {

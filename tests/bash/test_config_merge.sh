@@ -93,6 +93,50 @@ EOF
 }
 
 
+test_codex_seed_merge_removes_retired_ponytail_marketplace() {
+  local tmp script live seed
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/codex.py"
+  live="$tmp/live.toml"
+  seed="$tmp/seed.toml"
+
+  cat > "$live" <<'EOF'
+model = "live"
+
+[marketplaces.ponytail]
+source_type = "git"
+source = "https://github.com/DietrichGebert/ponytail.git"
+
+[marketplaces.openai-bundled]
+source_type = "local"
+source = "/tmp/openai-bundled"
+
+[plugins."ponytail@ponytail"]
+enabled = true
+
+[plugins."sites@openai-bundled"]
+enabled = true
+
+[hooks.state."ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"]
+trusted_hash = "sha256:retired"
+
+[hooks.state."other@local:hooks/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:keep"
+EOF
+
+  printf '%s\n' 'model = "tracked"' > "$seed"
+  python3 "$script" "$live" "$seed" '' >/dev/null
+
+  assert_not_contains "$(<"$live")" '[marketplaces.ponytail]'
+  assert_not_contains "$(<"$live")" '[plugins."ponytail@ponytail"]'
+  assert_not_contains "$(<"$live")" 'ponytail@ponytail:hooks/'
+  assert_contains "$(<"$live")" '[marketplaces.openai-bundled]'
+  assert_contains "$(<"$live")" '[plugins."sites@openai-bundled"]'
+  assert_contains "$(<"$live")" 'other@local:hooks/'
+  rm -rf "$tmp"
+}
+
+
 test_codex_seed_merge_engine_applies_tracked_additions_to_live() {
   local tmp script live seed
   tmp="$(mktemp -d)"
