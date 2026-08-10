@@ -13,6 +13,14 @@ POWER_MENU="$(<"$REPO_DIR/config/unix/config/waybar/power-menu.xml")"
 SUNSET_CONFIG="$(<"$REPO_DIR/config/unix/config/hypr/hyprsunset.conf")"
 SUNSET_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
 INPUT_METHOD_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/input-method-status.sh")"
+SSH_CONFIG="$(<"$REPO_DIR/config/shared/.ssh/config")"
+
+test_ssh_config_keeps_required_forwarding_without_unused_ports() {
+  assert_not_contains "$SSH_CONFIG" "LocalForward"
+  assert_equals "2" "$(grep -c '^[[:space:]]*ForwardX11 yes$' <<< "$SSH_CONFIG")"
+  assert_equals "2" "$(grep -c '^[[:space:]]*ForwardX11Trusted yes$' <<< "$SSH_CONFIG")"
+  assert_equals "3" "$(grep -c '^[[:space:]]*ForwardAgent yes$' <<< "$SSH_CONFIG")"
+}
 
 test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
