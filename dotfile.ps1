@@ -333,11 +333,21 @@ function InstallScoopPackages {
     $buckets = scoop bucket list
     if ($LASTEXITCODE -ne 0) { throw "scoop bucket list failed" }
     $fontBucket = @($buckets | Where-Object { $_.Name -eq "nerd-fonts" }) | Select-Object -First 1
-    if ($fontBucket) {
-        if ($fontBucket.Source -notmatch '^https://github\.com/matthewjberger/scoop-nerd-fonts(?:\.git)?/?$') {
-            throw "Unexpected nerd-fonts bucket source: $($fontBucket.Source)"
+    if ($fontBucket -and $fontBucket.Source -notmatch '^https://github\.com/matthewjberger/scoop-nerd-fonts(?:\.git)?/?$') {
+        throw "Unexpected nerd-fonts bucket source: $($fontBucket.Source)"
+    }
+    if (-not $fontBucket) {
+        foreach ($package in "FiraCode", "FiraCode-NF") {
+            $prefix = @(scoop prefix $package 2>$null 6>$null)
+            if ($LASTEXITCODE -ne 0 -or $prefix.Count -eq 0) { continue }
+            $installInfoPath = Join-Path ($prefix | Select-Object -Last 1) "install.json"
+            $installInfo = if (Test-Path -LiteralPath $installInfoPath) {
+                Get-Content -Raw -LiteralPath $installInfoPath | ConvertFrom-Json
+            }
+            if ($package -eq "FiraCode" -or $installInfo.bucket -eq "nerd-fonts") {
+                Invoke-NativeChecked "scoop uninstall $package failed" { scoop uninstall $package }
+            }
         }
-        Invoke-NativeChecked "scoop bucket rm nerd-fonts failed" { scoop bucket rm nerd-fonts }
     }
 
     $installed = @(scoop list)
@@ -361,14 +371,18 @@ function InstallScoopPackages {
             $installed = @($installed | Where-Object { $_.Name -ne "FiraCode-NF" })
         }
     }
+    if ($installed.Name -contains "FiraCode") {
+        Invoke-NativeChecked "scoop uninstall FiraCode failed" { scoop uninstall FiraCode }
+        $installed = @($installed | Where-Object { $_.Name -ne "FiraCode" })
+    }
+    if ($fontBucket) {
+        Invoke-NativeChecked "scoop bucket rm nerd-fonts failed" { scoop bucket rm nerd-fonts }
+    }
     foreach ($package in Get-ScoopPackages) {
         if ($installed.Name -notcontains $package) {
             $target = if ($package -eq "FiraCode-NF") { $fontManifest } else { $package }
             Invoke-NativeChecked "scoop install $package failed" { scoop install $target }
         }
-    }
-    if ($installed.Name -contains "FiraCode") {
-        Invoke-NativeChecked "scoop uninstall FiraCode failed" { scoop uninstall FiraCode }
     }
     if ($Update) {
         Invoke-NativeChecked "scoop update failed" { scoop update }

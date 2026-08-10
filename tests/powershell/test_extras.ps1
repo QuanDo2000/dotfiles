@@ -6,7 +6,7 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'Get-Command', 'Invoke-WebRequest', 'Set-ExecutionPolicy', 'scoop', 'fnm') { Clear-CommandMock $command }
+    foreach ($command in 'Get-Command', 'Get-ItemProperty', 'Invoke-WebRequest', 'New-ItemProperty', 'Remove-ItemProperty', 'Set-ExecutionPolicy', 'scoop', 'fnm') { Clear-CommandMock $command }
     Remove-Variable ScoopBootstrapCalls, ScoopBootstrapExecuted -Scope Global -ErrorAction SilentlyContinue
     Clear-TestEnv
 }
@@ -278,6 +278,78 @@ function test_scoop_bootstrap_uses_immutable_reviewed_pin {
     Assert-False ($scriptText -like '*& $installer -RunAsAdmin*') 'Verified bytes should execute from memory, not a reopenable temp path'
 }
 
+function test_font_manifest_installs_new_version_while_old_font_is_locked {
+    $manifest = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json') | ConvertFrom-Json
+    $dir = Join-Path $script:_TestTmp.FullName 'font-source'
+    $fontInstallDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    New-Item -ItemType Directory -Force -Path $dir, $fontInstallDir | Out-Null
+    $fontName = 'FiraCodeNerdFont-Bold.ttf'
+    [IO.File]::WriteAllText((Join-Path $dir $fontName), 'new font')
+    $oldFont = Join-Path $fontInstallDir $fontName
+    [IO.File]::WriteAllText($oldFont, 'locked old font')
+    $lock = [IO.File]::Open($oldFont, 'Open', 'Read', 'Read')
+    $script:RegisteredFontValue = $null
+    Set-CommandMock 'Get-ItemProperty' { [pscustomobject]@{ CurrentBuildNumber = 22631 } }
+    Set-CommandMock 'New-ItemProperty' {
+        param($Path, $Name, $Value, [switch]$Force)
+        $script:RegisteredFontValue = $Value
+    }
+    $global = $false
+    $app = 'FiraCode-NF'
+    $version = $manifest.version
+
+    try {
+        & ([scriptblock]::Create(($manifest.installer.script -join "`n")))
+    } finally {
+        $lock.Dispose()
+    }
+
+    $versionedFont = Join-Path $fontInstallDir "FiraCodeNerdFont-Bold-$($manifest.version).ttf"
+    Assert-True (Test-Path -LiteralPath $versionedFont) 'new font should use a versioned path instead of overwriting locked font'
+    Assert-Equals $versionedFont $script:RegisteredFontValue
+    Assert-Equals 'locked old font' ([IO.File]::ReadAllText($oldFont))
+
+    $currentLock = [IO.File]::Open($versionedFont, 'Open', 'Read', 'Read')
+    try {
+        & ([scriptblock]::Create(($manifest.installer.script -join "`n")))
+    } finally {
+        $currentLock.Dispose()
+    }
+    Assert-Equals 'new font' ([IO.File]::ReadAllText($versionedFont))
+}
+
+function test_font_manifest_upgrades_while_installed_version_is_locked {
+    $manifest = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json') | ConvertFrom-Json
+    Assert-False ($manifest.PSObject.Properties.Name -contains 'pre_uninstall') 'locked old font must not block versioned upgrade'
+    $dir = Join-Path $script:_TestTmp.FullName 'font-source'
+    $fontInstallDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    New-Item -ItemType Directory -Force -Path $dir, $fontInstallDir | Out-Null
+    $fontName = 'FiraCodeNerdFont-Bold.ttf'
+    [IO.File]::WriteAllText((Join-Path $dir $fontName), 'new font')
+    $oldFont = Join-Path $fontInstallDir 'FiraCodeNerdFont-Bold-3.4.0.ttf'
+    [IO.File]::WriteAllText($oldFont, 'locked old font')
+    $lock = [IO.File]::Open($oldFont, 'Open', 'Read', 'Read')
+    Set-CommandMock 'Get-ItemProperty' { [pscustomobject]@{ CurrentBuildNumber = 22631 } }
+    Set-CommandMock 'New-ItemProperty' { }
+    Set-CommandMock 'Remove-ItemProperty' { }
+    $global = $false
+    $app = 'FiraCode-NF'
+    $cmd = 'update'
+
+    try {
+        $version = '3.4.0'
+        & ([scriptblock]::Create(($manifest.uninstaller.script -join "`n")))
+        $version = $manifest.version
+        & ([scriptblock]::Create(($manifest.installer.script -join "`n")))
+    } finally {
+        $lock.Dispose()
+    }
+
+    $newFont = Join-Path $fontInstallDir "FiraCodeNerdFont-Bold-$($manifest.version).ttf"
+    Assert-True (Test-Path -LiteralPath $newFont) 'new version should install beside locked old version'
+    Assert-Equals 'locked old font' ([IO.File]::ReadAllText($oldFont))
+}
+
 function test_installscooppackages_fails_when_scoop_install_fails {
     $script:Dry = $false
     Set-CommandMock 'Get-Command' {
@@ -343,6 +415,78 @@ function test_installscooppackages_reinstalls_bucket_managed_firacode_nf {
     $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
     Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode-NF') 'bucket-managed font should be replaced'
     Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'reviewed local font manifest should replace bucket package'
+    Assert-True ([Array]::IndexOf($script:ScoopCalls, 'uninstall FiraCode-NF') -lt [Array]::IndexOf($script:ScoopCalls, 'bucket rm nerd-fonts')) 'bucket package should be removed before its bucket'
+}
+
+function test_installscooppackages_recovers_after_legacy_font_bucket_was_removed {
+    $script:Dry = $false
+    $script:ScoopCalls = @()
+    $script:LegacyFontInstalled = $true
+    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
+    Set-CommandMock 'scoop' {
+        $script:ScoopCalls += ,($args -join ' ')
+        if ($args[0] -eq 'prefix') {
+            if ($args[1] -eq 'FiraCode' -and $script:LegacyFontInstalled) {
+                'C:\Users\test\scoop\apps\FiraCode\current'
+                $global:LASTEXITCODE = 0
+            } else {
+                $global:LASTEXITCODE = 1
+            }
+            return
+        }
+        if ($args[0] -eq 'uninstall' -and $args[1] -eq 'FiraCode') {
+            $script:LegacyFontInstalled = $false
+        }
+        if ($args[0] -eq 'list') {
+            if ($script:LegacyFontInstalled) { throw "Cannot find path 'C:\Users\test\scoop\buckets\nerd-fonts\' because it does not exist." }
+            [pscustomobject]@{ Name = 'jq'; Source = 'main' }
+            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
+        }
+        $global:LASTEXITCODE = 0
+    }
+
+    InstallScoopPackages 6>&1 | Out-Null
+
+    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
+    Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode') 'stale legacy font should be removed without its bucket'
+    Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'tracked local font should replace stale legacy font'
+}
+
+function test_installscooppackages_recovers_bucket_managed_font_after_bucket_was_removed {
+    $script:Dry = $false
+    $script:ScoopCalls = @()
+    $script:BucketFontInstalled = $true
+    $installedFontDir = Join-Path $script:_TestTmp.FullName 'bucket-font'
+    New-Item -ItemType Directory -Path $installedFontDir | Out-Null
+    '{"bucket":"nerd-fonts"}' | Set-Content -LiteralPath (Join-Path $installedFontDir 'install.json')
+    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
+    Set-CommandMock 'scoop' {
+        $script:ScoopCalls += ,($args -join ' ')
+        if ($args[0] -eq 'prefix') {
+            if ($args[1] -eq 'FiraCode-NF' -and $script:BucketFontInstalled) {
+                $installedFontDir
+                $global:LASTEXITCODE = 0
+            } else {
+                $global:LASTEXITCODE = 1
+            }
+            return
+        }
+        if ($args[0] -eq 'uninstall' -and $args[1] -eq 'FiraCode-NF') {
+            $script:BucketFontInstalled = $false
+        }
+        if ($args[0] -eq 'list') {
+            if ($script:BucketFontInstalled) { throw "Cannot find path 'C:\Users\test\scoop\buckets\nerd-fonts\' because it does not exist." }
+            [pscustomobject]@{ Name = 'jq'; Source = 'main' }
+            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
+        }
+        $global:LASTEXITCODE = 0
+    }
+
+    InstallScoopPackages 6>&1 | Out-Null
+
+    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
+    Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode-NF') 'stale bucket-managed font should be removed without its bucket'
+    Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'tracked local font should replace stale bucket-managed font'
 }
 
 function test_installscooppackages_rejects_unexpected_nerd_fonts_bucket {
