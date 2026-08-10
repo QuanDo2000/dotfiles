@@ -155,6 +155,36 @@ test_update_codex_release_package_dry_run_skips_network() {
   unset -f curl
 }
 
+test_release_file_pair_rolls_back_when_second_replace_fails() {
+  local package_file="$TEST_TMPDIR/package.nix"
+  local lock_file="$TEST_TMPDIR/package-lock.json"
+  local staged_package="$TEST_TMPDIR/package.nix.staged"
+  local staged_lock="$TEST_TMPDIR/package-lock.json.staged"
+  printf 'old package\n' > "$package_file"
+  printf 'old lock\n' > "$lock_file"
+  printf 'new package\n' > "$staged_package"
+  printf 'new lock\n' > "$staged_lock"
+  mv() {
+    if [[ "${2:-}" == "$lock_file" ]]; then
+      return 1
+    fi
+    command mv "$@"
+  }
+
+  local output exit_code=0
+  output=$(_install_release_file_pair "$staged_package" "$package_file" "$staged_lock" "$lock_file" "test release" 2>&1) || exit_code=$?
+
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "Failed to install test release files"
+  assert_equals "old package" "$(<"$package_file")"
+  assert_equals "old lock" "$(<"$lock_file")"
+  if [[ -e "$staged_package" || -e "$staged_lock" ]]; then
+    echo "  FAILED: staged release files should be cleaned after rollback" >> "$ERROR_FILE"
+  fi
+
+  unset -f mv
+}
+
 test_update_pi_release_package_pins_latest_release() {
   DRY=false
   mkdir -p "$DOTFILES_DIR/packages"
@@ -166,6 +196,7 @@ test_update_pi_release_package_pins_latest_release() {
 }
 EOF
   printf '{"old":true}\n' > "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
+  chmod 644 "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
 
   curl() {
     case "$*" in
@@ -189,6 +220,7 @@ EOF
       *) echo "unexpected nix: $*" >> "$ERROR_FILE"; return 1 ;;
     esac
   }
+  nix-instantiate() { return 0; }
 
   _update_pi_release_package >/dev/null 2>&1
 
@@ -201,8 +233,9 @@ EOF
   assert_contains "$lock_text" '"integrity": "sha512-core"'
   assert_contains "$lock_text" '"integrity": "sha512-ai"'
   assert_contains "$lock_text" '"integrity": "sha512-tui"'
+  assert_equals '-rw-r--r--' "$(LC_ALL=C ls -l "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json" | awk '{print $1}')"
 
-  unset -f curl nix tar
+  unset -f curl nix nix-instantiate tar
 }
 
 test_update_pi_release_package_dry_run_skips_network() {
@@ -257,6 +290,7 @@ EOF
       *) echo "unexpected nix: $*" >> "$ERROR_FILE"; return 1 ;;
     esac
   }
+  nix-instantiate() { return 0; }
   tar() {
     assert_contains "$*" "package/package-lock.json"
     printf '{"new":true}\n'
@@ -271,7 +305,7 @@ EOF
   assert_contains "$package_text" 'npmDepsHash = "sha256-new-deps";'
   assert_equals '{"new":true}' "$(<"$DOTFILES_DIR/packages/obsidian-headless-package-lock.json")"
 
-  unset -f curl nix tar
+  unset -f curl nix nix-instantiate tar
 }
 
 test_update_obsidian_headless_package_keeps_old_files_when_deps_prefetch_fails() {

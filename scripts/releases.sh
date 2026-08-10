@@ -199,9 +199,10 @@ function _download_pi_package_lock {
       || fail "Failed to fetch $package integrity"
     [[ -n "$integrity" ]] || fail "Failed to parse $package integrity"
     next="$(mktemp)" || fail "Failed to create temp file"
-    jq --arg key "$key" --arg integrity "$integrity" '.packages[$key].integrity = $integrity' "$lock_file" > "$next" \
+    cp -p "$lock_file" "$next" \
+      && jq --arg key "$key" --arg integrity "$integrity" '.packages[$key].integrity = $integrity' "$lock_file" > "$next" \
       && mv "$next" "$lock_file" \
-      || fail "Failed to add $package integrity to Pi package lock"
+      || { rm -f "$next"; fail "Failed to add $package integrity to Pi package lock"; }
   done < <(jq -r '.packages | to_entries[] | select(.value.resolved and (.value.integrity | not)) | [.key, (.key | sub("^node_modules/"; "")), .value.version] | @tsv' "$lock_file")
 }
 
@@ -230,16 +231,58 @@ function _write_pi_package {
   [[ "$tmp" == "$output_file" ]] || mv "$tmp" "$package_file"
 }
 
+function _validate_release_files {
+  local label="$1" package_file="$2" lock_file="$3" version="$4" src_hash="$5" deps_hash="$6"
+  nix-instantiate --parse "$package_file" >/dev/null \
+    || fail "Failed to parse staged $label package"
+  jq empty "$lock_file" \
+    || fail "Failed to parse staged $label package lock"
+  grep -qF "version = \"$version\";" "$package_file" \
+    && grep -qF "hash = \"$src_hash\";" "$package_file" \
+    && grep -qF "npmDepsHash = \"$deps_hash\";" "$package_file" \
+    || fail "Staged $label package does not contain expected pins"
+}
+
+function _install_release_file_pair {
+  local staged_package="$1" package_file="$2" staged_lock="$3" lock_file="$4" label="$5"
+  local package_backup lock_backup
+  package_backup="$(mktemp "${package_file}.backup.XXXXXX")" \
+    || { rm -f "$staged_package" "$staged_lock"; fail "Failed to back up $label package"; }
+  lock_backup="$(mktemp "${lock_file}.backup.XXXXXX")" \
+    || { rm -f "$package_backup" "$staged_package" "$staged_lock"; fail "Failed to back up $label package lock"; }
+  if ! cp -p "$package_file" "$package_backup" || ! cp -p "$lock_file" "$lock_backup"; then
+    rm -f "$package_backup" "$lock_backup" "$staged_package" "$staged_lock"
+    fail "Failed to back up $label files"
+  fi
+
+  if ! mv "$staged_package" "$package_file"; then
+    rm -f "$package_backup" "$lock_backup" "$staged_package" "$staged_lock"
+    fail "Failed to install $label files"
+  fi
+  if ! mv "$staged_lock" "$lock_file"; then
+    rm -f "$staged_lock"
+    if ! mv "$package_backup" "$package_file"; then
+      rm -f "$lock_backup"
+      fail "Failed to roll back $label package after install failure"
+    fi
+    rm -f "$lock_backup"
+    fail "Failed to install $label files"
+  fi
+  rm -f "$package_backup" "$lock_backup" \
+    || fail "Failed to clean up $label backups"
+}
+
 function _update_pi_release_package {
   if [[ "$DRY" == "true" ]]; then
     info "Would update Pi package from the latest npm release"
     return
   fi
 
-  local version current_version package_file lock_file src_hash deps_hash tmp_package tmp_lock
+  local version current_version package_file lock_file
   package_file="$DOTFILES_DIR/packages/pi-agent.nix"
   lock_file="$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
   [[ -f "$package_file" ]] || fail "Missing Pi package file: $package_file"
+  [[ -f "$lock_file" ]] || fail "Missing Pi package lock: $lock_file"
   version="$(_latest_npm_package_version @earendil-works/pi-coding-agent)"
   current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
   if [[ "$current_version" == "$version" ]]; then
@@ -249,15 +292,24 @@ function _update_pi_release_package {
 
   info "Updating Pi package to $version..."
   _ensure_nix
-  tmp_package="$(mktemp)" || fail "Failed to create temp file"
-  tmp_lock="$(mktemp)" || fail "Failed to create temp file"
-  src_hash="$(_prefetch_pi_src_hash "$version")"
-  _download_pi_package_lock "$version" "$tmp_lock"
-  deps_hash="$(_prefetch_pi_npm_deps_hash "$tmp_lock")"
-  _write_pi_package "$version" "$src_hash" "$deps_hash" "$tmp_package"
-  mv "$tmp_package" "$package_file" \
-    && mv "$tmp_lock" "$lock_file" \
-    || fail "Failed to install updated Pi package files"
+  (
+    local stage_dir tmp_package tmp_lock src_hash deps_hash
+    stage_dir="$(mktemp -d "$DOTFILES_DIR/packages/.pi-update.XXXXXX")" \
+      || fail "Failed to create Pi staging directory"
+    trap 'rm -rf "$stage_dir"' EXIT
+    tmp_package="$stage_dir/pi-agent.nix"
+    tmp_lock="$stage_dir/pi-agent-npm-shrinkwrap.json"
+    cp -p "$package_file" "$tmp_package" \
+      && cp -p "$lock_file" "$tmp_lock" \
+      || fail "Failed to stage Pi package files"
+
+    src_hash="$(_prefetch_pi_src_hash "$version")"
+    _download_pi_package_lock "$version" "$tmp_lock"
+    deps_hash="$(_prefetch_pi_npm_deps_hash "$tmp_lock")"
+    _write_pi_package "$version" "$src_hash" "$deps_hash" "$tmp_package"
+    _validate_release_files "Pi" "$tmp_package" "$tmp_lock" "$version" "$src_hash" "$deps_hash"
+    _install_release_file_pair "$tmp_package" "$package_file" "$tmp_lock" "$lock_file" "Pi package"
+  )
 }
 
 function _obsidian_headless_archive_url {
@@ -327,10 +379,11 @@ function _update_obsidian_headless_package {
     return
   fi
 
-  local version current_version package_file lock_file src_hash deps_hash tmp_package tmp_lock
+  local version current_version package_file lock_file
   package_file="$DOTFILES_DIR/packages/obsidian-headless.nix"
   lock_file="$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
   [[ -f "$package_file" ]] || fail "Missing Obsidian Headless package file: $package_file"
+  [[ -f "$lock_file" ]] || fail "Missing Obsidian Headless package lock: $lock_file"
   version="$(_latest_npm_package_version obsidian-headless)"
   current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
   if [[ "$current_version" == "$version" ]]; then
@@ -340,25 +393,30 @@ function _update_obsidian_headless_package {
 
   info "Updating Obsidian Headless package to $version..."
   _ensure_nix
-  tmp_package="$(mktemp)" || fail "Failed to create temp file"
-  tmp_lock="$(mktemp)" || fail "Failed to create temp file"
+  (
+    local stage_dir tmp_package tmp_lock src_hash deps_hash
+    stage_dir="$(mktemp -d "$DOTFILES_DIR/packages/.obsidian-update.XXXXXX")" \
+      || fail "Failed to create Obsidian Headless staging directory"
+    trap 'rm -rf "$stage_dir"' EXIT
+    tmp_package="$stage_dir/obsidian-headless.nix"
+    tmp_lock="$stage_dir/obsidian-headless-package-lock.json"
+    cp -p "$package_file" "$tmp_package" \
+      && cp -p "$lock_file" "$tmp_lock" \
+      || fail "Failed to stage Obsidian Headless package files"
 
-  if ! src_hash="$(_prefetch_obsidian_headless_src_hash "$version")"; then
-    printf '%s\n' "$src_hash"
-    rm -f "$tmp_package" "$tmp_lock"
-    return 1
-  fi
-  _download_obsidian_headless_package_lock "$version" "$tmp_lock"
-  if ! deps_hash="$(_prefetch_obsidian_headless_npm_deps_hash "$tmp_lock")"; then
-    printf '%s\n' "$deps_hash"
-    rm -f "$tmp_package" "$tmp_lock"
-    return 1
-  fi
-
-  _write_obsidian_headless_package "$version" "$src_hash" "$deps_hash" "$tmp_package"
-  mv "$tmp_package" "$package_file" \
-    && mv "$tmp_lock" "$lock_file" \
-    || fail "Failed to install updated Obsidian Headless package files"
+    if ! src_hash="$(_prefetch_obsidian_headless_src_hash "$version")"; then
+      printf '%s\n' "$src_hash"
+      return 1
+    fi
+    _download_obsidian_headless_package_lock "$version" "$tmp_lock"
+    if ! deps_hash="$(_prefetch_obsidian_headless_npm_deps_hash "$tmp_lock")"; then
+      printf '%s\n' "$deps_hash"
+      return 1
+    fi
+    _write_obsidian_headless_package "$version" "$src_hash" "$deps_hash" "$tmp_package"
+    _validate_release_files "Obsidian Headless" "$tmp_package" "$tmp_lock" "$version" "$src_hash" "$deps_hash"
+    _install_release_file_pair "$tmp_package" "$package_file" "$tmp_lock" "$lock_file" "Obsidian Headless package"
+  )
 }
 
 function update_lix_installer_pins {
