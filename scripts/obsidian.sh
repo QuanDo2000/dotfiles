@@ -55,9 +55,29 @@ function _obsidian_pick_vault {
   echo "$vault_name"
 }
 
+function _obsidian_vault_path {
+  local vault_name="$1"
+  [[ -n "$vault_name" && "$vault_name" != "." && "$vault_name" != ".." && "$vault_name" != */* ]] || return 1
+
+  local base_path vault_path
+  base_path="$(realpath -m -- "$OBSIDIAN_VAULT_BASE")" || return 1
+  vault_path="$(realpath -m -- "$base_path/$vault_name")" || return 1
+  [[ "$vault_path" == "$base_path"/* ]] || return 1
+  printf '%s\n' "$vault_path"
+}
+
+function _obsidian_require_vault_path {
+  local vault_name="$1"
+  local vault_path="$2"
+  local expected_path
+  expected_path="$(_obsidian_vault_path "$vault_name")" || fail "Invalid vault name: $vault_name"
+  [[ "$vault_path" == "$expected_path" ]] || fail "Invalid vault path: $vault_path"
+}
+
 function _obsidian_setup_vault {
   local vault_name="$1"
   local vault_path="$2"
+  _obsidian_require_vault_path "$vault_name" "$vault_path"
   info "Setting up local vault at $vault_path..."
   if [[ "$DRY" == "true" ]]; then
     info "Would run: mkdir -p $vault_path"
@@ -65,10 +85,12 @@ function _obsidian_setup_vault {
     return
   fi
   mkdir -p "$vault_path" || fail "Failed to create $vault_path"
+  _obsidian_require_vault_path "$vault_name" "$vault_path"
   if ob sync-status --path "$vault_path" >/dev/null 2>&1; then
     info "Vault at $vault_path is already configured; skipping ob sync-setup"
   else
     user "Follow the prompts for sync setup (e2ee password if prompted):"
+    _obsidian_require_vault_path "$vault_name" "$vault_path"
     ob sync-setup --vault "$vault_name" --path "$vault_path" \
       || fail "ob sync-setup failed"
   fi
@@ -76,9 +98,11 @@ function _obsidian_setup_vault {
 }
 
 function _obsidian_existing_vault_path {
-  local vault_path
-  for vault_path in "$OBSIDIAN_VAULT_BASE"/*; do
-    [[ -d "$vault_path" ]] || continue
+  local candidate vault_path
+  for candidate in "$OBSIDIAN_VAULT_BASE"/*; do
+    [[ -d "$candidate" ]] || continue
+    vault_path="$(_obsidian_vault_path "${candidate##*/}")" || continue
+    _obsidian_require_vault_path "${candidate##*/}" "$vault_path"
     if ob sync-status --path "$vault_path" >/dev/null 2>&1; then
       echo "$vault_path"
       return 0
@@ -124,7 +148,8 @@ function setup_obsidian {
   vault_name="$(_obsidian_pick_vault)"
   [[ -n "$vault_name" ]] || fail "No vault name provided"
 
-  local vault_path="$OBSIDIAN_VAULT_BASE/$vault_name"
+  local vault_path
+  vault_path="$(_obsidian_vault_path "$vault_name")" || fail "Invalid vault name: $vault_name"
   _obsidian_setup_vault "$vault_name" "$vault_path"
   _obsidian_start_service
 

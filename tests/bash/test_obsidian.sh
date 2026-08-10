@@ -145,8 +145,109 @@ test_pick_vault_dry_run_returns_example() {
 }
 
 # ---------------------------------------------------------------------------
+# Vault path validation
+# ---------------------------------------------------------------------------
+
+test_vault_path_accepts_single_component_inside_base() {
+  mkdir -p "$OBSIDIAN_VAULT_BASE"
+
+  local actual exit_code=0
+  actual=$(_obsidian_vault_path "Team Notes") || exit_code=$?
+
+  assert_equals 0 "$exit_code"
+  assert_equals "$(realpath -m -- "$OBSIDIAN_VAULT_BASE/Team Notes")" "$actual"
+}
+
+test_setup_obsidian_rejects_traversal_vault_name() {
+  export OBSIDIAN_TEST_CANARY="$TEST_TMPDIR/sync-setup-called"
+  mock_cmd ob 'case "$1" in
+    sync-list-remote) exit 0 ;;
+    sync-status) exit 1 ;;
+    sync-setup) touch "$OBSIDIAN_TEST_CANARY"; exit 0 ;;
+    *) exit 0 ;;
+  esac'
+
+  local output exit_code=0
+  output=$(printf '../outside\n' | setup_obsidian 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: setup_obsidian should reject a traversal vault name" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Invalid vault name"
+  if [ -e "$HOME/outside" ] || [ -e "$OBSIDIAN_TEST_CANARY" ]; then
+    echo "  FAILED: traversal vault name escaped Documents or reached ob sync-setup" >> "$ERROR_FILE"
+  fi
+}
+
+test_existing_vault_scan_skips_symlink_escape() {
+  local outside="$TEST_TMPDIR/outside-vault"
+  local linked="$OBSIDIAN_VAULT_BASE/linked-vault"
+  export OBSIDIAN_TEST_CANARY="$TEST_TMPDIR/sync-status-called"
+  mkdir -p "$OBSIDIAN_VAULT_BASE" "$outside"
+  ln -s "$outside" "$linked"
+  mock_cmd ob 'case "$1" in
+    sync-status) touch "$OBSIDIAN_TEST_CANARY"; exit 0 ;;
+    *) exit 0 ;;
+  esac'
+
+  local output exit_code=0
+  output=$(_obsidian_existing_vault_path) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: existing vault scan should reject symlink escapes ($output)" >> "$ERROR_FILE"
+  fi
+  if [ -e "$OBSIDIAN_TEST_CANARY" ]; then
+    echo "  FAILED: existing vault scan passed escaped path to ob" >> "$ERROR_FILE"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # _obsidian_setup_vault
 # ---------------------------------------------------------------------------
+
+test_setup_vault_rechecks_path_after_directory_creation() {
+  local vault_path="$OBSIDIAN_VAULT_BASE/race-vault"
+  local outside="$TEST_TMPDIR/outside-vault"
+  export OBSIDIAN_TEST_CANARY="$TEST_TMPDIR/ob-called"
+  command mkdir -p "$OBSIDIAN_VAULT_BASE" "$outside"
+  mock_cmd ob 'touch "$OBSIDIAN_TEST_CANARY"; exit 0'
+  mkdir() {
+    command mkdir "$@"
+    if [[ " $* " == *" $vault_path "* ]]; then
+      command rmdir "$vault_path"
+      ln -s "$outside" "$vault_path"
+    fi
+  }
+
+  local output exit_code=0
+  output=$(_obsidian_setup_vault "race-vault" "$vault_path" 2>&1) || exit_code=$?
+  unset -f mkdir
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: _obsidian_setup_vault should reject a post-mkdir symlink swap" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Invalid vault"
+  if [ -e "$OBSIDIAN_TEST_CANARY" ]; then
+    echo "  FAILED: post-mkdir symlink escape reached ob" >> "$ERROR_FILE"
+  fi
+}
+
+test_setup_vault_rejects_path_outside_base() {
+  local vault_path="$HOME/outside-vault"
+  export OBSIDIAN_TEST_CANARY="$TEST_TMPDIR/sync-setup-called"
+  mock_cmd ob 'touch "$OBSIDIAN_TEST_CANARY"; exit 0'
+
+  local output exit_code=0
+  output=$(_obsidian_setup_vault "test-vault" "$vault_path" 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -eq 0 ]; then
+    echo "  FAILED: _obsidian_setup_vault should reject a path outside the vault base" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "Invalid vault path"
+  if [ -e "$vault_path" ] || [ -e "$OBSIDIAN_TEST_CANARY" ]; then
+    echo "  FAILED: unsafe vault path reached mkdir or ob" >> "$ERROR_FILE"
+  fi
+}
 
 test_setup_vault_dry_run_does_not_mkdir_or_call_ob() {
   DRY=true
