@@ -387,6 +387,7 @@ function _sync_fff_nvim {
   info "Installing or updating fff.nvim..."
   local output plugin="$HOME/.local/share/nvim/lazy/fff.nvim"
   local release="$plugin/target/release"
+  local backend="$HOME/.config/nvim/fff-nvim-backend"
   if ! output="$(nvim --headless "+Lazy! sync fff.nvim" +qa 2>&1)"; then
     FFF_NVIM_WARNING="Lazy sync failed:\n$output"
     return
@@ -395,8 +396,14 @@ function _sync_fff_nvim {
     FFF_NVIM_WARNING="Lazy sync did not install $plugin"
     return
   fi
-  if [ ! -f "$release/libfff_nvim.so" ] && [ ! -f "$release/fff_nvim.so" ] && [ ! -f "$release/libfff_nvim.dylib" ]; then
-    FFF_NVIM_WARNING="Lazy sync completed without an fff.nvim backend in $release"
+  if [ ! -f "$backend" ]; then
+    FFF_NVIM_WARNING="Nix-managed fff.nvim backend is missing: $backend"
+    return
+  fi
+  local target="$release/libfff_nvim.so"
+  [ "$(uname -s)" = Darwin ] && target="$release/libfff_nvim.dylib"
+  if ! mkdir -p "$release" || ! ln -sfn "$backend" "$target"; then
+    FFF_NVIM_WARNING="Could not link Nix-managed fff.nvim backend at $target"
   fi
 }
 

@@ -164,7 +164,7 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "Detect dotfile and Nix issues"
   assert_contains "$readme_text" "Home Manager owns tracked Obsidian settings"
   assert_contains "$readme_text" 'Home Manager owns the `lazy.nvim` bootstrap package'
-  assert_contains "$readme_text" '`dotfile packages` and `dotfile update` prebuild the `fff.nvim` backend'
+  assert_contains "$readme_text" 'Home Manager supplies the `fff.nvim` backend from hash-pinned release assets'
   assert_contains "$readme_text" 'Windows installs Neovim and LazyVim but does not enable or install `fff.nvim`'
   assert_contains "$readme_text" 'an existing `home-manager` when available'
   assert_contains "$readme_text" '`~/dotfiles#darwin-rebuild` app'

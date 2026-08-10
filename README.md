@@ -126,11 +126,11 @@ settings. Windows copies the same reviewed, vendored skill set through
 plugins, packages, hooks, and generated runtime state
 such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
 
-Note: Home Manager owns the `lazy.nvim` bootstrap package. LazyVim plugin state
-and generated lockfiles such as `lazy-lock.json` stay out of the repo. On Unix,
-`dotfile packages` and `dotfile update` prebuild the `fff.nvim` backend so its
-first Neovim startup does not wait for compilation; failures are reported as
-warnings after the package operation completes.
+Note: Home Manager owns the `lazy.nvim` bootstrap package, and tracked
+`lazy-lock.json` pins LazyVim plugin state. On Unix,
+Home Manager supplies the `fff.nvim` backend from hash-pinned release assets;
+`dotfile packages` and `dotfile update` sync plugin source and link it without runtime
+downloads or compilation. Failures are reported after the package operation.
 
 Windows installs Neovim and LazyVim but does not enable or install `fff.nvim`.
 

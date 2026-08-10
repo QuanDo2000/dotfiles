@@ -27,6 +27,7 @@ let
     rev = "40e50d9e03242aa5dd53ac771950f9127362b25f";
     hash = "sha256-Pn6gPg0luOO0/I3dP4DzdvFn4Z7rjrK4Bbxf+4VBiYo=";
   };
+  fffNvimBinary = pkgs.callPackage ../packages/fff-nvim-backend.nix { };
   pi-agent = pkgs.callPackage ../packages/pi-agent.nix { };
   ankiWithAddons = pkgs.anki.withAddons [
     (pkgs.ankiAddons.passfail2.withConfig {
@@ -777,6 +778,7 @@ in
     mv "$tmp" "$target"
   '';
 
+  xdg.configFile."nvim/fff-nvim-backend".source = fffNvimBinary;
   xdg.configFile."nvim/init.lua".force = true;
   xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;
   xdg.configFile."nvim/.gitignore" = forceSource ./shared/config/nvim/.gitignore;

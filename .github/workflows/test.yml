@@ -18,6 +18,9 @@ jobs:
         shell: bash
         run: nix develop . -c bash ./tests/bash/runner.sh --no-docker
 
+      - name: Build fff.nvim backend
+        run: nix build .#fff-nvim-backend --no-link
+
   powershell:
     runs-on: windows-latest
     steps:
@@ -55,4 +58,4 @@ jobs:
         run: nix flake check --no-build --all-systems
 
       - name: Build custom packages
-        run: nix build .#codex .#obsidian-headless .#pi-agent .#fff-mcp .#codebase-memory-mcp --no-link
+        run: nix build .#codex .#obsidian-headless .#pi-agent .#fff-mcp .#fff-nvim-backend .#codebase-memory-mcp --no-link

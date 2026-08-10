@@ -21,6 +21,7 @@
           codex = final.callPackage ./packages/codex-release.nix { };
           codebase-memory-mcp = final.callPackage ./packages/codebase-memory-mcp.nix { };
           fff-mcp = final.callPackage ./packages/fff-mcp.nix { };
+          fff-nvim-backend = final.callPackage ./packages/fff-nvim-backend.nix { };
           obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
           pi-agent = final.callPackage ./packages/pi-agent.nix { };
           webcord = final.callPackage ./packages/webcord-release.nix { };
@@ -51,12 +52,14 @@
       packages.x86_64-linux.codex = linuxPkgs.codex;
       packages.x86_64-linux.codebase-memory-mcp = linuxPkgs.codebase-memory-mcp;
       packages.x86_64-linux.fff-mcp = linuxPkgs.fff-mcp;
+      packages.x86_64-linux.fff-nvim-backend = linuxPkgs.fff-nvim-backend;
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
       packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent;
       packages.x86_64-linux.prefetch-npm-deps = linuxPkgs.prefetch-npm-deps;
       packages.aarch64-darwin.codex = darwinPkgs.codex;
       packages.aarch64-darwin.codebase-memory-mcp = darwinPkgs.codebase-memory-mcp;
       packages.aarch64-darwin.fff-mcp = darwinPkgs.fff-mcp;
+      packages.aarch64-darwin.fff-nvim-backend = darwinPkgs.fff-nvim-backend;
       packages.aarch64-darwin.prefetch-npm-deps = darwinPkgs.prefetch-npm-deps;
 
       nixosConfigurations."${machine.hostName}" = nixpkgs.lib.nixosSystem {

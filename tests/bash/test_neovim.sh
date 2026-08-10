@@ -57,26 +57,31 @@ test_update_packages_syncs_fff_nvim() {
   assert_equals "fff-sync" "$(<"$calls")"
 }
 
-test_sync_fff_nvim_runs_headless_lazy_sync() {
+test_sync_fff_nvim_runs_headless_lazy_sync_and_links_nix_backend() {
   local calls="$TEST_TMPDIR/nvim.log"
+  local source="$HOME/.config/nvim/fff-nvim-backend"
+  local target="$HOME/.local/share/nvim/lazy/fff.nvim/target/release/libfff_nvim.so"
   DRY=false
+  mkdir -p "$(dirname "$source")"
+  touch "$source"
   nvim() {
     printf '%s\n' "$*" >> "$calls"
-    mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim/target/release"
-    touch "$HOME/.local/share/nvim/lazy/fff.nvim/target/release/libfff_nvim.so"
+    mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim"
   }
 
   _sync_fff_nvim
 
   assert_contains "$(<"$calls")" '--headless +Lazy! sync fff.nvim +qa'
+  assert_symlink "$target" "$source"
   unset -f nvim
 }
 
 test_sync_fff_nvim_does_not_compile_backend() {
   DRY=false
+  mkdir -p "$HOME/.config/nvim"
+  touch "$HOME/.config/nvim/fff-nvim-backend"
   nvim() {
-    mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim/target/release"
-    touch "$HOME/.local/share/nvim/lazy/fff.nvim/target/release/libfff_nvim.so"
+    mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim"
   }
   nix() { printf 'nix should not run\n'; return 1; }
 
@@ -113,13 +118,24 @@ test_fff_nvim_is_disabled_on_windows() {
   assert_contains "$config" "return {}"
 }
 
-test_fff_nvim_downloads_prebuilt_backend() {
-  local config
+test_fff_nvim_uses_hash_pinned_nix_backend() {
+  local home package flake config
+  home="$(<"$REPO_DIR/config/home.nix")"
+  package="$(<"$REPO_DIR/packages/fff-nvim-backend.nix")"
+  flake="$(<"$REPO_DIR/flake.nix")"
   config="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
 
-  assert_contains "$config" '"dmtrKovalenko/fff.nvim"'
-  assert_contains "$config" "download_or_build_binary"
-  assert_not_contains "$config" 'nix run .#release'
+  assert_contains "$package" 'x86_64-unknown-linux-gnu.so'
+  assert_contains "$package" 'sha256-0z1mxosSn/yc3X61QRv+II+FCD+7EKKf3G0puHWk+3w='
+  assert_contains "$package" 'aarch64-apple-darwin.dylib'
+  assert_contains "$package" 'sha256-oCz40aOIb0qjWD602sNHRb2lmiuFfMqnO/oesoFLGaU='
+  assert_contains "$flake" 'packages.x86_64-linux.fff-nvim-backend'
+  assert_contains "$flake" 'packages.aarch64-darwin.fff-nvim-backend'
+  assert_contains "$home" 'xdg.configFile."nvim/fff-nvim-backend".source = fffNvimBinary;'
+  assert_contains "$config" 'fff-nvim-backend'
+  assert_contains "$config" 'fs_symlink'
+  assert_not_contains "$config" 'download_or_build_binary'
+  assert_not_contains "$config" 'cargo build'
 }
 
 test_home_manager_lazyvim_guard_uses_runnable_ps() {

@@ -26,12 +26,15 @@ test_ci_dev_shell_includes_script_dependencies() {
 }
 
 test_ci_runs_direct_nix_checks() {
-  local workflow
+  local workflow check
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+  check="$(<"$REPO_DIR/scripts/check.sh")"
 
   assert_not_contains "$workflow" "run: ./scripts/check.sh"
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
-  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#fff-mcp .#codebase-memory-mcp --no-link'
+  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#fff-mcp .#fff-nvim-backend .#codebase-memory-mcp --no-link'
+  assert_contains "$workflow" 'nix build .#fff-nvim-backend --no-link'
+  assert_contains "$check" '"$repo_dir#fff-nvim-backend"'
 }
 
 test_ci_runs_windows_lazyvim_integration() {
