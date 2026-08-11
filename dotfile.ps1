@@ -1473,7 +1473,6 @@ function Get-WindowsLinkSpecs {
     $specs += New-LinkSpec 'Dir' (Join-Path $nvimSource "lua") (Join-Path $nvimTarget "lua")
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource ".gitignore") (Join-Path $nvimTarget ".gitignore")
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource "stylua.toml") (Join-Path $nvimTarget "stylua.toml")
-    $specs += New-LinkSpec 'File' (Join-Path $nvimSource "lazy-lock.json") (Join-Path $nvimTarget "lazy-lock.json")
 
     # Jujutsu config (lives at %APPDATA%\jj\config.toml on Windows)
     $specs += New-LinkSpec 'Dir' (Join-Path $sharedPath "config\jj") "$env:APPDATA\jj"
@@ -1517,6 +1516,18 @@ function Migrate-WindowsNvimConfig {
     New-Item -ItemType Directory -Path $destination -Force | Out-Null
 }
 
+function Sync-LazyLock {
+    Info "Syncing writable Neovim plugin lock..."
+    if ($script:Dry) { return }
+
+    $source = Join-Path $script:DotfilesDir "config\shared\config\nvim\lazy-lock.json"
+    $target = "$env:LOCALAPPDATA\nvim\lazy-lock.json"
+    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+    Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+    Copy-Item -LiteralPath $source -Destination $target
+    (Get-Item -LiteralPath $target).IsReadOnly = $false
+}
+
 function Sync-LazyVimConfig {
     Info "Syncing writable LazyVim configuration..."
     if ($script:Dry) { return }
@@ -1556,6 +1567,7 @@ function SetupSymlinks {
         LinkPath -source $spec.Source -destination $spec.Destination -isDirectory ($spec.Kind -eq 'Dir')
     }
     Sync-NotepadPlusPlusConfig
+    Sync-LazyLock
     Sync-LazyVimConfig
     if (-not $script:Dry) {
         $gpgconf = Join-Path $env:ProgramFiles 'GnuPG\bin\gpgconf.exe'

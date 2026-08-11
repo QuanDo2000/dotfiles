@@ -77,7 +77,7 @@ function test_windows_neovim_links_stable_files_not_whole_directory {
     Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq $nvimRoot })) 'whole Neovim directory should not be linked'
     Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'init.lua') })) 'init.lua should be linked'
     Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lua') })) 'lua directory should be linked'
-    Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lazy-lock.json') })) 'reviewed plugin lock should be linked'
+    Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lazy-lock.json') })) 'runtime-written plugin lock should remain writable'
     Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lazyvim.json') })) 'lazyvim.json should remain writable'
 }
 
@@ -95,6 +95,28 @@ function test_windows_notepadplusplus_links_stable_settings_and_themes {
         Assert-False ([bool]($specs | Where-Object Destination -eq (Join-Path $root 'config.xml'))) 'runtime-written config.xml should remain writable'
     } finally {
         $env:APPDATA = $oldAppData
+    }
+}
+
+function test_sync_lazy_lock_seeds_writable_file {
+    $oldDotfilesDir = $script:DotfilesDir
+    try {
+        $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+        $source = Join-Path $script:DotfilesDir 'config\shared\config\nvim\lazy-lock.json'
+        $target = Join-Path $env:LOCALAPPDATA 'nvim\lazy-lock.json'
+        New-Item -ItemType Directory -Force -Path (Split-Path $source -Parent), (Split-Path $target -Parent) | Out-Null
+        '{"plugin":{"commit":"reviewed"}}' | Set-Content $source
+        '{"plugin":{"commit":"stale"}}' | Set-Content $target
+
+        Sync-LazyLock
+        Assert-Contains (Get-Content -Raw $target) 'reviewed'
+
+        '{"plugin":{"commit":"runtime"}}' | Set-Content $target
+        Assert-False ([bool](Get-Item $target).LinkType) 'lazy-lock.json should be a regular writable file'
+        Assert-Contains (Get-Content -Raw $source) 'reviewed'
+        Assert-Contains (Get-Content -Raw $target) 'runtime'
+    } finally {
+        $script:DotfilesDir = $oldDotfilesDir
     }
 }
 
