@@ -42,7 +42,10 @@
   ],
   "packages": [
     "./locked-extensions/releases/f20988b78fbd5a70e02bc856d1602178f2ab8fe092d20b04e446de6a01dcee7b/node_modules/pi-mcp-extension",
-    "./locked-extensions/releases/f20988b78fbd5a70e02bc856d1602178f2ab8fe092d20b04e446de6a01dcee7b/node_modules/@dietrichgebert/ponytail",
+    {
+      "source": "./locked-extensions/releases/f20988b78fbd5a70e02bc856d1602178f2ab8fe092d20b04e446de6a01dcee7b/node_modules/@dietrichgebert/ponytail",
+      "skills": []
+    },
     "./locked-extensions/releases/f20988b78fbd5a70e02bc856d1602178f2ab8fe092d20b04e446de6a01dcee7b/node_modules/pi-hermes-memory",
     "./locked-extensions/releases/f20988b78fbd5a70e02bc856d1602178f2ab8fe092d20b04e446de6a01dcee7b/node_modules/@ff-labs/pi-fff",
     "./locked-extensions/releases/f20988b78fbd5a70e02bc856d1602178f2ab8fe092d20b04e446de6a01dcee7b/node_modules/@narumitw/pi-lsp",

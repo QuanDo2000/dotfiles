@@ -51,9 +51,16 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
     Assert-Equals $pins.releaseId (Get-PiExtensionTestSha256 $lock)
     Assert-Equals 7 @($settings.packages).Count
     Assert-Equals 7 @($package.dependencies.PSObject.Properties).Count
-    foreach ($source in $settings.packages) {
+    foreach ($entry in $settings.packages) {
+        $source = if ($entry -is [string]) { $entry } else { $entry.source }
         Assert-True $source.StartsWith("./locked-extensions/releases/$($pins.releaseId)/node_modules/") 'Pi extension should use locked local release'
     }
+    $ponytail = @($settings.packages | Where-Object {
+        $source = if ($_ -is [string]) { $_ } else { $_.source }
+        $source -eq "./locked-extensions/releases/$($pins.releaseId)/node_modules/@dietrichgebert/ponytail"
+    })[0]
+    Assert-False ($ponytail -is [string]) 'Ponytail package should support resource filters'
+    Assert-Equals 0 @($ponytail.skills).Count
 }
 
 function test_installai_activates_locked_extensions_before_reconciliation {
