@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "caveman": {
     "repository": "https://github.com/JuliusBrussee/caveman",
-    "commit": "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0",
+    "commit": "309834233183478e6fd7800d26e1fbaa6210274e",
     "path": "skills/caveman",
-    "observedArchiveSha256": "0e80b27bf50b7b2bad467a927740017ddade56920611c7215468178811226480",
+    "observedArchiveSha256": "954fc0cdc672f99277e74c0014bbcdfebaf02408c4454d8882bc367ee23752ee",
     "license": "licenses/caveman-MIT.txt"
   },
   "superpowers": {
     "repository": "https://github.com/obra/superpowers",
-    "commit": "c984ea2e7aeffdcc865784fd6c5e3ab75da0209a",
+    "commit": "44c9b2d6e889982ac18c27d05a19fefe335194e1",
     "paths": [
       "skills/systematic-debugging",
       "skills/test-driven-development",
       "skills/verification-before-completion"
     ],
-    "observedArchiveSha256": "5c7db58c3b2e9c6a8e5a255d9eebd3d57db840b68e65e62fe7a3714cd478ad18",
+    "observedArchiveSha256": "412d988824cb2a555a167c111ef990a602ee8069c5833eb7ec48c06539ca0c14",
     "license": "licenses/superpowers-MIT.txt"
   },
   "ponytail": {
     "repository": "https://github.com/DietrichGebert/ponytail",
-    "commit": "40e50d9e03242aa5dd53ac771950f9127362b25f",
+    "commit": "2ed6c52c9d7e5e56942508591085fd45dea277d3",
     "paths": [
       "skills/ponytail",
       "skills/ponytail-audit",
@@ -29,7 +29,7 @@
       "skills/ponytail-help",
       "skills/ponytail-review"
     ],
-    "observedArchiveSha256": "ed77e63174d081fc107e20d5d1dd5e3c639063bbba2a090a512aeab3774f344f",
+    "observedArchiveSha256": "9e288f0a1378cc1b02847f9452ae2e8fb35fdc995689f4f9ae5330680ba7bbec",
     "license": "licenses/ponytail-MIT.txt"
   }
 }
