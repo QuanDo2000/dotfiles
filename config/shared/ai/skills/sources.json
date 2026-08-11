@@ -4,6 +4,9 @@
     "repository": "https://github.com/JuliusBrussee/caveman",
     "commit": "309834233183478e6fd7800d26e1fbaa6210274e",
     "path": "skills/caveman",
+    "excludedPaths": [
+      "caveman/README.md"
+    ],
     "observedArchiveSha256": "954fc0cdc672f99277e74c0014bbcdfebaf02408c4454d8882bc367ee23752ee",
     "license": "licenses/caveman-MIT.txt"
   },
@@ -14,6 +17,13 @@
       "skills/systematic-debugging",
       "skills/test-driven-development",
       "skills/verification-before-completion"
+    ],
+    "excludedPaths": [
+      "systematic-debugging/CREATION-LOG.md",
+      "systematic-debugging/test-academic.md",
+      "systematic-debugging/test-pressure-1.md",
+      "systematic-debugging/test-pressure-2.md",
+      "systematic-debugging/test-pressure-3.md"
     ],
     "observedArchiveSha256": "412d988824cb2a555a167c111ef990a602ee8069c5833eb7ec48c06539ca0c14",
     "license": "licenses/superpowers-MIT.txt"

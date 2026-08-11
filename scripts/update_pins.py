@@ -471,6 +471,18 @@ def safe_extract_tar(archive: Path, destination: Path) -> Path:
     return roots[0]
 
 
+def remove_paths(root: Path, paths: list[str]) -> None:
+    for relative in paths:
+        path = Path(relative)
+        if path.is_absolute() or ".." in path.parts:
+            die(f"unsafe excluded skill path: {relative}")
+        target = root / path
+        if target.is_symlink() or target.is_file():
+            target.unlink()
+        elif target.is_dir():
+            shutil.rmtree(target)
+
+
 def update_skills(repo: Path) -> None:
     skills = repo / "config/shared/ai/skills"
     metadata_path = skills / "sources.json"
@@ -501,6 +513,7 @@ def update_skills(repo: Path) -> None:
                     destination = staged / Path(relative).name
                     shutil.rmtree(destination, ignore_errors=True)
                     shutil.copytree(source_path, destination)
+                remove_paths(staged, source.get("excludedPaths", []))
                 license_source = next((extracted / candidate for candidate in ("LICENSE", "LICENSE.md") if (extracted / candidate).is_file()), None)
                 if license_source is None:
                     die(f"missing upstream license for {name}")

@@ -60,9 +60,6 @@ function cavemanDefaultExtension(pi) {
       setMode("off");
       return;
     }
-    const match = text.match(/^\/skill:caveman(?:\s+(\S+))?$/);
-    const next = match && normalizeMode(match[1]);
-    if (next) setMode(next);
   });
 
   pi.registerCommand("caveman", {

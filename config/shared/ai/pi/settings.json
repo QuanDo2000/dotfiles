@@ -36,10 +36,6 @@
   },
   "defaultProjectTrust": "ask",
   "enableInstallTelemetry": false,
-  "enableSkillCommands": true,
-  "skills": [
-    "~/.agents/skills"
-  ],
   "packages": [
     "./locked-extensions/releases/f20988b78fbd5a70e02bc856d1602178f2ab8fe092d20b04e446de6a01dcee7b/node_modules/pi-mcp-extension",
     {
@@ -52,17 +48,13 @@
     "./locked-extensions/releases/f20988b78fbd5a70e02bc856d1602178f2ab8fe092d20b04e446de6a01dcee7b/node_modules/pi-web-access",
     "./locked-extensions/releases/f20988b78fbd5a70e02bc856d1602178f2ab8fe092d20b04e446de6a01dcee7b/node_modules/pi-subagents"
   ],
-  "lastChangelogVersion": "0.80.6",
   "theme": "dark",
-  "editorPaddingX": 0,
-  "outputPad": 1,
   "terminal": {
     "showTerminalProgress": true,
     "clearOnShrink": true
   },
   "steeringMode": "all",
   "followUpMode": "all",
-  "transport": "auto",
   "hideThinkingBlock": true,
   "collapseChangelog": true
 }

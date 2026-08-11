@@ -45,3 +45,26 @@ test_pin_wrapper_fails_closed_when_updater_fails() {
   assert_contains "$output" "Failed to update WebCord release"
   unset -f nix
 }
+
+test_pin_updater_removes_excluded_skill_paths() {
+  PYTHONPATH="$REPO_DIR/scripts" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
+import os
+from pathlib import Path
+import update_pins
+
+root = Path(os.environ["TEST_TMPDIR"]) / "skill"
+(root / "nested").mkdir(parents=True)
+(root / "README.md").touch()
+(root / "nested" / "fixture.md").touch()
+update_pins.remove_paths(root, ["README.md", "nested"])
+assert not (root / "README.md").exists()
+assert not (root / "nested").exists()
+
+try:
+    update_pins.remove_paths(root, ["../outside"])
+except RuntimeError:
+    pass
+else:
+    raise AssertionError("unsafe exclusion accepted")
+PY
+}

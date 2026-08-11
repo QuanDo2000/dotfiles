@@ -185,7 +185,6 @@ in
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;
     ".hermes/skills/productivity/ponytail/SKILL.md" = forceSource ./shared/ai/skills/ponytail/SKILL.md;
-    ".agents/skills/caveman/README.md" = forceSource ./shared/ai/skills/caveman/README.md;
     ".agents/skills/caveman/SKILL.md" = forceSource ./shared/ai/skills/caveman/SKILL.md;
     ".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;

@@ -124,8 +124,10 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
   for skill in caveman systematic-debugging test-driven-development verification-before-completion diff-review-qa ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
-  assert_contains "$HOME_CONFIG" '".agents/skills/caveman/README.md" = forceSource ./shared/ai/skills/caveman/README.md;'
   assert_contains "$HOME_CONFIG" '".agents/skills/caveman/SKILL.md" = forceSource ./shared/ai/skills/caveman/SKILL.md;'
+  assert_not_contains "$HOME_CONFIG" '.agents/skills/caveman/README.md'
+  assert_equals '["caveman/README.md"]' "$(jq -c '.caveman.excludedPaths' "$pins")"
+  assert_equals "5" "$(jq '.superpowers.excludedPaths | length' "$pins")"
   for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
     assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
   done
