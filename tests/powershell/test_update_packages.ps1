@@ -153,6 +153,19 @@ function test_installpackages_upgrades_only_managed_winget_packages {
     }
 }
 
+function test_invokewinget_accepts_no_applicable_upgrade {
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = -1978335189 }
+    $threw = $false
+
+    try {
+        Invoke-Winget 'current package should not fail' @('upgrade', '--id', 'Microsoft.PowerShell', '--exact')
+    } catch {
+        $threw = $true
+    }
+
+    Assert-False $threw 'Winget no-applicable-update exit should be accepted for upgrades'
+}
+
 function test_installpackages_propagates_winget_failures {
     $script:Dry = $false
     Set-CommandMock 'winget' { $global:LASTEXITCODE = 1 }
