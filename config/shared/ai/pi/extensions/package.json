@@ -8,7 +8,7 @@
     "pi-hermes-memory": "0.9.4",
     "@ff-labs/pi-fff": "0.10.3",
     "@narumitw/pi-lsp": "0.49.4",
-    "pi-web-access": "0.20.0",
+    "pi-web-access": "0.21.0",
     "pi-subagents": "0.45.2"
   },
   "overrides": {
