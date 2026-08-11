@@ -1,4 +1,4 @@
-{ pkgs, lib, osConfig ? null, storageOffsiteBackup ? false, ... }:
+{ config, pkgs, lib, osConfig ? null, storageOffsiteBackup ? false, ... }:
 
 let
   machine = import ./host.nix;
@@ -101,6 +101,22 @@ let
     echo "No configured Obsidian vault found under $HOME/Documents" >&2
     exit 0
   '';
+  guardedHomeManager = pkgs.writeShellScriptBin "home-manager" ''
+    marker="$HOME/.local/state/dotfiles/storage-offsite-backup-initialized"
+    if [ "''${1:-}" = switch ] && [ -e "$marker" ]; then
+      correct_profile=false
+      for arg in "$@"; do
+        case "$arg" in
+          *"#${machine.username}@arch-server") correct_profile=true ;;
+        esac
+      done
+      if [ "$correct_profile" != true ]; then
+        echo "Refusing Home Manager switch: this host requires ${machine.username}@arch-server." >&2
+        exit 1
+      fi
+    fi
+    exec "${config.programs.home-manager.package}/bin/home-manager" "$@"
+  '';
   devTerminalPackages = with pkgs; [
     ast-grep
     bash-language-server
@@ -158,6 +174,7 @@ in
     pkgs.nerd-fonts.fira-code
   ]
   ++ lib.optionals standaloneLinux standaloneLinuxPackages
+  ++ lib.optionals standaloneLinux [ (lib.hiPrio guardedHomeManager) ]
   ++ lib.optionals pkgs.stdenv.isLinux linuxDesktopPackages
   ++ lib.optionals storageOffsiteBackup [ pkgs.restic ];
 
@@ -192,6 +209,7 @@ in
       executable = true;
       force = true;
     };
+
     ".local/bin/fff-mcp-agent" = {
       text = ''
         #!${pkgs.runtimeShell}
@@ -663,6 +681,15 @@ in
 
     Install.WantedBy = [ "default.target" ];
   };
+
+  home.activation.guardStorageOffsiteProfile = lib.mkIf (pkgs.stdenv.isLinux && !storageOffsiteBackup)
+    (lib.hm.dag.entryBefore [ "writeBoundary" ] ''
+      marker="$HOME/.local/state/dotfiles/storage-offsite-backup-initialized"
+      if [ -e "$marker" ]; then
+        echo "Refusing generic Home Manager profile: this host is initialized for storage-offsite backups; use ${machine.username}@arch-server." >&2
+        exit 1
+      fi
+    '');
 
   home.activation.migrateNvimConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
     nvim_config="$HOME/.config/nvim"

@@ -531,6 +531,12 @@ test_storage_offsite_backup() {
   assert_contains "$HOME_CONFIG" 'storage-offsite-backup-initialized'
   assert_contains "$HOME_CONFIG" 'storage-offsite-excludes'
   assert_contains "$HOME_CONFIG" "systemd.user.services.storage-offsite-maintenance"
+  assert_contains "$HOME_CONFIG" 'home.activation.guardStorageOffsiteProfile'
+  assert_contains "$HOME_CONFIG" 'lib.hm.dag.entryBefore [ "writeBoundary" ]'
+  assert_contains "$HOME_CONFIG" 'Refusing generic Home Manager profile'
+  assert_contains "$HOME_CONFIG" 'guardedHomeManager = pkgs.writeShellScriptBin "home-manager"'
+  assert_contains "$HOME_CONFIG" 'lib.hiPrio guardedHomeManager'
+  assert_contains "$HOME_CONFIG" 'config.programs.home-manager.package'
   assert_contains "$FLAKE_CONFIG" 'homeConfigurations."${machine.username}@arch-server"'
   assert_contains "$FLAKE_CONFIG" 'storageOffsiteBackup = true;'
 }
