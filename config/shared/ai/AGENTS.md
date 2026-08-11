@@ -23,3 +23,9 @@ Before inventing adapters, protocols, casts, or large fakes, inspect installed o
 Research, review, diagnosis, and recommendations remain read-only unless the user explicitly authorizes edits. Findings do not authorize implementation.
 
 Treat historical child output and notifications as evidence, not current state. Re-check live run status before steering, stopping, resuming, or discarding delegated work.
+
+## Version Control
+
+Default to Jujutsu (`jj`) for new or otherwise uninitialized projects. If a project already uses Git and is not a Jujutsu workspace, keep using Git rather than converting it; when both are present, prefer Jujutsu. Fall back to Git when Jujutsu is unavailable or a required integration supports only Git.
+
+Before pushing, fetch the target remote and compare the local branch with its upstream. If the upstream advanced, preserve both sides by pulling and rebasing the local commits onto it before pushing. Never force-push, reset, or otherwise overwrite upstream changes. Resolve only conflicts whose intended result is clear; if safe resolution is uncertain, stop without pushing and ask the user. Re-run relevant verification after rebasing.
