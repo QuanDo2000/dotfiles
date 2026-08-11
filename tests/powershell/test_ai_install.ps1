@@ -18,10 +18,11 @@ function TestSetup {
     $script:OriginalInvokeCodebaseMemoryCommand = if ($codebaseInvoker) { $codebaseInvoker.ScriptBlock } else { $null }
     $script:OriginalTestCodebaseMemoryArchive = if ($codebaseArchiveCheck) { $codebaseArchiveCheck.ScriptBlock } else { $null }
     $script:OriginalCodexHome = $env:CODEX_HOME
+    Set-CommandMock 'RepairPiCompactionSteering' {}
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'New-Item', 'Copy-Item', 'Expand-Archive', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck') {
+    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'New-Item', 'Copy-Item', 'Expand-Archive', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck', 'RepairPiCompactionSteering') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
@@ -666,6 +667,25 @@ function test_installpilanguageservers_installs_pinned_npm_servers {
     Assert-Contains $install 'install --global'
     Assert-Contains $install '@vtsls/language-server@0.3.0'
     Assert-Contains $install 'bash-language-server@5.6.0'
+}
+
+function test_installpi_repairs_current_package {
+    $script:PiRepaired = $false
+    $pinnedVersion = Get-PinnedPiVersion
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'pi') { return [pscustomobject]@{ Source = 'mock-pi' } }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+    Set-CommandMock 'pi' {
+        if (($args -join ' ') -eq '--version') { $pinnedVersion }
+        $global:LASTEXITCODE = 0
+    }
+    Set-CommandMock 'RepairPiCompactionSteering' { $script:PiRepaired = $true }
+
+    InstallPi -Update
+
+    Assert-True $script:PiRepaired 'Pi install should repair auto-compaction steering delivery'
 }
 
 function test_installpi_installs_official_package_and_checks_command {

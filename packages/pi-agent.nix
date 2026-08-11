@@ -1,4 +1,4 @@
-{ lib, buildNpmPackage, fetchurl, jq, makeWrapper, nodejs }:
+{ lib, buildNpmPackage, fetchurl, jq, makeWrapper, nodejs, python3 }:
 
 buildNpmPackage rec {
   pname = "pi-coding-agent";
@@ -12,12 +12,13 @@ buildNpmPackage rec {
   npmDepsHash = "sha256-FfwODI+m5Jts0PrjA9mFa+Mp9QT17/ejixg84RGXGe4=";
   dontNpmBuild = true;
   npmFlags = [ "--omit=dev" "--ignore-scripts" ];
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ makeWrapper python3 ];
 
   postPatch = ''
     ${lib.getExe jq} 'del(.devDependencies)' package.json > package.json.tmp
     mv package.json.tmp package.json
     cp ${./pi-agent-npm-shrinkwrap.json} npm-shrinkwrap.json
+    python3 ${../scripts/patch_pi_compaction.py} dist/core/agent-session.js
     substituteInPlace dist/core/slash-commands.js \
       --replace-fail '{ name: "quit", description:' '{ name: "exit", description:'
     substituteInPlace dist/modes/interactive/interactive-mode.js \

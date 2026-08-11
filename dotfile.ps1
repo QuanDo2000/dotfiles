@@ -701,6 +701,27 @@ function InstallPiExtensions {
     Success "Finished installing integrity-locked Pi extensions"
 }
 
+function RepairPiCompactionSteering {
+    param([string]$AgentSessionPath)
+
+    if (-not $AgentSessionPath) {
+        $piCommand = Get-Command pi -ErrorAction SilentlyContinue
+        if (-not $piCommand) { throw "pi command not found for compaction repair" }
+        $AgentSessionPath = Join-Path (Split-Path -Parent $piCommand.Source) 'node_modules\@earendil-works\pi-coding-agent\dist\core\agent-session.js'
+    }
+    if (-not (Test-Path -LiteralPath $AgentSessionPath -PathType Leaf)) {
+        throw "Pi agent session runtime not found: $AgentSessionPath"
+    }
+    if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
+        throw "py is required to repair Pi compaction steering"
+    }
+
+    $patch = Join-Path $script:DotfilesDir 'scripts\patch_pi_compaction.py'
+    Invoke-NativeChecked "Pi compaction steering repair failed" {
+        py -3.14 $patch $AgentSessionPath
+    }
+}
+
 function InstallPi {
     param([switch]$Update)
     Info "Installing Pi coding agent..."
@@ -725,6 +746,7 @@ function InstallPi {
     if (-not (Get-Command pi -ErrorAction SilentlyContinue)) {
         throw "pi command not found after installation"
     }
+    RepairPiCompactionSteering
     Success "Finished installing Pi coding agent"
 }
 
