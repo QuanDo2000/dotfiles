@@ -276,6 +276,74 @@ EOF
   rm -rf "$tmp"
 }
 
+test_pi_seed_merge_removes_redundant_defaults_from_live_and_seed() {
+  local tmp script live seed
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/pi.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+
+  cat > "$live" <<'EOF'
+{
+  "enableSkillCommands": true,
+  "skills": ["~/.agents/skills"],
+  "lastChangelogVersion": "0.84.1",
+  "editorPaddingX": 0,
+  "outputPad": 1,
+  "transport": "auto"
+}
+EOF
+  cat > "$seed" <<'EOF'
+{
+  "enableSkillCommands": true,
+  "skills": ["~/.agents/skills"],
+  "lastChangelogVersion": "0.80.6",
+  "editorPaddingX": 0,
+  "outputPad": 1,
+  "transport": "auto"
+}
+EOF
+
+  python3 "$script" "$live" "$seed" "$seed" >/dev/null
+
+  assert_equals "false" "$(jq 'has("enableSkillCommands")' "$live")"
+  assert_equals "false" "$(jq 'has("skills")' "$live")"
+  assert_equals "true" "$(jq 'has("lastChangelogVersion")' "$live")"
+  assert_equals "false" "$(jq 'has("editorPaddingX")' "$live")"
+  assert_equals "false" "$(jq 'has("outputPad")' "$live")"
+  assert_equals "false" "$(jq 'has("transport")' "$live")"
+  assert_equals "[]" "$(jq -c 'keys' "$seed")"
+  rm -rf "$tmp"
+}
+
+test_pi_seed_merge_preserves_nondefault_live_settings() {
+  local tmp script live seed
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/pi.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+
+  cat > "$live" <<'EOF'
+{
+  "enableSkillCommands": false,
+  "skills": ["~/custom-skills"],
+  "editorPaddingX": 2,
+  "outputPad": 0,
+  "transport": "sse"
+}
+EOF
+  printf '{}\n' > "$seed"
+
+  python3 "$script" "$live" "$seed" "$seed" >/dev/null
+
+  assert_equals "false" "$(jq -r '.enableSkillCommands' "$seed")"
+  assert_equals "~/custom-skills" "$(jq -r '.skills[]' "$seed")"
+  assert_equals "2" "$(jq -r '.editorPaddingX' "$seed")"
+  assert_equals "0" "$(jq -r '.outputPad' "$seed")"
+  assert_equals "sse" "$(jq -r '.transport' "$seed")"
+  rm -rf "$tmp"
+}
+
 test_pi_seed_merge_keeps_tracked_subagents_authoritative() {
   local tmp script live seed
   tmp="$(mktemp -d)"
