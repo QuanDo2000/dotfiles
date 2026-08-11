@@ -18,11 +18,14 @@ buildNpmPackage rec {
     ${lib.getExe jq} 'del(.devDependencies)' package.json > package.json.tmp
     mv package.json.tmp package.json
     cp ${./pi-agent-npm-shrinkwrap.json} npm-shrinkwrap.json
-    python3 ${../scripts/patch_pi_compaction.py} dist/core/agent-session.js
     substituteInPlace dist/core/slash-commands.js \
       --replace-fail '{ name: "quit", description:' '{ name: "exit", description:'
     substituteInPlace dist/modes/interactive/interactive-mode.js \
       --replace-fail 'text === "/quit"' 'text === "/exit"'
+  '';
+
+  preInstall = ''
+    python3 ${../scripts/patch_pi_compaction.py} dist/core/agent-session.js
   '';
 
   postFixup = ''

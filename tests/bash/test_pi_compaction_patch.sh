@@ -49,6 +49,18 @@ write_unpatched_fixture() {
 EOF
 }
 
+test_pi_package_patches_after_npm_dependency_fetch() {
+  local package post_patch pre_install
+  package="$(<"$REPO_DIR/packages/pi-agent.nix")"
+  post_patch="${package#*postPatch = \'\'}"
+  post_patch="${post_patch%%  preInstall =*}"
+  pre_install="${package#*preInstall = \'\'}"
+
+  assert_contains "$package" "preInstall = ''"
+  assert_not_contains "$post_patch" 'patch_pi_compaction.py'
+  assert_contains "$pre_install" "python3 \${../scripts/patch_pi_compaction.py} dist/core/agent-session.js"
+}
+
 test_pi_compaction_patch_is_idempotent() {
   local target="$TEST_TMPDIR/agent-session.js" before
   write_unpatched_fixture "$target"
