@@ -754,20 +754,19 @@ in
       source="${./shared/ai/pi}/$name"
       repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/pi/$name"
       apply_seed=
+      base="$HOME/.local/state/dotfiles/pi/$name"
 
       mkdir -p "$(dirname "$target")"
       if [ -f "$target" ] && [ ! -L "$target" ]; then
         if [ -w "$repo_seed" ]; then
           apply_seed="$repo_seed"
         fi
-        "${pkgs.python3}/bin/python3" "${../scripts/seed_merge}/pi.py" "$target" "$source" "$apply_seed" || echo "Warning: failed to sync Pi $name seed" >&2
-        merge_source="''${apply_seed:-$source}"
-        merged="$(mktemp)"
-        "${pkgs.jq}/bin/jq" -s '.[0] as $live | .[1] as $seed | ($live * $seed) | if ($seed | has("subagents")) then .subagents = $seed.subagents else . end' "$target" "$merge_source" > "$merged"
-        mv "$merged" "$target"
+        "${pkgs.python3}/bin/python3" "${../scripts/seed_merge}/pi.py" "$target" "$source" "$apply_seed" "$base" || echo "Warning: failed to sync Pi $name seed" >&2
       else
         rm -f "$target"
         cp "$source" "$target"
+        mkdir -p "$(dirname "$base")"
+        cp "$source" "$base"
       fi
       chmod u+w "$target"
     done

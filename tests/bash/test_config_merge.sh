@@ -242,12 +242,87 @@ test_lazyvim_merge_preserves_seed_permissions() {
   rm -rf "$tmp"
 }
 
-test_pi_seed_merge_engine_applies_live_only_nested_json() {
-  local tmp script live seed output
+test_home_manager_pi_merge_uses_per_file_baselines() {
+  local home
+  home="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home" 'base="$HOME/.local/state/dotfiles/pi/$name"'
+  assert_contains "$home" 'pi.py" "$target" "$source" "$apply_seed" "$base"'
+  assert_not_contains "$home" "(\$live * \$seed)"
+}
+
+test_pi_three_way_merge_does_not_rewrite_unchanged_files() {
+  local tmp script live seed base before
   tmp="$(mktemp -d)"
   script="$REPO_DIR/scripts/seed_merge/pi.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
+  base="$tmp/base.json"
+
+  printf '%s\n' '{"settings":["one","two"]}' > "$live"
+  cp "$live" "$seed"
+  cp "$live" "$base"
+  before="$(sha256sum "$live" "$seed" "$base")"
+
+  python3 "$script" "$live" "$seed" "$seed" "$base" >/dev/null
+
+  assert_equals "$before" "$(sha256sum "$live" "$seed" "$base")"
+  rm -rf "$tmp"
+}
+
+test_pi_three_way_merge_preserves_live_changes_and_tracked_deletions() {
+  local tmp script live seed base
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/pi.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+  base="$tmp/base.json"
+
+  printf '%s\n' '{"removed":true,"value":"base","nested":{"common":"base","live":"yes"}}' > "$live"
+  printf '%s\n' '{"value":"tracked","nested":{"common":"base"}}' > "$seed"
+  printf '%s\n' '{"removed":true,"value":"base","nested":{"common":"base"}}' > "$base"
+
+  python3 "$script" "$live" "$seed" "$seed" "$base" >/dev/null
+
+  assert_equals "false" "$(jq 'has("removed")' "$live")"
+  assert_equals "tracked" "$(jq -r '.value' "$live")"
+  assert_equals "yes" "$(jq -r '.nested.live' "$seed")"
+  assert_equals "$(jq -cS . "$seed")" "$(jq -cS . "$base")"
+  rm -rf "$tmp"
+}
+
+test_pi_three_way_merge_keeps_live_changes_pending_when_seed_is_read_only() {
+  local tmp script live seed base before
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/pi.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+  base="$tmp/base.json"
+
+  printf '%s\n' '{"tracked":"old","liveOnly":true,"lastChangelogVersion":"0.84.1"}' > "$live"
+  printf '%s\n' '{"tracked":"new"}' > "$seed"
+  printf '%s\n' '{"tracked":"old"}' > "$base"
+  before="$(sha256sum "$seed")"
+
+  python3 "$script" "$live" "$seed" '' "$base" >/dev/null
+  python3 "$script" "$live" "$seed" '' "$base" >/dev/null
+
+  assert_equals "$before" "$(sha256sum "$seed")"
+  assert_equals "new" "$(jq -r '.tracked' "$live")"
+  assert_equals "true" "$(jq -r '.liveOnly' "$live")"
+  assert_equals "0.84.1" "$(jq -r '.lastChangelogVersion' "$live")"
+  assert_equals "false" "$(jq 'has("liveOnly")' "$base")"
+  assert_equals "false" "$(jq 'has("lastChangelogVersion")' "$base")"
+  rm -rf "$tmp"
+}
+
+test_pi_seed_merge_engine_applies_live_only_nested_json() {
+  local tmp script live seed base output
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/pi.py"
+  live="$tmp/live.json"
+  seed="$tmp/seed.json"
+  base="$tmp/base.json"
 
   cat > "$live" <<'EOF'
 {
@@ -265,7 +340,7 @@ EOF
 }
 EOF
 
-  output="$(python3 "$script" "$live" "$seed" "$seed")"
+  output="$(python3 "$script" "$live" "$seed" "$seed" "$base")"
 
   assert_contains "$output" "Applied Pi config changes to tracked seed"
   assert_equals "live-model" "$(jq -r '.defaultModel' "$seed")"
@@ -277,11 +352,12 @@ EOF
 }
 
 test_pi_seed_merge_removes_redundant_defaults_from_live_and_seed() {
-  local tmp script live seed
+  local tmp script live seed base
   tmp="$(mktemp -d)"
   script="$REPO_DIR/scripts/seed_merge/pi.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
+  base="$tmp/base.json"
 
   cat > "$live" <<'EOF'
 {
@@ -304,7 +380,7 @@ EOF
 }
 EOF
 
-  python3 "$script" "$live" "$seed" "$seed" >/dev/null
+  python3 "$script" "$live" "$seed" "$seed" "$base" >/dev/null
 
   assert_equals "false" "$(jq 'has("enableSkillCommands")' "$live")"
   assert_equals "false" "$(jq 'has("skills")' "$live")"
@@ -317,11 +393,12 @@ EOF
 }
 
 test_pi_seed_merge_preserves_nondefault_live_settings() {
-  local tmp script live seed
+  local tmp script live seed base
   tmp="$(mktemp -d)"
   script="$REPO_DIR/scripts/seed_merge/pi.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
+  base="$tmp/base.json"
 
   cat > "$live" <<'EOF'
 {
@@ -334,7 +411,7 @@ test_pi_seed_merge_preserves_nondefault_live_settings() {
 EOF
   printf '{}\n' > "$seed"
 
-  python3 "$script" "$live" "$seed" "$seed" >/dev/null
+  python3 "$script" "$live" "$seed" "$seed" "$base" >/dev/null
 
   assert_equals "false" "$(jq -r '.enableSkillCommands' "$seed")"
   assert_equals "~/custom-skills" "$(jq -r '.skills[]' "$seed")"
@@ -345,11 +422,12 @@ EOF
 }
 
 test_pi_seed_merge_keeps_tracked_subagents_authoritative() {
-  local tmp script live seed
+  local tmp script live seed base
   tmp="$(mktemp -d)"
   script="$REPO_DIR/scripts/seed_merge/pi.py"
   live="$tmp/live.json"
   seed="$tmp/seed.json"
+  base="$tmp/base.json"
 
   cat > "$live" <<'EOF'
 {
@@ -373,7 +451,7 @@ EOF
 }
 EOF
 
-  python3 "$script" "$live" "$seed" "$seed" >/dev/null
+  python3 "$script" "$live" "$seed" "$seed" "$base" >/dev/null
 
   assert_equals "openai-codex/gpt-5.6-terra" "$(jq -r '.subagents.defaultModel' "$seed")"
   assert_equals "false" "$(jq '.subagents.agentOverrides | has("reviewer")' "$seed")"

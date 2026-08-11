@@ -800,31 +800,28 @@ function SyncPiConfigs {
 
     $seedDir = Join-Path $script:DotfilesDir "config\shared\ai\pi"
     $targetDir = Join-Path $env:USERPROFILE ".pi\agent"
-    New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+    $baseDir = Join-Path $env:LOCALAPPDATA "dotfiles\pi"
+    New-Item -ItemType Directory -Force -Path $targetDir, $baseDir | Out-Null
 
     foreach ($name in @("settings.json", "mcp.json")) {
         $source = Join-Path $seedDir $name
         $target = Join-Path $targetDir $name
+        $base = Join-Path $baseDir $name
         if (-not (Test-Path -LiteralPath $target)) {
             Copy-Item -LiteralPath $source -Destination $target
+            Copy-Item -LiteralPath $source -Destination $base
             continue
         }
 
-        $python = Get-Command py -ErrorAction SilentlyContinue
-        $jq = Get-Command jq -ErrorAction SilentlyContinue
-        if (-not $python -or -not $jq) {
-            throw "py and jq are required to sync Pi configuration"
+        if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
+            throw "py is required to sync Pi configuration"
         }
 
         $mergeScript = Join-Path $script:DotfilesDir "scripts\seed_merge\pi.py"
         $applySeed = if ((Get-Item -LiteralPath $source).IsReadOnly) { "" } else { $source }
         Invoke-NativeChecked "Pi $name seed comparison failed" {
-            py -3.14 $mergeScript $target $source $applySeed
+            py -3.14 $mergeScript $target $source $applySeed $base
         }
-        $mergeSource = if ($applySeed) { $applySeed } else { $source }
-        $merged = & jq -s '.[0] as $live | .[1] as $seed | ($live * $seed) | if ($seed | has("subagents")) then .subagents = $seed.subagents else . end' $target $mergeSource
-        if ($LASTEXITCODE -ne 0) { throw "Pi $name merge failed" }
-        Set-Content -LiteralPath $target -Value ($merged -join "`n") -Encoding utf8
     }
 
     $lspSource = Join-Path $script:DotfilesDir 'config\windows\ai\pi\pi-lsp.json'

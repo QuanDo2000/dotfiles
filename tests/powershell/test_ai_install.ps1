@@ -1086,9 +1086,12 @@ function test_syncpiconfigs_creates_writable_seed_files {
     $mcp = Join-Path $env:USERPROFILE '.pi\agent\mcp.json'
     $lsp = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
+    $baseDir = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
     Assert-FileExists $settings
     Assert-FileExists $mcp
     Assert-FileExists $lsp
+    Assert-FileExists (Join-Path $baseDir 'settings.json')
+    Assert-FileExists (Join-Path $baseDir 'mcp.json')
     Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
     Assert-FileExists (Join-Path $extensionDir 'caveman-default.js')
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
