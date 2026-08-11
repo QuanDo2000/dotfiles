@@ -12,7 +12,7 @@ Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The Un
 dotfile                      # Full setup
 dotfile packages             # Install system packages only
 dotfile doctor               # Detect dotfile and Nix issues
-dotfile update               # Update Nix-managed packages, including Pi
+dotfile update               # Refresh all managed dependency pins, validate, then activate
 dotfile update ai            # Update only AI tools and configs
 dotfile obsidian             # Bootstrap Obsidian Sync login and vault setup
 dotfile codex                # Update pinned Codex release package
@@ -32,7 +32,8 @@ If `git commit` hangs or fails because signing needs a passphrase, do not bypass
 - **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
   - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
   - `packages.sh` - OS-specific package installation (apt/pacman only for Linux bootstrap packages, NixOS flakes, existing nix-darwin or pinned nix-darwin bootstrap on macOS).
-  - `releases.sh` - Pi, Codex, and Obsidian Headless release discovery, hash prefetching, and tracked Nix package pin updates.
+  - `releases.sh` - Pi, Codex, Obsidian Headless, and full dependency-refresh orchestration.
+  - `pins.sh` / `update_pins.py` - Verified refreshers for native releases, npm closures, Windows pins, vendored skills, and Neovim plugins.
   - `doctor.sh` - Health checks for Home Manager conflicts, core Unix links, Nix-managed tools, and flake targets.
   - `obsidian.sh` - Interactive Obsidian Sync bootstrap and service restart; Home Manager owns the Linux `obsidian-headless` package and `obsidian-sync` unit file.
 

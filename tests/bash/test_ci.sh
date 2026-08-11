@@ -23,6 +23,8 @@ test_ci_dev_shell_includes_script_dependencies() {
   flake="$(<"$REPO_DIR/flake.nix")"
 
   assert_contains "$flake" "jq"
+  assert_contains "$flake" "cosign"
+  assert_contains "$(<"$REPO_DIR/scripts/update_pins.py")" '"nix", "develop", f"path:{repo}", "-c", "cosign"'
 }
 
 test_ci_runs_direct_nix_checks() {
@@ -34,7 +36,7 @@ test_ci_runs_direct_nix_checks() {
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
   assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions .#fff-mcp .#fff-nvim-backend .#codebase-memory-mcp --no-link'
   assert_contains "$workflow" 'nix build .#fff-nvim-backend .#pi-extensions --no-link'
-  assert_contains "$check" '"$repo_dir#fff-nvim-backend"'
+  assert_contains "$check" '"$flake#fff-nvim-backend"'
 }
 
 test_ci_runs_windows_lazyvim_integration() {
@@ -46,7 +48,7 @@ test_ci_runs_windows_lazyvim_integration() {
   assert_contains "$workflow" 'Neovim\bin\nvim.exe'
   assert_contains "$workflow" "tests/powershell/integration_lazyvim.ps1"
   assert_contains "$workflow" "actions/setup-node@v4"
-  assert_contains "$workflow" "node-version: 24.18.1"
+  assert_contains "$workflow" "node-version: $(jq -r .node.version "$REPO_DIR/packages/pi-extensions-release.json")"
   assert_contains "$workflow" "tests/powershell/integration_pi_extensions.ps1"
 
   local integration

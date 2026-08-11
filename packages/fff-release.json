@@ -1,0 +1,32 @@
+{
+  "version": "0.10.3",
+  "commit": "e2cad2f09ea617d4c024f396f21d80e557f23a17",
+  "backend": {
+    "x86_64-linux": {
+      "file": "x86_64-unknown-linux-gnu.so",
+      "sha256": "0db8aa653aa12ea8ea1778a6a5fa4129939af893dbd95afa19ca494d04185e3e",
+      "hash": "sha256-DbiqZTqhLqjqF3impfpBKZOa+JPb2Vr6GcpJTQQYXj4="
+    },
+    "aarch64-darwin": {
+      "file": "aarch64-apple-darwin.dylib",
+      "sha256": "a37ff894fcd0b41ebea9cf20e4e62bbe42a77d7b10d44557eb8219c4ef75d79d",
+      "hash": "sha256-o3/4lPzQtB6+qc8g5OYrvkKnfXsQ1EVX64IZxO91150="
+    }
+  },
+  "mcp": {
+    "x86_64-linux": {
+      "file": "fff-mcp-x86_64-unknown-linux-musl",
+      "sha256": "8823476699977f3dbfe351862f083163810f66656522007cbb65be140c71994c",
+      "hash": "sha256-iCNHZpmXfz2/41GGLwgxY4EPZmVlIgB8u2W+FAxxmUw="
+    },
+    "aarch64-darwin": {
+      "file": "fff-mcp-aarch64-apple-darwin",
+      "sha256": "8c52acf1e95540f02cf55579126ebf580cf48af15c76e1c90301c2c8c5acbcf9",
+      "hash": "sha256-jFKs8elVQPAs9VV5Em6/WAz0ivFcduHJAwHCyMWsvPk="
+    },
+    "windows-x64": {
+      "file": "fff-mcp-x86_64-pc-windows-msvc.exe",
+      "sha256": "7e4d5c007e65e70f7070b3fa39867cd48827873acebf981d933eef7b339759ce"
+    }
+  }
+}

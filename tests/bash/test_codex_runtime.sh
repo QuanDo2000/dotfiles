@@ -3,49 +3,28 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
-test_update_packages_does_not_update_codex_release_pin() {
+test_update_packages_refreshes_and_validates_all_pins_before_activation() {
   DRY=false
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release"
   local calls="$TEST_TMPDIR/calls.log"
   printf 'ID=arch\n' > "$osrel"
-  mkdir -p "$DOTFILES_DIR/packages"
-  cat > "$DOTFILES_DIR/packages/codex-release.nix" <<'EOF'
-{
-  version = "0.0.0";
-  hash = "sha256-old";
-}
-EOF
 
-  command() {
-    if [[ "${1:-}" == "-v" ]]; then
-      case "${2:-}" in
-        nix|home-manager) return 0 ;;
-      esac
-    fi
-    builtin command "$@"
-  }
-  _update_codex_release_package() {
-    printf 'codex-update\n' >> "$calls"
-  }
-  _update_pi_release_package() {
-    printf 'pi-update\n' >> "$calls"
-  }
-  home-manager() {
-    printf 'home-manager-switch\n' >> "$calls"
-  }
-  pi() {
-    printf 'pi %s\n' "$*" >> "$calls"
-  }
-  _sync_fff_nvim() { :; }
+  _update_flake_inputs() { printf 'flake\n' >> "$calls"; }
+  _update_all_dependency_pins() { printf 'pins\n' >> "$calls"; }
+  _validate_dependency_update() { printf 'validate\n' >> "$calls"; }
+  _approve_dependency_update() { printf 'approve\n' >> "$calls"; }
+  _home_manager_switch() { printf 'activate:%s:%s\n' "$1" "${DOTFILE_FLAKE_REF:-}" >> "$calls"; }
+  _cleanup_codex_runtime_after_update() { printf 'cleanup\n' >> "$calls"; }
+  _update_pi_extensions() { printf 'extensions\n' >> "$calls"; }
+  _sync_fff_nvim() { printf 'fff\n' >> "$calls"; }
 
   OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
 
-  local output
-  output="$(<"$calls")"
-  assert_equals "$(printf 'pi-update\nnix flake update --flake %s\nhome-manager-switch\npi update --extensions' "$DOTFILES_DIR")" "$output"
+  assert_equals "$(printf 'flake\npins\nvalidate\napprove\nactivate:arch-server:path:%s\ncleanup\nextensions\nfff' "$DOTFILES_DIR")" "$(<"$calls")"
 
-  unset -f command _update_codex_release_package _update_pi_release_package home-manager pi _sync_fff_nvim
+  unset -f _update_flake_inputs _update_all_dependency_pins _validate_dependency_update _approve_dependency_update \
+    _home_manager_switch _cleanup_codex_runtime_after_update _update_pi_extensions _sync_fff_nvim
 }
 
 test_update_ai_updates_only_ai_tools_and_configs() {
@@ -191,7 +170,9 @@ _mock_codex_update_runtime() {
   rm() {
     printf 'rm %s\n' "$*" >> "$MOCK_CODEX_CALLS"
   }
-  _update_pi_release_package() { :; }
+  _update_all_dependency_pins() { :; }
+  _validate_dependency_update() { :; }
+  _update_pi_extensions() { :; }
   _sync_fff_nvim() { :; }
 }
 

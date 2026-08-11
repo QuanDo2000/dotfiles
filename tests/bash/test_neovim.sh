@@ -18,17 +18,21 @@ test_home_manager_seeds_writable_lazyvim_config() {
 }
 
 test_neovim_uses_reviewed_plugin_lock() {
-  local config lazy lock
+  local config lazy lock updater
   config="$(<"$REPO_DIR/config/home.nix")"
   lazy="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/lazy.lua")"
   lock="$REPO_DIR/config/shared/config/nvim/lazy-lock.json"
+  updater="$(<"$REPO_DIR/scripts/update_pins.py")"
 
   assert_contains "$config" "home.activation.seedLazyLock"
   assert_contains "$lazy" 'lazy-lock.json'
   assert_contains "$lazy" 'git", "-C", lazypath, "checkout", "--force", lazy_commit'
   assert_not_contains "$lazy" '"--branch=stable"'
-  assert_equals "686a84959ddc72185a7cacaf00145af5ccac7a83" "$(jq -r '."fff.nvim".commit' "$lock")"
-  assert_contains "$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")" 'version = "v0.10.1"'
+  assert_equals "$(jq -r .commit "$REPO_DIR/packages/fff-release.json")" "$(jq -r '."fff.nvim".commit' "$lock")"
+  assert_contains "$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")" "version = \"v$(jq -r .version "$REPO_DIR/packages/fff-release.json")\""
+  assert_contains "$updater" '"XDG_CONFIG_HOME"'
+  assert_contains "$updater" '"XDG_DATA_HOME"'
+  assert_contains "$updater" 'lock["fff.nvim"]["commit"] != fff["commit"]'
 }
 
 test_install_packages_syncs_fff_nvim() {
@@ -46,10 +50,13 @@ test_install_packages_syncs_fff_nvim() {
 test_update_packages_syncs_fff_nvim() {
   local calls="$TEST_TMPDIR/calls.log"
   detect_platform() { printf 'nixos\n'; }
-  update_nixos() { :; }
+  _update_flake_inputs() { :; }
+  _update_all_dependency_pins() { :; }
+  _validate_dependency_update() { :; }
+  _nixos_rebuild_switch() { :; }
   _codex_version() { :; }
   _cleanup_codex_runtime_after_update() { :; }
-  _update_pi_release_package() { :; }
+  _update_pi_extensions() { :; }
   _sync_fff_nvim() { printf 'fff-sync\n' >> "$calls"; }
 
   update_packages >/dev/null
@@ -127,10 +134,9 @@ test_fff_nvim_uses_hash_pinned_nix_backend() {
   flake="$(<"$REPO_DIR/flake.nix")"
   config="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
 
-  assert_contains "$package" 'x86_64-unknown-linux-gnu.so'
-  assert_contains "$package" 'sha256-0z1mxosSn/yc3X61QRv+II+FCD+7EKKf3G0puHWk+3w='
-  assert_contains "$package" 'aarch64-apple-darwin.dylib'
-  assert_contains "$package" 'sha256-oCz40aOIb0qjWD602sNHRb2lmiuFfMqnO/oesoFLGaU='
+  assert_contains "$package" 'fff-release.json'
+  assert_equals "true" "$(jq -r '.backend["x86_64-linux"] | (.file | endswith(".so")) and (.sha256 | test("^[0-9a-f]{64}$")) and (.hash | startswith("sha256-"))' "$REPO_DIR/packages/fff-release.json")"
+  assert_equals "true" "$(jq -r '.backend["aarch64-darwin"] | (.file | endswith(".dylib")) and (.sha256 | test("^[0-9a-f]{64}$")) and (.hash | startswith("sha256-"))' "$REPO_DIR/packages/fff-release.json")"
   assert_contains "$flake" 'packages.x86_64-linux.fff-nvim-backend'
   assert_contains "$flake" 'packages.aarch64-darwin.fff-nvim-backend'
   assert_contains "$home" 'xdg.configFile."nvim/fff-nvim-backend".source = fffNvimBinary;'

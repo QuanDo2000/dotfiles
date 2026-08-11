@@ -3,6 +3,148 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
+test_update_all_dependency_pins_runs_every_managed_updater() {
+  local calls="$TEST_TMPDIR/calls.log" name
+  for name in \
+    _update_lix_installer_pins \
+    _update_codex_release_package \
+    _update_pi_release_package \
+    _update_obsidian_headless_package \
+    _update_codebase_memory_release \
+    _update_fff_release \
+    _update_pi_extensions_release \
+    _update_webcord_release \
+    _update_anki_zoom \
+    _update_scoop_pins \
+    _update_firacode_pin \
+    _update_vendored_skills \
+    _update_neovim_plugins; do
+    eval "$name() { printf '%s\\n' '$name' >> '$calls'; }"
+  done
+
+  _update_all_dependency_pins
+
+  assert_equals $'_update_lix_installer_pins\n_update_codex_release_package\n_update_pi_release_package\n_update_obsidian_headless_package\n_update_codebase_memory_release\n_update_fff_release\n_update_pi_extensions_release\n_update_webcord_release\n_update_anki_zoom\n_update_scoop_pins\n_update_firacode_pin\n_update_vendored_skills\n_update_neovim_plugins' "$(<"$calls")"
+
+  for name in \
+    _update_lix_installer_pins _update_codex_release_package _update_pi_release_package \
+    _update_obsidian_headless_package _update_codebase_memory_release _update_fff_release \
+    _update_pi_extensions_release _update_webcord_release _update_anki_zoom _update_scoop_pins \
+    _update_firacode_pin _update_vendored_skills _update_neovim_plugins; do
+    unset -f "$name"
+  done
+}
+
+test_all_dependency_pin_updaters_dry_run_without_network() {
+  DRY=true
+  curl() { return 99; }
+  git() { return 99; }
+  npm() { return 99; }
+
+  local output status=0
+  output="$(_update_all_dependency_pins 2>&1)" || status=$?
+
+  assert_equals "0" "$status"
+  for label in \
+    "Lix installer" "Codex package" "Pi package" "Obsidian Headless" \
+    "codebase-memory" "FFF" "Pi extension closure" "WebCord" "Anki Zoom" \
+    "Scoop snapshots" "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
+    assert_contains "$output" "$label"
+  done
+
+  unset -f curl git npm
+}
+
+test_dependency_clean_check_detects_dirty_linked_worktree() {
+  local repository="$TEST_TMPDIR/repository" worktree="$TEST_TMPDIR/worktree" old_dotfiles="$DOTFILES_DIR"
+  git init -q "$repository"
+  git -C "$repository" config user.email test@example.com
+  git -C "$repository" config user.name Test
+  printf 'clean\n' > "$repository/file"
+  git -C "$repository" add file
+  git -C "$repository" commit -qm initial
+  git -C "$repository" worktree add -q "$worktree"
+  printf 'dirty\n' >> "$worktree/file"
+  DOTFILES_DIR="$worktree"
+
+  local output status=0
+  output="$(_require_clean_dependency_tree 2>&1)" || status=$?
+
+  assert_equals "1" "$status"
+  assert_contains "$output" "requires a clean repository"
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_refresh_preserves_concurrent_changes() {
+  local repo
+  repo="$TEST_TMPDIR/repo"
+  mkdir -p "$repo"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'old\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+
+  if (
+    SOURCE_REPO="$repo"
+    DOTFILES_DIR="$repo"
+    _update_flake_inputs() {
+      printf 'updated\n' > "$DOTFILES_DIR/managed"
+      printf 'concurrent\n' > "$SOURCE_REPO/concurrent"
+    }
+    _update_all_dependency_pins() { :; }
+    _validate_dependency_update() { :; }
+    _refresh_dependency_set
+  ); then
+    fail_soft "dependency refresh should reject concurrent changes"
+  fi
+
+  assert_equals "old" "$(<"$repo/managed")"
+  assert_equals "concurrent" "$(<"$repo/concurrent")"
+}
+
+test_dependency_refresh_uses_isolated_worktree() {
+  local repo status
+  repo="$TEST_TMPDIR/repo"
+  mkdir -p "$repo"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'old\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+
+  (
+    DOTFILES_DIR="$repo"
+    _update_flake_inputs() { printf 'new\n' > "$DOTFILES_DIR/managed"; }
+    _update_all_dependency_pins() { printf 'added\n' > "$DOTFILES_DIR/added"; }
+    _validate_dependency_update() { [[ "$(<"$DOTFILES_DIR/managed")" == "new" ]]; }
+    _refresh_dependency_set
+  )
+
+  assert_equals "new" "$(<"$repo/managed")"
+  assert_equals "added" "$(<"$repo/added")"
+  status="$(git -C "$repo" status --short)"
+  assert_contains "$status" ' M managed'
+  assert_contains "$status" '?? added'
+  assert_equals "1" "$(git -C "$repo" worktree list --porcelain | grep -c '^worktree ')"
+
+  local releases
+  releases="$(<"$REPO_DIR/scripts/releases.sh")"
+  assert_not_contains "$releases" 'git -C "$DOTFILES_DIR" reset --hard HEAD'
+  assert_not_contains "$releases" 'git -C "$DOTFILES_DIR" clean -fd'
+}
+
+test_dependency_approval_shows_full_diff_before_activation() {
+  local releases
+  releases="$(<"$REPO_DIR/scripts/releases.sh")"
+
+  assert_contains "$releases" 'git -C "$DOTFILES_DIR" diff --'
+  assert_contains "$releases" 'git -C "$DOTFILES_DIR" diff --cached --'
+  assert_contains "$releases" 'git -C "$DOTFILES_DIR" ls-files --others --exclude-standard'
+}
+
 test_npm_prefetch_uses_repo_locked_nixpkgs() {
   local releases flake
   releases="$(<"$REPO_DIR/scripts/releases.sh")"
@@ -234,7 +376,7 @@ test_release_transaction_cleans_unpublished_owner_when_lock_publish_fails() {
 
   assert_equals "1" "$exit_code"
   assert_contains "$output" "Failed to publish test release update lock"
-  if [[ -e "$transaction_dir" ]] || compgen -G "$transaction_dir.owner.*" >/dev/null; then
+  if [[ -e "$transaction_dir" ]] || [[ -n "$(printf '%s\n' "$transaction_dir".owner.* | grep -v '\*' || true)" ]]; then
     echo "  FAILED: unpublished transaction owner should be cleaned" >> "$ERROR_FILE"
   fi
   unset -f ln
@@ -528,6 +670,32 @@ EOF
   assert_equals '{"old":true}' "$(<"$DOTFILES_DIR/packages/obsidian-headless-package-lock.json")"
 
   unset -f curl nix tar
+}
+
+test_obsidian_headless_generates_lock_when_archive_omits_it() {
+  local lock="$TEST_TMPDIR/generated-lock.json"
+  curl() {
+    local output
+    while [[ $# -gt 0 ]]; do
+      [[ "$1" == "-o" ]] && { output="$2"; shift 2; continue; }
+      shift
+    done
+    : > "$output"
+  }
+  tar() {
+    if [[ "$*" == *package/package-lock.json* ]]; then
+      return 1
+    fi
+    printf '%s\n' '{"name":"obsidian-headless","version":"1.2.3","dependencies":{"example":"1.0.0"}}'
+  }
+  nix() {
+    printf '%s\n' '{"lockfileVersion":3,"packages":{}}' > package-lock.json
+  }
+
+  _download_obsidian_headless_package_lock 1.2.3 "$lock"
+
+  assert_equals "3" "$(jq -r .lockfileVersion "$lock")"
+  unset -f curl tar nix
 }
 
 test_update_obsidian_headless_package_dry_run_skips_network() {

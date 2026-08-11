@@ -533,8 +533,16 @@ function _download_obsidian_headless_package_lock {
   tarball="$tmp_dir/obsidian-headless.tgz"
   curl -fsSL "$url" -o "$tarball" \
     || { rm -rf "$tmp_dir"; fail "Failed to download Obsidian Headless archive"; }
-  tar -xOzf "$tarball" package/package-lock.json > "$lock_file" \
-    || { rm -rf "$tmp_dir"; fail "Failed to extract Obsidian Headless package lock"; }
+  if ! tar -xOzf "$tarball" package/package-lock.json > "$lock_file" 2>/dev/null; then
+    tar -xOzf "$tarball" package/package.json > "$tmp_dir/package.json" \
+      || { rm -rf "$tmp_dir"; fail "Failed to extract Obsidian Headless package metadata"; }
+    (
+      cd "$tmp_dir" \
+        && nix develop "path:$DOTFILES_DIR" -c npm install --package-lock-only --ignore-scripts --omit=dev >/dev/null
+    ) || { rm -rf "$tmp_dir"; fail "Failed to generate Obsidian Headless package lock"; }
+    cp "$tmp_dir/package-lock.json" "$lock_file" \
+      || { rm -rf "$tmp_dir"; fail "Failed to stage Obsidian Headless package lock"; }
+  fi
   rm -rf "$tmp_dir"
 }
 
@@ -618,6 +626,166 @@ function _update_obsidian_headless_package {
     _validate_release_files "Obsidian Headless" "$tmp_package" "$tmp_lock" "$version" "$src_hash" "$deps_hash"
     _install_release_file_pair "$tmp_package" "$package_file" "$tmp_lock" "$lock_file" "Obsidian Headless package" "$transaction_dir"
   )
+}
+
+function _update_all_dependency_pins {
+  _update_lix_installer_pins
+  _update_codex_release_package
+  _update_pi_release_package
+  _update_obsidian_headless_package
+  _update_codebase_memory_release
+  _update_fff_release
+  _update_pi_extensions_release
+  _update_webcord_release
+  _update_anki_zoom
+  _update_scoop_pins
+  _update_firacode_pin
+  _update_vendored_skills
+  _update_neovim_plugins
+}
+
+function _dependency_git_repository {
+  [[ "$(git -C "$DOTFILES_DIR" rev-parse --is-inside-work-tree 2>/dev/null || true)" == "true" ]]
+}
+
+function _dependency_update_marker {
+  local git_dir
+  git_dir="$(git -C "$DOTFILES_DIR" rev-parse --absolute-git-dir)" || return 1
+  printf '%s/dotfile-dependency-update\n' "$git_dir"
+}
+
+function _dependency_update_fingerprint {
+  local tmp untracked
+  tmp="$(mktemp)" || return 1
+  {
+    git -C "$DOTFILES_DIR" diff --binary HEAD --
+    while IFS= read -r -d '' untracked; do
+      printf 'untracked:%s:' "$untracked"
+      _file_sha256 "$DOTFILES_DIR/$untracked"
+    done < <(git -C "$DOTFILES_DIR" ls-files --others --exclude-standard -z)
+  } > "$tmp" || { rm -f "$tmp"; return 1; }
+  _file_sha256 "$tmp"
+  rm -f "$tmp"
+}
+
+function _dependency_update_pending {
+  local marker
+  _dependency_git_repository || return 1
+  marker="$(_dependency_update_marker)" || return 1
+  [[ -f "$marker" ]] || return 1
+  if [[ -z "$(git -C "$DOTFILES_DIR" status --porcelain)" ]]; then
+    rm -f "$marker"
+    return 1
+  fi
+}
+
+function _write_dependency_update_marker {
+  local marker fingerprint
+  _dependency_git_repository || return 0
+  marker="$(_dependency_update_marker)" || return 1
+  fingerprint="$(_dependency_update_fingerprint)" || return 1
+  printf '%s\n' "$fingerprint" > "$marker.tmp" \
+    && mv "$marker.tmp" "$marker"
+}
+
+function _validate_pending_dependency_update {
+  local marker expected actual
+  marker="$(_dependency_update_marker)" || fail "Failed to find pending dependency update"
+  expected="$(cat "$marker" 2>/dev/null || true)"
+  actual="$(_dependency_update_fingerprint)" || fail "Failed to inspect pending dependency update"
+  [[ -n "$expected" && "$expected" == "$actual" ]] \
+    || fail "Pending dependency update changed; review or discard it before retrying"
+}
+
+function _refresh_dependency_set {
+  if ! _dependency_git_repository; then
+    _update_flake_inputs
+    _update_all_dependency_pins
+    _validate_dependency_update
+    return
+  fi
+
+  local source_dir="$DOTFILES_DIR" worktree patch status=0
+  worktree="$(mktemp -d)" || return 1
+  rmdir "$worktree" || return 1
+  patch="$(mktemp)" || return 1
+  if ! git -C "$source_dir" worktree add --quiet --detach "$worktree" HEAD; then
+    rm -f "$patch"
+    return 1
+  fi
+
+  (
+    export DOTFILES_DIR="$worktree"
+    cd "$worktree" || exit 1
+    _update_flake_inputs
+    _update_all_dependency_pins
+    _validate_dependency_update
+    git add -A
+    git diff --cached --binary HEAD -- > "$patch"
+  ) || status=$?
+
+  git -C "$source_dir" worktree remove --force "$worktree" >/dev/null \
+    || status=1
+  if (( status != 0 )); then
+    rm -f "$patch"
+    return "$status"
+  fi
+
+  if [[ -n "$(git -C "$source_dir" status --porcelain)" ]]; then
+    rm -f "$patch"
+    return 1
+  fi
+  if [[ -s "$patch" ]]; then
+    git -C "$source_dir" apply --binary "$patch" \
+      || { rm -f "$patch"; return 1; }
+  fi
+  rm -f "$patch"
+}
+
+function _finish_dependency_update {
+  [[ "$DRY" == "true" ]] && return
+  local marker
+  _dependency_git_repository || return 0
+  marker="$(_dependency_update_marker)" || return 1
+  rm -f "$marker" "$marker.tmp"
+}
+
+function _require_clean_dependency_tree {
+  [[ "$DRY" == "true" ]] && return
+  _dependency_git_repository || return
+  [[ -z "$(git -C "$DOTFILES_DIR" status --porcelain)" ]] \
+    || fail "Dependency update requires a clean repository"
+}
+
+function _validate_dependency_update {
+  if [[ "$DRY" == "true" ]]; then
+    info "Would run full dependency checks before activation"
+    return
+  fi
+  "$DOTFILES_DIR/scripts/check.sh" || fail "Dependency checks failed; refusing activation"
+}
+
+function _approve_dependency_update {
+  if [[ "$DRY" == "true" ]] || ! _dependency_git_repository; then
+    return
+  fi
+  [[ -n "$(git -C "$DOTFILES_DIR" status --porcelain)" ]] || return
+  git -C "$DOTFILES_DIR" status --short
+  git -C "$DOTFILES_DIR" diff --
+  git -C "$DOTFILES_DIR" diff --cached --
+  local untracked
+  while IFS= read -r untracked; do
+    git -C "$DOTFILES_DIR" diff --no-index -- /dev/null "$untracked" || true
+  done < <(git -C "$DOTFILES_DIR" ls-files --others --exclude-standard)
+  if [[ "$FORCE" == "true" ]]; then
+    info "Activating reviewed dependency changes because --force was supplied"
+    return
+  fi
+  [[ -t 0 ]] || fail "Dependency pins changed; review the diff, then rerun with --force to activate"
+  local answer
+  printf '  [ ?? ] Activate these dependency changes? [y/N] ' >&2
+  read -r answer
+  [[ "$answer" =~ ^[Yy]$ ]] || fail "Dependency activation cancelled; changes remain for review"
 }
 
 function update_lix_installer_pins {

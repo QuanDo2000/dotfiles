@@ -74,7 +74,7 @@ dotfile [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update [ai] Update Nix-managed packages, including Pi
+  update [ai] Refresh all managed dependency pins, validate, and activate
               Update only AI tools and configs with `update ai`
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
@@ -88,7 +88,7 @@ Commands:
 
 Options:
   -d, --dry   Dry run (no changes made)
-  -f, --force Overwrite existing files without prompting
+  -f, --force Overwrite files and approve validated dependency activation
   -q, --quiet Only show errors
   -h, --help  Show this help message
 ```
@@ -163,18 +163,21 @@ config evaluates:
 sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
 ```
 
-After provisioning, use `dotfile update` as the normal Nix-managed update
-command. Use `dotfile update ai` to update only tracked AI configs, Codex and
-Pi release pins, managed AI packages, and Pi extensions. On NixOS the full
-update wraps:
+After provisioning, use `dotfile update` to refresh every repository-managed
+dependency: Nix inputs, release archives, npm closures, native FFF assets,
+Windows Scoop/font pins, vendored skills, and Neovim plugins. It runs full
+checks, shows the resulting uncommitted diff, and requires confirmation before
+activation; non-interactive runs must pass `--force`. Use `dotfile update ai`
+to update only tracked AI configs, Codex and Pi release pins, managed AI
+packages, and Pi extensions. On NixOS the full update ends with:
 
 ```bash
 nix flake update --flake ~/dotfiles
 sudo nixos-rebuild switch --flake ~/dotfiles#${hostName}
 ```
 
-The first command updates the tracked `flake.lock`; commit that file after a
-successful update to preserve the working package versions.
+Commit all generated pin and lock changes after successful activation and CI
+to preserve the reviewed dependency set.
 
 On macOS it uses existing `darwin-rebuild` when available:
 

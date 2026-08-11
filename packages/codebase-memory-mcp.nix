@@ -21,7 +21,7 @@ stdenv.mkDerivation {
   inherit version;
 
   src = fetchurl {
-    url = "https://github.com/DeusData/codebase-memory-mcp/releases/download/v${version}/codebase-memory-mcp-ui-${source.target}.tar.gz";
+    url = "https://github.com/DeusData/codebase-memory-mcp/releases/download/v${version}/${source.file}";
     hash = source.nixHash;
   };
 

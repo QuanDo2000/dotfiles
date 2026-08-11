@@ -48,9 +48,9 @@ function test_windows_firacode_manifest_is_reviewed_and_immutable {
     if (-not (Test-Path -LiteralPath $manifestPath)) { return }
 
     $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-    Assert-Equals '3.5.0' $manifest.version
-    Assert-Equals 'https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.0/FiraCode.zip' $manifest.url
-    Assert-Equals '8ad2834d8ea1945d8ab042538e608f6370573a29913aa94b5e6bbc92ffacbab5' $manifest.hash
+    Assert-True ($manifest.version -match '^\d+\.\d+\.\d+$') 'font version should be exact semver'
+    Assert-Equals "https://github.com/ryanoasis/nerd-fonts/releases/download/v$($manifest.version)/FiraCode.zip" $manifest.url
+    Assert-True ($manifest.hash -match '^[0-9a-f]{64}$') 'font archive should have a SHA-256 pin'
     Assert-False ($manifest.PSObject.Properties.Name -contains 'checkver') 'font refresh should require reviewed pin changes'
     Assert-False ($manifest.PSObject.Properties.Name -contains 'autoupdate') 'font refresh should require reviewed pin changes'
 

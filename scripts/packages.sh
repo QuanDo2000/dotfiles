@@ -219,14 +219,14 @@ function _linux_home_manager_target {
   local profile="${1:-linux}" username
   username="$(host_config_value username)" \
     || fail "Failed to resolve Linux Home Manager username"
-  echo "$DOTFILES_DIR#${username}@${profile}"
+  echo "${DOTFILE_FLAKE_REF:-$DOTFILES_DIR}#${username}@${profile}"
 }
 
 function _nixos_flake_target {
   local host_name
   host_name="$(host_config_value hostName)" \
     || fail "Failed to resolve NixOS host name"
-  echo "$DOTFILES_DIR#$host_name"
+  echo "${DOTFILE_FLAKE_REF:-$DOTFILES_DIR}#$host_name"
 }
 
 function _dry_run_nix_managed_switch {
@@ -289,7 +289,7 @@ function _cleanup_codex_runtime_after_update {
 
 function _darwin_rebuild_switch {
   local target
-  target="$DOTFILES_DIR#mac"
+  target="${DOTFILE_FLAKE_REF:-$DOTFILES_DIR}#mac"
   if [[ "$DRY" == "true" ]]; then
     _dry_run_nix_managed_switch sudo HOME=/var/root darwin-rebuild switch --flake "$target"
     return
@@ -451,16 +451,31 @@ function update_packages {
     nixos|debian|arch|mac) ;;
     unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
   esac
-  _update_pi_release_package
+  if [[ "$DRY" == "true" ]]; then
+    _update_flake_inputs
+    _update_all_dependency_pins
+    _validate_dependency_update
+  elif _dependency_update_pending; then
+    _validate_pending_dependency_update
+    info "Resuming validated dependency update"
+  else
+    _require_clean_dependency_tree
+    _refresh_dependency_set \
+      || fail "Dependency refresh failed; working tree was not changed"
+    _write_dependency_update_marker \
+      || fail "Failed to record validated dependency update"
+  fi
+  _approve_dependency_update
   case "$platform" in
-    nixos)   update_nixos ;;
-    debian)  update_debian ;;
-    arch)    update_arch ;;
-    mac)     update_mac ;;
+    nixos)   DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _nixos_rebuild_switch ;;
+    debian)  DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch linux ;;
+    arch)    DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch arch-server ;;
+    mac)     DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _darwin_rebuild_switch ;;
   esac
   _cleanup_codex_runtime_after_update "$codex_version_before"
   _update_pi_extensions
   _sync_fff_nvim
+  _finish_dependency_update
   success "Finished update"
   _report_fff_nvim_warning
 }

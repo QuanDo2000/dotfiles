@@ -55,7 +55,7 @@ test_help_exits_zero() {
   assert_contains "$output" "Commands"
   assert_contains "$output" "Options"
   assert_contains "$output" "update [ai]"
-  assert_contains "$output" "Update Nix-managed packages"
+  assert_contains "$output" "Refresh all managed dependency pins"
   assert_contains "$output" "Update only AI tools and configs"
   assert_contains "$output" "codex"
   assert_contains "$output" "Update pinned Codex release package"
@@ -191,7 +191,10 @@ test_dry_run_update_command() {
   output=$(bash "$DOTFILE_CMD" --dry update 2>&1)
   assert_checked_flow "$output" true
   assert_contains "$output" "Updating packages"
-  assert_not_contains "$output" "Would update Codex package"
+  for dependency in "Codex package" "Obsidian Headless" "codebase-memory" "FFF release" "Pi extension closure" "WebCord" "Anki Zoom" "Scoop snapshots" "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
+    assert_contains "$output" "Would update $dependency"
+  done
+  assert_contains "$output" "Would run full dependency checks before activation"
   assert_not_contains "$output" "language toolchains"
 }
 

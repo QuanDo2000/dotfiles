@@ -44,7 +44,7 @@ test_pi_extension_lock_has_integrity_for_every_tarball() {
 
   assert_equals 0 "$(jq '[.packages | to_entries[] | select(.key != "" and (.value.link != true)) | select((.value.resolved | type) != "string" or (.value.integrity | startswith("sha512-") | not))] | length' "$extension_dir/package-lock.json")"
   assert_equals 'node_modules/better-sqlite3' "$(jq -r '[.packages | to_entries[] | select(.value.hasInstallScript == true) | .key] | join(" ")' "$extension_dir/package-lock.json")"
-  assert_equals '12.11.1' "$(jq -r '.packages["node_modules/better-sqlite3"].version' "$extension_dir/package-lock.json")"
+  assert_equals "$(jq -r .betterSqlite3.version "$REPO_DIR/packages/pi-extensions-release.json")" "$(jq -r '.packages["node_modules/better-sqlite3"].version' "$extension_dir/package-lock.json")"
 }
 
 test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
@@ -55,14 +55,14 @@ test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
   check="$(<"$REPO_DIR/scripts/check.sh")"
 
   assert_contains "$package" 'pi-extensions-release.json'
-  assert_contains "$package" 'npmDepsHash = "sha256-u1XeyrVDi10ewl1Bn7IK+PMXEO2Bf5i2ZwwdVBtezjg="'
+  assert_contains "$package" 'npmDepsHash = "sha256-'
   assert_contains "$package" '"--ignore-scripts"'
   assert_contains "$package" 'better-sqlite3'
   assert_contains "$package" 'better_sqlite3.node'
   assert_contains "$home" 'locked-extensions/releases/${piExtensionsReleaseId}'
   assert_contains "$flake" 'packages.x86_64-linux.pi-extensions'
   assert_contains "$flake" 'packages.aarch64-darwin.pi-extensions'
-  assert_contains "$check" '"$repo_dir#pi-extensions"'
+  assert_contains "$check" '"$flake#pi-extensions"'
 }
 
 test_pi_extension_update_reconciles_local_packages_only() {

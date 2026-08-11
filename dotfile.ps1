@@ -36,8 +36,8 @@ $script:ScoopInstallerCommit = 'b0ee913725139b816f9178163af0aecdba07a7ed'
 $script:ScoopInstallerSha256 = '48f6ea398b3a3fa26fae0093d37bd85b13e7eaa5d1d4a3e208408768408e35ae'
 $script:ScoopCoreCommit = 'b588a06e41d920d2123ec70aee682bae14935939'
 $script:ScoopCoreSha256 = '630206995f30866a0b25b00c14c74be9ef9b79c4911f72f6efd2625cfe19a645'
-$script:ScoopMainCommit = '72a1eb40859d2a17614bf187570e4275c43e84a3'
-$script:ScoopMainSha256 = '88eff1564c463157958bc817ac30d6111f2e7c01fec702e67fef5cad96a4bc07'
+$script:ScoopMainCommit = '7d545dccc15b2de31820bb2d8b16b6add8915853'
+$script:ScoopMainSha256 = '4ea01cd313a258f4fb357428a1ac8e3dc32cd3f3aacbabac89e536f2c4c3e752'
 
 # Logging helpers
 function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }
@@ -820,11 +820,21 @@ function InstallFffMcp {
     Info "Installing FFF MCP server..."
     if ($script:Dry) { return }
 
+    $pinsPath = Join-Path $script:DotfilesDir 'packages\fff-release.json'
+    if (-not (Test-Path -LiteralPath $pinsPath -PathType Leaf)) { throw "Missing FFF pin file: $pinsPath" }
+    $pins = Get-Content -Raw -LiteralPath $pinsPath | ConvertFrom-Json
+    $version = [string]$pins.version
+    $asset = $pins.mcp.'windows-x64'
+    $assetFile = [string]$asset.file
+    $expectedHash = [string]$asset.sha256
+    if ($version -notmatch '^\d+\.\d+\.\d+$' -or $assetFile -ne 'fff-mcp-x86_64-pc-windows-msvc.exe' -or $expectedHash -notmatch '^[0-9a-f]{64}$') {
+        throw 'Invalid pinned FFF MCP release'
+    }
+
     $binDir = Join-Path $env:USERPROFILE '.local\bin'
     $destination = Join-Path $binDir 'fff-mcp.exe'
     if ($Update -or -not (Test-Path -LiteralPath $destination)) {
-        $url = 'https://github.com/dmtrKovalenko/fff/releases/download/v0.10.1/fff-mcp-x86_64-pc-windows-msvc.exe'
-        $expectedHash = 'e341b78464095c349b0c6b0a32b146fd217b542d973917b89645a5aa511640d8'
+        $url = "https://github.com/dmtrKovalenko/fff/releases/download/v$version/$assetFile"
         $download = "$destination.download"
         New-Item -ItemType Directory -Force -Path $binDir | Out-Null
         try {
@@ -933,8 +943,11 @@ function InstallCodebaseMemory {
     $version = [string]$pins.version
     if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw "Invalid pinned codebase-memory-mcp version: $version" }
     $architecture = Get-CodebaseMemoryWindowsArch ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture)
-    $expectedHash = [string]$pins.windows.$architecture.sha256
+    $asset = $pins.windows.$architecture
+    $expectedHash = [string]$asset.sha256
+    $assetFile = [string]$asset.file
     if ($expectedHash -notmatch '^[0-9a-f]{64}$') { throw "Invalid pinned codebase-memory-mcp checksum for $architecture" }
+    if ($assetFile -notmatch "^codebase-memory-mcp(?:-ui)?-windows-$architecture\.zip$") { throw "Invalid pinned codebase-memory-mcp asset for $architecture" }
 
     $legacyRoot = Join-Path $env:LOCALAPPDATA "Programs\codebase-memory-mcp"
     $releasesRoot = Join-Path $legacyRoot "releases"
@@ -952,11 +965,11 @@ function InstallCodebaseMemory {
             New-Item -ItemType Directory -Force -Path $releasesRoot | Out-Null
             $tempDir = Join-Path ([IO.Path]::GetTempPath()) "codebase-memory-install-$([Guid]::NewGuid().ToString('N'))"
             $stagingDir = Join-Path $releasesRoot ".staging.$([Guid]::NewGuid().ToString('N'))"
-            $archive = Join-Path $tempDir "codebase-memory-mcp-ui-windows-$architecture.zip"
+            $archive = Join-Path $tempDir $assetFile
             $archiveLock = $null
             try {
                 New-Item -ItemType Directory -Force -Path $tempDir, $stagingDir | Out-Null
-                $uri = "https://github.com/DeusData/codebase-memory-mcp/releases/download/v$version/codebase-memory-mcp-ui-windows-$architecture.zip"
+                $uri = "https://github.com/DeusData/codebase-memory-mcp/releases/download/v$version/$assetFile"
                 Invoke-WebRequest -Uri $uri -OutFile $archive -UseBasicParsing
                 $archiveLock = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
                 if ((Get-StreamSha256 $archiveLock) -ne $expectedHash) { throw "codebase-memory-mcp package checksum mismatch" }

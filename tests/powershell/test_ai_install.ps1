@@ -58,9 +58,12 @@ function Write-TestCodebaseMemoryPins($Version = '1.2.3', $Amd64Hash = ('c' * 64
     New-Item -ItemType Directory -Force -Path (Split-Path $pinsPath -Parent) | Out-Null
     @{
         version = $Version
-        linux = @{ amd64 = @{ target = 'linux-amd64'; nixHash = 'sha256-linux' } }
-        darwin = @{ arm64 = @{ target = 'darwin-arm64'; nixHash = 'sha256-darwin' } }
-        windows = @{ amd64 = @{ sha256 = $Amd64Hash }; arm64 = @{ sha256 = $Arm64Hash } }
+        linux = @{ amd64 = @{ file = 'codebase-memory-mcp-linux-amd64.tar.gz'; nixHash = 'sha256-linux'; sha256 = '1' * 64 } }
+        darwin = @{ arm64 = @{ file = 'codebase-memory-mcp-darwin-arm64.tar.gz'; nixHash = 'sha256-darwin'; sha256 = '2' * 64 } }
+        windows = @{
+            amd64 = @{ file = 'codebase-memory-mcp-windows-amd64.zip'; sha256 = $Amd64Hash }
+            arm64 = @{ file = 'codebase-memory-mcp-windows-arm64.zip'; sha256 = $Arm64Hash }
+        }
     } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $pinsPath -Encoding utf8
 }
 
@@ -71,10 +74,12 @@ function test_windows_codebase_memory_uses_pinned_release_packages {
 
     Assert-False ($text -like '*codebase-memory-mcp/$releaseTag/install.ps1*') 'remote codebase-memory installer should not execute'
     Assert-False ($text -like '*releases/latest*codebase-memory*') 'Windows codebase-memory release should not float'
-    Assert-Equals '0.9.0' $pins.version
-    Assert-Equals '9b53ebb86698776c4134747a2285643ce075268df3858f2f4dbb392eede2de17' $pins.windows.amd64.sha256
-    Assert-Equals '1de2aa3928368d1278ca51dc8d2661a778a038ffc4dced40874213e782d0cc07' $pins.windows.arm64.sha256
+    Assert-True ($pins.version -match '^\d+\.\d+\.\d+$') 'version should be exact semver'
+    Assert-True ($pins.windows.amd64.sha256 -match '^[0-9a-f]{64}$') 'amd64 hash should be pinned'
+    Assert-True ($pins.windows.arm64.sha256 -match '^[0-9a-f]{64}$') 'arm64 hash should be pinned'
+    Assert-True ($pins.windows.amd64.file -match '^codebase-memory-mcp(?:-ui)?-windows-amd64.*\.zip$') 'amd64 file should be pinned'
     Assert-Contains $nixPackage 'codebase-memory-mcp-release.json'
+    Assert-Contains $nixPackage '${source.file}'
 }
 
 function test_getcodebasememoryversion_requires_exact_semver_token {
@@ -265,6 +270,7 @@ function test_synccodexconfig_does_not_apply_live_state_to_tracked_seed {
 }
 
 function test_installfffmcp_installs_verified_windows_binary_for_codex {
+    $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\fff-release.json') | ConvertFrom-Json
     $script:FffUrl = ''
     Set-CommandMock 'Invoke-WebRequest' {
         param($Uri, $OutFile)
@@ -272,14 +278,14 @@ function test_installfffmcp_installs_verified_windows_binary_for_codex {
         'fff' | Set-Content -NoNewline $OutFile
     }
     Set-CommandMock 'Get-FileHash' {
-        [pscustomobject]@{ Hash = 'e341b78464095c349b0c6b0a32b146fd217b542d973917b89645a5aa511640d8' }
+        [pscustomobject]@{ Hash = $pins.mcp.'windows-x64'.sha256 }
     }
     Set-FunctionMock 'AddToUserPath' { }
 
     InstallFffMcp
 
     Assert-FileExists (Join-Path $env:USERPROFILE '.local\bin\fff-mcp.exe')
-    Assert-Contains $script:FffUrl 'fff-mcp-x86_64-pc-windows-msvc.exe'
+    Assert-Contains $script:FffUrl "/v$($pins.version)/$($pins.mcp.'windows-x64'.file)"
     Assert-Contains (Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\codex\config.toml')) '[mcp_servers.fff]'
 }
 
@@ -478,7 +484,7 @@ function test_installcodebasememory_stages_verified_ui_archive_and_configures_di
     Assert-FileExists $release
     Assert-Equals $release $script:ActivatedCodebaseMemoryDir
     $calls = $script:CodebaseMemoryCalls -join "`n"
-    Assert-Contains $calls 'download:https://github.com/DeusData/codebase-memory-mcp/releases/download/v1.2.3/codebase-memory-mcp-ui-windows-amd64.zip'
+    Assert-Contains $calls 'download:https://github.com/DeusData/codebase-memory-mcp/releases/download/v1.2.3/codebase-memory-mcp-windows-amd64.zip'
     Assert-Contains $calls "run:${executable}:install -y"
     Assert-Contains $calls "run:${executable}:config set auto_index true"
     Assert-Contains $calls "run:${executable}:config set auto_watch true"
@@ -767,7 +773,7 @@ function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
     $settings = Get-Content -Raw $path | ConvertFrom-Json
 
     $extensions = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package.json') | ConvertFrom-Json
-    Assert-Equals '0.40.0' $extensions.dependencies.'pi-subagents'
+    Assert-True ($extensions.dependencies.'pi-subagents' -match '^\d+\.\d+\.\d+$') 'pi-subagents should use an exact version'
     Assert-Equals 'gpt-5.6-sol' $settings.defaultModel
     Assert-Equals 'high' $settings.defaultThinkingLevel
     Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.defaultModel

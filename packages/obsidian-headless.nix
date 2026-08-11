@@ -6,14 +6,14 @@
 
 buildNpmPackage rec {
   pname = "obsidian-headless";
-  version = "0.0.12";
+  version = "0.0.14";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/obsidian-headless/-/obsidian-headless-${version}.tgz";
-    hash = "sha256-bSZ/1XdTEgAH4atw/NPx0OsP2ul78T1ea4xpu+7w/n0=";
+    hash = "sha256-73UpjtOjVtyypN6Yxu/hCyrGSwBVYAcRi2rHBTXnMVY=";
   };
 
-  npmDepsHash = "sha256-uXNgBQ02JeG741W4F5I7TXwsd6MBPFa6w6BFO1fmM+4=";
+  npmDepsHash = "sha256-Pcy6hxgc9MyTe/a7bE4pMtXjG9hx4HNwZgbfIzTtVRQ=";
 
   dontNpmBuild = true;
 

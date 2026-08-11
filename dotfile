@@ -39,6 +39,7 @@ source "$SCRIPTS_DIR/utils.sh"
 source "$SCRIPTS_DIR/platform.sh"
 source "$SCRIPTS_DIR/packages.sh"
 source "$SCRIPTS_DIR/releases.sh"
+source "$SCRIPTS_DIR/pins.sh"
 source "$SCRIPTS_DIR/doctor.sh"
 source "$SCRIPTS_DIR/obsidian.sh"
 
@@ -73,7 +74,7 @@ Usage: $(basename "$0") [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update [ai] Update Nix-managed packages, including Pi
+  update [ai] Refresh all managed dependency pins, validate, and activate
               Update only AI tools and configs with 'update ai'
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
@@ -87,7 +88,7 @@ Commands:
 
 Options:
   -d, --dry     Dry run (no changes made)
-  -f, --force   Overwrite existing files without prompting
+  -f, --force   Overwrite files and approve dependency activation
   -q, --quiet   Only show errors
   -h, --help    Show this help message
 EOF

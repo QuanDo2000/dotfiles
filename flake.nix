@@ -40,9 +40,12 @@
       };
       devShell = pkgs: pkgs.mkShell {
         packages = with pkgs; [
+          cosign
           git
           gh
           jq
+          neovim
+          nodejs
           powershell
           python3
           shellcheck

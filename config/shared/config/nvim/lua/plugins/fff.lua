@@ -5,7 +5,7 @@ end
 return {
   {
     "dmtrKovalenko/fff.nvim",
-    version = "v0.10.1",
+    version = "v0.10.3",
     build = function(plugin)
       local uv = vim.uv or vim.loop
       local source = vim.fn.stdpath("config") .. "/fff-nvim-backend"

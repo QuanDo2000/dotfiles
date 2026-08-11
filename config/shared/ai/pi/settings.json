@@ -41,13 +41,13 @@
     "~/.agents/skills"
   ],
   "packages": [
-    "./locked-extensions/releases/1d62b513ae196d8e2db2512f3c2cde798f2aab9d5cade28b19b192fafa0c966c/node_modules/pi-mcp-extension",
-    "./locked-extensions/releases/1d62b513ae196d8e2db2512f3c2cde798f2aab9d5cade28b19b192fafa0c966c/node_modules/@dietrichgebert/ponytail",
-    "./locked-extensions/releases/1d62b513ae196d8e2db2512f3c2cde798f2aab9d5cade28b19b192fafa0c966c/node_modules/pi-hermes-memory",
-    "./locked-extensions/releases/1d62b513ae196d8e2db2512f3c2cde798f2aab9d5cade28b19b192fafa0c966c/node_modules/@ff-labs/pi-fff",
-    "./locked-extensions/releases/1d62b513ae196d8e2db2512f3c2cde798f2aab9d5cade28b19b192fafa0c966c/node_modules/@narumitw/pi-lsp",
-    "./locked-extensions/releases/1d62b513ae196d8e2db2512f3c2cde798f2aab9d5cade28b19b192fafa0c966c/node_modules/pi-web-access",
-    "./locked-extensions/releases/1d62b513ae196d8e2db2512f3c2cde798f2aab9d5cade28b19b192fafa0c966c/node_modules/pi-subagents"
+    "./locked-extensions/releases/6e4f514682f58eba2e6d81c8c6c5eb0bdd9516ee54dac69385f336874a3287e5/node_modules/pi-mcp-extension",
+    "./locked-extensions/releases/6e4f514682f58eba2e6d81c8c6c5eb0bdd9516ee54dac69385f336874a3287e5/node_modules/@dietrichgebert/ponytail",
+    "./locked-extensions/releases/6e4f514682f58eba2e6d81c8c6c5eb0bdd9516ee54dac69385f336874a3287e5/node_modules/pi-hermes-memory",
+    "./locked-extensions/releases/6e4f514682f58eba2e6d81c8c6c5eb0bdd9516ee54dac69385f336874a3287e5/node_modules/@ff-labs/pi-fff",
+    "./locked-extensions/releases/6e4f514682f58eba2e6d81c8c6c5eb0bdd9516ee54dac69385f336874a3287e5/node_modules/@narumitw/pi-lsp",
+    "./locked-extensions/releases/6e4f514682f58eba2e6d81c8c6c5eb0bdd9516ee54dac69385f336874a3287e5/node_modules/pi-web-access",
+    "./locked-extensions/releases/6e4f514682f58eba2e6d81c8c6c5eb0bdd9516ee54dac69385f336874a3287e5/node_modules/pi-subagents"
   ],
   "lastChangelogVersion": "0.80.6",
   "theme": "dark",

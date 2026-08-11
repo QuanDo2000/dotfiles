@@ -246,10 +246,10 @@ if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($env:SCOOP_TEST_SOURCE)) -
 }
 
 function test_scoop_bootstrap_pins_core_and_main_archives {
-    Assert-Equals 'b588a06e41d920d2123ec70aee682bae14935939' $script:ScoopCoreCommit
-    Assert-Equals '630206995f30866a0b25b00c14c74be9ef9b79c4911f72f6efd2625cfe19a645' $script:ScoopCoreSha256
-    Assert-Equals '72a1eb40859d2a17614bf187570e4275c43e84a3' $script:ScoopMainCommit
-    Assert-Equals '88eff1564c463157958bc817ac30d6111f2e7c01fec702e67fef5cad96a4bc07' $script:ScoopMainSha256
+    Assert-True ($script:ScoopCoreCommit -match '^[0-9a-f]{40}$') 'Scoop core commit should be pinned'
+    Assert-True ($script:ScoopCoreSha256 -match '^[0-9a-f]{64}$') 'Scoop core archive should be pinned'
+    Assert-True ($script:ScoopMainCommit -match '^[0-9a-f]{40}$') 'Scoop Main commit should be pinned'
+    Assert-True ($script:ScoopMainSha256 -match '^[0-9a-f]{64}$') 'Scoop Main archive should be pinned'
     $source = @'
 if (Test-CommandAvailable('git')) {
 }
@@ -533,6 +533,7 @@ function test_installscooppackages_keeps_reviewed_scoop_snapshot_during_update {
 
 function test_installfnm_uses_pi_extension_node_pin {
     $script:Dry = $false
+    $nodeVersion = (Get-Content -Raw (Join-Path $script:RepoDir 'packages\pi-extensions-release.json') | ConvertFrom-Json).node.version
     $script:FnmCalls = @()
     Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-fnm' } }
     Set-CommandMock 'fnm' {
@@ -543,9 +544,9 @@ function test_installfnm_uses_pi_extension_node_pin {
 
     InstallFnm 6>&1 | Out-Null
 
-    Assert-True ($script:FnmCalls -contains 'install 24.18.1') 'fnm should install locked Node version'
-    Assert-True ($script:FnmCalls -contains 'use 24.18.1') 'fnm should use locked Node version'
-    Assert-True ($script:FnmCalls -contains 'default 24.18.1') 'fnm should default to locked Node version'
+    Assert-True ($script:FnmCalls -contains "install $nodeVersion") 'fnm should install locked Node version'
+    Assert-True ($script:FnmCalls -contains "use $nodeVersion") 'fnm should use locked Node version'
+    Assert-True ($script:FnmCalls -contains "default $nodeVersion") 'fnm should default to locked Node version'
     Assert-False (($script:FnmCalls -join "`n") -like '*lts-latest*') 'Node version should not float'
 }
 

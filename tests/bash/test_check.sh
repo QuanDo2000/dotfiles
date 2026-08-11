@@ -16,12 +16,16 @@ test_check_script_runs_repo_verification() {
   check_text="$(<"$REPO_DIR/scripts/check.sh")"
   flake_text="$(<"$REPO_DIR/flake.nix")"
 
-  assert_contains "$check_text" 'nix develop "$repo_dir" -c bash "$repo_dir/tests/bash/runner.sh" --no-docker'
-  assert_contains "$check_text" 'nix develop "$repo_dir" -c pwsh "$repo_dir/tests/powershell/runner.ps1"'
+  assert_contains "$check_text" 'nix develop "$flake" -c bash "$repo_dir/tests/bash/runner.sh" --no-docker'
+  assert_contains "$check_text" 'nix develop "$flake" -c pwsh "$repo_dir/tests/powershell/runner.ps1"'
   assert_not_contains "$check_text" 'command -v pwsh'
-  assert_contains "$check_text" 'nix flake check --no-build --all-systems'
-  assert_contains "$check_text" 'nix build "$repo_dir#codex" "$repo_dir#obsidian-headless" "$repo_dir#pi-agent" "$repo_dir#pi-extensions" "$repo_dir#fff-mcp" "$repo_dir#fff-nvim-backend" "$repo_dir#codebase-memory-mcp" --no-link'
-  assert_contains "$check_text" 'nix develop "$repo_dir" -c shellcheck'
+  assert_contains "$check_text" 'nix flake check "$flake" --no-build --all-systems'
+  assert_contains "$check_text" 'flake="path:$repo_dir"'
+  assert_contains "$check_text" '"$flake#obsidian-headless"'
+  assert_contains "$check_text" '"$flake#pi-agent"'
+  assert_contains "$check_text" 'if [[ "$(uname -s)" == "Linux" ]]'
+  assert_contains "$check_text" 'nix build "${packages[@]}" --no-link'
+  assert_contains "$check_text" 'nix develop "$flake" -c shellcheck'
   assert_contains "$flake_text" "pi-agent = final.callPackage ./packages/pi-agent.nix"
   assert_contains "$flake_text" "fff-mcp = final.callPackage ./packages/fff-mcp.nix"
   assert_contains "$flake_text" "fff-nvim-backend = final.callPackage ./packages/fff-nvim-backend.nix"

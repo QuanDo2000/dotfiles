@@ -35,21 +35,25 @@ test_arch_packages_are_bootstrap_only() {
 }
 
 test_code_search_stack_uses_current_full_feature_packages() {
-  local fff codebase codebase_pins pi_extensions
+  local fff codebase codebase_pins fff_pins pi_extensions
   fff="$(<"$REPO_DIR/packages/fff-mcp.nix")"
   codebase="$(<"$REPO_DIR/packages/codebase-memory-mcp.nix")"
   codebase_pins="$REPO_DIR/packages/codebase-memory-mcp-release.json"
+  fff_pins="$REPO_DIR/packages/fff-release.json"
   pi_extensions="$REPO_DIR/config/shared/ai/pi/extensions/package.json"
 
-  assert_contains "$fff" 'version = "0.10.1";'
-  assert_equals "0.9.0" "$(jq -r .version "$codebase_pins")"
+  assert_contains "$fff" 'fff-release.json'
+  assert_equals "true" "$(jq -r '.version | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")' "$fff_pins")"
+  assert_equals "true" "$(jq -r '.version | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")' "$codebase_pins")"
   assert_contains "$codebase" 'codebase-memory-mcp-release.json'
-  assert_contains "$codebase" 'codebase-memory-mcp-ui-'
-  assert_equals "0.10.1" "$(jq -r '.dependencies["@ff-labs/pi-fff"]' "$pi_extensions")"
+  assert_contains "$codebase" '${source.file}'
+  assert_equals "true" "$(jq -r '.linux.amd64.file | test("^codebase-memory-mcp(-ui)?-linux-amd64.*\\.tar\\.gz$")' "$codebase_pins")"
+  assert_equals "true" "$(jq -r '.windows.amd64.file | test("^codebase-memory-mcp(-ui)?-windows-amd64.*\\.zip$")' "$codebase_pins")"
+  assert_equals "$(jq -r .version "$fff_pins")" "$(jq -r '.dependencies["@ff-labs/pi-fff"]' "$pi_extensions")"
 }
 
 test_pi_web_access_is_pinned() {
-  assert_equals "0.19.0" "$(jq -r '.dependencies["pi-web-access"]' "$REPO_DIR/config/shared/ai/pi/extensions/package.json")"
+  assert_equals "true" "$(jq -r '.dependencies["pi-web-access"] | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")' "$REPO_DIR/config/shared/ai/pi/extensions/package.json")"
 }
 
 test_pi_lsp_uses_pinned_package_and_nix_servers() {
@@ -116,9 +120,7 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
   pins="$REPO_DIR/config/shared/ai/skills/sources.json"
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
-  assert_equals "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0" "$(jq -r .caveman.commit "$pins")"
-  assert_equals "c984ea2e7aeffdcc865784fd6c5e3ab75da0209a" "$(jq -r .superpowers.commit "$pins")"
-  assert_equals "40e50d9e03242aa5dd53ac771950f9127362b25f" "$(jq -r .ponytail.commit "$pins")"
+  assert_equals "0" "$(jq '[to_entries[] | select(.key != "schemaVersion") | select((.value.commit | test("^[0-9a-f]{40}$") | not) or (.value.observedArchiveSha256 | test("^[0-9a-f]{64}$") | not))] | length' "$pins")"
   for skill in caveman systematic-debugging test-driven-development verification-before-completion diff-review-qa ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
@@ -459,7 +461,8 @@ test_home_manager_installs_pinned_webcord_release() {
   assert_contains "$flake" 'webcord = final.callPackage ./packages/webcord-release.nix { };'
   assert_file_exists "$package"
   [[ -f "$package" ]] || return
-  assert_contains "$(<"$package")" 'version = "4.14.0";'
+  assert_contains "$(<"$package")" 'version = "'
+  assert_contains "$(<"$package")" 'hash = "sha256-'
   assert_contains "$(<"$package")" "appimageTools.wrapType2"
 }
 
