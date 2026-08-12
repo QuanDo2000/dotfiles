@@ -489,7 +489,6 @@ in
           set -g @catppuccin_date_time_text ' %Y-%m-%d %H:%M:%S'
         '';
       }
-      pkgs.tmuxPlugins.yank
     ];
     extraConfig = builtins.readFile ./unix/.tmux.conf;
   };
