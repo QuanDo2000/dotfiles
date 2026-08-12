@@ -20,19 +20,19 @@ function test_windows_terminal_does_not_elevate_every_profile {
 }
 
 function test_windows_neovim_bootstraps_lazy_at_reviewed_lock {
-    $lazyConfig = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/lua/config/lazy.lua')
+    $lazyConfig = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/init.lua')
     $lock = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/lazy-lock.json') | ConvertFrom-Json
     Assert-Contains $lazyConfig 'vim.fn.has("win32") == 1'
     Assert-Contains $lazyConfig 'https://github.com/folke/lazy.nvim.git'
     Assert-Contains $lazyConfig 'lazy-lock.json'
-    Assert-Contains $lazyConfig '"checkout", "--force", lazy_commit'
+    Assert-Contains $lazyConfig '"checkout", "--force", commit'
     Assert-False ($lazyConfig -like '*--branch=stable*') 'lazy.nvim bootstrap should use reviewed commit'
     Assert-Equals '85c7ff3711b730b4030d03144f6db6375044ae82' $lock.'lazy.nvim'.commit
 }
 
 function test_windows_neovim_disables_fff_plugin {
-    $config = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/lua/plugins/fff.lua')
-    Assert-Contains $config 'vim.fn.has("win32") == 1'
+    $config = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/init.lua')
+    Assert-Contains $config 'enabled = vim.fn.has("win32") ~= 1'
 }
 
 function test_windows_gitconfig_uses_platform_gpg_program {
@@ -78,7 +78,6 @@ function test_windows_neovim_links_stable_files_not_whole_directory {
     Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'init.lua') })) 'init.lua should be linked'
     Assert-True ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lua') })) 'lua directory should be linked'
     Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lazy-lock.json') })) 'runtime-written plugin lock should remain writable'
-    Assert-False ([bool]($nvimSpecs | Where-Object { $_.Destination -eq (Join-Path $nvimRoot 'lazyvim.json') })) 'lazyvim.json should remain writable'
 }
 
 function test_windows_notepadplusplus_links_stable_settings_and_themes {

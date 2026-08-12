@@ -1339,27 +1339,27 @@ function Get-NeovimDataPath($nvim) {
     return (($output -join '').Trim())
 }
 
-function Sync-LazyVim {
-    Info "Installing or updating LazyVim..."
+function Sync-NeovimPlugins {
+    Info "Installing or updating Neovim plugins..."
     if ($script:Dry) { return }
 
     try {
         $nvim = Get-NeovimCommand
         if (-not $nvim) { throw "nvim executable not found" }
-        & $nvim --headless "+Lazy! sync" "+qa" 2>&1 | ForEach-Object { Write-Host $_ }
+        & $nvim --headless "+Lazy! restore" "+qa" 2>&1 | ForEach-Object { Write-Host $_ }
         if ($LASTEXITCODE -ne 0) {
-            Write-Warning "LazyVim sync failed; Neovim may finish setup on first start"
+            Write-Warning "Neovim plugin sync failed; Neovim may finish setup on first start"
         } else {
             $dataPath = Get-NeovimDataPath $nvim
             if (-not $dataPath) { throw "could not determine Neovim data path" }
             $lazyRoot = Join-Path $dataPath "lazy"
             if (-not (Test-Path -LiteralPath (Join-Path $lazyRoot "lazy.nvim")) -or
-                -not (Test-Path -LiteralPath (Join-Path $lazyRoot "LazyVim"))) {
-                Write-Warning "LazyVim sync did not install lazy.nvim and LazyVim; Neovim may finish setup on first start"
+                -not (Test-Path -LiteralPath (Join-Path $lazyRoot "snacks.nvim"))) {
+                Write-Warning "Neovim plugin sync did not install lazy.nvim and snacks.nvim; Neovim may finish setup on first start"
             }
         }
     } catch {
-        Write-Warning "LazyVim sync failed; Neovim may finish setup on first start: $_"
+        Write-Warning "Neovim plugin sync failed; Neovim may finish setup on first start: $_"
     }
 }
 
@@ -1405,7 +1405,7 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
         InstallExtras -Update
         InstallAi -Update
         SetupSymlinks
-        Sync-LazyVim
+        Sync-NeovimPlugins
     }
     if (-not $script:Dry) { Assert-WindowsHealthy }
     Success $(if ($aiOnly) { "Finished AI update" } else { "Finished updating packages" })
@@ -1486,7 +1486,7 @@ function Get-WindowsLinkSpecs {
         $specs += New-LinkSpec 'File' $_.FullName (Join-Path $notepadTarget "themes\$($_.Name)")
     }
 
-    # Neovim settings: keep LazyVim's runtime-written lazyvim.json writable.
+    # Neovim settings: keep plugin manager state writable.
     $nvimSource = Join-Path $sharedPath "config\nvim"
     $nvimTarget = "$env:LOCALAPPDATA\nvim"
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource "init.lua") (Join-Path $nvimTarget "init.lua")
@@ -1548,31 +1548,6 @@ function Sync-LazyLock {
     (Get-Item -LiteralPath $target).IsReadOnly = $false
 }
 
-function Sync-LazyVimConfig {
-    Info "Syncing writable LazyVim configuration..."
-    if ($script:Dry) { return }
-
-    $source = Join-Path $script:DotfilesDir "config\shared\config\nvim\lazyvim.json"
-    $target = "$env:LOCALAPPDATA\nvim\lazyvim.json"
-    $base = "$env:LOCALAPPDATA\dotfiles\lazyvim-seed.json"
-    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent), (Split-Path $base -Parent) | Out-Null
-
-    if (-not (Test-Path -LiteralPath $target)) {
-        Copy-Item -LiteralPath $source -Destination $target
-        Copy-Item -LiteralPath $source -Destination $base
-        return
-    }
-
-    if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
-        throw "py is required to sync LazyVim configuration"
-    }
-    $mergeScript = Join-Path $script:DotfilesDir "scripts\seed_merge\lazyvim.py"
-    $applySeed = if ((Get-Item -LiteralPath $source).IsReadOnly) { "" } else { $source }
-    Invoke-NativeChecked "LazyVim config seed merge failed" {
-        py -3.14 $mergeScript $target $source $applySeed $base
-    }
-}
-
 function SetupSymlinks {
     Info "Setting up symlinks..."
     $script:OverwriteAll = $script:Force
@@ -1588,7 +1563,6 @@ function SetupSymlinks {
     }
     Sync-NotepadPlusPlusConfig
     Sync-LazyLock
-    Sync-LazyVimConfig
     if (-not $script:Dry) {
         $gpgconf = Join-Path $env:ProgramFiles 'GnuPG\bin\gpgconf.exe'
         Invoke-NativeChecked "GPG agent reload failed" { & $gpgconf --reload gpg-agent }
@@ -1725,7 +1699,7 @@ function SetupDotfiles([switch]$AfterRepoUpdate) {
 
     InstallManagedPackages
     SetupSymlinks
-    Sync-LazyVim
+    Sync-NeovimPlugins
     if (-not $script:Dry) { Assert-WindowsHealthy }
     Success "Done!"
 }

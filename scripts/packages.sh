@@ -388,8 +388,8 @@ function _sync_fff_nvim {
   local output plugin="$HOME/.local/share/nvim/lazy/fff.nvim"
   local release="$plugin/target/release"
   local backend="$HOME/.config/nvim/fff-nvim-backend"
-  if ! output="$(nvim --headless "+Lazy! sync fff.nvim" +qa 2>&1)"; then
-    FFF_NVIM_WARNING="Lazy sync failed:\n$output"
+  if ! output="$(nvim --headless "+Lazy! restore fff.nvim" +qa 2>&1)"; then
+    FFF_NVIM_WARNING="Lazy restore failed:\n$output"
     return
   fi
   if [ ! -d "$plugin" ]; then

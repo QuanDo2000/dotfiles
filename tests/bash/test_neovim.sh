@@ -3,35 +3,47 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
-test_home_manager_seeds_writable_lazyvim_config() {
-  local config
-  config="$(<"$REPO_DIR/config/home.nix")"
+test_pi_terminal_preserves_submit_behavior() {
+  local module output
+  module="$REPO_DIR/config/shared/config/nvim/lua/config/pi-terminal.lua"
+  assert_file_exists "$module"
+  output="$(PI_TERMINAL_MODULE="$module" nvim --headless -u NONE -l "$REPO_DIR/tests/nvim/pi_terminal.lua" 2>&1)"
+  assert_contains "$output" "PI_TERMINAL_OK"
+}
 
-  assert_contains "$config" "home.activation.seedLazyVimConfig"
-  assert_contains "$config" '${../scripts/seed_merge}/lazyvim.py'
-  assert_contains "$config" "lazyvim-seed.json"
-  assert_contains "$config" 'psCommand = if pkgs.stdenv.isDarwin then "/bin/ps" else "${pkgs.procps}/bin/ps";'
-  assert_contains "$config" '"${psCommand}" -A -o comm='
-  assert_not_contains "$config" "if /bin/ps -A"
-  assert_contains "$config" "Skipping LazyVim config sync while Neovim is running"
-  assert_not_contains "$config" 'xdg.configFile."nvim/lazyvim.json"'
+test_neovim_uses_raw_config() {
+  local config home
+  config="$REPO_DIR/config/shared/config/nvim"
+  home="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$(<"$config/init.lua")" "vim.g.raw_neovim = true"
+  assert_not_contains "$(<"$config/init.lua")" "LazyVim/LazyVim"
+  assert_not_contains "$(<"$config/lazy-lock.json")" '"LazyVim"'
+  assert_not_contains "$(<"$config/lazy-lock.json")" '"neotest"'
+  assert_not_contains "$home" "seedLazyVimConfig"
+  if [ -e "$config/lazyvim.json" ]; then
+    printf "  legacy lazyvim.json still exists\n" >> "$ERROR_FILE"
+  fi
+  assert_contains "$(<"$REPO_DIR/docs/raw-neovim-evaluation.md")" "Neotest with zero adapters"
 }
 
 test_neovim_uses_reviewed_plugin_lock() {
   local config lazy lock updater
   config="$(<"$REPO_DIR/config/home.nix")"
-  lazy="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/lazy.lua")"
+  lazy="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
   lock="$REPO_DIR/config/shared/config/nvim/lazy-lock.json"
   updater="$(<"$REPO_DIR/scripts/update_pins.py")"
 
   assert_contains "$config" "home.activation.seedLazyLock"
   assert_contains "$lazy" 'lazy-lock.json'
-  assert_contains "$lazy" 'git", "-C", lazypath, "checkout", "--force", lazy_commit'
+  assert_contains "$lazy" 'git", "-C", lazypath, "checkout", "--force", commit'
   assert_not_contains "$lazy" '"--branch=stable"'
   assert_equals "$(jq -r .commit "$REPO_DIR/packages/fff-release.json")" "$(jq -r '."fff.nvim".commit' "$lock")"
-  assert_contains "$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")" "version = \"v$(jq -r .version "$REPO_DIR/packages/fff-release.json")\""
+  assert_contains "$lazy" "version = \"v$(jq -r .version "$REPO_DIR/packages/fff-release.json")\""
   assert_contains "$updater" '"XDG_CONFIG_HOME"'
   assert_contains "$updater" '"XDG_DATA_HOME"'
+  assert_contains "$updater" 'repo / "config/shared/config/nvim/init.lua"'
+  assert_not_contains "$updater" 'config/shared/config/nvim/lua/plugins/fff.lua'
   assert_contains "$updater" 'lock["fff.nvim"]["commit"] != fff["commit"]'
 }
 
@@ -80,7 +92,7 @@ test_sync_fff_nvim_runs_headless_lazy_sync_and_links_nix_backend() {
 
   _sync_fff_nvim
 
-  assert_contains "$(<"$calls")" '--headless +Lazy! sync fff.nvim +qa'
+  assert_contains "$(<"$calls")" '--headless +Lazy! restore fff.nvim +qa'
   assert_symlink "$target" "$source"
   unset -f nvim
 }
@@ -121,10 +133,9 @@ test_sync_fff_nvim_dry_run_does_not_start_neovim() {
 
 test_fff_nvim_is_disabled_on_windows() {
   local config
-  config="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
+  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
 
-  assert_contains "$config" 'vim.fn.has("win32") == 1'
-  assert_contains "$config" "return {}"
+  assert_contains "$config" 'enabled = vim.fn.has("win32") ~= 1'
 }
 
 test_fff_nvim_uses_hash_pinned_nix_backend() {
@@ -132,7 +143,7 @@ test_fff_nvim_uses_hash_pinned_nix_backend() {
   home="$(<"$REPO_DIR/config/home.nix")"
   package="$(<"$REPO_DIR/packages/fff-nvim-backend.nix")"
   flake="$(<"$REPO_DIR/flake.nix")"
-  config="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
+  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
 
   assert_contains "$package" 'fff-release.json'
   assert_equals "true" "$(jq -r '.backend["x86_64-linux"] | (.file | endswith(".so")) and (.sha256 | test("^[0-9a-f]{64}$")) and (.hash | startswith("sha256-"))' "$REPO_DIR/packages/fff-release.json")"
@@ -146,30 +157,21 @@ test_fff_nvim_uses_hash_pinned_nix_backend() {
   assert_not_contains "$config" 'cargo build'
 }
 
-test_home_manager_lazyvim_guard_uses_runnable_ps() {
-  local nix_bin
-  if ! nix_bin="$(type -P nix)"; then
-    return
-  fi
-  local activation ps_path
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    activation="$("$nix_bin" eval --raw "$REPO_DIR#darwinConfigurations.mac.config.home-manager.users.quando.home.activation.seedLazyVimConfig.data")"
-    assert_contains "$activation" '"/bin/ps" -A -o comm='
-    assert_exit_code 0 /bin/ps -A
-  else
-    activation="$("$nix_bin" eval --raw "$REPO_DIR#nixosConfigurations.nixos.config.home-manager.users.quando.home.activation.seedLazyVimConfig.data")"
-    ps_path="$(grep -o '/nix/store/[^ "]*/bin/ps' <<< "$activation" | head -1)"
-    local nix_store_bin
-    nix_store_bin="$(type -P nix-store)"
-    assert_exit_code 0 "$nix_store_bin" --realise "${ps_path%/bin/ps}"
-    assert_file_exists "$ps_path"
-    assert_exit_code 0 "$ps_path" --version
-  fi
+test_raw_neovim_headless_config() {
+  local data output
+  data="$(mktemp -d)"
+  mkdir -p "$data/config"
+  cp -R "$REPO_DIR/config/shared/config/nvim" "$data/config/nvim"
+  output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$ORIG_HOME/.local/share" \
+    FFF_FRECENCY_DB="$data/fff-frecency" FFF_HISTORY_DB="$data/fff-history" \
+    nvim --headless -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1)"
+  assert_contains "$output" "RAW_CONFIG_OK"
+  rm -rf "$data"
 }
 
 test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {
   local config
-  config="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/lazy.lua")"
+  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
 
-  assert_contains "$config" '{ "folke/lazy.nvim", enabled = false }'
+  assert_contains "$config" '{ "folke/lazy.nvim", enabled = vim.fn.has("win32") == 1 }'
 }

@@ -39,20 +39,20 @@ test_ci_runs_direct_nix_checks() {
   assert_contains "$check" '"$flake#fff-nvim-backend"'
 }
 
-test_ci_runs_windows_lazyvim_integration() {
+test_ci_runs_windows_neovim_integration() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_contains "$workflow" "Neovim.Neovim"
   assert_contains "$workflow" 'Microsoft\WinGet\Links\nvim.exe'
   assert_contains "$workflow" 'Neovim\bin\nvim.exe'
-  assert_contains "$workflow" "tests/powershell/integration_lazyvim.ps1"
+  assert_contains "$workflow" "tests/powershell/integration_neovim.ps1"
   assert_contains "$workflow" "actions/setup-node@v4"
   assert_contains "$workflow" "node-version: $(jq -r .node.version "$REPO_DIR/packages/pi-extensions-release.json")"
   assert_contains "$workflow" "tests/powershell/integration_pi_extensions.ps1"
 
   local integration
-  integration="$(<"$REPO_DIR/tests/powershell/integration_lazyvim.ps1")"
+  integration="$(<"$REPO_DIR/tests/powershell/integration_neovim.ps1")"
   assert_contains "$integration" "dotfile.ps1"
   assert_contains "$integration" "Get-NeovimCommand"
   assert_contains "$integration" "XDG_CONFIG_HOME"
