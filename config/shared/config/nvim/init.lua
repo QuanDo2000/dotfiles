@@ -348,7 +348,7 @@ local plugins = {
     config = function()
       require("mason").setup()
       require("mason-registry").refresh(function()
-        for _, name in ipairs({ "markdownlint-cli2", "markdown-toc", "shellcheck", "shfmt", "stylua" }) do
+        for _, name in ipairs({ "markdownlint-cli2", "markdown-toc", "stylua" }) do
           local package = require("mason-registry").get_package(name)
           if not package:is_installed() then package:install() end
         end

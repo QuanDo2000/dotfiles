@@ -377,8 +377,6 @@ in
     plugins = [ pkgs.vimPlugins.lazy-nvim ];
     initLua = builtins.readFile ./shared/config/nvim/init.lua;
     extraPackages = with pkgs; [
-      lua5_1
-      luarocks
       tree-sitter
       unzip
     ];
