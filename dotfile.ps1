@@ -184,14 +184,14 @@ function Get-WingetPackages {
 }
 
 function Get-ScoopPackages {
-    @("FiraCode-NF", "jq", "ast-grep")
+    @("FiraCode-NF", "jq")
 }
 
 function Get-RequiredCommands {
     @(
         "git", "gpg", "nvim", "starship", "fzf", "fd", "rg", "lazygit",
-        "fnm", "node", "jj", "zoxide", "jq", "ast-grep", "codex", "pi",
-        "codebase-memory-mcp", "fff-mcp", "py", "gh", "vtsls",
+        "fnm", "node", "jj", "zoxide", "jq", "codex", "pi",
+        "codebase-memory-mcp", "fff-mcp", "fff-mcp-agent", "py", "gh", "vtsls",
         "bash-language-server", "shellcheck"
     )
 }
@@ -381,6 +381,10 @@ function InstallScoopPackages {
     if ($installed.Name -contains "FiraCode") {
         Invoke-NativeChecked "scoop uninstall FiraCode failed" { scoop uninstall FiraCode }
         $installed = @($installed | Where-Object { $_.Name -ne "FiraCode" })
+    }
+    if ($installed.Name -contains "ast-grep") {
+        Invoke-NativeChecked "scoop uninstall ast-grep failed" { scoop uninstall ast-grep }
+        $installed = @($installed | Where-Object { $_.Name -ne "ast-grep" })
     }
     if ($fontBucket) {
         Invoke-NativeChecked "scoop bucket rm nerd-fonts failed" { scoop bucket rm nerd-fonts }
@@ -804,7 +808,11 @@ function SyncPiConfigs {
     New-Item -ItemType Directory -Force -Path $targetDir, $baseDir | Out-Null
 
     foreach ($name in @("settings.json", "mcp.json", "subagent-config.json")) {
-        $source = Join-Path $seedDir $name
+        $source = if ($name -eq "mcp.json") {
+            Join-Path $script:DotfilesDir "config\windows\ai\pi\mcp.json"
+        } else {
+            Join-Path $seedDir $name
+        }
         $relative = if ($name -eq "subagent-config.json") { "extensions\subagent\config.json" } else { $name }
         $target = Join-Path $targetDir $relative
         $base = Join-Path $baseDir $name
@@ -879,6 +887,11 @@ function InstallFffMcp {
     } else {
         Info "Already installed FFF MCP server"
     }
+    $launcher = Join-Path $binDir 'fff-mcp-agent.cmd'
+    @'
+@echo off
+"%~dp0fff-mcp.exe" --frecency-db "%LOCALAPPDATA%\fff\frecency" %*
+'@ | Set-Content -LiteralPath $launcher -Encoding ascii
     AddToUserPath $binDir
 
     Success "Finished installing FFF MCP server"

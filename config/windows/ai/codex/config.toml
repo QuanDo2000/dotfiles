@@ -52,7 +52,8 @@ enabled = true
 enabled = true
 
 [mcp_servers.fff]
-command = "fff-mcp"
+command = "cmd.exe"
+args = ["/d", "/s", "/c", "fff-mcp-agent.cmd"]
 
 [mcp_servers.fff.tools.find_files]
 approval_mode = "approve"

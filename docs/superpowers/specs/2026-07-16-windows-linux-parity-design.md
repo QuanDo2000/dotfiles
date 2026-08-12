@@ -10,7 +10,7 @@ Bring the Windows installer to functional parity with the Unix lifecycle while k
 - doctor verifies exact managed package identities, required public commands, tracked links, and mutable configuration; verify remains an alias.
 - Setup and update run doctor after successful mutation.
 - Package and AI installers run without blanket elevation. Symlink creation first uses Developer Mode and elevates only the individual link operation if Windows rejects it for privilege.
-- Scoop owns FiraCode, jq, and ast-grep. Winget owns the existing CLI set plus Python 3.14, which runs the existing seed scripts.
+- Scoop owns FiraCode and jq. Winget owns the existing CLI set plus Python 3.14, which runs the existing seed scripts.
 - Update covers Winget, managed Scoop packages, Node LTS, Codex, Pi, codebase-memory-mcp, and LazyVim.
 - Pi comes from @earendil-works/pi-coding-agent. AI installers succeed only when their public command is discoverable afterward.
 - Windows links stable Neovim files individually; lazyvim.json is writable and reconciled with the existing lazyvim.py merger.

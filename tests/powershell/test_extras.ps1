@@ -389,7 +389,25 @@ function test_installscooppackages_replaces_mutable_font_bucket_with_local_manif
     Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'tracked FiraCode Nerd Font manifest should be installed'
     Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode') 'obsolete non-Nerd Font package should be removed'
     Assert-True ($script:ScoopCalls -contains 'install jq') 'jq should be managed by Scoop'
-    Assert-True ($script:ScoopCalls -contains 'install ast-grep') 'ast-grep should be managed by Scoop'
+    Assert-False ($script:ScoopCalls -contains 'install ast-grep') 'unused ast-grep should not be installed'
+}
+
+function test_installscooppackages_removes_obsolete_ast_grep {
+    $script:Dry = $false
+    $script:ScoopCalls = @()
+    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
+    Set-CommandMock 'scoop' {
+        $script:ScoopCalls += ,($args -join ' ')
+        if ($args[0] -eq 'list') {
+            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
+        }
+        $global:LASTEXITCODE = 0
+    }
+
+    InstallScoopPackages 6>&1 | Out-Null
+
+    Assert-True ($script:ScoopCalls -contains 'uninstall ast-grep') 'obsolete ast-grep should be removed'
+    Assert-False ($script:ScoopCalls -contains 'install ast-grep') 'unused ast-grep should not be reinstalled'
 }
 
 function test_installscooppackages_reinstalls_bucket_managed_firacode_nf {
@@ -404,7 +422,6 @@ function test_installscooppackages_reinstalls_bucket_managed_firacode_nf {
         if ($args[0] -eq 'list') {
             [pscustomobject]@{ Name = 'FiraCode-NF'; Source = 'nerd-fonts' }
             [pscustomobject]@{ Name = 'jq'; Source = 'main' }
-            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
         }
         $global:LASTEXITCODE = 0
     }
@@ -441,7 +458,6 @@ function test_installscooppackages_recovers_after_legacy_font_bucket_was_removed
         if ($args[0] -eq 'list') {
             if ($script:LegacyFontInstalled) { throw "Cannot find path 'C:\Users\test\scoop\buckets\nerd-fonts\' because it does not exist." }
             [pscustomobject]@{ Name = 'jq'; Source = 'main' }
-            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
         }
         $global:LASTEXITCODE = 0
     }
@@ -478,7 +494,6 @@ function test_installscooppackages_recovers_bucket_managed_font_after_bucket_was
         if ($args[0] -eq 'list') {
             if ($script:BucketFontInstalled) { throw "Cannot find path 'C:\Users\test\scoop\buckets\nerd-fonts\' because it does not exist." }
             [pscustomobject]@{ Name = 'jq'; Source = 'main' }
-            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
         }
         $global:LASTEXITCODE = 0
     }
@@ -519,7 +534,6 @@ function test_installscooppackages_keeps_reviewed_scoop_snapshot_during_update {
         if ($args[0] -eq 'list') {
             [pscustomobject]@{ Name = 'FiraCode-NF'; Source = $fontManifest }
             [pscustomobject]@{ Name = 'jq'; Source = 'main' }
-            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
         }
         if ($args[0] -eq 'prefix') { $installedFontDir }
         $global:LASTEXITCODE = 0

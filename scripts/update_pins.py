@@ -275,9 +275,6 @@ def update_pi_extensions(repo: Path) -> None:
     package = json.loads(package_path.read_text(encoding="utf-8"))
     for name in list(package["dependencies"]):
         package["dependencies"][name] = npm_latest(name)
-    fff_version = package["dependencies"]["@ff-labs/pi-fff"]
-    package["overrides"]["@ff-labs/fff-bun"] = fff_version
-    package["overrides"]["@ff-labs/fff-node"] = fff_version
     atomic_json(package_path, package)
     run(
         "npm", "install", "--package-lock-only", "--ignore-scripts", "--legacy-peer-deps", "--omit=dev",

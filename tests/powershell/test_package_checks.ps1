@@ -34,9 +34,10 @@ function test_windows_package_manifests_cover_parity_tools {
     Assert-True ($scoop -contains 'FiraCode-NF') 'Scoop should manage FiraCode Nerd Font'
     Assert-False ($scoop -contains 'FiraCode') 'Regular FiraCode does not provide configured Nerd Font family'
     Assert-True ($scoop -contains 'jq') 'Scoop should manage jq'
-    Assert-True ($scoop -contains 'ast-grep') 'Scoop should manage ast-grep'
+    Assert-False ($scoop -contains 'ast-grep') 'Unused ast-grep should not be installed'
     Assert-True ($commands -contains 'gh') 'Doctor should verify GitHub CLI'
-    Assert-True ($commands -contains 'fff-mcp') 'Doctor should verify the Codex FFF MCP server'
+    Assert-True ($commands -contains 'fff-mcp') 'Doctor should verify the native FFF MCP server'
+    Assert-True ($commands -contains 'fff-mcp-agent') 'Doctor should verify the configured FFF launcher'
     foreach ($command in 'vtsls', 'bash-language-server', 'shellcheck') {
         Assert-True ($commands -contains $command) "Doctor should verify Windows LSP dependency: $command"
     }

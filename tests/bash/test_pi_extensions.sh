@@ -33,8 +33,11 @@ test_pi_extension_settings_use_locked_local_release() {
   package="$extension_dir/package.json"
 
   assert_equals "$release_id" "$(_lock_sha256)"
-  assert_equals 7 "$(jq '.packages | length' "$settings")"
-  assert_equals 7 "$(jq '.dependencies | length' "$package")"
+  assert_equals 6 "$(jq '.packages | length' "$settings")"
+  assert_equals 6 "$(jq '.dependencies | length' "$package")"
+  assert_equals false "$(jq 'has("overrides")' "$package")"
+  assert_equals false "$(jq '.dependencies | has("@ff-labs/pi-fff")' "$package")"
+  assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@ff-labs/pi-fff"))] | length' "$settings")"
   assert_equals 0 "$(jq --arg id "$release_id" '[.packages[] | (if type == "string" then . else .source end) | select(startswith("./locked-extensions/releases/" + $id + "/node_modules/") | not)] | length' "$settings")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(startswith("npm:"))] | length' "$settings")"
   assert_equals '[]' "$(jq -c --arg id "$release_id" '[.packages[] | select(type == "object" and .source == ("./locked-extensions/releases/" + $id + "/node_modules/@dietrichgebert/ponytail"))][0].skills // null' "$settings")"
@@ -64,6 +67,25 @@ test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
   assert_contains "$flake" 'packages.x86_64-linux.pi-extensions'
   assert_contains "$flake" 'packages.aarch64-darwin.pi-extensions'
   assert_contains "$check" '"$flake#pi-extensions"'
+}
+
+test_pi_mcp_uses_native_fff_with_persistent_frecency() {
+  local config agents updater
+  config="$REPO_DIR/config/shared/ai/pi/mcp.json"
+  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+  updater="$(<"$REPO_DIR/scripts/update_pins.py")"
+
+  assert_exit_code 0 jq -e '
+    .mcpServers.fff.command == "fff-mcp-agent" and
+    .mcpServers.fff.transport == "stdio" and
+    .mcpServers.fff.lifecycle == "eager"
+  ' "$config"
+  assert_contains "$agents" 'mcp_fff_find_files'
+  assert_contains "$agents" 'mcp_fff_grep'
+  assert_contains "$agents" 'mcp_fff_multi_grep'
+  assert_not_contains "$updater" '@ff-labs/pi-fff'
+  assert_not_contains "$updater" '@ff-labs/fff-bun'
+  assert_not_contains "$updater" '@ff-labs/fff-node'
 }
 
 test_pi_extension_update_reconciles_local_packages_only() {

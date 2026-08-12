@@ -295,9 +295,16 @@ function test_installfffmcp_installs_verified_windows_binary_for_codex {
 
     InstallFffMcp
 
-    Assert-FileExists (Join-Path $env:USERPROFILE '.local\bin\fff-mcp.exe')
+    $binDir = Join-Path $env:USERPROFILE '.local\bin'
+    $launcher = Join-Path $binDir 'fff-mcp-agent.cmd'
+    Assert-FileExists (Join-Path $binDir 'fff-mcp.exe')
+    Assert-FileExists $launcher
+    Assert-Contains (Get-Content -Raw $launcher) '--frecency-db "%LOCALAPPDATA%\fff\frecency"'
+    Assert-False ((Get-Content -Raw $launcher) -like '*--history-db*') 'native MCP history is unsupported and should not be configured'
     Assert-Contains $script:FffUrl "/v$($pins.version)/$($pins.mcp.'windows-x64'.file)"
-    Assert-Contains (Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\codex\config.toml')) '[mcp_servers.fff]'
+    $codex = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\codex\config.toml')
+    Assert-Contains $codex 'command = "cmd.exe"'
+    Assert-Contains $codex '"fff-mcp-agent.cmd"'
 }
 
 function test_syncaiinstructions_copies_shared_file_for_codex_and_pi {
@@ -1078,8 +1085,9 @@ function test_syncpiconfigs_creates_writable_seed_files {
     $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir | Out-Null
     '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
-    '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
+    '{"mcpServers":{"unixOnly":{"command":"unix"}}}' | Set-Content (Join-Path $seedDir 'mcp.json')
     '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
+    '{"mcpServers":{"windowsOnly":{"command":"windows"}}}' | Set-Content (Join-Path $windowsSeedDir 'mcp.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'caveman-default.js')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
@@ -1100,6 +1108,8 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-FileExists (Join-Path $baseDir 'settings.json')
     Assert-FileExists (Join-Path $baseDir 'mcp.json')
     Assert-FileExists (Join-Path $baseDir 'subagent-config.json')
+    Assert-Contains (Get-Content -Raw $mcp) '"windowsOnly"'
+    Assert-False ((Get-Content -Raw $mcp) -like '*unixOnly*') 'Windows should deploy Windows MCP seed'
     Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
     Assert-FileExists (Join-Path $extensionDir 'caveman-default.js')
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
@@ -1130,6 +1140,7 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
 '@ | Set-Content (Join-Path $seedDir 'settings.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
     '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
+    '{"mcpServers":{}}' | Set-Content (Join-Path $windowsSeedDir 'mcp.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     '{"servers":{"nil":{"command":["nil"]}}}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
     '{"globalConcurrencyLimit":99}' | Set-Content (Join-Path $subagentDir 'config.json')

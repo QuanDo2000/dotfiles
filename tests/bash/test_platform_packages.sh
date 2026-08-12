@@ -49,7 +49,7 @@ test_code_search_stack_uses_current_full_feature_packages() {
   assert_contains "$codebase" '${source.file}'
   assert_equals "true" "$(jq -r '.linux.amd64.file | test("^codebase-memory-mcp(-ui)?-linux-amd64.*\\.tar\\.gz$")' "$codebase_pins")"
   assert_equals "true" "$(jq -r '.windows.amd64.file | test("^codebase-memory-mcp(-ui)?-windows-amd64.*\\.zip$")' "$codebase_pins")"
-  assert_equals "$(jq -r .version "$fff_pins")" "$(jq -r '.dependencies["@ff-labs/pi-fff"]' "$pi_extensions")"
+  assert_equals "false" "$(jq -r '.dependencies | has("@ff-labs/pi-fff")' "$pi_extensions")"
 }
 
 test_pi_web_access_is_pinned() {
@@ -105,6 +105,8 @@ test_code_search_stack_enables_auto_index_and_agent_workflows() {
   assert_contains "$HOME_CONFIG" 'FFF_FRECENCY_DB = "${homeDir}/.local/state/fff/frecency";'
   assert_contains "$HOME_CONFIG" '".local/bin/fff-mcp-agent"'
   assert_contains "$HOME_CONFIG" 'exec "${pkgs.fff-mcp}/bin/fff-mcp"'
+  assert_contains "$HOME_CONFIG" '--frecency-db'
+  assert_not_contains "$HOME_CONFIG" '--history-db'
   assert_contains "$codex" 'args = ["fff-mcp-agent"]'
   assert_contains "$nvim_fff" 'frecency = { db_path = vim.env.FFF_FRECENCY_DB or vim.fn.expand("~/.local/state/fff/frecency") }'
   assert_contains "$nvim_fff" 'history = { db_path = vim.env.FFF_HISTORY_DB or vim.fn.expand("~/.local/state/fff/history") }'

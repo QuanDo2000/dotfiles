@@ -11,7 +11,13 @@
       "lifecycle": "eager"
     },
     "fff": {
-      "command": "fff-mcp-agent",
+      "command": "cmd.exe",
+      "args": [
+        "/d",
+        "/s",
+        "/c",
+        "fff-mcp-agent.cmd"
+      ],
       "transport": "stdio",
       "lifecycle": "eager"
     }

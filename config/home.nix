@@ -118,7 +118,6 @@ let
     exec "${config.programs.home-manager.package}/bin/home-manager" "$@"
   '';
   devTerminalPackages = with pkgs; [
-    ast-grep
     bash-language-server
     codex
     codebase-memory-mcp
@@ -214,7 +213,6 @@ in
         #!${pkgs.runtimeShell}
         exec "${pkgs.fff-mcp}/bin/fff-mcp" \
           --frecency-db "''${FFF_FRECENCY_DB:-$HOME/.local/state/fff/frecency}" \
-          --history-db "''${FFF_HISTORY_DB:-$HOME/.local/state/fff/history}" \
           "$@"
       '';
       executable = true;
