@@ -749,14 +749,31 @@ in
   '';
 
   home.activation.seedPiConfigs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    for name in settings.json mcp.json pi-lsp.json; do
-      target="$HOME/.pi/agent/$name"
+    for spec in settings.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json; do
+      name="''${spec%%:*}"
+      relative="''${spec#*:}"
+      if [ "$relative" = "$spec" ]; then
+        relative="$name"
+      fi
+      target="$HOME/.pi/agent/$relative"
       source="${./shared/ai/pi}/$name"
       repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/pi/$name"
       apply_seed=
       base="$HOME/.local/state/dotfiles/pi/$name"
 
       mkdir -p "$(dirname "$target")"
+      if [ "$name" = "subagent-config.json" ]; then
+        tmp="$(mktemp "$target.tmp.XXXXXX")"
+        cp "$source" "$tmp"
+        chmod 600 "$tmp"
+        mv "$tmp" "$target"
+        mkdir -p "$(dirname "$base")"
+        base_tmp="$(mktemp "$base.tmp.XXXXXX")"
+        cp "$source" "$base_tmp"
+        chmod 600 "$base_tmp"
+        mv "$base_tmp" "$base"
+        continue
+      fi
       if [ -f "$target" ] && [ ! -L "$target" ]; then
         if [ -w "$repo_seed" ]; then
           apply_seed="$repo_seed"

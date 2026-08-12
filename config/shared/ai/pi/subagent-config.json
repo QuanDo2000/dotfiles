@@ -1,0 +1,11 @@
+{
+  "asyncByDefault": true,
+  "toolDescriptionMode": "compact",
+  "artifactDir": "session",
+  "globalConcurrencyLimit": 7,
+  "parallel": {
+    "maxTasks": 7,
+    "concurrency": 7
+  },
+  "maxSubagentSpawnsPerSession": 32
+}

@@ -803,10 +803,20 @@ function SyncPiConfigs {
     $baseDir = Join-Path $env:LOCALAPPDATA "dotfiles\pi"
     New-Item -ItemType Directory -Force -Path $targetDir, $baseDir | Out-Null
 
-    foreach ($name in @("settings.json", "mcp.json")) {
+    foreach ($name in @("settings.json", "mcp.json", "subagent-config.json")) {
         $source = Join-Path $seedDir $name
-        $target = Join-Path $targetDir $name
+        $relative = if ($name -eq "subagent-config.json") { "extensions\subagent\config.json" } else { $name }
+        $target = Join-Path $targetDir $relative
         $base = Join-Path $baseDir $name
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
+        if ($name -eq "subagent-config.json") {
+            foreach ($destination in $target, $base) {
+                $temp = "$destination.tmp.$([Guid]::NewGuid().ToString('N'))"
+                Copy-Item -LiteralPath $source -Destination $temp
+                Move-Item -LiteralPath $temp -Destination $destination -Force
+            }
+            continue
+        }
         if (-not (Test-Path -LiteralPath $target)) {
             Copy-Item -LiteralPath $source -Destination $target
             Copy-Item -LiteralPath $source -Destination $base

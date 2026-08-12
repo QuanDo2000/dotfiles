@@ -8,7 +8,7 @@ Ponytail and Caveman are active at `full` at every main-agent and subagent start
 
 Use subagents proactively when work has multiple independent, substantial lanes or one bounded lane can run while the parent continues useful work. Run independent read, research, review, and validation lanes in parallel and asynchronously when supported; keep one writer per worktree.
 
-Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow children with only the context they need, the cheapest capable model, and explicit stop criteria. Parent owns synthesis and final verification.
+Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow children with only the context they need, the cheapest capable model, and explicit stop criteria. In Pi, never pass more than seven children to one workflow or overlap workflows; its native limits are not session-global. Parent owns synthesis and final verification.
 
 ## Code Search
 

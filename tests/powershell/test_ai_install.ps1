@@ -575,6 +575,8 @@ function test_removecodebasememorypiadapter_preserves_user_owned_extension {
 }
 
 function test_repaircodebasememoryconfigdatabase_elevates_acl_repair {
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { return }
+
     $database = "$env:USERPROFILE/.cache/codebase-memory-mcp/_config.db"
     $normalizedDatabase = [IO.Path]::GetFullPath($database)
     $script:CodebaseMemoryAccessChecks = 0
@@ -1033,23 +1035,25 @@ function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
     $extensions = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package.json') | ConvertFrom-Json
     Assert-True ($extensions.dependencies.'pi-subagents' -match '^\d+\.\d+\.\d+$') 'pi-subagents should use an exact version'
     Assert-Equals 'gpt-5.6-sol' $settings.defaultModel
-    Assert-Equals 'high' $settings.defaultThinkingLevel
+    Assert-Equals 'medium' $settings.defaultThinkingLevel
     Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.defaultModel
-    Assert-Equals 'xhigh' $settings.subagents.defaultThinking
+    Assert-Equals 'medium' $settings.subagents.defaultThinking
     Assert-True $settings.subagents.modelScope.enforce
     Assert-Equals 1 @($settings.subagents.modelScope.allow).Count
     Assert-Equals 'openai-codex/*' @($settings.subagents.modelScope.allow)[0]
 
-    foreach ($agent in 'advisor', 'oracle') {
-        $override = $settings.subagents.agentOverrides.PSObject.Properties[$agent].Value
-        Assert-Equals 'openai-codex/gpt-5.6-sol' $override.model
-        Assert-Equals 'xhigh' $override.thinking
-    }
+    Assert-False ($settings.subagents.agentOverrides.PSObject.Properties.Name -contains 'advisor') 'advisor aliases oracle and should not have a dead override'
+    Assert-Equals 'openai-codex/gpt-5.6-sol' $settings.subagents.agentOverrides.oracle.model
+    Assert-Equals 'xhigh' $settings.subagents.agentOverrides.oracle.thinking
     foreach ($agent in 'delegate', 'scout', 'worker') {
         $override = $settings.subagents.agentOverrides.PSObject.Properties[$agent].Value
         Assert-Equals 'openai-codex/gpt-5.6-luna' $override.model
-        Assert-Equals 'max' $override.thinking
+        Assert-Equals 'medium' $override.thinking
     }
+    Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.agentOverrides.researcher.model
+    Assert-Equals 'high' $settings.subagents.agentOverrides.researcher.thinking
+    Assert-Equals 'openai-codex/gpt-5.6-sol' $settings.subagents.agentOverrides.reviewer.model
+    Assert-Equals 'xhigh' $settings.subagents.agentOverrides.reviewer.thinking
 }
 
 function test_pi_lsp_package_is_pinned {
@@ -1075,6 +1079,7 @@ function test_syncpiconfigs_creates_writable_seed_files {
     New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir | Out-Null
     '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
+    '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'caveman-default.js')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
@@ -1084,14 +1089,17 @@ function test_syncpiconfigs_creates_writable_seed_files {
 
     $settings = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
     $mcp = Join-Path $env:USERPROFILE '.pi\agent\mcp.json'
+    $subagent = Join-Path $env:USERPROFILE '.pi\agent\extensions\subagent\config.json'
     $lsp = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     $baseDir = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
     Assert-FileExists $settings
     Assert-FileExists $mcp
+    Assert-FileExists $subagent
     Assert-FileExists $lsp
     Assert-FileExists (Join-Path $baseDir 'settings.json')
     Assert-FileExists (Join-Path $baseDir 'mcp.json')
+    Assert-FileExists (Join-Path $baseDir 'subagent-config.json')
     Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
     Assert-FileExists (Join-Path $extensionDir 'caveman-default.js')
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
@@ -1105,7 +1113,8 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
     $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     $mergeDir = Join-Path $script:DotfilesDir 'scripts\seed_merge'
     $targetDir = Join-Path $env:USERPROFILE '.pi\agent'
-    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $mergeDir, $targetDir | Out-Null
+    $subagentDir = Join-Path $targetDir 'extensions\subagent'
+    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $mergeDir, $targetDir, $subagentDir | Out-Null
     Copy-Item (Join-Path $script:RepoDir 'scripts\seed_merge\*') $mergeDir
 
     @'
@@ -1120,8 +1129,10 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
 }
 '@ | Set-Content (Join-Path $seedDir 'settings.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
+    '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     '{"servers":{"nil":{"command":["nil"]}}}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
+    '{"globalConcurrencyLimit":99}' | Set-Content (Join-Path $subagentDir 'config.json')
     'extension' | Set-Content (Join-Path $seedDir 'caveman-default.js')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
@@ -1156,6 +1167,8 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
         $lsp = Get-Content -Raw (Join-Path $targetDir 'pi-lsp.json') | ConvertFrom-Json
         Assert-True ($lsp.servers.PSObject.Properties.Name -contains 'vtsls') 'Windows LSP config should be copied'
         Assert-False ($lsp.servers.PSObject.Properties.Name -contains 'nil') 'Authoritative Windows LSP config should remove stale servers'
+        $subagent = Get-Content -Raw (Join-Path $subagentDir 'config.json') | ConvertFrom-Json
+        Assert-Equals 7 $subagent.globalConcurrencyLimit
     } finally {
         (Get-Item $seed).IsReadOnly = $false
     }

@@ -1,10 +1,10 @@
 {
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.6-sol",
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "medium",
   "subagents": {
     "defaultModel": "openai-codex/gpt-5.6-terra",
-    "defaultThinking": "xhigh",
+    "defaultThinking": "medium",
     "modelScope": {
       "enforce": true,
       "allow": [
@@ -12,25 +12,29 @@
       ]
     },
     "agentOverrides": {
-      "advisor": {
-        "model": "openai-codex/gpt-5.6-sol",
-        "thinking": "xhigh"
-      },
       "oracle": {
         "model": "openai-codex/gpt-5.6-sol",
         "thinking": "xhigh"
       },
       "delegate": {
         "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "max"
+        "thinking": "medium"
       },
       "scout": {
         "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "max"
+        "thinking": "medium"
       },
       "worker": {
         "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "max"
+        "thinking": "medium"
+      },
+      "researcher": {
+        "model": "openai-codex/gpt-5.6-terra",
+        "thinking": "high"
+      },
+      "reviewer": {
+        "model": "openai-codex/gpt-5.6-sol",
+        "thinking": "xhigh"
       }
     }
   },

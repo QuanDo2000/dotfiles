@@ -74,7 +74,24 @@ test_pi_lsp_uses_pinned_package_and_nix_servers() {
   for package in vtsls nil bash-language-server shellcheck; do
     assert_contains "$HOME_CONFIG" "$package"
   done
-  assert_contains "$HOME_CONFIG" 'settings.json mcp.json pi-lsp.json'
+  assert_contains "$HOME_CONFIG" 'settings.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json'
+}
+
+test_pi_subagents_configures_native_seven_child_limits() {
+  local config
+  config="$REPO_DIR/config/shared/ai/pi/subagent-config.json"
+
+  assert_file_exists "$config"
+  if [[ -f "$config" ]]; then
+    assert_exit_code 0 jq -e '
+      .globalConcurrencyLimit == 7 and
+      .parallel.maxTasks == 7 and
+      .parallel.concurrency == 7
+    ' "$config"
+  fi
+  assert_contains "$HOME_CONFIG" 'if [ "$name" = "subagent-config.json" ]; then'
+  assert_contains "$HOME_CONFIG" 'base_tmp="$(mktemp "$base.tmp.XXXXXX")"'
+  assert_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'never pass more than seven children to one workflow or overlap workflows'
 }
 
 test_code_search_stack_enables_auto_index_and_agent_workflows() {
