@@ -36,8 +36,8 @@ $script:ScoopInstallerCommit = 'b0ee913725139b816f9178163af0aecdba07a7ed'
 $script:ScoopInstallerSha256 = '48f6ea398b3a3fa26fae0093d37bd85b13e7eaa5d1d4a3e208408768408e35ae'
 $script:ScoopCoreCommit = 'b588a06e41d920d2123ec70aee682bae14935939'
 $script:ScoopCoreSha256 = '630206995f30866a0b25b00c14c74be9ef9b79c4911f72f6efd2625cfe19a645'
-$script:ScoopMainCommit = '4d31d8fbb31be161853922e3873013a71dcf447b'
-$script:ScoopMainSha256 = 'c440c0d280e3e591a0d83cf30fe30a03ac37d52dea42f63722535bcfb2ccd008'
+$script:ScoopMainCommit = 'f06f06f4ffbe5028735b98173fc5ef0427da6da4'
+$script:ScoopMainSha256 = '04ab17ccf5aeadfeb3951b35a6c037677ceda5ba411aa510546c5c996e614c76'
 
 # Logging helpers
 function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }
