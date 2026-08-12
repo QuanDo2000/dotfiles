@@ -3,6 +3,26 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
+test_pi_terminal_replaces_sidekick_and_preserves_submit_behavior() {
+  local config lock output
+  config="$REPO_DIR/config/shared/config/nvim"
+  lock="$config/lazy-lock.json"
+
+  assert_exit_code 0 jq -e '.extras | index("lazyvim.plugins.extras.ai.sidekick") | not' "$config/lazyvim.json"
+  assert_exit_code 0 jq -e 'has("sidekick.nvim") | not' "$lock"
+  if [ -e "$config/lua/plugins/sidekick.lua" ]; then
+    printf "  sidekick override still exists\n" >> "$ERROR_FILE"
+  fi
+  assert_file_exists "$config/lua/plugins/pi-terminal.lua"
+  assert_file_exists "$config/lua/config/pi-terminal.lua"
+  [ -f "$config/lua/config/pi-terminal.lua" ] || return
+  command -v nvim >/dev/null 2>&1 || return
+
+  output="$(PI_TERMINAL_MODULE="$config/lua/config/pi-terminal.lua" nvim --headless -u NONE \
+    -l "$REPO_DIR/tests/nvim/pi_terminal.lua" 2>&1)"
+  assert_contains "$output" "PI_TERMINAL_OK"
+}
+
 test_home_manager_seeds_writable_lazyvim_config() {
   local config
   config="$(<"$REPO_DIR/config/home.nix")"

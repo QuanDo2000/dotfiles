@@ -8,6 +8,29 @@ function TestTeardown {
     Clear-TestEnv
 }
 
+function test_pi_terminal_replaces_sidekick_and_preserves_windows_input {
+    $config = Join-Path $script:RepoDir 'config\shared\config\nvim'
+    $lazyvim = Get-Content -Raw (Join-Path $config 'lazyvim.json') | ConvertFrom-Json
+    $lock = Get-Content -Raw (Join-Path $config 'lazy-lock.json') | ConvertFrom-Json
+    $module = Join-Path $config 'lua\config\pi-terminal.lua'
+    $plugin = Join-Path $config 'lua\plugins\pi-terminal.lua'
+
+    Assert-False (@($lazyvim.extras) -contains 'lazyvim.plugins.extras.ai.sidekick') 'Sidekick extra should be removed'
+    Assert-False ($lock.PSObject.Properties.Name -contains 'sidekick.nvim') 'Sidekick lock should be removed'
+    Assert-False (Test-Path (Join-Path $config 'lua\plugins\sidekick.lua')) 'Sidekick override should be removed'
+    Assert-FileExists $module
+    Assert-FileExists $plugin
+    if (-not (Test-Path $module)) { return }
+
+    $nvim = Get-NeovimCommand
+    Assert-True ([bool]$nvim) 'nvim should be available for Pi terminal regression test'
+    if (-not $nvim) { return }
+    $env:PI_TERMINAL_MODULE = $module
+    $output = (& $nvim --headless -u NONE -l (Join-Path $script:RepoDir 'tests\nvim\pi_terminal.lua') 2>&1) -join "`n"
+    Assert-Equals 0 $LASTEXITCODE
+    Assert-Contains $output 'PI_TERMINAL_OK'
+}
+
 function test_lazyvim_sync_verifies_installed_directories {
     $script:Dry = $false
     $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
