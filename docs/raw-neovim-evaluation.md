@@ -12,18 +12,18 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 
 | Metric | LazyVim baseline | Raw config | Change |
 | --- | ---: | ---: | ---: |
-| Enabled plugins | 40 | 26 | -14 (-35.0%) |
-| Lock entries | 41 | 27 | -14 (-34.1%) |
-| Plugin bytes | 124,481,155 | 101,966,876 | -22,514,279 (-18.1%) |
-| Lua LOC | 285 | 479 | +194 (+68.1%) |
-| Lua bytes | 8,803 | 19,148 | +10,345 (+117.5%) |
-| All config bytes | 13,373 | 22,090 | +8,717 (+65.2%) |
-| Clean median | 65.529 ms | 49.823 ms | -15.706 ms (-24.0%) |
-| Clean mean | 66.837 ms | 51.196 ms | -15.641 ms (-23.4%) |
-| Clean p95 | 83.990 ms | 66.726 ms | -17.264 ms (-20.6%) |
-| Warm median | 30.707 ms | 26.719 ms | -3.988 ms (-13.0%) |
-| Warm mean | 31.856 ms | 27.583 ms | -4.274 ms (-13.4%) |
-| Warm p95 | 41.034 ms | 36.515 ms | -4.519 ms (-11.0%) |
+| Enabled plugins | 40 | 35 | -5 (-12.5%) |
+| Lock entries | 41 | 36 | -5 (-12.2%) |
+| Plugin bytes | 124,481,155 | 113,214,085 | -11,267,070 (-9.1%) |
+| Lua LOC | 285 | 806 | +521 (+182.8%) |
+| Lua bytes | 8,803 | 43,211 | +34,408 (+390.9%) |
+| All config bytes | 13,373 | 46,752 | +33,379 (+249.6%) |
+| Clean median | 60.595 ms | 51.279 ms | -9.317 ms (-15.4%) |
+| Clean mean | 61.906 ms | 51.932 ms | -9.974 ms (-16.1%) |
+| Clean p95 | 71.503 ms | 59.320 ms | -12.183 ms (-17.0%) |
+| Warm median | 27.476 ms | 26.807 ms | -0.669 ms (-2.4%) |
+| Warm mean | 28.821 ms | 27.976 ms | -0.845 ms (-2.9%) |
+| Warm p95 | 37.226 ms | 35.457 ms | -1.770 ms (-4.8%) |
 
 ## Feature-parity checklist
 
@@ -44,10 +44,19 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 - [x] Provisioning/update: raw lock seeding, Windows plugin sync, FFF updater path, isolated lock refresh, CI integration.
 - [x] Tests/health: raw headless config test, Pi terminal regression, Bash/PowerShell provisioning tests, Windows clean bootstrap integration. Existing doctor behavior remains unchanged; it checks managed links/tools but had no direct LazyVim health probe.
 
-## Deleted as unused framework surface
+## Restored user-visible surface
 
-No repository evidence showed active use, and some entries were nonfunctional without adapters: LazyVim framework, Flash, Trouble, Noice, todo-comments, grug-far, lazydev, Neotest with zero adapters, Treesitter textobjects/autotag, ts-comments, and transitive plenary/nui/nvim-nio. Native Neovim or retained plugins cover current explicit behavior. Re-add only after a concrete workflow and regression check establish a parity gap.
+Flash, Trouble, Noice, todo-comments, grug-far, Treesitter textobject movement, autotag, ts-comments, dashboard, session selector, Tailwind/hex highlights, broad buffer/LSP/Git/picker/Yanky mappings, advanced Dial cycles, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are now represented directly. Pi behavior remains unchanged.
+
+## Remaining gaps
+
+- LazyVim framework commands and internals remain absent: `:LazyExtras`, changelog/news, framework health/default migration, and generated key groups.
+- Neotest remains absent because baseline had zero adapters.
+- Noice keeps command-line/message UI and history, but raw fallback mappings use native `:messages` for last/history rather than every LazyVim Noice route/statusline integration.
+- Tailwind highlighting covers standard `*-500` utility colors instead of LazyVim's full 50-950 palette.
+- Root detection uses attached LSP workspace/root, then common project markers, then cwd; it does not reproduce LazyVim's cache and every detector override.
+- LazyVim-only automatic toggles, profiler controls, changelog, and niche GitHub picker mappings remain omitted.
 
 ## Recommendation
 
-**Reject replacing LazyVim for now.** Raw config cuts 14 plugins, 22.5 MB, clean-start median by 24.0%, and warm-start median by 13.0%, but owned config grows 68.1% LOC / 65.2% bytes. Runtime gains are real; maintenance and cross-platform ownership also increase sharply. Keep branch as measured prototype unless dependency count and startup latency outweigh framework maintenance. Merge only with explicit acceptance of larger owned config.
+**Reject replacing LazyVim for now.** Near-parity raw config saves 5 enabled plugins, 11.3 MB, and 15.4% clean-start median, but warm-start median improves only 2.4% while owned Lua grows 182.8% and total config 249.6%. Runtime gain no longer offsets maintenance ownership. Keep branch as reviewable prototype unless framework independence is primary goal.

@@ -125,6 +125,7 @@ let
     nil
     pi-agent
     shellcheck
+    statix
     vtsls
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     gcc

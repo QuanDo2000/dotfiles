@@ -11,6 +11,18 @@ test_pi_terminal_preserves_submit_behavior() {
   assert_contains "$output" "PI_TERMINAL_OK"
 }
 
+test_raw_neovim_root_detection() {
+  local module output
+  module="$REPO_DIR/config/shared/config/nvim/lua/config/root.lua"
+  assert_file_exists "$module"
+  output="$(ROOT_MODULE="$module" nvim --headless -u NONE -l "$REPO_DIR/tests/nvim/root.lua" 2>&1)"
+  assert_contains "$output" "ROOT_OK"
+}
+
+test_neovim_provisions_nix_linter() {
+  assert_contains "$(<"$REPO_DIR/config/home.nix")" "statix"
+}
+
 test_neovim_uses_raw_config() {
   local config home
   config="$REPO_DIR/config/shared/config/nvim"
@@ -24,7 +36,7 @@ test_neovim_uses_raw_config() {
   if [ -e "$config/lazyvim.json" ]; then
     printf "  legacy lazyvim.json still exists\n" >> "$ERROR_FILE"
   fi
-  assert_contains "$(<"$REPO_DIR/docs/raw-neovim-evaluation.md")" "Neotest with zero adapters"
+  assert_contains "$(<"$REPO_DIR/docs/raw-neovim-evaluation.md")" "Neotest remains absent because baseline had zero adapters"
 }
 
 test_neovim_uses_reviewed_plugin_lock() {

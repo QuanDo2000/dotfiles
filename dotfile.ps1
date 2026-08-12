@@ -178,6 +178,7 @@ function Get-WingetPackages {
         "Microsoft.PowerShell", "Git.Git", "GnuPG.Gpg4win", "Microsoft.WindowsTerminal",
         "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "junegunn.fzf",
+        "tree-sitter.tree-sitter-cli", "LLVM.LLVM",
         "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide",
         "Python.Python.3.14", "GitHub.cli", "Notepad++.Notepad++", "koalaman.shellcheck"
     )
@@ -192,7 +193,7 @@ function Get-RequiredCommands {
         "git", "gpg", "nvim", "starship", "fzf", "fd", "rg", "lazygit",
         "fnm", "node", "jj", "zoxide", "jq", "codex", "pi",
         "codebase-memory-mcp", "fff-mcp", "fff-mcp-agent", "py", "gh", "vtsls",
-        "bash-language-server", "shellcheck"
+        "bash-language-server", "shellcheck", "tree-sitter", "clang"
     )
 }
 

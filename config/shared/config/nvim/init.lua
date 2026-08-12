@@ -8,31 +8,58 @@ vim.g.loaded_ruby_provider = 0
 vim.g.snacks_animate = false
 
 local opt = vim.opt
+opt.autowrite = true
 opt.clipboard = "unnamedplus"
 opt.completeopt = "menu,menuone,noselect"
+opt.conceallevel = 2
 opt.confirm = true
 opt.cursorline = true
 opt.expandtab = true
+opt.fillchars = { foldopen = "", foldclose = "", fold = " ", foldsep = " ", diff = "╱", eob = " " }
+opt.foldlevel = 99
+opt.foldmethod = "indent"
+opt.foldtext = ""
+opt.formatoptions = "jcroqlnt"
+opt.grepformat = "%f:%l:%c:%m"
+opt.grepprg = "rg --vimgrep"
 opt.ignorecase = true
+opt.inccommand = "nosplit"
+opt.jumpoptions = "view"
 opt.laststatus = 3
+opt.linebreak = true
 opt.list = true
 opt.mouse = "a"
 opt.number = true
 opt.relativenumber = true
+opt.pumblend = 10
+opt.pumheight = 10
+opt.ruler = false
 opt.scrolloff = 4
+opt.sessionoptions = { "buffers", "curdir", "tabpages", "winsize", "help", "globals", "skiprtp", "folds" }
+opt.shiftround = true
 opt.showmode = false
 opt.shiftwidth = 2
+opt.shortmess:append({ W = true, I = true, c = true, C = true })
+opt.sidescrolloff = 8
 opt.signcolumn = "yes"
 opt.smartcase = true
 opt.smartindent = true
+opt.smoothscroll = true
+opt.spelllang = { "en" }
 opt.splitbelow = true
+opt.splitkeep = "screen"
 opt.splitright = true
 opt.tabstop = 2
 opt.termguicolors = true
 opt.timeoutlen = 300
 opt.undofile = true
+opt.undolevels = 10000
 opt.updatetime = 200
+opt.virtualedit = "block"
+opt.wildmode = "longest:full,full"
+opt.winminwidth = 5
 opt.wrap = false
+vim.g.markdown_recommended_style = 0
 
 if os.getenv("SSH_TTY") then
   vim.g.clipboard = {
@@ -48,22 +75,78 @@ if os.getenv("SSH_TTY") then
   }
 end
 
-local function root()
-  local file = vim.api.nvim_buf_get_name(0)
-  local start = file ~= "" and vim.fs.dirname(file) or (vim.uv or vim.loop).cwd()
-  return vim.fs.root(start, { ".git", "flake.nix" }) or (vim.uv or vim.loop).cwd()
-end
+local roots = require("config.root")
+local function root() return roots.get() end
 
-local function map(mode, lhs, rhs, desc)
-  vim.keymap.set(mode, lhs, rhs, { desc = desc, silent = true })
+local function map(mode, lhs, rhs, desc, options)
+  vim.keymap.set(mode, lhs, rhs, vim.tbl_extend("force", { desc = desc, silent = true }, options or {}))
 end
 
 map("i", "jk", "<Esc>", "Escape insert mode")
 map("n", "<Esc>", "<cmd>nohlsearch<cr>", "Clear Search Highlight")
+map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", "Down", { expr = true })
+map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", "Up", { expr = true })
+map("n", "<C-h>", "<C-w>h", "Go to Left Window")
+map("n", "<C-j>", "<C-w>j", "Go to Lower Window")
+map("n", "<C-k>", "<C-w>k", "Go to Upper Window")
+map("n", "<C-l>", "<C-w>l", "Go to Right Window")
+map("n", "<C-Up>", "<cmd>resize +2<cr>", "Increase Window Height")
+map("n", "<C-Down>", "<cmd>resize -2<cr>", "Decrease Window Height")
+map("n", "<C-Left>", "<cmd>vertical resize -2<cr>", "Decrease Window Width")
+map("n", "<C-Right>", "<cmd>vertical resize +2<cr>", "Increase Window Width")
+map("n", "<A-j>", "<cmd>execute 'move .+' . v:count1<cr>==", "Move Down")
+map("n", "<A-k>", "<cmd>execute 'move .-' . (v:count1 + 1)<cr>==", "Move Up")
+map("i", "<A-j>", "<esc><cmd>m .+1<cr>==gi", "Move Down")
+map("i", "<A-k>", "<esc><cmd>m .-2<cr>==gi", "Move Up")
+map("x", "<A-j>", ":<C-u>execute \"'<,'>move '>+\" . v:count1<cr>gv=gv", "Move Down")
+map("x", "<A-k>", ":<C-u>execute \"'<,'>move '<-\" . (v:count1 + 1)<cr>gv=gv", "Move Up")
+map("n", "<S-h>", "<cmd>BufferLineCyclePrev<cr>", "Prev Buffer")
+map("n", "<S-l>", "<cmd>BufferLineCycleNext<cr>", "Next Buffer")
+map("n", "[b", "<cmd>BufferLineCyclePrev<cr>", "Prev Buffer")
+map("n", "]b", "<cmd>BufferLineCycleNext<cr>", "Next Buffer")
+map("n", "<leader>bb", "<cmd>e #<cr>", "Switch to Other Buffer")
+map("n", "<leader>`", "<cmd>e #<cr>", "Switch to Other Buffer")
+map("n", "<leader>bd", function() Snacks.bufdelete() end, "Delete Buffer")
+map("n", "<leader>bo", function() Snacks.bufdelete.other() end, "Delete Other Buffers")
+map("n", "<leader>bi", function() Snacks.bufdelete.invisible() end, "Delete Invisible Buffers")
+map("n", "<leader>bD", "<cmd>bd<cr>", "Delete Buffer and Window")
 map("n", "<leader>qq", "<cmd>qa<cr>", "Quit All")
 map("n", "<leader>cf", function() require("conform").format({ async = true, lsp_format = "fallback" }) end, "Format")
-map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, "Previous Diagnostic")
-map("n", "]d", function() vim.diagnostic.jump({ count = 1 }) end, "Next Diagnostic")
+map("n", "<leader>cd", vim.diagnostic.open_float, "Line Diagnostics")
+map("n", "[d", function() vim.diagnostic.jump({ count = -vim.v.count1, float = true }) end, "Previous Diagnostic")
+map("n", "]d", function() vim.diagnostic.jump({ count = vim.v.count1, float = true }) end, "Next Diagnostic")
+map("n", "[e", function() vim.diagnostic.jump({ count = -vim.v.count1, severity = vim.diagnostic.severity.ERROR, float = true }) end, "Previous Error")
+map("n", "]e", function() vim.diagnostic.jump({ count = vim.v.count1, severity = vim.diagnostic.severity.ERROR, float = true }) end, "Next Error")
+map("n", "[w", function() vim.diagnostic.jump({ count = -vim.v.count1, severity = vim.diagnostic.severity.WARN, float = true }) end, "Previous Warning")
+map("n", "]w", function() vim.diagnostic.jump({ count = vim.v.count1, severity = vim.diagnostic.severity.WARN, float = true }) end, "Next Warning")
+map({ "i", "x", "n", "s" }, "<C-s>", "<cmd>w<cr><esc>", "Save File")
+map("x", "<", "<gv", "Indent Left")
+map("x", ">", ">gv", "Indent Right")
+map("n", "<leader>l", "<cmd>Lazy<cr>", "Lazy")
+map("n", "<leader>fn", "<cmd>enew<cr>", "New File")
+map("n", "n", "'Nn'[v:searchforward].'zv'", "Next Search Result", { expr = true })
+map("n", "N", "'nN'[v:searchforward].'zv'", "Previous Search Result", { expr = true })
+map({ "x", "o" }, "n", "'Nn'[v:searchforward]", "Next Search Result", { expr = true })
+map({ "x", "o" }, "N", "'nN'[v:searchforward]", "Previous Search Result", { expr = true })
+map("i", ",", ",<C-g>u", "Undo Break")
+map("i", ".", ".<C-g>u", "Undo Break")
+map("i", ";", ";<C-g>u", "Undo Break")
+map("n", "gco", "o<esc>Vcx<esc><cmd>normal gcc<cr>fxa<bs>", "Add Comment Below")
+map("n", "gcO", "O<esc>Vcx<esc><cmd>normal gcc<cr>fxa<bs>", "Add Comment Above")
+map("n", "<leader>-", "<C-w>s", "Split Window Below")
+map("n", "<leader>|", "<C-w>v", "Split Window Right")
+map("n", "<leader>wd", "<C-w>c", "Delete Window")
+map("n", "<leader>xl", function() local open = vim.fn.getloclist(0, { winid = 0 }).winid ~= 0; pcall(open and vim.cmd.lclose or vim.cmd.lopen) end, "Location List")
+map("n", "<leader>xq", function() local open = vim.fn.getqflist({ winid = 0 }).winid ~= 0; pcall(open and vim.cmd.cclose or vim.cmd.copen) end, "Quickfix List")
+map("n", "<leader><tab>l", "<cmd>tablast<cr>", "Last Tab")
+map("n", "<leader><tab>o", "<cmd>tabonly<cr>", "Close Other Tabs")
+map("n", "<leader><tab>f", "<cmd>tabfirst<cr>", "First Tab")
+map("n", "<leader><tab><tab>", "<cmd>tabnew<cr>", "New Tab")
+map("n", "<leader><tab>]", "<cmd>tabnext<cr>", "Next Tab")
+map("n", "<leader><tab>d", "<cmd>tabclose<cr>", "Close Tab")
+map("n", "<leader><tab>[", "<cmd>tabprevious<cr>", "Previous Tab")
+map("n", "[q", function() if package.loaded.trouble and require("trouble").is_open() then require("trouble").prev({ skip_groups = true, jump = true }) else pcall(vim.cmd.cprev) end end, "Previous Trouble/Quickfix Item")
+map("n", "]q", function() if package.loaded.trouble and require("trouble").is_open() then require("trouble").next({ skip_groups = true, jump = true }) else pcall(vim.cmd.cnext) end end, "Next Trouble/Quickfix Item")
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if vim.fn.has("win32") == 1 then
@@ -97,7 +180,26 @@ local plugins = {
   {
     "folke/snacks.nvim",
     lazy = false,
-    opts = { explorer = {}, picker = {}, terminal = {}, notifier = {}, lazygit = {} },
+    opts = {
+      bigfile = { enabled = true },
+      dashboard = {
+        preset = {
+          pick = function(source, options) Snacks.picker.pick(source == "live_grep" and "grep" or source == "oldfiles" and "recent" or source, options) end,
+          keys = {
+            { icon = " ", key = "f", desc = "Find File", action = ":lua Snacks.picker.files({ cwd = require('config.root').get() })" },
+            { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
+            { icon = " ", key = "p", desc = "Projects", action = ":lua Snacks.picker.projects()" },
+            { icon = " ", key = "g", desc = "Find Text", action = ":lua Snacks.picker.grep({ cwd = require('config.root').get() })" },
+            { icon = " ", key = "r", desc = "Recent Files", action = ":lua Snacks.picker.recent()" },
+            { icon = " ", key = "c", desc = "Config", action = ":lua Snacks.picker.files({ cwd = vim.fn.stdpath('config') })" },
+            { icon = " ", key = "s", desc = "Restore Session", section = "session" },
+            { icon = "󰒲 ", key = "l", desc = "Lazy", action = ":Lazy" },
+            { icon = " ", key = "q", desc = "Quit", action = ":qa" },
+          },
+        },
+      },
+      explorer = {}, input = {}, picker = {}, quickfile = { enabled = true }, terminal = {}, notifier = {}, lazygit = {},
+    },
     config = function(_, options)
       _G.Snacks = require("snacks")
       Snacks.setup(options)
@@ -131,7 +233,34 @@ local plugins = {
     opts = {},
     init = function() package.preload["nvim-web-devicons"] = function() require("mini.icons").mock_nvim_web_devicons(); return package.loaded["nvim-web-devicons"] end end,
   },
-  { "nvim-mini/mini.pairs", event = "InsertEnter", opts = {} },
+  {
+    "nvim-mini/mini.pairs",
+    event = "InsertEnter",
+    opts = { modes = { insert = true, command = true, terminal = false } },
+    config = function(_, options)
+      local pairs = require("mini.pairs")
+      pairs.setup(options)
+      local open = pairs.open
+      pairs.open = function(pair, neigh_pattern)
+        if vim.g.minipairs_disable or vim.b.minipairs_disable or vim.bo.filetype:match("^snacks_picker") then return pair:sub(1, 1) end
+        local open_char = pair:sub(1, 1)
+        local line = vim.api.nvim_get_current_line()
+        local cursor = vim.api.nvim_win_get_cursor(0)
+        if open_char == "`" and vim.bo.filetype == "markdown" and line:sub(1, cursor[2]):match("^%s*``") then
+          return "`\n```" .. vim.keycode("<Up>")
+        end
+        local next_char = line:sub(vim.fn.col("."), vim.fn.col("."))
+        if next_char:match("[%w%%%'%[%\"%.%`%$]") then return pair:sub(1, 1) end
+        local ok, captures = pcall(vim.treesitter.get_captures_at_cursor, 0)
+        if ok then for _, capture in ipairs(captures) do if capture.capture == "string" then return pair:sub(1, 1) end end end
+        local _, opens = line:gsub(vim.pesc(pair:sub(1, 1)), "")
+        local _, closes = line:gsub(vim.pesc(pair:sub(2, 2)), "")
+        if opens < closes then return pair:sub(1, 1) end
+        return open(pair, neigh_pattern)
+      end
+    end,
+  },
+  { "folke/flash.nvim", event = "VeryLazy", opts = {} },
   {
     "nvim-mini/mini.ai",
     event = "VeryLazy",
@@ -143,6 +272,10 @@ local plugins = {
           o = ai.gen_spec.treesitter({ a = { "@block.outer", "@conditional.outer", "@loop.outer" }, i = { "@block.inner", "@conditional.inner", "@loop.inner" } }),
           f = ai.gen_spec.treesitter({ a = "@function.outer", i = "@function.inner" }),
           c = ai.gen_spec.treesitter({ a = "@class.outer", i = "@class.inner" }),
+          t = { "<([%p%w]-)%f[^<%w][^<>]->.-</%1>", "^<.->().*()</[^/]->$" },
+          d = { "%f[%d]%d+" },
+          e = { { "%u[%l%d]+%f[^%l%d]", "%f[%S][%l%d]+%f[^%l%d]", "%f[%P][%l%d]+%f[^%l%d]", "^[%l%d]+%f[^%l%d]" }, "^().*()$" },
+          g = function() return { from = { line = 1, col = 1 }, to = { line = vim.fn.line("$"), col = math.max(vim.fn.col({ vim.fn.line("$"), "$" }) - 1, 1) } } end,
           u = ai.gen_spec.function_call(),
           U = ai.gen_spec.function_call({ name_pattern = "[%w_]" }),
         },
@@ -163,7 +296,35 @@ local plugins = {
     event = { "BufReadPost", "BufNewFile" },
     config = function()
       local hipatterns = require("mini.hipatterns")
-      hipatterns.setup({ highlighters = { hex_color = hipatterns.gen_highlighter.hex_color() } })
+      local colors = {
+        slate = "64748b", gray = "6b7280", zinc = "71717a", neutral = "737373", stone = "78716c", red = "ef4444",
+        orange = "f97316", amber = "f59e0b", yellow = "eab308", lime = "84cc16", green = "22c55e", emerald = "10b981",
+        teal = "14b8a6", cyan = "06b6d4", sky = "0ea5e9", blue = "3b82f6", indigo = "6366f1", violet = "8b5cf6",
+        purple = "a855f7", fuchsia = "d946ef", pink = "ec4899", rose = "f43f5e",
+      }
+      local groups = {}
+      hipatterns.setup({ highlighters = {
+        hex_color = hipatterns.gen_highlighter.hex_color({ priority = 2000 }),
+        shorthand = {
+          pattern = "()#%x%x%x()%f[^%x%w]",
+          group = function(_, _, data)
+            if data.full_match == "#add" then return end
+            local r, g, b = data.full_match:sub(2, 2), data.full_match:sub(3, 3), data.full_match:sub(4, 4)
+            return hipatterns.compute_hex_color_group("#" .. r .. r .. g .. g .. b .. b, "bg")
+          end,
+        },
+        tailwind = {
+          pattern = "%f[%w:-]()[%w:-]+%-([a-z]+)%-500()%f[^%w:-]",
+          group = function(_, _, data)
+            local color = data.full_match:match("%-([a-z]+)%-500$")
+            if not colors[color] then return end
+            local name = "MiniHipatternsTailwind" .. color
+            if not groups[name] then vim.api.nvim_set_hl(0, name, { bg = "#" .. colors[color] }); groups[name] = true end
+            return name
+          end,
+        },
+      } })
+      vim.api.nvim_create_autocmd("ColorScheme", { callback = function() groups = {} end })
     end,
   },
   {
@@ -175,6 +336,11 @@ local plugins = {
       keymap = { preset = "default", ["<C-e>"] = { "cancel", "fallback" } },
     },
   },
+  { "MagicDuck/grug-far.nvim", cmd = { "GrugFar", "GrugFarWithin" }, opts = { headerMaxWidth = 80 } },
+  { "folke/trouble.nvim", cmd = "Trouble", opts = { modes = { lsp = { win = { position = "right" } } } } },
+  { "folke/todo-comments.nvim", event = { "BufReadPost", "BufNewFile" }, opts = {} },
+  { "folke/noice.nvim", event = "VeryLazy", dependencies = { "MunifTanjim/nui.nvim" }, opts = { presets = { bottom_search = true, command_palette = true, long_message_to_split = true } } },
+  { "folke/ts-comments.nvim", event = "VeryLazy", opts = {} },
   {
     "mason-org/mason.nvim",
     event = { "BufReadPre", "BufNewFile" },
@@ -248,10 +414,17 @@ local plugins = {
     "mfussenegger/nvim-lint",
     event = { "BufReadPost", "BufNewFile" },
     config = function()
-      require("lint").linters_by_ft = { markdown = { "markdownlint-cli2" }, nix = { "statix" } }
+      require("lint").linters_by_ft = { markdown = { "markdownlint-cli2" }, nix = vim.fn.executable("statix") == 1 and { "statix" } or {} }
       vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, { callback = function() require("lint").try_lint() end })
     end,
   },
+  {
+    "nvim-treesitter/nvim-treesitter-textobjects",
+    branch = "main",
+    event = "VeryLazy",
+    opts = { move = { set_jumps = true } },
+  },
+  { "windwp/nvim-ts-autotag", event = { "BufReadPre", "BufNewFile" }, opts = {} },
   {
     "nvim-treesitter/nvim-treesitter",
     lazy = false,
@@ -303,7 +476,27 @@ local plugins = {
     event = "VeryLazy",
     config = function()
       local augend = require("dial.augend")
-      require("dial.config").augends:register_group({ default = { augend.integer.alias.decimal_int, augend.integer.alias.hex, augend.date.alias["%Y/%m/%d"], augend.constant.alias.bool } })
+      local default = {
+        augend.integer.alias.decimal, augend.integer.alias.decimal_int, augend.integer.alias.hex, augend.date.alias["%Y/%m/%d"],
+        augend.constant.alias.en_weekday, augend.constant.alias.en_weekday_full,
+        augend.constant.new({ elements = { "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth" }, word = false, cyclic = true }),
+        augend.constant.new({ elements = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }, word = true, cyclic = true }),
+        augend.constant.alias.bool, augend.constant.alias.Bool,
+        augend.constant.new({ elements = { "&&", "||" }, word = false, cyclic = true }),
+      }
+      local groups = {
+        default = default,
+        vue = { augend.constant.new({ elements = { "let", "const" } }), augend.hexcolor.new({ case = "lower" }), augend.hexcolor.new({ case = "upper" }) },
+        typescript = { augend.constant.new({ elements = { "let", "const" } }) },
+        css = { augend.hexcolor.new({ case = "lower" }), augend.hexcolor.new({ case = "upper" }) },
+        markdown = { augend.constant.new({ elements = { "[ ]", "[x]" }, word = false, cyclic = true }), augend.misc.alias.markdown_header },
+        json = { augend.semver.alias.semver },
+        lua = { augend.constant.new({ elements = { "and", "or" }, word = true, cyclic = true }) },
+        python = { augend.constant.new({ elements = { "and", "or" } }) },
+      }
+      for name, group in pairs(groups) do if name ~= "default" then vim.list_extend(group, default) end end
+      require("dial.config").augends:register_group(groups)
+      vim.g.dials_by_ft = { css = "css", vue = "vue", javascript = "typescript", typescript = "typescript", typescriptreact = "typescript", javascriptreact = "typescript", json = "json", lua = "lua", markdown = "markdown", sass = "css", scss = "css", python = "python" }
     end,
   },
   { "folke/persistence.nvim", event = "BufReadPre", opts = {} },
@@ -338,47 +531,181 @@ map("n", "<leader><space>", function() Snacks.picker.files({ cwd = root() }) end
 map("n", "<leader>/", function() Snacks.picker.grep({ cwd = root() }) end, "Grep (Root Dir)")
 map("n", "<leader>,", function() Snacks.picker.buffers() end, "Buffers")
 map("n", "<leader>fb", function() Snacks.picker.buffers() end, "Buffers")
+map("n", "<leader>fB", function() Snacks.picker.buffers({ hidden = true, nofile = true }) end, "Buffers (all)")
+map("n", "<leader>fc", function() Snacks.picker.files({ cwd = vim.fn.stdpath("config") }) end, "Find Config File")
+map("n", "<leader>fF", function() Snacks.picker.files() end, "Find Files (cwd)")
+map("n", "<leader>fg", function() Snacks.picker.git_files() end, "Find Files (git-files)")
 map("n", "<leader>fr", function() Snacks.picker.recent() end, "Recent")
+map("n", "<leader>fR", function() Snacks.picker.recent({ filter = { cwd = true } }) end, "Recent (cwd)")
+map("n", "<leader>fp", function() Snacks.picker.projects() end, "Projects")
 map("n", "<leader>fe", function() Snacks.explorer({ cwd = root() }) end, "Explorer (Root Dir)")
 map("n", "<leader>fE", function() Snacks.explorer() end, "Explorer (cwd)")
 map("n", "<leader>e", function() Snacks.explorer({ cwd = root() }) end, "Explorer (Root Dir)")
 map("n", "<leader>E", function() Snacks.explorer() end, "Explorer (cwd)")
-map("n", "<leader>gg", function() Snacks.lazygit({ cwd = root() }) end, "Lazygit")
+map("n", "<leader>gg", function() Snacks.lazygit({ cwd = roots.git() }) end, "Lazygit (Root Dir)")
+map("n", "<leader>gG", function() Snacks.lazygit() end, "Lazygit (cwd)")
 map("n", "<leader>gs", function() Snacks.picker.git_status() end, "Git Status")
 map("n", "<leader>gd", function() Snacks.picker.git_diff() end, "Git Diff")
+map("n", "<leader>gD", function() Snacks.picker.git_diff({ base = "origin", group = true }) end, "Git Diff (origin)")
+map("n", "<leader>gS", function() Snacks.picker.git_stash() end, "Git Stash")
+map("n", "<leader>gL", function() Snacks.picker.git_log() end, "Git Log (cwd)")
+map("n", "<leader>gl", function() Snacks.picker.git_log({ cwd = roots.git() }) end, "Git Log")
+map("n", "<leader>gb", function() Snacks.picker.git_log_line() end, "Git Blame Line")
+map("n", "<leader>gf", function() Snacks.picker.git_log_file() end, "Git Current File History")
+map({ "n", "x" }, "<leader>gB", function() Snacks.gitbrowse() end, "Git Browse (open)")
+map({ "n", "x" }, "<leader>gY", function() Snacks.gitbrowse({ open = function(url) vim.fn.setreg("+", url) end, notify = false }) end, "Git Browse (copy)")
+map("n", "<leader>sb", function() Snacks.picker.lines() end, "Buffer Lines")
+map("n", "<leader>sB", function() Snacks.picker.grep_buffers() end, "Grep Open Buffers")
+map("n", "<leader>sG", function() Snacks.picker.grep() end, "Grep (cwd)")
+map({ "n", "x" }, "<leader>sw", function() Snacks.picker.grep_word({ cwd = root() }) end, "Visual selection or word (Root Dir)")
+map({ "n", "x" }, "<leader>sW", function() Snacks.picker.grep_word() end, "Visual selection or word (cwd)")
 map("n", "<leader>sd", function() Snacks.picker.diagnostics() end, "Diagnostics")
+map("n", "<leader>sD", function() Snacks.picker.diagnostics_buffer() end, "Buffer Diagnostics")
 map("n", "<leader>sh", function() Snacks.picker.help() end, "Help Pages")
 map("n", "<leader>sk", function() Snacks.picker.keymaps() end, "Keymaps")
+map("n", "<leader>:", function() Snacks.picker.command_history() end, "Command History")
+map("n", "<leader>s\"", function() Snacks.picker.registers() end, "Registers")
+map("n", "<leader>s/", function() Snacks.picker.search_history() end, "Search History")
+map("n", "<leader>sa", function() Snacks.picker.autocmds() end, "Autocmds")
+map("n", "<leader>sc", function() Snacks.picker.command_history() end, "Command History")
+map("n", "<leader>sC", function() Snacks.picker.commands() end, "Commands")
+map("n", "<leader>sH", function() Snacks.picker.highlights() end, "Highlights")
+map("n", "<leader>sj", function() Snacks.picker.jumps() end, "Jumps")
+map("n", "<leader>sl", function() Snacks.picker.loclist() end, "Location List")
+map("n", "<leader>sM", function() Snacks.picker.man() end, "Man Pages")
+map("n", "<leader>sm", function() Snacks.picker.marks() end, "Marks")
+map("n", "<leader>sR", function() Snacks.picker.resume() end, "Resume")
+map("n", "<leader>sq", function() Snacks.picker.qflist() end, "Quickfix List")
+map("n", "<leader>su", function() Snacks.picker.undo() end, "Undotree")
+map("n", "<leader>uC", function() Snacks.picker.colorschemes() end, "Colorschemes")
+map("n", "<leader>n", function() Snacks.picker.notifications() end, "Notification History")
+map("n", "<leader>up", function() vim.g.minipairs_disable = not vim.g.minipairs_disable; vim.notify("Mini Pairs " .. (vim.g.minipairs_disable and "disabled" or "enabled")) end, "Toggle Mini Pairs")
+map("n", "<leader>um", function() local markdown = require("render-markdown"); markdown.set(not markdown.get()) end, "Toggle Render Markdown")
+map("n", "<leader>un", function() Snacks.notifier.hide() end, "Dismiss All Notifications")
 map("n", "<leader>p", function() Snacks.picker.yanky() end, "Open Yank History")
 
 map({ "n", "x" }, "y", "<Plug>(YankyYank)", "Yank Text")
 map({ "n", "x" }, "p", "<Plug>(YankyPutAfter)", "Put Text After Cursor")
 map({ "n", "x" }, "P", "<Plug>(YankyPutBefore)", "Put Text Before Cursor")
+map({ "n", "x" }, "gp", "<Plug>(YankyGPutAfter)", "Put Text After Selection")
+map({ "n", "x" }, "gP", "<Plug>(YankyGPutBefore)", "Put Text Before Selection")
 map("n", "[y", "<Plug>(YankyCycleForward)", "Cycle Forward Through Yank History")
 map("n", "]y", "<Plug>(YankyCycleBackward)", "Cycle Backward Through Yank History")
+for lhs, rhs, desc in pairs({
+  ["]p"] = { "<Plug>(YankyPutIndentAfterLinewise)", "Put Indented After Cursor" }, ["[p"] = { "<Plug>(YankyPutIndentBeforeLinewise)", "Put Indented Before Cursor" },
+  ["]P"] = { "<Plug>(YankyPutIndentAfterLinewise)", "Put Indented After Cursor" }, ["[P"] = { "<Plug>(YankyPutIndentBeforeLinewise)", "Put Indented Before Cursor" },
+  [">p"] = { "<Plug>(YankyPutIndentAfterShiftRight)", "Put and Indent Right" }, ["<p"] = { "<Plug>(YankyPutIndentAfterShiftLeft)", "Put and Indent Left" },
+  [">P"] = { "<Plug>(YankyPutIndentBeforeShiftRight)", "Put Before and Indent Right" }, ["<P"] = { "<Plug>(YankyPutIndentBeforeShiftLeft)", "Put Before and Indent Left" },
+  ["=p"] = { "<Plug>(YankyPutAfterFilter)", "Put After Applying a Filter" }, ["=P"] = { "<Plug>(YankyPutBeforeFilter)", "Put Before Applying a Filter" },
+}) do map("n", lhs, rhs[1], rhs[2]) end
 
 local function dial(increment, g)
   local mode = vim.fn.mode(true)
   local visual = mode == "v" or mode == "V" or mode == "\22"
-  return require("dial.map")[(increment and "inc" or "dec") .. (g and "_g" or "_") .. (visual and "visual" or "normal")]("default")
+  local group = vim.g.dials_by_ft and vim.g.dials_by_ft[vim.bo.filetype] or "default"
+  return require("dial.map")[(increment and "inc" or "dec") .. (g and "_g" or "_") .. (visual and "visual" or "normal")](group)
 end
 vim.keymap.set({ "n", "x" }, "<C-a>", function() return dial(true) end, { desc = "Increment", expr = true })
 vim.keymap.set({ "n", "x" }, "<C-x>", function() return dial(false) end, { desc = "Decrement", expr = true })
+vim.keymap.set({ "n", "x" }, "g<C-a>", function() return dial(true, true) end, { desc = "Increment", expr = true })
+vim.keymap.set({ "n", "x" }, "g<C-x>", function() return dial(false, true) end, { desc = "Decrement", expr = true })
 
 map("n", "<leader>qs", function() require("persistence").load() end, "Restore Session")
+map("n", "<leader>qS", function() require("persistence").select() end, "Select Session")
 map("n", "<leader>ql", function() require("persistence").load({ last = true }) end, "Restore Last Session")
 map("n", "<leader>qd", function() require("persistence").stop() end, "Don't Save Current Session")
+map({ "n", "x", "o" }, "s", function() require("flash").jump() end, "Flash")
+map({ "n", "x", "o" }, "S", function() require("flash").treesitter() end, "Flash Treesitter")
+map("o", "r", function() require("flash").remote() end, "Remote Flash")
+map({ "o", "x" }, "R", function() require("flash").treesitter_search() end, "Treesitter Search")
+map({ "n", "x", "o" }, "<C-Space>", function() require("flash").treesitter({ actions = { ["<C-Space>"] = "next", ["<BS>"] = "prev" } }) end, "Treesitter Incremental Selection")
+map({ "n", "x" }, "<leader>sr", function()
+  local extension = vim.bo.buftype == "" and vim.fn.expand("%:e")
+  require("grug-far").open({ transient = true, prefills = { filesFilter = extension ~= "" and "*." .. extension or nil } })
+end, "Search and Replace")
+map("n", "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>", "Diagnostics (Trouble)")
+map("n", "<leader>xX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", "Buffer Diagnostics (Trouble)")
+map("n", "<leader>cs", "<cmd>Trouble symbols toggle<cr>", "Symbols (Trouble)")
+map("n", "<leader>cS", "<cmd>Trouble lsp toggle<cr>", "LSP references/definitions/... (Trouble)")
+map("n", "<leader>xL", "<cmd>Trouble loclist toggle<cr>", "Location List (Trouble)")
+map("n", "<leader>xQ", "<cmd>Trouble qflist toggle<cr>", "Quickfix List (Trouble)")
+map("n", "]t", function() require("todo-comments").jump_next() end, "Next Todo Comment")
+map("n", "[t", function() require("todo-comments").jump_prev() end, "Previous Todo Comment")
+map("n", "<leader>xt", "<cmd>Trouble todo toggle<cr>", "Todo (Trouble)")
+map("n", "<leader>xT", "<cmd>Trouble todo toggle filter = {tag = {TODO,FIX,FIXME}}<cr>", "Todo/Fix/Fixme (Trouble)")
+map("n", "<leader>st", function() Snacks.picker.todo_comments() end, "Todo")
+map("n", "<leader>sT", function() Snacks.picker.todo_comments({ keywords = { "TODO", "FIX", "FIXME" } }) end, "Todo/Fix/Fixme")
+map("n", "<leader>snh", "<cmd>messages<cr>", "Message History")
+map("n", "<leader>snl", function() vim.cmd("messages"); vim.cmd.normal("G") end, "Last Message")
+map("n", "<leader>snd", "<cmd>Noice dismiss<cr>", "Dismiss Messages")
+map("n", "<leader>sna", "<cmd>Noice all<cr>", "All Messages")
+map("n", "<leader>snt", "<cmd>Noice pick<cr>", "Message Picker")
+map("c", "<S-Enter>", function() require("noice").redirect(vim.fn.getcmdline()) end, "Redirect Command Line")
+map("n", "<leader>fT", function() Snacks.terminal() end, "Terminal (cwd)")
+map("n", "<leader>ft", function() Snacks.terminal(nil, { cwd = root() }) end, "Terminal (Root Dir)")
+map({ "n", "t" }, "<C-/>", function() Snacks.terminal.focus(nil, { cwd = root() }) end, "Terminal (Root Dir)")
+
+for lhs, command, desc in pairs({
+  ["<leader>bp"] = { "BufferLineTogglePin", "Toggle Pin" }, ["<leader>bP"] = { "BufferLineGroupClose ungrouped", "Delete Non-Pinned Buffers" },
+  ["<leader>br"] = { "BufferLineCloseRight", "Delete Buffers to the Right" }, ["<leader>bl"] = { "BufferLineCloseLeft", "Delete Buffers to the Left" },
+  ["[B"] = { "BufferLineMovePrev", "Move buffer prev" }, ["]B"] = { "BufferLineMoveNext", "Move buffer next" }, ["<leader>bj"] = { "BufferLinePick", "Pick Buffer" },
+}) do map("n", lhs, "<cmd>" .. command[1] .. "<cr>", command[2]) end
 
 vim.api.nvim_create_autocmd("LspAttach", {
   callback = function(event)
     local function lmap(mode, lhs, rhs, desc) vim.keymap.set(mode, lhs, rhs, { buffer = event.buf, desc = desc }) end
-    lmap("n", "gd", vim.lsp.buf.definition, "Goto Definition")
-    lmap("n", "gr", vim.lsp.buf.references, "References")
-    lmap("n", "gI", vim.lsp.buf.implementation, "Goto Implementation")
-    lmap("n", "gy", vim.lsp.buf.type_definition, "Goto Type Definition")
+    lmap("n", "gd", function() Snacks.picker.lsp_definitions() end, "Goto Definition")
+    lmap("n", "gr", function() Snacks.picker.lsp_references() end, "References")
+    lmap("n", "gI", function() Snacks.picker.lsp_implementations() end, "Goto Implementation")
+    lmap("n", "gy", function() Snacks.picker.lsp_type_definitions() end, "Goto Type Definition")
+    lmap("n", "gD", vim.lsp.buf.declaration, "Goto Declaration")
     lmap("n", "K", vim.lsp.buf.hover, "Hover")
+    lmap("n", "gK", vim.lsp.buf.signature_help, "Signature Help")
+    lmap("i", "<C-k>", vim.lsp.buf.signature_help, "Signature Help")
+    lmap("n", "<leader>ss", function() Snacks.picker.lsp_symbols() end, "LSP Symbols")
+    lmap("n", "<leader>sS", function() Snacks.picker.lsp_workspace_symbols() end, "LSP Workspace Symbols")
+    lmap("n", "gai", function() Snacks.picker.lsp_incoming_calls() end, "Calls Incoming")
+    lmap("n", "gao", function() Snacks.picker.lsp_outgoing_calls() end, "Calls Outgoing")
     lmap({ "n", "x" }, "<leader>ca", vim.lsp.buf.code_action, "Code Action")
     lmap("n", "<leader>cr", vim.lsp.buf.rename, "Rename")
     if vim.lsp.inlay_hint then vim.lsp.inlay_hint.enable(false, { bufnr = event.buf }) end
   end,
 })
+
+local movements = {
+  goto_next_start = { ["]f"] = "@function.outer", ["]c"] = "@class.outer", ["]a"] = "@parameter.inner" },
+  goto_next_end = { ["]F"] = "@function.outer", ["]C"] = "@class.outer", ["]A"] = "@parameter.inner" },
+  goto_previous_start = { ["[f"] = "@function.outer", ["[c"] = "@class.outer", ["[a"] = "@parameter.inner" },
+  goto_previous_end = { ["[F"] = "@function.outer", ["[C"] = "@class.outer", ["[A"] = "@parameter.inner" },
+}
+for method, keys in pairs(movements) do
+  for lhs, query in pairs(keys) do
+    map({ "n", "x", "o" }, lhs, function()
+      if vim.wo.diff and lhs:find("[cC]") then return vim.cmd("normal! " .. lhs) end
+      require("nvim-treesitter-textobjects.move")[method](query, "textobjects")
+    end, (lhs:sub(1, 1) == "[" and "Previous " or "Next ") .. query:gsub("@", ""):gsub("%..*", ""))
+  end
+end
+
+local function augroup(name) return vim.api.nvim_create_augroup("raw_" .. name, { clear = true }) end
+vim.api.nvim_create_autocmd({ "FocusGained", "TermClose", "TermLeave" }, { group = augroup("checktime"), callback = function() if vim.o.buftype ~= "nofile" then vim.cmd.checktime() end end })
+vim.api.nvim_create_autocmd("TextYankPost", { group = augroup("highlight_yank"), callback = function() (vim.hl or vim.highlight).on_yank() end })
+vim.api.nvim_create_autocmd("VimResized", { group = augroup("resize_splits"), callback = function() local tab = vim.fn.tabpagenr(); vim.cmd("tabdo wincmd ="); vim.cmd("tabnext " .. tab) end })
+vim.api.nvim_create_autocmd("BufReadPost", { group = augroup("last_loc"), callback = function(event)
+  if vim.bo[event.buf].filetype == "gitcommit" or vim.b[event.buf].raw_last_loc then return end
+  vim.b[event.buf].raw_last_loc = true
+  local mark = vim.api.nvim_buf_get_mark(event.buf, '"')
+  if mark[1] > 0 and mark[1] <= vim.api.nvim_buf_line_count(event.buf) then pcall(vim.api.nvim_win_set_cursor, 0, mark) end
+end })
+vim.api.nvim_create_autocmd("FileType", { group = augroup("close_with_q"), pattern = { "checkhealth", "gitsigns-blame", "grug-far", "help", "lspinfo", "notify", "qf", "startuptime", "tsplayground" }, callback = function(event)
+  vim.bo[event.buf].buflisted = false
+  vim.schedule(function() vim.keymap.set("n", "q", function() vim.cmd.close(); pcall(vim.api.nvim_buf_delete, event.buf, { force = true }) end, { buffer = event.buf, silent = true }) end)
+end })
+vim.api.nvim_create_autocmd("FileType", { group = augroup("man_unlisted"), pattern = "man", callback = function(event) vim.bo[event.buf].buflisted = false end })
+vim.api.nvim_create_autocmd("FileType", { group = augroup("wrap_spell"), pattern = { "text", "plaintex", "typst", "gitcommit", "markdown" }, callback = function() vim.opt_local.wrap = true; vim.opt_local.spell = true end })
+vim.api.nvim_create_autocmd("FileType", { group = augroup("json_conceal"), pattern = { "json", "jsonc", "json5" }, callback = function() vim.opt_local.conceallevel = 0 end })
+vim.api.nvim_create_autocmd("BufWritePre", { group = augroup("auto_create_dir"), callback = function(event)
+  if event.match:match("^%w%w+:[\\/][\\/]") then return end
+  local file = (vim.uv or vim.loop).fs_realpath(event.match) or event.match
+  vim.fn.mkdir(vim.fn.fnamemodify(file, ":p:h"), "p")
+end })

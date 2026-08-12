@@ -19,6 +19,14 @@ function test_wingethas_false_when_exit_nonzero {
     Assert-False (WingetHas 'Nonexistent.Package') 'WingetHas should return false on non-zero exit'
 }
 
+function test_windows_neovim_provisions_treesitter_build_tools {
+    $packages = @(Get-WingetPackages)
+    Assert-Contains ($packages -join "`n") "tree-sitter.tree-sitter-cli"
+    Assert-Contains ($packages -join "`n") "LLVM.LLVM"
+    Assert-Contains ((Get-RequiredCommands) -join "`n") "tree-sitter"
+    Assert-Contains ((Get-RequiredCommands) -join "`n") "clang"
+}
+
 function test_windows_package_manifests_cover_parity_tools {
     $winget = @(Get-WingetPackages)
     $scoop = @(Get-ScoopPackages)
