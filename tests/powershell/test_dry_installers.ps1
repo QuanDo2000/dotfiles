@@ -7,7 +7,7 @@ function TestSetup {
 
 function test_installers_dry_run_before_external_commands {
     $cases = @(
-        @{ Command = 'scoop'; Function = 'InstallScoopPackages'; Banner = 'Installing Scoop packages' }
+        @{ Command = 'Invoke-WebRequest'; Function = 'InstallFiraCodeNerdFont'; Banner = 'Installing FiraCode Nerd Font' }
         @{ Command = 'fnm'; Function = 'InstallFnm'; Banner = 'Installing Node.js LTS' }
         @{ Command = 'npm'; Function = 'InstallAi'; Banner = 'Installing agent CLIs' }
         @{ Command = 'Invoke-RestMethod'; Function = 'InstallCodex'; Banner = 'Installing Codex CLI' }
@@ -30,6 +30,6 @@ function test_installers_dry_run_before_external_commands {
 
 function test_installextras_dry_run_chains_font_and_node {
     $output = InstallExtras 6>&1 | Out-String
-    Assert-Contains $output 'Installing Scoop packages'
+    Assert-Contains $output 'Installing FiraCode Nerd Font'
     Assert-Contains $output 'Installing Node.js LTS'
 }

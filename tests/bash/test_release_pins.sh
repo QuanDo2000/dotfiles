@@ -15,7 +15,6 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
     _update_pi_extensions_release \
     _update_webcord_release \
     _update_anki_zoom \
-    _update_scoop_pins \
     _update_firacode_pin \
     _update_vendored_skills \
     _update_neovim_plugins; do
@@ -24,12 +23,12 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
 
   _update_all_dependency_pins
 
-  assert_equals $'_update_lix_installer_pins\n_update_codex_release_package\n_update_pi_release_package\n_update_obsidian_headless_package\n_update_codebase_memory_release\n_update_fff_release\n_update_pi_extensions_release\n_update_webcord_release\n_update_anki_zoom\n_update_scoop_pins\n_update_firacode_pin\n_update_vendored_skills\n_update_neovim_plugins' "$(<"$calls")"
+  assert_equals $'_update_lix_installer_pins\n_update_codex_release_package\n_update_pi_release_package\n_update_obsidian_headless_package\n_update_codebase_memory_release\n_update_fff_release\n_update_pi_extensions_release\n_update_webcord_release\n_update_anki_zoom\n_update_firacode_pin\n_update_vendored_skills\n_update_neovim_plugins' "$(<"$calls")"
 
   for name in \
     _update_lix_installer_pins _update_codex_release_package _update_pi_release_package \
     _update_obsidian_headless_package _update_codebase_memory_release _update_fff_release \
-    _update_pi_extensions_release _update_webcord_release _update_anki_zoom _update_scoop_pins \
+    _update_pi_extensions_release _update_webcord_release _update_anki_zoom \
     _update_firacode_pin _update_vendored_skills _update_neovim_plugins; do
     unset -f "$name"
   done
@@ -48,7 +47,7 @@ test_all_dependency_pin_updaters_dry_run_without_network() {
   for label in \
     "Lix installer" "Codex package" "Pi package" "Obsidian Headless" \
     "codebase-memory" "FFF" "Pi extension closure" "WebCord" "Anki Zoom" \
-    "Scoop snapshots" "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
+    "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
     assert_contains "$output" "$label"
   done
 

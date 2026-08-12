@@ -21,7 +21,6 @@ function test_wingethas_false_when_exit_nonzero {
 
 function test_windows_package_manifests_cover_parity_tools {
     $winget = @(Get-WingetPackages)
-    $scoop = @(Get-ScoopPackages)
     $commands = @(Get-RequiredCommands)
 
     Assert-True ($winget -contains 'Microsoft.PowerShell') 'Winget should manage PowerShell'
@@ -31,10 +30,7 @@ function test_windows_package_manifests_cover_parity_tools {
     Assert-True ($winget -contains 'GnuPG.Gpg4win') 'Winget should manage Gpg4win'
     Assert-True ($winget -contains 'Notepad++.Notepad++') 'Winget should manage Notepad++'
     Assert-True ($winget -contains 'koalaman.shellcheck') 'Winget should manage ShellCheck for Bash diagnostics'
-    Assert-True ($scoop -contains 'FiraCode-NF') 'Scoop should manage FiraCode Nerd Font'
-    Assert-False ($scoop -contains 'FiraCode') 'Regular FiraCode does not provide configured Nerd Font family'
-    Assert-True ($scoop -contains 'jq') 'Scoop should manage jq'
-    Assert-False ($scoop -contains 'ast-grep') 'Unused ast-grep should not be installed'
+    Assert-True ($winget -contains 'jqlang.jq') 'Winget should manage jq'
     Assert-True ($commands -contains 'gh') 'Doctor should verify GitHub CLI'
     Assert-True ($commands -contains 'fff-mcp') 'Doctor should verify the native FFF MCP server'
     Assert-True ($commands -contains 'fff-mcp-agent') 'Doctor should verify the configured FFF launcher'
@@ -43,17 +39,10 @@ function test_windows_package_manifests_cover_parity_tools {
     }
 }
 
-function test_windows_firacode_manifest_is_reviewed_and_immutable {
-    $manifestPath = Join-Path $script:RepoDir 'config/windows/scoop/FiraCode-NF.json'
-    Assert-FileExists $manifestPath
-    if (-not (Test-Path -LiteralPath $manifestPath)) { return }
-
-    $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-    Assert-True ($manifest.version -match '^\d+\.\d+\.\d+$') 'font version should be exact semver'
-    Assert-Equals "https://github.com/ryanoasis/nerd-fonts/releases/download/v$($manifest.version)/FiraCode.zip" $manifest.url
-    Assert-True ($manifest.hash -match '^[0-9a-f]{64}$') 'font archive should have a SHA-256 pin'
-    Assert-False ($manifest.PSObject.Properties.Name -contains 'checkver') 'font refresh should require reviewed pin changes'
-    Assert-False ($manifest.PSObject.Properties.Name -contains 'autoupdate') 'font refresh should require reviewed pin changes'
+function test_windows_firacode_release_is_reviewed_and_immutable {
+    Assert-True ($script:FiraCodeNerdFontVersion -match '^\d+\.\d+\.\d+$') 'font version should be exact semver'
+    Assert-Equals "https://github.com/ryanoasis/nerd-fonts/releases/download/v$script:FiraCodeNerdFontVersion/FiraCode.zip" $script:FiraCodeNerdFontUrl
+    Assert-True ($script:FiraCodeNerdFontSha256 -match '^[0-9a-f]{64}$') 'font archive should have a SHA-256 pin'
 
     $terminal = Get-Content -Raw -LiteralPath (Join-Path $script:RepoDir 'config/windows/Terminal/settings.json') | ConvertFrom-Json
     Assert-Equals 'FiraCode Nerd Font' $terminal.profiles.defaults.font.face

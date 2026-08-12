@@ -393,57 +393,32 @@ def git_head(repository: str) -> str:
     return commit
 
 
-def update_scoop(repo: Path) -> None:
+def update_firacode(repo: Path) -> None:
     script = repo / "dotfile.ps1"
     text = script.read_text(encoding="utf-8")
-    projects = {
-        "Installer": ("ScoopInstaller/Install", "https://raw.githubusercontent.com/ScoopInstaller/Install/{commit}/install.ps1"),
-        "Core": ("ScoopInstaller/Scoop", "https://github.com/ScoopInstaller/Scoop/archive/{commit}.zip"),
-        "Main": ("ScoopInstaller/Main", "https://github.com/ScoopInstaller/Main/archive/{commit}.zip"),
-    }
-    updates = []
-    with tempfile.TemporaryDirectory(prefix="dotfiles-scoop-") as temporary:
-        root = Path(temporary)
-        for label, (repository, template) in projects.items():
-            commit_match = re.search(rf"\$script:Scoop{label}Commit = '([0-9a-f]{{40}})'", text)
-            hash_match = re.search(rf"\$script:Scoop{label}Sha256 = '([0-9a-f]{{64}})'", text)
-            if not commit_match or not hash_match:
-                die(f"failed to parse Scoop {label} pin")
-            commit = git_head(repository)
-            if commit == commit_match.group(1):
-                continue
-            path = root / f"{label}.download"
-            download_twice(template.format(commit=commit), path)
-            updates.append((label, commit_match.group(1), commit, hash_match.group(1), sha256(path)))
-    for label, old_commit, commit, old_hash, digest in updates:
-        text = text.replace(f"$script:Scoop{label}Commit = '{old_commit}'", f"$script:Scoop{label}Commit = '{commit}'", 1)
-        text = text.replace(f"$script:Scoop{label}Sha256 = '{old_hash}'", f"$script:Scoop{label}Sha256 = '{digest}'", 1)
-    if updates:
-        atomic_text(script, text)
-        print("updated Scoop " + ", ".join(label for label, *_ in updates))
-    else:
-        print("Scoop snapshots already current")
-
-
-def update_firacode(repo: Path) -> None:
-    manifest_path = repo / "config/windows/scoop/FiraCode-NF.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    version_match = re.search(r"\$script:FiraCodeNerdFontVersion = '([^']+)'", text)
+    url_match = re.search(r"\$script:FiraCodeNerdFontUrl = '([^']+)'", text)
+    hash_match = re.search(r"\$script:FiraCodeNerdFontSha256 = '([0-9a-f]{64})'", text)
+    if not version_match or not url_match or not hash_match:
+        die("failed to parse FiraCode Nerd Font pins")
     release = github_release("ryanoasis/nerd-fonts")
     version = release["tag_name"].removeprefix("v")
-    if manifest["version"] == version:
+    if version_match.group(1) == version:
         print(f"FiraCode Nerd Font {version} already current")
         return
     name = "FiraCode.zip"
+    url = github_asset(release, name)["browser_download_url"]
     with tempfile.TemporaryDirectory(prefix="dotfiles-firacode-") as temporary:
         path = Path(temporary) / name
-        download_twice(github_asset(release, name)["browser_download_url"], path)
+        download_twice(url, path)
         digest = github_asset(release, name).get("digest")
         if digest and digest != f"sha256:{sha256(path)}":
             die("FiraCode GitHub digest mismatch")
-        manifest["hash"] = sha256(path)
-    manifest["version"] = version
-    manifest["url"] = f"https://github.com/ryanoasis/nerd-fonts/releases/download/v{version}/{name}"
-    atomic_json(manifest_path, manifest)
+        archive_hash = sha256(path)
+    text = text.replace(version_match.group(0), f"$script:FiraCodeNerdFontVersion = '{version}'", 1)
+    text = text.replace(url_match.group(0), f"$script:FiraCodeNerdFontUrl = '{url}'", 1)
+    text = text.replace(hash_match.group(0), f"$script:FiraCodeNerdFontSha256 = '{archive_hash}'", 1)
+    atomic_text(script, text)
     print(f"updated FiraCode Nerd Font to {version}")
 
 
@@ -598,7 +573,6 @@ def main() -> int:
         "pi-extensions": update_pi_extensions,
         "webcord": update_webcord,
         "anki-zoom": update_anki_zoom,
-        "scoop": update_scoop,
         "firacode": update_firacode,
         "skills": update_skills,
         "neovim": update_neovim,

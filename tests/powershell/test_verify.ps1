@@ -13,10 +13,6 @@ function TestSetup {
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.
     $script:Quiet = $false
-    Set-CommandMock 'scoop' {
-        $global:LASTEXITCODE = 0
-        Get-ScoopPackages | ForEach-Object { [pscustomobject]@{ Name = $_ } }
-    }
     $script:OriginalWingetHas = (Get-Command WingetHas).ScriptBlock
     Set-FunctionMock 'WingetHas' { return $true }
     Set-HealthyToolMocks
@@ -30,7 +26,6 @@ function Set-HealthyToolMocks {
 function TestTeardown {
     Clear-CommandMock 'Get-Command'
     Clear-CommandMock 'Get-Module'
-    Clear-CommandMock 'scoop'
     Set-FunctionMock 'WingetHas' $script:OriginalWingetHas
     Clear-TestEnv
 }
@@ -41,7 +36,7 @@ function test_verify_reports_missing_installation {
 
     $output = Verify 6>&1 | Out-String
 
-    foreach ($text in 'Verifying installed tools', 'Verifying scoop packages', 'Verifying PowerShell modules', 'Verifying managed links', 'starship.toml', 'not found', 'issue') {
+    foreach ($text in 'Verifying installed tools', 'Verifying Winget packages', 'Verifying PowerShell modules', 'Verifying managed links', 'starship.toml', 'not found', 'issue') {
         Assert-Contains $output $text
     }
     Assert-True $script:VerifyFailed 'missing installation should fail verification'

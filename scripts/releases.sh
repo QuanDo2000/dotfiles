@@ -638,7 +638,6 @@ function _update_all_dependency_pins {
   _update_pi_extensions_release
   _update_webcord_release
   _update_anki_zoom
-  _update_scoop_pins
   _update_firacode_pin
   _update_vendored_skills
   _update_neovim_plugins

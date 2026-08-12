@@ -13,8 +13,8 @@ Personal setup scripts and configuration files for new machines.
 - PowerShell 5.1+ (Windows PowerShell) or PowerShell 7 (`pwsh`)
 - Must be run from an **Administrator** PowerShell (required to create symlinks).
   The script self-elevates via `Start-Process -Verb RunAs` if needed.
-- `git` (install via `winget install Git.Git` first, or use the bundled Git that ships with Windows Terminal / Scoop)
-- The script installs `winget` packages and bootstraps `scoop`; no pre-install required.
+- `git` (install via `winget install Git.Git` first, or use another existing Git installation)
+- The script installs `winget` packages and the pinned FiraCode Nerd Font; no extra package manager required.
 
 ### Configuration
 
@@ -165,7 +165,7 @@ sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
 
 After provisioning, use `dotfile update` to refresh every repository-managed
 dependency: Nix inputs, release archives, npm closures, native FFF assets,
-Windows Scoop/font pins, vendored skills, and Neovim plugins. It runs full
+Windows font pins, vendored skills, and Neovim plugins. It runs full
 checks, shows the resulting uncommitted diff, and requires confirmation before
 activation; non-interactive runs must pass `--force`. Use `dotfile update ai`
 to update only tracked AI configs, Codex and Pi release pins, managed AI

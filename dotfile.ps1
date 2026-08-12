@@ -31,13 +31,9 @@ function Resolve-DotfilesDir($Override, $ScriptPath) {
 # Resolve symlink so invoking via ~\.local\bin points back to the real repo.
 # Allow override via $env:DOTFILES_DIR so the install path is not hardcoded.
 $script:DotfilesDir = Resolve-DotfilesDir $env:DOTFILES_DIR $PSCommandPath
-# Reviewed immutable installer pin; Scoop publishes no checksum or signed release.
-$script:ScoopInstallerCommit = 'b0ee913725139b816f9178163af0aecdba07a7ed'
-$script:ScoopInstallerSha256 = '48f6ea398b3a3fa26fae0093d37bd85b13e7eaa5d1d4a3e208408768408e35ae'
-$script:ScoopCoreCommit = 'b588a06e41d920d2123ec70aee682bae14935939'
-$script:ScoopCoreSha256 = '630206995f30866a0b25b00c14c74be9ef9b79c4911f72f6efd2625cfe19a645'
-$script:ScoopMainCommit = 'f06f06f4ffbe5028735b98173fc5ef0427da6da4'
-$script:ScoopMainSha256 = '04ab17ccf5aeadfeb3951b35a6c037677ceda5ba411aa510546c5c996e614c76'
+$script:FiraCodeNerdFontVersion = '3.5.0'
+$script:FiraCodeNerdFontUrl = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.0/FiraCode.zip'
+$script:FiraCodeNerdFontSha256 = '8ad2834d8ea1945d8ab042538e608f6370573a29913aa94b5e6bbc92ffacbab5'
 
 # Logging helpers
 function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }
@@ -178,13 +174,9 @@ function Get-WingetPackages {
         "Microsoft.PowerShell", "Git.Git", "GnuPG.Gpg4win", "Microsoft.WindowsTerminal",
         "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd", "junegunn.fzf",
-        "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide",
+        "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide", "jqlang.jq",
         "Python.Python.3.14", "GitHub.cli", "Notepad++.Notepad++", "koalaman.shellcheck"
     )
-}
-
-function Get-ScoopPackages {
-    @("FiraCode-NF", "jq")
 }
 
 function Get-RequiredCommands {
@@ -246,157 +238,44 @@ function Get-FileSha256($Path) {
     try { return Get-StreamSha256 $stream } finally { $stream.Dispose() }
 }
 
-function Set-ScoopBootstrapArchives($Source, $CoreUri, $MainUri) {
-    $CoreUri = $CoreUri.Replace("'", "''")
-    $MainUri = $MainUri.Replace("'", "''")
-    $replacements = [ordered]@{
-        "if (Test-CommandAvailable('git')) {" = 'if ($false) {'
-        "`$SCOOP_PACKAGE_REPO = 'https://github.com/ScoopInstaller/Scoop/archive/master.zip'" = "`$SCOOP_PACKAGE_REPO = '$CoreUri'"
-        "`$SCOOP_MAIN_BUCKET_REPO = 'https://github.com/ScoopInstaller/Main/archive/master.zip'" = "`$SCOOP_MAIN_BUCKET_REPO = '$MainUri'"
-    }
-    foreach ($entry in $replacements.GetEnumerator()) {
-        if ([regex]::Matches($Source, [regex]::Escape($entry.Key)).Count -ne 1) {
-            throw "Unexpected Scoop installer source"
-        }
-        $Source = $Source.Replace($entry.Key, $entry.Value)
-    }
-    return $Source
-}
-
-function InstallScoop {
-    if (Get-Command scoop -ErrorAction SilentlyContinue) { return }
-
-    $uri = "https://raw.githubusercontent.com/ScoopInstaller/Install/$script:ScoopInstallerCommit/install.ps1"
-    $installer = Join-Path ([IO.Path]::GetTempPath()) "scoop-install-$([Guid]::NewGuid().ToString('N')).ps1"
-    try {
-        Invoke-WebRequest -Uri $uri -OutFile $installer -UseBasicParsing
-        $bytes = [IO.File]::ReadAllBytes($installer)
-        $stream = [IO.MemoryStream]::new($bytes, $false)
-        try {
-            $actual = Get-StreamSha256 $stream
-        } finally {
-            $stream.Dispose()
-        }
-        if ($actual -ne $script:ScoopInstallerSha256) {
-            throw "Scoop installer checksum mismatch"
-        }
-        $source = [Text.Encoding]::UTF8.GetString($bytes)
-    } finally {
-        if (Test-Path -LiteralPath $installer) {
-            Remove-Item -LiteralPath $installer -Force -ErrorAction Stop
-        }
-    }
-
-    $temp = [IO.Path]::GetTempPath()
-    $coreArchive = Join-Path $temp "scoop-core-$([Guid]::NewGuid().ToString('N')).zip"
-    $mainArchive = Join-Path $temp "scoop-main-$([Guid]::NewGuid().ToString('N')).zip"
-    $coreLock = $null
-    $mainLock = $null
-    try {
-        $coreUri = "https://github.com/ScoopInstaller/Scoop/archive/$script:ScoopCoreCommit.zip"
-        $mainUri = "https://github.com/ScoopInstaller/Main/archive/$script:ScoopMainCommit.zip"
-        Invoke-WebRequest -Uri $coreUri -OutFile $coreArchive -UseBasicParsing
-        Invoke-WebRequest -Uri $mainUri -OutFile $mainArchive -UseBasicParsing
-        $coreLock = [IO.File]::Open($coreArchive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-        $mainLock = [IO.File]::Open($mainArchive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-        if ((Get-StreamSha256 $coreLock) -ne $script:ScoopCoreSha256) {
-            throw "Scoop core archive checksum mismatch"
-        }
-        if ((Get-StreamSha256 $mainLock) -ne $script:ScoopMainSha256) {
-            throw "Scoop Main archive checksum mismatch"
-        }
-        $coreLocalUri = [Uri]::new((Resolve-Path -LiteralPath $coreArchive).Path).AbsoluteUri
-        $mainLocalUri = [Uri]::new((Resolve-Path -LiteralPath $mainArchive).Path).AbsoluteUri
-        $source = Set-ScoopBootstrapArchives $source $coreLocalUri $mainLocalUri
-        $bootstrap = [ScriptBlock]::Create($source)
-
-        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-        do { & $bootstrap -RunAsAdmin } while ($false)
-        if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-            throw "scoop command not found after installation"
-        }
-    } finally {
-        if ($coreLock) { $coreLock.Dispose() }
-        if ($mainLock) { $mainLock.Dispose() }
-        $cleanupError = $null
-        foreach ($path in $coreArchive, $mainArchive) {
-            try {
-                if (Test-Path -LiteralPath $path) {
-                    Remove-Item -LiteralPath $path -Force -ErrorAction Stop
-                }
-            } catch {
-                if (-not $cleanupError) { $cleanupError = $_.Exception }
-            }
-        }
-        if ($cleanupError) { throw $cleanupError }
+function Grant-FontReadAccess($Path) {
+    foreach ($sid in 'S-1-15-2-1', 'S-1-15-2-2') {
+        icacls $Path /grant "*$sid`:(OI)(CI)(RX)" /Q | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Failed to grant packaged apps font access" }
     }
 }
 
-function InstallScoopPackages {
-    Info "Installing Scoop packages..."
+function InstallFiraCodeNerdFont {
+    Info "Installing FiraCode Nerd Font..."
     if ($script:Dry) { return }
 
-    InstallScoop
-    $buckets = scoop bucket list
-    if ($LASTEXITCODE -ne 0) { throw "scoop bucket list failed" }
-    $fontBucket = @($buckets | Where-Object { $_.Name -eq "nerd-fonts" }) | Select-Object -First 1
-    if ($fontBucket -and $fontBucket.Source -notmatch '^https://github\.com/matthewjberger/scoop-nerd-fonts(?:\.git)?/?$') {
-        throw "Unexpected nerd-fonts bucket source: $($fontBucket.Source)"
-    }
-    if (-not $fontBucket) {
-        foreach ($package in "FiraCode", "FiraCode-NF") {
-            $prefix = @(scoop prefix $package 2>$null 6>$null)
-            if ($LASTEXITCODE -ne 0 -or $prefix.Count -eq 0) { continue }
-            $installInfoPath = Join-Path ($prefix | Select-Object -Last 1) "install.json"
-            $installInfo = if (Test-Path -LiteralPath $installInfoPath) {
-                Get-Content -Raw -LiteralPath $installInfoPath | ConvertFrom-Json
-            }
-            if ($package -eq "FiraCode" -or $installInfo.bucket -eq "nerd-fonts") {
-                Invoke-NativeChecked "scoop uninstall $package failed" { scoop uninstall $package }
-            }
+    $archive = Join-Path ([IO.Path]::GetTempPath()) "FiraCode-$([Guid]::NewGuid().ToString('N')).zip"
+    $extract = Join-Path ([IO.Path]::GetTempPath()) "FiraCode-$([Guid]::NewGuid().ToString('N'))"
+    try {
+        Invoke-WebRequest -Uri $script:FiraCodeNerdFontUrl -OutFile $archive -UseBasicParsing
+        if ((Get-FileSha256 $archive) -ne $script:FiraCodeNerdFontSha256) {
+            throw "FiraCode Nerd Font checksum mismatch"
         }
+        Expand-Archive -LiteralPath $archive -DestinationPath $extract
+        $fontDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
+        $registry = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+        $fonts = @(Get-ChildItem -LiteralPath $extract -File | Where-Object Extension -In '.ttf', '.otf')
+        if ($fonts.Count -eq 0) { throw "FiraCode Nerd Font archive contains no fonts" }
+        New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
+        Grant-FontReadAccess $fontDir
+        foreach ($font in $fonts) {
+            $targetName = "$($font.BaseName)-$script:FiraCodeNerdFontVersion$($font.Extension)"
+            $target = Join-Path $fontDir $targetName
+            if (-not (Test-Path -LiteralPath $target) -or (Get-FileSha256 $font.FullName) -ne (Get-FileSha256 $target)) {
+                Copy-Item -LiteralPath $font.FullName -Destination $target -Force
+            }
+            New-ItemProperty -Path $registry -Name "$($font.BaseName) (TrueType)" -Value $target -Force | Out-Null
+        }
+    } finally {
+        Remove-Item -LiteralPath $archive, $extract -Recurse -Force -ErrorAction SilentlyContinue
     }
 
-    $installed = @(scoop list)
-    if ($LASTEXITCODE -ne 0) { throw "scoop list failed" }
-    $fontManifest = Join-Path $script:DotfilesDir "config\windows\scoop\FiraCode-NF.json"
-    $installedFont = @($installed | Where-Object { $_.Name -eq "FiraCode-NF" }) | Select-Object -First 1
-    if ($installedFont) {
-        $fontIsCurrent = $false
-        if ($installedFont.Source -eq $fontManifest) {
-            $fontPrefix = @(scoop prefix FiraCode-NF)
-            if ($LASTEXITCODE -ne 0) { throw "scoop prefix FiraCode-NF failed" }
-            $installedManifest = Join-Path ($fontPrefix | Select-Object -Last 1) "manifest.json"
-            if (Test-Path -LiteralPath $installedManifest) {
-                $trackedJson = Get-Content -Raw -LiteralPath $fontManifest | ConvertFrom-Json | ConvertTo-Json -Depth 20 -Compress
-                $installedJson = Get-Content -Raw -LiteralPath $installedManifest | ConvertFrom-Json | ConvertTo-Json -Depth 20 -Compress
-                $fontIsCurrent = $trackedJson -ceq $installedJson
-            }
-        }
-        if (-not $fontIsCurrent) {
-            Invoke-NativeChecked "scoop uninstall FiraCode-NF failed" { scoop uninstall FiraCode-NF }
-            $installed = @($installed | Where-Object { $_.Name -ne "FiraCode-NF" })
-        }
-    }
-    if ($installed.Name -contains "FiraCode") {
-        Invoke-NativeChecked "scoop uninstall FiraCode failed" { scoop uninstall FiraCode }
-        $installed = @($installed | Where-Object { $_.Name -ne "FiraCode" })
-    }
-    if ($installed.Name -contains "ast-grep") {
-        Invoke-NativeChecked "scoop uninstall ast-grep failed" { scoop uninstall ast-grep }
-        $installed = @($installed | Where-Object { $_.Name -ne "ast-grep" })
-    }
-    if ($fontBucket) {
-        Invoke-NativeChecked "scoop bucket rm nerd-fonts failed" { scoop bucket rm nerd-fonts }
-    }
-    foreach ($package in Get-ScoopPackages) {
-        if ($installed.Name -notcontains $package) {
-            $target = if ($package -eq "FiraCode-NF") { $fontManifest } else { $package }
-            Invoke-NativeChecked "scoop install $package failed" { scoop install $target }
-        }
-    }
-
-    Success "Finished installing Scoop packages"
+    Success "Finished installing FiraCode Nerd Font"
 }
 
 function Refresh-ProcessPath {
@@ -445,7 +324,7 @@ function InstallFnm {
 
 function InstallExtras {
     param([switch]$Update)
-    InstallScoopPackages
+    InstallFiraCodeNerdFont
     InstallFnm
 }
 
@@ -1619,29 +1498,6 @@ function Verify {
             FailSoft "Winget package missing: $id"
             $errors++
         }
-    }
-
-    Info "Verifying scoop packages..."
-    $scoopExists = [Boolean](Get-Command scoop -ErrorAction SilentlyContinue)
-    if ($scoopExists) {
-        Success "scoop installed"
-        $installedScoopPackages = @(scoop list)
-        if ($LASTEXITCODE -ne 0) {
-            FailSoft "scoop package list failed"
-            $errors++
-        } else {
-            foreach ($name in Get-ScoopPackages) {
-                if ($installedScoopPackages.Name -contains $name) {
-                    Success "Scoop package: $name"
-                } else {
-                    FailSoft "Scoop package missing: $name"
-                    $errors++
-                }
-            }
-        }
-    } else {
-        FailSoft "scoop not installed"
-        $errors++
     }
 
     Info "Verifying PowerShell modules..."

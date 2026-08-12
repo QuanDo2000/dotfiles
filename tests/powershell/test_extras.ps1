@@ -3,546 +3,124 @@
 function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:DotfilesDir = $script:RepoDir
+    $script:OriginalFiraCodePins = @($script:FiraCodeNerdFontVersion, $script:FiraCodeNerdFontUrl, $script:FiraCodeNerdFontSha256)
 }
 
 function TestTeardown {
-    foreach ($command in 'Get-Command', 'Get-ItemProperty', 'Invoke-WebRequest', 'New-ItemProperty', 'Remove-ItemProperty', 'Set-ExecutionPolicy', 'scoop', 'fnm') { Clear-CommandMock $command }
-    Remove-Variable ScoopBootstrapCalls, ScoopBootstrapExecuted -Scope Global -ErrorAction SilentlyContinue
+    foreach ($command in 'Get-Command', 'Invoke-WebRequest', 'New-ItemProperty', 'icacls', 'fnm') { Clear-CommandMock $command }
+    $script:FiraCodeNerdFontVersion, $script:FiraCodeNerdFontUrl, $script:FiraCodeNerdFontSha256 = $script:OriginalFiraCodePins
     Clear-TestEnv
 }
 
-function Write-TestScoopBootstrap($Path, $Body) {
-    $source = @'
-param([switch]$RunAsAdmin)
-function Test-CommandAvailable { return $true }
-$SCOOP_PACKAGE_REPO = 'https://github.com/ScoopInstaller/Scoop/archive/master.zip'
-$SCOOP_MAIN_BUCKET_REPO = 'https://github.com/ScoopInstaller/Main/archive/master.zip'
-$downloadPath = 'zip'
-if (Test-CommandAvailable('git')) { $downloadPath = 'git' }
-__BODY__
-'@
-    [IO.File]::WriteAllText($Path, $source.Replace('__BODY__', $Body), [Text.UTF8Encoding]::new($false))
+function New-TestFontArchive($Path, $Content = 'new font') {
+    $source = Join-Path $script:_TestTmp.FullName ('font-source-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $source | Out-Null
+    [IO.File]::WriteAllText((Join-Path $source 'FiraCodeNerdFont-Bold.ttf'), $Content)
+    Compress-Archive -Path (Join-Path $source '*') -DestinationPath $Path
 }
 
-function test_installscoop_executes_only_verified_pinned_script {
-    $global:ScoopBootstrapCalls = @()
-    $global:ScoopBootstrapExecuted = $false
-    $script:DownloadedFiles = @()
-    $script:RequestedInstallerUri = $null
-    $originalHashes = @($script:ScoopInstallerSha256, $script:ScoopCoreSha256, $script:ScoopMainSha256)
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'scoop') {
-            if ($global:ScoopBootstrapExecuted) { return [pscustomobject]@{ Source = 'mock-scoop' } }
-            return $null
-        }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
+function Use-TestFontRelease($Archive) {
+    $script:FiraCodeNerdFontVersion = '9.9.9'
+    $script:FiraCodeNerdFontUrl = 'https://example.test/FiraCode.zip'
+    $script:FiraCodeNerdFontSha256 = (Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash.ToLowerInvariant()
     Set-CommandMock 'Invoke-WebRequest' {
         param($Uri, $OutFile, [switch]$UseBasicParsing)
-        $script:DownloadedFiles += $OutFile
-        switch -Wildcard ([string]$Uri) {
-            '*ScoopInstaller/Install/*' {
-                $script:RequestedInstallerUri = [string]$Uri
-                $global:ScoopBootstrapCalls += 'download:installer'
-                Write-TestScoopBootstrap $OutFile '$global:ScoopBootstrapCalls += "execute:$([bool]$RunAsAdmin):${downloadPath}:${SCOOP_PACKAGE_REPO}:${SCOOP_MAIN_BUCKET_REPO}"; $global:ScoopBootstrapExecuted = $true'
-                $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
-            }
-            '*ScoopInstaller/Scoop/archive/*' {
-                $global:ScoopBootstrapCalls += 'download:core'
-                [IO.File]::WriteAllText($OutFile, 'core', [Text.UTF8Encoding]::new($false))
-                $script:ScoopCoreSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
-            }
-            '*ScoopInstaller/Main/archive/*' {
-                $global:ScoopBootstrapCalls += 'download:main'
-                [IO.File]::WriteAllText($OutFile, 'main', [Text.UTF8Encoding]::new($false))
-                $script:ScoopMainSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
-            }
-        }
+        Copy-Item -LiteralPath $script:TestFontArchive -Destination $OutFile
     }
-    Set-CommandMock 'Set-ExecutionPolicy' { $global:ScoopBootstrapCalls += 'policy' }
-
-    try {
-        InstallScoop
-    } finally {
-        $script:ScoopInstallerSha256, $script:ScoopCoreSha256, $script:ScoopMainSha256 = $originalHashes
-    }
-
-    Assert-Equals 'download:installer download:core download:main policy' (($global:ScoopBootstrapCalls | Select-Object -First 4) -join ' ')
-    $calls = $global:ScoopBootstrapCalls -join ' '
-    Assert-Contains $calls 'execute:True:zip:file:'
-    Assert-False ($calls -like '*master.zip*') 'Executed Scoop bootstrap should use only local pinned archives'
-    Assert-Equals "https://raw.githubusercontent.com/ScoopInstaller/Install/$script:ScoopInstallerCommit/install.ps1" $script:RequestedInstallerUri
-    foreach ($path in $script:DownloadedFiles) {
-        Assert-False (Test-Path -LiteralPath $path) 'Scoop bootstrap temp files should be removed'
-    }
-}
-
-function test_installscoop_rejects_core_archive_mismatch_before_execution {
-    $global:ScoopBootstrapCalls = @()
-    $script:DownloadedFiles = @()
-    $originalHashes = @($script:ScoopInstallerSha256, $script:ScoopMainSha256)
-    Set-CommandMock 'Get-Command' { return $null }
-    Set-CommandMock 'Invoke-WebRequest' {
-        param($Uri, $OutFile, [switch]$UseBasicParsing)
-        $script:DownloadedFiles += $OutFile
-        switch -Wildcard ([string]$Uri) {
-            '*ScoopInstaller/Install/*' {
-                Write-TestScoopBootstrap $OutFile '$global:ScoopBootstrapCalls += "execute"'
-                $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
-            }
-            '*ScoopInstaller/Scoop/archive/*' { [IO.File]::WriteAllText($OutFile, 'wrong core') }
-            '*ScoopInstaller/Main/archive/*' {
-                [IO.File]::WriteAllText($OutFile, 'main')
-                $script:ScoopMainSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
-            }
-        }
-    }
-    Set-CommandMock 'Set-ExecutionPolicy' { $global:ScoopBootstrapCalls += 'policy' }
-
-    try {
-        Assert-Throws { InstallScoop } 'Scoop core checksum mismatch should fail'
-    } finally {
-        $script:ScoopInstallerSha256, $script:ScoopMainSha256 = $originalHashes
-    }
-    Assert-Equals '' ($global:ScoopBootstrapCalls -join ' ')
-    foreach ($path in $script:DownloadedFiles) {
-        Assert-False (Test-Path -LiteralPath $path) 'Rejected Scoop archives should be removed'
-    }
-}
-
-function test_installscoop_rejects_checksum_mismatch_before_execution {
-    $global:ScoopBootstrapCalls = @()
-    $global:ScoopBootstrapExecuted = $false
-    $script:DownloadedInstaller = $null
-    Set-CommandMock 'Get-Command' { return $null }
-    Set-CommandMock 'Invoke-WebRequest' {
-        param($Uri, $OutFile, [switch]$UseBasicParsing)
-        $script:DownloadedInstaller = $OutFile
-        $global:ScoopBootstrapCalls += 'download'
-        [IO.File]::WriteAllText($OutFile, '$global:ScoopBootstrapExecuted = $true', [Text.UTF8Encoding]::new($false))
-    }
-    Set-CommandMock 'Set-ExecutionPolicy' { $global:ScoopBootstrapCalls += 'policy' }
-
-    Assert-Throws { InstallScoop } 'Scoop checksum mismatch should fail'
-    Assert-Equals 'download' ($global:ScoopBootstrapCalls -join ' ')
-    Assert-False $global:ScoopBootstrapExecuted 'Mismatched Scoop installer should not execute'
-    Assert-False (Test-Path -LiteralPath $script:DownloadedInstaller) 'Rejected Scoop installer should be removed'
-}
-
-function test_installscoop_fails_when_temp_cleanup_fails {
-    $global:ScoopBootstrapExecuted = $false
-    $script:DownloadedInstaller = $null
-    $originalHash = $script:ScoopInstallerSha256
-    Set-CommandMock 'Get-Command' { return $null }
-    Set-CommandMock 'Invoke-WebRequest' {
-        param($Uri, $OutFile, [switch]$UseBasicParsing)
-        $script:DownloadedInstaller = $OutFile
-        [IO.File]::WriteAllText($OutFile, '$global:ScoopBootstrapExecuted = $true', [Text.UTF8Encoding]::new($false))
-        $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
-    }
-    Set-CommandMock 'Set-ExecutionPolicy' { }
-    Set-CommandMock 'Remove-Item' {
-        param($LiteralPath, $Path, [switch]$Force, $ErrorAction)
-        if ([string]$ErrorAction -eq 'SilentlyContinue') { return }
-        throw 'locked installer'
-    }
-
-    try {
-        Assert-Throws { InstallScoop } 'Scoop cleanup failure should fail installation'
-        Assert-False $global:ScoopBootstrapExecuted 'Scoop installer should not execute when cleanup fails'
-    } finally {
-        $script:ScoopInstallerSha256 = $originalHash
-        Microsoft.PowerShell.Management\Remove-Item Function:\Remove-Item -Force -ErrorAction SilentlyContinue
-        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $script:DownloadedInstaller -Force -ErrorAction SilentlyContinue
-    }
-}
-
-function test_installscoop_surfaces_in_memory_bootstrap_break_failure {
-    $originalHashes = @($script:ScoopInstallerSha256, $script:ScoopCoreSha256, $script:ScoopMainSha256)
-    Set-CommandMock 'Get-Command' { return $null }
-    Set-CommandMock 'Invoke-WebRequest' {
-        param($Uri, $OutFile, [switch]$UseBasicParsing)
-        switch -Wildcard ([string]$Uri) {
-            '*ScoopInstaller/Install/*' {
-                Write-TestScoopBootstrap $OutFile '$global:LASTEXITCODE = 23; break'
-                $script:ScoopInstallerSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
-            }
-            '*ScoopInstaller/Scoop/archive/*' {
-                [IO.File]::WriteAllText($OutFile, 'core', [Text.UTF8Encoding]::new($false))
-                $script:ScoopCoreSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
-            }
-            '*ScoopInstaller/Main/archive/*' {
-                [IO.File]::WriteAllText($OutFile, 'main', [Text.UTF8Encoding]::new($false))
-                $script:ScoopMainSha256 = (Get-FileHash -LiteralPath $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
-            }
-        }
-    }
-    Set-CommandMock 'Set-ExecutionPolicy' { }
-
-    try {
-        Assert-Throws { InstallScoop } 'Failed in-memory Scoop bootstrap should reach command verification'
-        Assert-Equals 23 $global:LASTEXITCODE
-    } finally {
-        $script:ScoopInstallerSha256, $script:ScoopCoreSha256, $script:ScoopMainSha256 = $originalHashes
-        $global:LASTEXITCODE = 0
-    }
-}
-
-function test_scoop_bootstrap_archive_patch_rejects_source_drift {
-    Assert-Throws { Set-ScoopBootstrapArchives 'unexpected source' 'file:///core.zip' 'file:///main.zip' } 'Scoop source drift should fail closed'
-}
-
-function test_scoop_bootstrap_archive_patch_escapes_apostrophes {
-    $source = @'
-if (Test-CommandAvailable('git')) {
-}
-$SCOOP_PACKAGE_REPO = 'https://github.com/ScoopInstaller/Scoop/archive/master.zip'
-$SCOOP_MAIN_BUCKET_REPO = 'https://github.com/ScoopInstaller/Main/archive/master.zip'
-'@
-
-    $patched = Set-ScoopBootstrapArchives $source "file:///C:/Users/O'Neil/core.zip" "file:///C:/Users/O'Neil/main.zip"
-    $tokens = $null
-    $errors = $null
-    [Management.Automation.Language.Parser]::ParseInput($patched, [ref]$tokens, [ref]$errors) | Out-Null
-
-    Assert-Equals 0 $errors.Count
-    Assert-Contains $patched "O''Neil/core.zip"
-    Assert-Contains $patched "O''Neil/main.zip"
-}
-
-function test_scoop_locked_local_archive_works_in_windows_powershell {
-    $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
-    if (-not $windowsPowerShell) { return }
-
-    $source = Join-Path $script:_TestTmp.FullName 'locked-source.zip'
-    $destination = Join-Path $script:_TestTmp.FullName 'locked-copy.zip'
-    [IO.File]::WriteAllText($source, 'locked archive', [Text.UTF8Encoding]::new($false))
-    $oldSource = $env:SCOOP_TEST_SOURCE
-    $oldDestination = $env:SCOOP_TEST_DESTINATION
-    $env:SCOOP_TEST_SOURCE = $source
-    $env:SCOOP_TEST_DESTINATION = $destination
-    $probe = @'
-$ErrorActionPreference = 'Stop'
-$lock = [IO.File]::Open($env:SCOOP_TEST_SOURCE, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-try {
-    $uri = [Uri]::new((Resolve-Path -LiteralPath $env:SCOOP_TEST_SOURCE).Path)
-    (New-Object Net.WebClient).DownloadFile($uri, $env:SCOOP_TEST_DESTINATION)
-} finally {
-    $lock.Dispose()
-}
-if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($env:SCOOP_TEST_SOURCE)) -ne
-    [Convert]::ToBase64String([IO.File]::ReadAllBytes($env:SCOOP_TEST_DESTINATION))) { exit 1 }
-'@
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($probe))
-
-    try {
-        & $windowsPowerShell.Source -NoProfile -NonInteractive -EncodedCommand $encoded
-        Assert-Equals 0 $LASTEXITCODE
-    } finally {
-        $env:SCOOP_TEST_SOURCE = $oldSource
-        $env:SCOOP_TEST_DESTINATION = $oldDestination
-    }
-}
-
-function test_scoop_bootstrap_pins_core_and_main_archives {
-    Assert-True ($script:ScoopCoreCommit -match '^[0-9a-f]{40}$') 'Scoop core commit should be pinned'
-    Assert-True ($script:ScoopCoreSha256 -match '^[0-9a-f]{64}$') 'Scoop core archive should be pinned'
-    Assert-True ($script:ScoopMainCommit -match '^[0-9a-f]{40}$') 'Scoop Main commit should be pinned'
-    Assert-True ($script:ScoopMainSha256 -match '^[0-9a-f]{64}$') 'Scoop Main archive should be pinned'
-    $source = @'
-if (Test-CommandAvailable('git')) {
-}
-$SCOOP_PACKAGE_REPO = 'https://github.com/ScoopInstaller/Scoop/archive/master.zip'
-$SCOOP_MAIN_BUCKET_REPO = 'https://github.com/ScoopInstaller/Main/archive/master.zip'
-'@
-
-    $patched = Set-ScoopBootstrapArchives $source 'file:///core.zip' 'file:///main.zip'
-
-    Assert-Contains $patched 'if ($false) {'
-    Assert-Contains $patched "`$SCOOP_PACKAGE_REPO = 'file:///core.zip'"
-    Assert-Contains $patched "`$SCOOP_MAIN_BUCKET_REPO = 'file:///main.zip'"
-    Assert-False ($patched -like '*master.zip*') 'Patched bootstrap should not retain mutable archives'
-}
-
-function test_scoop_bootstrap_uses_immutable_reviewed_pin {
-    Assert-Equals 'b0ee913725139b816f9178163af0aecdba07a7ed' $script:ScoopInstallerCommit
-    Assert-Equals '48f6ea398b3a3fa26fae0093d37bd85b13e7eaa5d1d4a3e208408768408e35ae' $script:ScoopInstallerSha256
-    $scriptText = Get-Content -Raw $script:DotfileScript
-    Assert-Contains $scriptText 'raw.githubusercontent.com/ScoopInstaller/Install/$script:ScoopInstallerCommit/install.ps1'
-    Assert-False ($scriptText -like '*get.scoop.sh*') 'Mutable Scoop bootstrap URL should be removed'
-    Assert-False ($scriptText -like '*Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression*') 'Remote Scoop script should not be piped to execution'
-    Assert-Contains $scriptText 'ReadAllBytes($installer)'
-    Assert-Contains $scriptText 'Create($source)'
-    Assert-Contains $scriptText 'do { & $bootstrap -RunAsAdmin } while ($false)'
-    Assert-False ($scriptText -like '*& $installer -RunAsAdmin*') 'Verified bytes should execute from memory, not a reopenable temp path'
-}
-
-function test_font_manifest_installs_new_version_while_old_font_is_locked {
-    if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { return }
-    $manifest = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json') | ConvertFrom-Json
-    $dir = Join-Path $script:_TestTmp.FullName 'font-source'
-    $fontInstallDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
-    New-Item -ItemType Directory -Force -Path $dir, $fontInstallDir | Out-Null
-    $fontName = 'FiraCodeNerdFont-Bold.ttf'
-    [IO.File]::WriteAllText((Join-Path $dir $fontName), 'new font')
-    $oldFont = Join-Path $fontInstallDir $fontName
-    [IO.File]::WriteAllText($oldFont, 'locked old font')
-    $lock = [IO.File]::Open($oldFont, 'Open', 'Read', 'Read')
-    $script:RegisteredFontValue = $null
-    Set-CommandMock 'Get-ItemProperty' { [pscustomobject]@{ CurrentBuildNumber = 22631 } }
+    $script:RegisteredFonts = @{}
     Set-CommandMock 'New-ItemProperty' {
         param($Path, $Name, $Value, [switch]$Force)
-        $script:RegisteredFontValue = $Value
+        $script:RegisteredFonts[$Name] = $Value
     }
-    $global = $false
-    $version = $manifest.version
-
-    try {
-        & ([scriptblock]::Create(($manifest.installer.script -join "`n")))
-    } finally {
-        $lock.Dispose()
-    }
-
-    $versionedFont = Join-Path $fontInstallDir "FiraCodeNerdFont-Bold-$($manifest.version).ttf"
-    Assert-True (Test-Path -LiteralPath $versionedFont) 'new font should use a versioned path instead of overwriting locked font'
-    Assert-Equals $versionedFont $script:RegisteredFontValue
-    Assert-Equals 'locked old font' ([IO.File]::ReadAllText($oldFont))
-
-    $currentLock = [IO.File]::Open($versionedFont, 'Open', 'Read', 'Read')
-    try {
-        & ([scriptblock]::Create(($manifest.installer.script -join "`n")))
-    } finally {
-        $currentLock.Dispose()
-    }
-    Assert-Equals 'new font' ([IO.File]::ReadAllText($versionedFont))
+    Set-CommandMock 'icacls' { $global:LASTEXITCODE = 0 }
 }
 
-function test_font_manifest_upgrades_while_installed_version_is_locked {
-    if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { return }
-    $manifest = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json') | ConvertFrom-Json
-    Assert-False ($manifest.PSObject.Properties.Name -contains 'pre_uninstall') 'locked old font must not block versioned upgrade'
-    $dir = Join-Path $script:_TestTmp.FullName 'font-source'
-    $fontInstallDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
-    New-Item -ItemType Directory -Force -Path $dir, $fontInstallDir | Out-Null
-    $fontName = 'FiraCodeNerdFont-Bold.ttf'
-    [IO.File]::WriteAllText((Join-Path $dir $fontName), 'new font')
-    $oldFont = Join-Path $fontInstallDir 'FiraCodeNerdFont-Bold-previous.ttf'
+function test_grantfontreadaccess_allows_packaged_apps_to_read_fonts {
+    $script:IcaclsCalls = @()
+    Set-CommandMock 'icacls' {
+        $script:IcaclsCalls += ,($args -join ' ')
+        $global:LASTEXITCODE = 0
+    }
+
+    Grant-FontReadAccess 'C:\Users\test\AppData\Local\Microsoft\Windows\Fonts'
+
+    Assert-True ($script:IcaclsCalls -contains 'C:\Users\test\AppData\Local\Microsoft\Windows\Fonts /grant *S-1-15-2-1:(OI)(CI)(RX) /Q') 'packaged apps should receive inherited read access'
+    Assert-True ($script:IcaclsCalls -contains 'C:\Users\test\AppData\Local\Microsoft\Windows\Fonts /grant *S-1-15-2-2:(OI)(CI)(RX) /Q') 'restricted packaged apps should receive inherited read access'
+}
+
+function test_installfiracodenerdfont_verifies_hash_before_extracting {
+    $script:Dry = $false
+    $script:TestFontArchive = Join-Path $script:_TestTmp.FullName 'FiraCode.zip'
+    New-TestFontArchive $script:TestFontArchive
+    Use-TestFontRelease $script:TestFontArchive
+    $script:FiraCodeNerdFontSha256 = '0' * 64
+
+    Assert-Throws { InstallFiraCodeNerdFont 6>&1 | Out-Null } 'font checksum mismatch should fail'
+    Assert-False (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts')) 'mismatched archive must not install fonts'
+}
+
+function test_installfiracodenerdfont_rejects_archive_without_fonts {
+    $script:Dry = $false
+    $script:TestFontArchive = Join-Path $script:_TestTmp.FullName 'FiraCode.zip'
+    $source = Join-Path $script:_TestTmp.FullName 'empty-font-source'
+    New-Item -ItemType Directory -Force -Path $source | Out-Null
+    'not a font' | Set-Content -LiteralPath (Join-Path $source 'README.txt')
+    Compress-Archive -Path (Join-Path $source '*') -DestinationPath $script:TestFontArchive
+    Use-TestFontRelease $script:TestFontArchive
+
+    Assert-Throws { InstallFiraCodeNerdFont 6>&1 | Out-Null } 'archive without font files should fail'
+}
+
+function test_installfiracodenerdfont_is_idempotent {
+    $script:Dry = $false
+    $script:TestFontArchive = Join-Path $script:_TestTmp.FullName 'FiraCode.zip'
+    New-TestFontArchive $script:TestFontArchive
+    Use-TestFontRelease $script:TestFontArchive
+
+    InstallFiraCodeNerdFont 6>&1 | Out-Null
+    $target = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts\FiraCodeNerdFont-Bold-9.9.9.ttf'
+    $firstWrite = (Get-Item -LiteralPath $target).LastWriteTimeUtc
+    Start-Sleep -Milliseconds 20
+    InstallFiraCodeNerdFont 6>&1 | Out-Null
+
+    Assert-Equals 'new font' ([IO.File]::ReadAllText($target))
+    Assert-Equals $firstWrite (Get-Item -LiteralPath $target).LastWriteTimeUtc
+    Assert-Equals $target $script:RegisteredFonts['FiraCodeNerdFont-Bold (TrueType)']
+}
+
+function test_installfiracodenerdfont_upgrades_beside_locked_old_font {
+    $script:Dry = $false
+    $script:TestFontArchive = Join-Path $script:_TestTmp.FullName 'FiraCode.zip'
+    New-TestFontArchive $script:TestFontArchive
+    Use-TestFontRelease $script:TestFontArchive
+    $fontDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
+    $oldFont = Join-Path $fontDir 'FiraCodeNerdFont-Bold-previous.ttf'
     [IO.File]::WriteAllText($oldFont, 'locked old font')
     $lock = [IO.File]::Open($oldFont, 'Open', 'Read', 'Read')
-    Set-CommandMock 'Get-ItemProperty' { [pscustomobject]@{ CurrentBuildNumber = 22631 } }
-    Set-CommandMock 'New-ItemProperty' { }
-    Set-CommandMock 'Remove-ItemProperty' { }
-    $global = $false
 
     try {
-        $version = 'previous'
-        & ([scriptblock]::Create(($manifest.uninstaller.script -join "`n")))
-        $version = $manifest.version
-        & ([scriptblock]::Create(($manifest.installer.script -join "`n")))
+        InstallFiraCodeNerdFont 6>&1 | Out-Null
     } finally {
         $lock.Dispose()
     }
 
-    $newFont = Join-Path $fontInstallDir "FiraCodeNerdFont-Bold-$($manifest.version).ttf"
-    Assert-True (Test-Path -LiteralPath $newFont) 'new version should install beside locked old version'
     Assert-Equals 'locked old font' ([IO.File]::ReadAllText($oldFont))
+    Assert-Equals 'new font' ([IO.File]::ReadAllText((Join-Path $fontDir 'FiraCodeNerdFont-Bold-9.9.9.ttf')))
 }
 
-function test_installscooppackages_fails_when_scoop_install_fails {
+function test_installfiracodenerdfont_leaves_existing_scoop_state_untouched {
     $script:Dry = $false
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'scoop') { return [pscustomobject]@{ Source = 'mock-scoop' } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'scoop' { $global:LASTEXITCODE = 1 }
+    $script:TestFontArchive = Join-Path $script:_TestTmp.FullName 'FiraCode.zip'
+    New-TestFontArchive $script:TestFontArchive
+    Use-TestFontRelease $script:TestFontArchive
+    $legacy = Join-Path $env:USERPROFILE 'scoop\apps\FiraCode-NF\current\install.json'
+    New-Item -ItemType Directory -Force -Path (Split-Path $legacy -Parent) | Out-Null
+    'legacy scoop state' | Set-Content -LiteralPath $legacy
 
-    Assert-Throws { InstallScoopPackages 6>&1 | Out-Null } 'InstallScoopPackages should fail when scoop install fails'
-}
+    InstallFiraCodeNerdFont 6>&1 | Out-Null
 
-function test_installscooppackages_replaces_mutable_font_bucket_with_local_manifest {
-    $script:Dry = $false
-    $script:ScoopCalls = @()
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'scoop') { return [pscustomobject]@{ Source = 'mock-scoop' } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'scoop' {
-        $script:ScoopCalls += ,($args -join ' ')
-        if ($args[0] -eq 'bucket' -and $args[1] -eq 'list') {
-            [pscustomobject]@{ Name = 'main' }
-            [pscustomobject]@{ Name = 'nerd-fonts'; Source = 'https://github.com/matthewjberger/scoop-nerd-fonts' }
-        }
-        if ($args[0] -eq 'list') {
-            [pscustomobject]@{ Name = 'FiraCode' }
-        }
-        $global:LASTEXITCODE = 0
-    }
-
-    InstallScoopPackages 6>&1 | Out-Null
-
-    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
-    Assert-True ($script:ScoopCalls -contains 'bucket rm nerd-fonts') 'legacy mutable font bucket should be removed'
-    Assert-False ($script:ScoopCalls -contains 'bucket add nerd-fonts') 'mutable font bucket should not be added'
-    Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'tracked FiraCode Nerd Font manifest should be installed'
-    Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode') 'obsolete non-Nerd Font package should be removed'
-    Assert-True ($script:ScoopCalls -contains 'install jq') 'jq should be managed by Scoop'
-    Assert-False ($script:ScoopCalls -contains 'install ast-grep') 'unused ast-grep should not be installed'
-}
-
-function test_installscooppackages_removes_obsolete_ast_grep {
-    $script:Dry = $false
-    $script:ScoopCalls = @()
-    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
-    Set-CommandMock 'scoop' {
-        $script:ScoopCalls += ,($args -join ' ')
-        if ($args[0] -eq 'list') {
-            [pscustomobject]@{ Name = 'ast-grep'; Source = 'main' }
-        }
-        $global:LASTEXITCODE = 0
-    }
-
-    InstallScoopPackages 6>&1 | Out-Null
-
-    Assert-True ($script:ScoopCalls -contains 'uninstall ast-grep') 'obsolete ast-grep should be removed'
-    Assert-False ($script:ScoopCalls -contains 'install ast-grep') 'unused ast-grep should not be reinstalled'
-}
-
-function test_installscooppackages_reinstalls_bucket_managed_firacode_nf {
-    $script:Dry = $false
-    $script:ScoopCalls = @()
-    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
-    Set-CommandMock 'scoop' {
-        $script:ScoopCalls += ,($args -join ' ')
-        if ($args[0] -eq 'bucket' -and $args[1] -eq 'list') {
-            [pscustomobject]@{ Name = 'nerd-fonts'; Source = 'https://github.com/matthewjberger/scoop-nerd-fonts' }
-        }
-        if ($args[0] -eq 'list') {
-            [pscustomobject]@{ Name = 'FiraCode-NF'; Source = 'nerd-fonts' }
-            [pscustomobject]@{ Name = 'jq'; Source = 'main' }
-        }
-        $global:LASTEXITCODE = 0
-    }
-
-    InstallScoopPackages 6>&1 | Out-Null
-
-    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
-    Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode-NF') 'bucket-managed font should be replaced'
-    Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'reviewed local font manifest should replace bucket package'
-    Assert-True ([Array]::IndexOf($script:ScoopCalls, 'uninstall FiraCode-NF') -lt [Array]::IndexOf($script:ScoopCalls, 'bucket rm nerd-fonts')) 'bucket package should be removed before its bucket'
-}
-
-function test_installscooppackages_recovers_after_legacy_font_bucket_was_removed {
-    $script:Dry = $false
-    $script:ScoopCalls = @()
-    $script:LegacyFontInstalled = $true
-    $legacyFontDir = Join-Path $script:_TestTmp.FullName 'legacy-font'
-    New-Item -ItemType Directory -Path $legacyFontDir | Out-Null
-    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
-    Set-CommandMock 'scoop' {
-        $script:ScoopCalls += ,($args -join ' ')
-        if ($args[0] -eq 'prefix') {
-            if ($args[1] -eq 'FiraCode' -and $script:LegacyFontInstalled) {
-                $legacyFontDir
-                $global:LASTEXITCODE = 0
-            } else {
-                $global:LASTEXITCODE = 1
-            }
-            return
-        }
-        if ($args[0] -eq 'uninstall' -and $args[1] -eq 'FiraCode') {
-            $script:LegacyFontInstalled = $false
-        }
-        if ($args[0] -eq 'list') {
-            if ($script:LegacyFontInstalled) { throw "Cannot find path 'C:\Users\test\scoop\buckets\nerd-fonts\' because it does not exist." }
-            [pscustomobject]@{ Name = 'jq'; Source = 'main' }
-        }
-        $global:LASTEXITCODE = 0
-    }
-
-    InstallScoopPackages 6>&1 | Out-Null
-
-    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
-    Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode') 'stale legacy font should be removed without its bucket'
-    Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'tracked local font should replace stale legacy font'
-}
-
-function test_installscooppackages_recovers_bucket_managed_font_after_bucket_was_removed {
-    $script:Dry = $false
-    $script:ScoopCalls = @()
-    $script:BucketFontInstalled = $true
-    $installedFontDir = Join-Path $script:_TestTmp.FullName 'bucket-font'
-    New-Item -ItemType Directory -Path $installedFontDir | Out-Null
-    '{"bucket":"nerd-fonts"}' | Set-Content -LiteralPath (Join-Path $installedFontDir 'install.json')
-    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
-    Set-CommandMock 'scoop' {
-        $script:ScoopCalls += ,($args -join ' ')
-        if ($args[0] -eq 'prefix') {
-            if ($args[1] -eq 'FiraCode-NF' -and $script:BucketFontInstalled) {
-                $installedFontDir
-                $global:LASTEXITCODE = 0
-            } else {
-                $global:LASTEXITCODE = 1
-            }
-            return
-        }
-        if ($args[0] -eq 'uninstall' -and $args[1] -eq 'FiraCode-NF') {
-            $script:BucketFontInstalled = $false
-        }
-        if ($args[0] -eq 'list') {
-            if ($script:BucketFontInstalled) { throw "Cannot find path 'C:\Users\test\scoop\buckets\nerd-fonts\' because it does not exist." }
-            [pscustomobject]@{ Name = 'jq'; Source = 'main' }
-        }
-        $global:LASTEXITCODE = 0
-    }
-
-    InstallScoopPackages 6>&1 | Out-Null
-
-    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
-    Assert-True ($script:ScoopCalls -contains 'uninstall FiraCode-NF') 'stale bucket-managed font should be removed without its bucket'
-    Assert-True ($script:ScoopCalls -contains "install $fontManifest") 'tracked local font should replace stale bucket-managed font'
-}
-
-function test_installscooppackages_rejects_unexpected_nerd_fonts_bucket {
-    $script:Dry = $false
-    $script:ScoopCalls = @()
-    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
-    Set-CommandMock 'scoop' {
-        $script:ScoopCalls += ,($args -join ' ')
-        if ($args[0] -eq 'bucket' -and $args[1] -eq 'list') {
-            [pscustomobject]@{ Name = 'nerd-fonts'; Source = 'https://example.com/custom-fonts' }
-        }
-        $global:LASTEXITCODE = 0
-    }
-
-    Assert-Throws { InstallScoopPackages 6>&1 | Out-Null } 'unexpected bucket source should fail closed'
-    Assert-False ($script:ScoopCalls -contains 'bucket rm nerd-fonts') 'custom bucket should not be deleted'
-}
-
-function test_installscooppackages_keeps_reviewed_scoop_snapshot_during_update {
-    $script:Dry = $false
-    $script:ScoopCalls = @()
-    $fontManifest = Join-Path $script:DotfilesDir 'config\windows\scoop\FiraCode-NF.json'
-    $installedFontDir = Join-Path $script:_TestTmp.FullName 'installed-font'
-    New-Item -ItemType Directory -Path $installedFontDir | Out-Null
-    Copy-Item -LiteralPath $fontManifest -Destination (Join-Path $installedFontDir 'manifest.json')
-    Set-CommandMock 'Get-Command' { [pscustomobject]@{ Source = 'mock-scoop' } }
-    Set-CommandMock 'scoop' {
-        $script:ScoopCalls += ,($args -join ' ')
-        if ($args[0] -eq 'list') {
-            [pscustomobject]@{ Name = 'FiraCode-NF'; Source = $fontManifest }
-            [pscustomobject]@{ Name = 'jq'; Source = 'main' }
-        }
-        if ($args[0] -eq 'prefix') { $installedFontDir }
-        $global:LASTEXITCODE = 0
-    }
-
-    InstallScoopPackages 6>&1 | Out-Null
-
-    Assert-False ($script:ScoopCalls -contains 'update') 'Scoop code and manifests should require reviewed pin changes'
-    Assert-False (($script:ScoopCalls -join "`n") -like 'update *') 'Scoop packages should remain on reviewed manifests'
+    Assert-Equals 'legacy scoop state' (Get-Content -Raw -LiteralPath $legacy).Trim()
 }
 
 function test_installfnm_uses_pi_extension_node_pin {
