@@ -49,20 +49,19 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
     $lock = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package-lock.json'
 
     Assert-Equals $pins.releaseId (Get-PiExtensionTestSha256 $lock)
-    Assert-Equals 6 @($settings.packages).Count
-    Assert-Equals 6 @($package.dependencies.PSObject.Properties).Count
+    Assert-Equals 5 @($settings.packages).Count
+    Assert-Equals 5 @($package.dependencies.PSObject.Properties).Count
     Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@ff-labs/pi-fff') 'native FFF MCP should replace npm adapter'
     Assert-False ($package.PSObject.Properties.Name -contains 'overrides') 'FFF npm overrides should be removed'
     foreach ($entry in $settings.packages) {
         $source = if ($entry -is [string]) { $entry } else { $entry.source }
         Assert-True $source.StartsWith("./locked-extensions/releases/$($pins.releaseId)/node_modules/") 'Pi extension should use locked local release'
     }
-    $ponytail = @($settings.packages | Where-Object {
+    Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@dietrichgebert/ponytail') 'Ponytail should use local default extension'
+    Assert-Equals 0 @($settings.packages | Where-Object {
         $source = if ($_ -is [string]) { $_ } else { $_.source }
-        $source -eq "./locked-extensions/releases/$($pins.releaseId)/node_modules/@dietrichgebert/ponytail"
-    })[0]
-    Assert-False ($ponytail -is [string]) 'Ponytail package should support resource filters'
-    Assert-Equals 0 @($ponytail.skills).Count
+        $source -like '*@dietrichgebert/ponytail*'
+    }).Count
     Assert-Equals 0 @($settings.packages | Where-Object {
         $source = if ($_ -is [string]) { $_ } else { $_.source }
         $source -like '*@ff-labs/pi-fff*'

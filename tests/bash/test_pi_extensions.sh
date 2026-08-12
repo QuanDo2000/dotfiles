@@ -33,14 +33,15 @@ test_pi_extension_settings_use_locked_local_release() {
   package="$extension_dir/package.json"
 
   assert_equals "$release_id" "$(_lock_sha256)"
-  assert_equals 6 "$(jq '.packages | length' "$settings")"
-  assert_equals 6 "$(jq '.dependencies | length' "$package")"
+  assert_equals 5 "$(jq '.packages | length' "$settings")"
+  assert_equals 5 "$(jq '.dependencies | length' "$package")"
   assert_equals false "$(jq 'has("overrides")' "$package")"
   assert_equals false "$(jq '.dependencies | has("@ff-labs/pi-fff")' "$package")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@ff-labs/pi-fff"))] | length' "$settings")"
   assert_equals 0 "$(jq --arg id "$release_id" '[.packages[] | (if type == "string" then . else .source end) | select(startswith("./locked-extensions/releases/" + $id + "/node_modules/") | not)] | length' "$settings")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(startswith("npm:"))] | length' "$settings")"
-  assert_equals '[]' "$(jq -c --arg id "$release_id" '[.packages[] | select(type == "object" and .source == ("./locked-extensions/releases/" + $id + "/node_modules/@dietrichgebert/ponytail"))][0].skills // null' "$settings")"
+  assert_equals false "$(jq '.dependencies | has("@dietrichgebert/ponytail")' "$package")"
+  assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@dietrichgebert/ponytail"))] | length' "$settings")"
 }
 
 test_pi_extension_lock_has_integrity_for_every_tarball() {

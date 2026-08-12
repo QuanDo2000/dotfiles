@@ -196,6 +196,7 @@ in
     ".agents/skills/ponytail-help" = forceSource ./shared/ai/skills/ponytail-help;
     ".agents/skills/ponytail-review" = forceSource ./shared/ai/skills/ponytail-review;
     ".pi/agent/extensions/caveman-default.js" = forceSource ./shared/ai/pi/caveman-default.js;
+    ".pi/agent/extensions/ponytail-default.js" = forceSource ./shared/ai/pi/ponytail-default.js;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource piExtensions;
     ".local/bin/dotfile" = {

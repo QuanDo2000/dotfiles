@@ -847,7 +847,7 @@ function SyncPiConfigs {
 
     $extensionDir = Join-Path $targetDir "extensions"
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
-    foreach ($name in @("caveman-default.js", "codex-status.js", "windows-exit.js")) {
+    foreach ($name in @("caveman-default.js", "ponytail-default.js", "codex-status.js", "windows-exit.js")) {
         Copy-Item -LiteralPath (Join-Path $seedDir $name) -Destination (Join-Path $extensionDir $name) -Force
     }
     Success "Finished syncing Pi configuration"

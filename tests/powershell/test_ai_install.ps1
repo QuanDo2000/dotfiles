@@ -1090,6 +1090,7 @@ function test_syncpiconfigs_creates_writable_seed_files {
     '{"mcpServers":{"windowsOnly":{"command":"windows"}}}' | Set-Content (Join-Path $windowsSeedDir 'mcp.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'caveman-default.js')
+    'extension' | Set-Content (Join-Path $seedDir 'ponytail-default.js')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
 
@@ -1112,6 +1113,7 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-False ((Get-Content -Raw $mcp) -like '*unixOnly*') 'Windows should deploy Windows MCP seed'
     Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
     Assert-FileExists (Join-Path $extensionDir 'caveman-default.js')
+    Assert-FileExists (Join-Path $extensionDir 'ponytail-default.js')
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
     Assert-FileExists (Join-Path $extensionDir 'windows-exit.js')
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
@@ -1145,6 +1147,7 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
     '{"servers":{"nil":{"command":["nil"]}}}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
     '{"globalConcurrencyLimit":99}' | Set-Content (Join-Path $subagentDir 'config.json')
     'extension' | Set-Content (Join-Path $seedDir 'caveman-default.js')
+    'extension' | Set-Content (Join-Path $seedDir 'ponytail-default.js')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
     @'
