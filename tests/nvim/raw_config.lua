@@ -111,7 +111,6 @@ for _, plugin in ipairs({
   "nvim-treesitter",
   "nvim-treesitter-textobjects",
   "persistence.nvim",
-  "render-markdown.nvim",
   "snacks.nvim",
   "todo-comments.nvim",
   "trouble.nvim",
@@ -119,7 +118,7 @@ for _, plugin in ipairs({
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
 end
-for _, plugin in ipairs({ "dial.nvim", "friendly-snippets", "grug-far.nvim", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "ts-comments.nvim" }) do
+for _, plugin in ipairs({ "dial.nvim", "friendly-snippets", "grug-far.nvim", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "render-markdown.nvim", "ts-comments.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
@@ -139,4 +138,5 @@ for _, lhs in ipairs({ " sna", " snd", " snt" }) do
 end
 assert(vim.fn.maparg("<S-Enter>", "c") == "", "Noice command redirect must stay removed")
 assert(maps[" sr"] == nil, "project-wide replace mapping must stay removed")
+assert(maps[" um"] == nil, "Render Markdown mapping must stay removed")
 print("RAW_CONFIG_OK")

@@ -435,11 +435,6 @@ local plugins = {
     end,
   },
   {
-    "MeanderingProgrammer/render-markdown.nvim",
-    ft = { "markdown", "markdown.mdx" },
-    opts = { code = { sign = false, width = "block", right_pad = 1 }, heading = { sign = false, icons = {} }, checkbox = { enabled = false } },
-  },
-  {
     "lewis6991/gitsigns.nvim",
     event = { "BufReadPre", "BufNewFile" },
     opts = {
@@ -578,7 +573,6 @@ map("n", "<leader>su", function() Snacks.picker.undo() end, "Undotree")
 map("n", "<leader>uC", function() Snacks.picker.colorschemes() end, "Colorschemes")
 map("n", "<leader>n", function() Snacks.picker.notifications() end, "Notification History")
 map("n", "<leader>up", function() vim.g.minipairs_disable = not vim.g.minipairs_disable; vim.notify("Mini Pairs " .. (vim.g.minipairs_disable and "disabled" or "enabled")) end, "Toggle Mini Pairs")
-map("n", "<leader>um", function() local markdown = require("render-markdown"); markdown.set(not markdown.get()) end, "Toggle Render Markdown")
 map("n", "<leader>un", function() Snacks.notifier.hide() end, "Dismiss All Notifications")
 map("n", "<leader>p", function() Snacks.picker.yanky() end, "Open Yank History")
 

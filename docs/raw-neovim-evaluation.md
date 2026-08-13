@@ -39,14 +39,14 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 - [x] Sessions: current/last restore and opt-out through persistence.nvim.
 - [x] Editing extras with explicit prior opt-in: mini.surround, Yanky history/cycling, mini.ai, and hex-color highlights; native `<C-a>`/`<C-x>` handle integer increments.
 - [x] UI: Catppuccin Macchiato, statusline, bufferline, which-key, Snacks notifications, and native command/message UI.
-- [x] Markdown: in-editor render-markdown; browser preview remains intentionally disabled.
+- [x] Markdown: native syntax and Treesitter highlighting; decorative rendering and browser preview remain intentionally disabled.
 - [x] Platform behavior: Home Manager/Nix on Linux/macOS, writable lock and bootstrap on Windows, Unix-only hash-pinned FFF backend.
 - [x] Provisioning/update: raw lock seeding, Windows plugin sync, FFF updater path, isolated lock refresh, CI integration.
 - [x] Tests/health: raw headless config test, Pi terminal regression, Bash/PowerShell provisioning tests, Windows clean bootstrap integration. Existing doctor behavior remains unchanged; it checks managed links/tools but had no direct LazyVim health probe.
 
 ## Restored user-visible surface
 
-Flash, Trouble, todo-comments, Treesitter textobject movement, session selector, Tailwind/hex highlights, broad buffer/LSP/Git/picker/Yanky mappings, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, Noice, grug-far, Dial, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
+Flash, Trouble, todo-comments, Treesitter textobject movement, session selector, Tailwind/hex highlights, broad buffer/LSP/Git/picker/Yanky mappings, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, Noice, grug-far, Dial, render-markdown, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
 
 ## Remaining gaps
 

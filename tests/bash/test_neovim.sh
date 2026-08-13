@@ -50,6 +50,7 @@ test_neovim_uses_raw_config() {
   assert_not_contains "$(<"$config/lazy-lock.json")" '"noice.nvim"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"nui.nvim"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"nvim-ts-autotag"'
+  assert_not_contains "$(<"$config/lazy-lock.json")" '"render-markdown.nvim"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"ts-comments.nvim"'
   assert_not_contains "$home" "seedLazyVimConfig"
   if [ -e "$config/lazyvim.json" ]; then
