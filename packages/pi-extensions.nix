@@ -1,4 +1,4 @@
-{ buildNpmPackage, fetchurl, lib, nodejs, stdenv }:
+{ buildNpmPackage, fetchurl, lib, nodejs, python3, stdenv }:
 
 let
   pins = builtins.fromJSON (builtins.readFile ./pi-extensions-release.json);
@@ -18,9 +18,14 @@ buildNpmPackage {
   version = builtins.substring 0 12 pins.releaseId;
   src = source;
 
-  npmDepsHash = "sha256-3qzhYPP74ZPY8nY4sITnu1EOxWf5mlh3iZwcxs5vc3s=";
+  npmDepsHash = "sha256-xTiwLv83lt/xI3dI2fGk6QrcpZB+8YFJ5JvuFM1sF3I=";
   npmFlags = [ "--omit=dev" "--ignore-scripts" "--legacy-peer-deps" ];
   dontNpmBuild = true;
+  nativeBuildInputs = [ python3 ];
+
+  preInstall = ''
+    python3 ${../scripts/patch_pi_mcp_background.py} node_modules/pi-mcp-extension/src/index.ts
+  '';
 
   installPhase = ''
     runHook preInstall

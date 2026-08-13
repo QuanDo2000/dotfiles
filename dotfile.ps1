@@ -533,7 +533,7 @@ function InstallPiExtensions {
     if (-not (Test-Path -LiteralPath $sourceLock -PathType Leaf) -or (Get-FileSha256 $sourceLock) -ne [string]$pins.releaseId) {
         throw "Pi extension package lock does not match release pins"
     }
-    foreach ($command in 'node', 'npm', 'tar') {
+    foreach ($command in 'node', 'npm', 'py', 'tar') {
         if (-not (Get-Command $command -ErrorAction SilentlyContinue)) { throw "$command command not found for Pi extensions" }
     }
     $nodeVersion = (& node --version 2>$null | Select-Object -Last 1).TrimStart('v')
@@ -564,6 +564,9 @@ function InstallPiExtensions {
             try {
                 if ((Get-StreamSha256 $lockStream) -ne [string]$pins.releaseId) { throw "Staged Pi extension package lock mismatch" }
                 Invoke-NativeChecked "Pi extension npm ci failed" { npm ci --prefix $staging --omit=dev --ignore-scripts --legacy-peer-deps }
+                $patch = Join-Path $script:DotfilesDir 'scripts\patch_pi_mcp_background.py'
+                $mcpIndex = Join-Path $staging 'node_modules\pi-mcp-extension\src\index.ts'
+                Invoke-NativeChecked "Pi MCP background startup repair failed" { py -3.14 $patch $mcpIndex }
             } finally { $lockStream.Dispose() }
 
             $uri = "https://github.com/WiseLibs/better-sqlite3/releases/download/v$($pins.betterSqlite3.version)/$($asset.file)"

@@ -64,6 +64,7 @@ test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
   assert_contains "$package" '"--ignore-scripts"'
   assert_contains "$package" 'better-sqlite3'
   assert_contains "$package" 'better_sqlite3.node'
+  assert_contains "$package" 'python3 ${../scripts/patch_pi_mcp_background.py} node_modules/pi-mcp-extension/src/index.ts'
   assert_contains "$home" 'locked-extensions/releases/${piExtensionsReleaseId}'
   assert_contains "$flake" 'packages.x86_64-linux.pi-extensions'
   assert_contains "$flake" 'packages.aarch64-darwin.pi-extensions'

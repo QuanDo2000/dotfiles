@@ -7,7 +7,7 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'Get-Command', 'node', 'npm', 'tar', 'Invoke-WebRequest', 'Copy-Item') {
+    foreach ($command in 'Get-Command', 'node', 'npm', 'py', 'tar', 'Invoke-WebRequest', 'Copy-Item') {
         Clear-CommandMock $command
     }
     $env:PROCESSOR_ARCHITECTURE = $script:OriginalArchitecture
@@ -22,7 +22,9 @@ function Get-PiExtensionTestSha256($Path) {
 function New-PiExtensionTestFixture($Root, [switch]$WrongLockHash) {
     $source = Join-Path $Root 'config\shared\ai\pi\extensions'
     $packages = Join-Path $Root 'packages'
-    New-Item -ItemType Directory -Force -Path $source, $packages | Out-Null
+    $scripts = Join-Path $Root 'scripts'
+    New-Item -ItemType Directory -Force -Path $source, $packages, $scripts | Out-Null
+    Copy-Item -LiteralPath (Join-Path $script:RepoDir 'scripts\patch_pi_mcp_background.py') -Destination $scripts
     '{"name":"fixture","private":true,"version":"1.0.0","dependencies":{"example-extension":"1.2.3"}}' |
         Set-Content -LiteralPath (Join-Path $source 'package.json') -Encoding ascii
     '{"name":"fixture","lockfileVersion":3,"packages":{"":{"dependencies":{"example-extension":"1.2.3"}},"node_modules/example-extension":{"version":"1.2.3","resolved":"https://registry.npmjs.org/example-extension/-/example-extension-1.2.3.tgz","integrity":"sha512-test"}}}' |
@@ -117,7 +119,7 @@ function test_installpiextensions_rechecks_staged_lock_before_npm {
     $script:NpmCalled = $false
     Set-CommandMock 'Get-Command' {
         param($Name)
-        if ($Name -in @('node', 'npm', 'tar')) { return [pscustomobject]@{ Source = "mock-$Name" } }
+        if ($Name -in @('node', 'npm', 'py', 'tar')) { return [pscustomobject]@{ Source = "mock-$Name" } }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
     Set-CommandMock 'node' {
@@ -151,7 +153,7 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
 
     Set-CommandMock 'Get-Command' {
         param($Name)
-        if ($Name -in @('node', 'npm', 'tar')) { return [pscustomobject]@{ Source = "mock-$Name" } }
+        if ($Name -in @('node', 'npm', 'py', 'tar')) { return [pscustomobject]@{ Source = "mock-$Name" } }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
     Set-CommandMock 'node' {
@@ -162,10 +164,19 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         $script:NpmArgs = $args -join ' '
         $prefix = $args[[Array]::IndexOf($args, '--prefix') + 1]
         $packageDir = Join-Path $prefix 'node_modules\example-extension'
-        New-Item -ItemType Directory -Force -Path $packageDir, (Join-Path $prefix 'node_modules\better-sqlite3') | Out-Null
+        $mcpDir = Join-Path $prefix 'node_modules\pi-mcp-extension\src'
+        New-Item -ItemType Directory -Force -Path $packageDir, $mcpDir, (Join-Path $prefix 'node_modules\better-sqlite3') | Out-Null
         '{"name":"example-extension","version":"1.2.3"}' | Set-Content -LiteralPath (Join-Path $packageDir 'package.json') -Encoding ascii
         '{"name":"better-sqlite3","version":"12.11.1"}' | Set-Content -LiteralPath (Join-Path $prefix 'node_modules\better-sqlite3\package.json') -Encoding ascii
+        @'
+    // Start all eager servers concurrently
+    await Promise.allSettled(
+'@ | Set-Content -LiteralPath (Join-Path $mcpDir 'index.ts') -Encoding ascii
         $global:LASTEXITCODE = 0
+    }
+    Set-CommandMock 'py' {
+        & python3 $args[1] $args[2]
+        $global:LASTEXITCODE = $LASTEXITCODE
     }
     Set-CommandMock 'Invoke-WebRequest' {
         param($Uri, $OutFile)
@@ -184,6 +195,8 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
     Assert-Contains $script:NpmArgs 'ci --prefix'
     Assert-Contains $script:NpmArgs '--ignore-scripts'
     Assert-Contains $script:NpmArgs '--legacy-peer-deps'
+    $stagedMcp = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-mcp-extension\src\index.ts"
+    Assert-Contains (Get-Content -Raw $stagedMcp) 'void Promise.allSettled('
     $pins = Get-Content -Raw $pinsPath | ConvertFrom-Json
     $release = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$($pins.releaseId)"
     Assert-True (Test-PiExtensionsRelease $release $pins) 'immutable extension release should validate'

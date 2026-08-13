@@ -41,11 +41,11 @@
   "defaultProjectTrust": "ask",
   "enableInstallTelemetry": false,
   "packages": [
-    "./locked-extensions/releases/06383aee6285adfe2643ac9ced3408f24bf46de3fd5cb83a2efd70fb4f069681/node_modules/pi-mcp-extension",
-    "./locked-extensions/releases/06383aee6285adfe2643ac9ced3408f24bf46de3fd5cb83a2efd70fb4f069681/node_modules/pi-hermes-memory",
-    "./locked-extensions/releases/06383aee6285adfe2643ac9ced3408f24bf46de3fd5cb83a2efd70fb4f069681/node_modules/@narumitw/pi-lsp",
-    "./locked-extensions/releases/06383aee6285adfe2643ac9ced3408f24bf46de3fd5cb83a2efd70fb4f069681/node_modules/pi-web-access",
-    "./locked-extensions/releases/06383aee6285adfe2643ac9ced3408f24bf46de3fd5cb83a2efd70fb4f069681/node_modules/pi-subagents"
+    "./locked-extensions/releases/357100067c21f853738cd33129b20272d141117cd7d726dbf6771263662b4bf7/node_modules/pi-mcp-extension",
+    "./locked-extensions/releases/357100067c21f853738cd33129b20272d141117cd7d726dbf6771263662b4bf7/node_modules/pi-hermes-memory",
+    "./locked-extensions/releases/357100067c21f853738cd33129b20272d141117cd7d726dbf6771263662b4bf7/node_modules/@narumitw/pi-lsp",
+    "./locked-extensions/releases/357100067c21f853738cd33129b20272d141117cd7d726dbf6771263662b4bf7/node_modules/pi-web-access",
+    "./locked-extensions/releases/357100067c21f853738cd33129b20272d141117cd7d726dbf6771263662b4bf7/node_modules/pi-subagents"
   ],
   "theme": "dark",
   "terminal": {
