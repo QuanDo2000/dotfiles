@@ -283,7 +283,7 @@ local plugins = {
     config = function()
       require("mason").setup()
       require("mason-registry").refresh(function()
-        for _, name in ipairs({ "markdownlint-cli2", "stylua" }) do
+        for _, name in ipairs({ "bash-language-server", "json-lsp", "lua-language-server", "markdownlint-cli2", "marksman", "nil", "stylua", "taplo", "yaml-language-server" }) do
           local package = require("mason-registry").get_package(name)
           if not package:is_installed() then package:install() end
         end
@@ -291,30 +291,21 @@ local plugins = {
     end,
   },
   {
-    "mason-org/mason-lspconfig.nvim",
+    "neovim/nvim-lspconfig",
     event = { "BufReadPre", "BufNewFile" },
-    dependencies = { "mason.nvim", "neovim/nvim-lspconfig", "saghen/blink.cmp" },
-    opts = {
-      ensure_installed = { "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" },
-      automatic_enable = { "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" },
-    },
-    config = function(_, options)
-      local capabilities = require("blink.cmp").get_lsp_capabilities()
-      vim.lsp.config("*", { capabilities = capabilities })
+    dependencies = { "saghen/blink.cmp" },
+    config = function()
+      vim.lsp.config("*", { capabilities = require("blink.cmp").get_lsp_capabilities() })
       vim.lsp.config("lua_ls", { settings = { Lua = { workspace = { checkThirdParty = false }, hint = { enable = false } } } })
       vim.lsp.config("jsonls", {
-        before_init = function(_, config)
-          config.settings.json.schemas = require("schemastore").json.schemas()
-        end,
+        before_init = function(_, config) config.settings.json.schemas = require("schemastore").json.schemas() end,
         settings = { json = { validate = { enable = true } } },
       })
       vim.lsp.config("yamlls", {
-        before_init = function(_, config)
-          config.settings.yaml.schemas = require("schemastore").yaml.schemas()
-        end,
+        before_init = function(_, config) config.settings.yaml.schemas = require("schemastore").yaml.schemas() end,
         settings = { redhat = { telemetry = { enabled = false } }, yaml = { keyOrdering = false, schemaStore = { enable = false, url = "" } } },
       })
-      require("mason-lspconfig").setup(options)
+      vim.lsp.enable({ "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" })
     end,
   },
   { "b0o/SchemaStore.nvim", lazy = true },

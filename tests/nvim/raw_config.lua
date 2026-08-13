@@ -54,9 +54,11 @@ end
 
 local lazy = require("lazy.core.config")
 assert(not lazy.plugins.LazyVim, "LazyVim must not be loaded")
-local lsp_options = lazy.plugins["mason-lspconfig.nvim"].opts
-assert(vim.deep_equal(lsp_options.automatic_enable, lsp_options.ensure_installed), "only intended LSP servers should auto-enable")
-assert(not vim.tbl_contains(lsp_options.automatic_enable, "stylua"), "StyLua formatter must not auto-enable as LSP")
+require("lazy").load({ plugins = { "nvim-lspconfig" } })
+for _, server in ipairs({ "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" }) do
+  assert(vim.lsp.is_enabled(server), server .. " should be enabled")
+end
+assert(not vim.lsp.is_enabled("stylua"), "StyLua formatter must not enable as LSP")
 local which_key_opts = lazy.plugins["which-key.nvim"].opts
 local which_key_groups = {}
 for _, section in ipairs(which_key_opts.spec or {}) do
@@ -123,7 +125,7 @@ for _, plugin in ipairs({
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
 end
-for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "mini.ai", "mini.hipatterns", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
+for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "mason-lspconfig.nvim", "mini.ai", "mini.hipatterns", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
