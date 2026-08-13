@@ -61,6 +61,34 @@ opt.winminwidth = 5
 opt.wrap = false
 vim.g.markdown_recommended_style = 0
 
+local mode_names = {
+  n = "NORMAL", i = "INSERT", v = "VISUAL", V = "V-LINE", ["\22"] = "V-BLOCK",
+  c = "COMMAND", s = "SELECT", S = "S-LINE", ["\19"] = "S-BLOCK", R = "REPLACE", r = "PROMPT", t = "TERMINAL",
+}
+local function statusline_highlights()
+  vim.api.nvim_set_hl(0, "RawStatusMode", { link = "Function" })
+  vim.api.nvim_set_hl(0, "RawStatusGit", { link = "Special" })
+  vim.api.nvim_set_hl(0, "RawStatusFile", { link = "StatusLine" })
+  vim.api.nvim_set_hl(0, "RawStatusMeta", { link = "Comment" })
+  vim.api.nvim_set_hl(0, "RawStatusPosition", { link = "Type" })
+end
+statusline_highlights()
+vim.api.nvim_create_autocmd("ColorScheme", { callback = statusline_highlights })
+function _G.raw_statusline()
+  local buffer = vim.api.nvim_win_get_buf(vim.g.statusline_winid or 0)
+  local mode = vim.api.nvim_get_mode().mode
+  local git = vim.b[buffer].gitsigns_status_dict or {}
+  local branch = vim.b[buffer].gitsigns_head
+  local diagnostics = vim.diagnostic.count(buffer)
+  local parts = { "%#RawStatusMode# 󰘧 ", mode_names[mode] or mode_names[mode:sub(1, 1)] or mode:upper() }
+  if branch and branch ~= "" then parts[#parts + 1] = ("%%#RawStatusGit#   %s +%d ~%d -%d"):format(branch:gsub("%%", "%%%%"), git.added or 0, git.changed or 0, git.removed or 0) end
+  if (diagnostics[vim.diagnostic.severity.ERROR] or 0) > 0 then parts[#parts + 1] = "%#DiagnosticError# 󰅚 " .. diagnostics[vim.diagnostic.severity.ERROR] end
+  if (diagnostics[vim.diagnostic.severity.WARN] or 0) > 0 then parts[#parts + 1] = "%#DiagnosticWarn# 󰀪 " .. diagnostics[vim.diagnostic.severity.WARN] end
+  parts[#parts + 1] = "%#RawStatusFile# %f %m%r%=%#RawStatusMeta# %{&fileencoding==#''?&encoding:&fileencoding} %{&fileformat} %{&filetype}%#RawStatusPosition# %l:%c %P "
+  return table.concat(parts)
+end
+opt.statusline = "%!v:lua.raw_statusline()"
+
 if os.getenv("SSH_TTY") then
   vim.g.clipboard = {
     name = "OSC 52",
@@ -384,7 +412,6 @@ local plugins = {
       end,
     },
   },
-  { "nvim-lualine/lualine.nvim", event = "VeryLazy", dependencies = { "mini.icons" }, opts = { options = { globalstatus = true } } },
   { "akinsho/bufferline.nvim", event = "VeryLazy", dependencies = { "mini.icons" }, opts = {} },
   {
     "folke/which-key.nvim",

@@ -5,6 +5,20 @@ assert(vim.o.clipboard == "unnamedplus")
 assert(vim.o.splitbelow and vim.o.splitright and not vim.o.wrap)
 assert(vim.o.autowrite and vim.o.linebreak and vim.o.shiftround and vim.o.smoothscroll)
 assert(vim.o.conceallevel == 2 and vim.o.undolevels == 10000 and vim.o.virtualedit == "block")
+assert(vim.o.laststatus == 3 and vim.o.statusline == "%!v:lua.raw_statusline()", "native global statusline missing")
+vim.b.gitsigns_head = "main"
+vim.b.gitsigns_status_dict = { added = 1, changed = 2, removed = 3 }
+local diagnostic_namespace = vim.api.nvim_create_namespace("raw_statusline_test")
+vim.diagnostic.set(diagnostic_namespace, 0, { { lnum = 0, col = 0, severity = vim.diagnostic.severity.ERROR, message = "test" } })
+local statusline = raw_statusline()
+vim.diagnostic.reset(diagnostic_namespace, 0)
+assert(statusline:find("%#RawStatusMode# 󰘧 NORMAL", 1, true), "styled statusline mode missing")
+assert(statusline:find("%#RawStatusGit#   main +1 ~2 -3", 1, true), "styled statusline Git summary missing")
+assert(statusline:match("%%#DiagnosticError# 󰅚 %d+"), "styled statusline diagnostics missing")
+assert(statusline:find("%#RawStatusFile# %f", 1, true) and statusline:find("%#RawStatusPosition# %l:%c %P", 1, true), "styled statusline file position missing")
+for _, group in ipairs({ "RawStatusMode", "RawStatusGit", "RawStatusFile", "RawStatusMeta", "RawStatusPosition" }) do
+  assert(next(vim.api.nvim_get_hl(0, { name = group, link = false })), group .. " highlight missing")
+end
 
 local windows = vim.fn.has("win32") == 1
 local expected = {
@@ -137,7 +151,7 @@ for _, plugin in ipairs({
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
 end
-for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "mason-lspconfig.nvim", "mini.ai", "mini.hipatterns", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
+for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "lualine.nvim", "mason-lspconfig.nvim", "mini.ai", "mini.hipatterns", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
