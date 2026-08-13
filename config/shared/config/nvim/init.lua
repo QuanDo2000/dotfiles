@@ -277,7 +277,7 @@ local plugins = {
     },
   },
   { "folke/trouble.nvim", cmd = "Trouble", opts = { modes = { lsp = { win = { position = "right" } } } } },
-  { "folke/todo-comments.nvim", event = { "BufReadPost", "BufNewFile" }, opts = {} },
+  { "folke/todo-comments.nvim", event = "VeryLazy", opts = {} },
   {
     "mason-org/mason.nvim",
     event = "VeryLazy",
