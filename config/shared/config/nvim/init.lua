@@ -161,6 +161,8 @@ vim.opt.rtp:prepend(lazypath)
 local ok, lazy = pcall(require, "lazy")
 if not ok then error("lazy.nvim is missing; run dotfile update") end
 
+vim.env.PATH = vim.fn.stdpath("data") .. "/mason/bin" .. (vim.fn.has("win32") == 1 and ";" or ":") .. vim.env.PATH
+
 local plugins = {
   { "folke/lazy.nvim", enabled = vim.fn.has("win32") == 1 },
   {
@@ -278,13 +280,17 @@ local plugins = {
   { "folke/todo-comments.nvim", event = { "BufReadPost", "BufNewFile" }, opts = {} },
   {
     "mason-org/mason.nvim",
-    event = { "BufReadPre", "BufNewFile" },
+    event = "VeryLazy",
     cmd = { "Mason", "MasonInstall", "MasonUpdate" },
     config = function()
       require("mason").setup()
-      require("mason-registry").refresh(function()
+      local registry = require("mason-registry")
+      registry:on("package:install:success", function()
+        vim.schedule(function() vim.api.nvim_exec_autocmds("FileType", { buffer = 0 }) end)
+      end)
+      registry.refresh(function()
         for _, name in ipairs({ "bash-language-server", "json-lsp", "lua-language-server", "markdownlint-cli2", "marksman", "nil", "stylua", "taplo", "yaml-language-server" }) do
-          local package = require("mason-registry").get_package(name)
+          local package = registry.get_package(name)
           if not package:is_installed() then package:install() end
         end
       end)

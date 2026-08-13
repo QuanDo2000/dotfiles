@@ -54,6 +54,10 @@ end
 
 local lazy = require("lazy.core.config")
 assert(not lazy.plugins.LazyVim, "LazyVim must not be loaded")
+local mason = lazy.plugins["mason.nvim"]
+assert(mason.event == "VeryLazy", "Mason should load after startup")
+assert(not mason._.loaded, "Mason must stay off file-open path")
+assert(vim.env.PATH:match("^" .. vim.pesc(vim.fn.stdpath("data") .. "/mason/bin")), "Mason bin missing from PATH")
 require("lazy").load({ plugins = { "nvim-lspconfig" } })
 for _, server in ipairs({ "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" }) do
   assert(vim.lsp.is_enabled(server), server .. " should be enabled")
