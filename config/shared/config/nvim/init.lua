@@ -335,7 +335,6 @@ local plugins = {
   { "MagicDuck/grug-far.nvim", cmd = { "GrugFar", "GrugFarWithin" }, opts = { headerMaxWidth = 80 } },
   { "folke/trouble.nvim", cmd = "Trouble", opts = { modes = { lsp = { win = { position = "right" } } } } },
   { "folke/todo-comments.nvim", event = { "BufReadPost", "BufNewFile" }, opts = {} },
-  { "folke/noice.nvim", event = "VeryLazy", dependencies = { "MunifTanjim/nui.nvim" }, opts = { presets = { bottom_search = true, command_palette = true, long_message_to_split = true } } },
   {
     "mason-org/mason.nvim",
     event = { "BufReadPre", "BufNewFile" },
@@ -486,7 +485,7 @@ local plugins = {
           { "<leader>gh", group = "hunks" },
           { "<leader>q", group = "quit/session" },
           { "<leader>s", group = "search" },
-          { "<leader>sn", group = "noice" },
+          { "<leader>sn", group = "messages" },
           { "<leader>u", group = "ui" },
           { "<leader>x", group = "diagnostics/quickfix" },
           { "[", group = "prev" },
@@ -665,10 +664,6 @@ map("n", "<leader>st", function() Snacks.picker.todo_comments() end, "Todo")
 map("n", "<leader>sT", function() Snacks.picker.todo_comments({ keywords = { "TODO", "FIX", "FIXME" } }) end, "Todo/Fix/Fixme")
 map("n", "<leader>snh", "<cmd>messages<cr>", "Message History")
 map("n", "<leader>snl", function() vim.cmd("messages"); vim.cmd.normal("G") end, "Last Message")
-map("n", "<leader>snd", "<cmd>Noice dismiss<cr>", "Dismiss Messages")
-map("n", "<leader>sna", "<cmd>Noice all<cr>", "All Messages")
-map("n", "<leader>snt", "<cmd>Noice pick<cr>", "Message Picker")
-map("c", "<S-Enter>", function() require("noice").redirect(vim.fn.getcmdline()) end, "Redirect Command Line")
 map("n", "<leader>fT", function() Snacks.terminal() end, "Terminal (cwd)")
 map("n", "<leader>ft", function() Snacks.terminal(nil, { cwd = root() }) end, "Terminal (Root Dir)")
 map({ "n", "t" }, "<C-/>", function() Snacks.terminal.focus(nil, { cwd = root() }) end, "Terminal (Root Dir)")

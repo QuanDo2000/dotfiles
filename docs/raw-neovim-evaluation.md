@@ -38,7 +38,7 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 - [x] Terminal/Pi: right-side 80-column Pi terminal, focus/toggle, file/position/selection send, Linux submit, Windows no-auto-submit.
 - [x] Sessions: current/last restore and opt-out through persistence.nvim.
 - [x] Editing extras with explicit prior opt-in: mini.surround, Yanky history/cycling, Dial increments, mini.ai, hex-color highlights.
-- [x] UI: Catppuccin Macchiato, statusline, bufferline, which-key, Snacks notifications.
+- [x] UI: Catppuccin Macchiato, statusline, bufferline, which-key, Snacks notifications, and native command/message UI.
 - [x] Markdown: in-editor render-markdown; browser preview remains intentionally disabled.
 - [x] Platform behavior: Home Manager/Nix on Linux/macOS, writable lock and bootstrap on Windows, Unix-only hash-pinned FFF backend.
 - [x] Provisioning/update: raw lock seeding, Windows plugin sync, FFF updater path, isolated lock refresh, CI integration.
@@ -46,13 +46,13 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 
 ## Restored user-visible surface
 
-Flash, Trouble, Noice, todo-comments, grug-far, Treesitter textobject movement, session selector, Tailwind/hex highlights, broad buffer/LSP/Git/picker/Yanky mappings, advanced Dial cycles, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
+Flash, Trouble, todo-comments, grug-far, Treesitter textobject movement, session selector, Tailwind/hex highlights, broad buffer/LSP/Git/picker/Yanky mappings, advanced Dial cycles, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, Noice, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
 
 ## Remaining gaps
 
 - LazyVim framework commands and internals remain absent: `:LazyExtras`, changelog/news, framework health/default migration, and generated key groups.
 - Neotest remains absent because baseline had zero adapters.
-- Noice keeps command-line/message UI and history, but raw fallback mappings use native `:messages` for last/history rather than every LazyVim Noice route/statusline integration.
+- Command-line and message UI use native Neovim; `<leader>snh` and `<leader>snl` expose native message history.
 - Tailwind highlighting covers standard `*-500` utility colors instead of LazyVim's full 50-950 palette.
 - Root detection uses attached LSP workspace/root, then common project markers, then cwd; it does not reproduce LazyVim's cache and every detector override.
 - LazyVim-only automatic toggles, profiler controls, changelog, and niche GitHub picker mappings remain omitted.

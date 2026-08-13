@@ -65,7 +65,7 @@ for prefix, group in pairs({
   ["<leader>gh"] = "hunks",
   ["<leader>q"] = "quit/session",
   ["<leader>s"] = "search",
-  ["<leader>sn"] = "noice",
+  ["<leader>sn"] = "messages",
   ["<leader>u"] = "ui",
   ["<leader>x"] = "diagnostics/quickfix",
   ["["] = "prev",
@@ -107,7 +107,6 @@ for _, plugin in ipairs({
   "mason.nvim",
   "mini.hipatterns",
   "mini.surround",
-  "noice.nvim",
   "nvim-lint",
   "nvim-lspconfig",
   "nvim-treesitter",
@@ -121,7 +120,7 @@ for _, plugin in ipairs({
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
 end
-for _, plugin in ipairs({ "friendly-snippets", "nvim-ts-autotag", "ts-comments.nvim" }) do
+for _, plugin in ipairs({ "friendly-snippets", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "ts-comments.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
@@ -136,4 +135,8 @@ for _, name in ipairs({ "raw_checktime", "raw_highlight_yank", "raw_resize_split
 end
 assert(lazy.plugins["snacks.nvim"]._.loaded, "Snacks must load")
 assert(not Snacks.config.dashboard.enabled, "startup dashboard must stay disabled")
+for _, lhs in ipairs({ " sna", " snd", " snt" }) do
+  assert(maps[lhs] == nil, lhs .. " Noice mapping must stay removed")
+end
+assert(vim.fn.maparg("<S-Enter>", "c") == "", "Noice command redirect must stay removed")
 print("RAW_CONFIG_OK")
