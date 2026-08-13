@@ -4,7 +4,7 @@
 
 Baseline snapshot: current live checkout config copied to `/tmp/lazyvim-baseline.izR1UX/nvim` before implementation. Main checkout remained untouched afterward. Raw implementation lives only on branch `raw-neovim-evaluation` in its dedicated worktree.
 
-Measurements use Neovim 0.12.4 on the same machine and installed plugin data. Startup comparison runs `nvim --headless +qa` for 60 paired rounds in seeded randomized order. Clean runs delete each config's isolated XDG cache/state before every sample; warm runs use 5 excluded warmups and stable isolated cache/state. Network access and plugin installation are outside timed commands. Full samples are stored in `/tmp/nvim-comparison.json` during evaluation.
+Measurements use Neovim 0.12.4 on the same machine and installed plugin data. Startup comparison runs `nvim --headless +qa` for 60 paired rounds in seeded randomized order. Clean runs delete each config's isolated XDG cache/state before every sample; warm runs use 5 excluded warmups and stable isolated cache/state. Network access and plugin installation are outside timed commands. Full samples are stored in `/tmp/nvim-comparison.json` during evaluation. Results below describe the initial parity snapshot; later pruning is tracked by tests and the lock file, not retroactively mixed into these benchmark numbers.
 
 Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes count `*.lua`; all bytes include lock/style/ignore files. Plugin count includes enabled Lazy specs on Unix, excluding disabled Nix-managed `lazy.nvim`. Footprint sums `du -sb` for those configured plugin directories; shared parser and Mason tool data are excluded equally.
 
@@ -28,7 +28,7 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 ## Feature-parity checklist
 
 - [x] Core editing: leader keys, `jk`, clipboard, OSC 52 over SSH, line numbers, undo, search, splits, diagnostics, native comments, folds, and standard buffer/window commands.
-- [x] Completion: Blink LSP/path/snippet/buffer completion, auto-insert selection, `<C-e>` cancel, friendly snippets.
+- [x] Completion: Blink LSP/path/snippet/buffer completion, auto-insert selection, and `<C-e>` cancel; the optional friendly-snippets collection is omitted.
 - [x] LSP: Bash, JSON/SchemaStore, Lua, Markdown, Nix, TOML, YAML/SchemaStore; diagnostics; definitions/references/implementation/type, hover, rename, code actions; inlay hints remain disabled.
 - [x] Formatting: Conform format-on-save and `<leader>cf`; Lua, Markdown/MDX, Nix, then LSP fallback.
 - [x] Linting: markdownlint-cli2 and statix on write/insert leave.
@@ -46,7 +46,7 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 
 ## Restored user-visible surface
 
-Flash, Trouble, Noice, todo-comments, grug-far, Treesitter textobject movement, autotag, ts-comments, dashboard, session selector, Tailwind/hex highlights, broad buffer/LSP/Git/picker/Yanky mappings, advanced Dial cycles, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are now represented directly. Pi behavior remains unchanged.
+Flash, Trouble, Noice, todo-comments, grug-far, Treesitter textobject movement, session selector, Tailwind/hex highlights, broad buffer/LSP/Git/picker/Yanky mappings, advanced Dial cycles, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
 
 ## Remaining gaps
 

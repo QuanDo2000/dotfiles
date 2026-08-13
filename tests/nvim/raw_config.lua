@@ -10,7 +10,6 @@ local windows = vim.fn.has("win32") == 1
 local expected = {
   [" ff"] = windows and "Find Files" or "Find Files (FFF)",
   [" sg"] = windows and "Grep" or "Grep (FFF)",
-  [" fe"] = "Explorer (Root Dir)",
   [" aa"] = "Toggle Pi",
   [" af"] = "Send File",
   [" at"] = "Send Position",
@@ -29,7 +28,11 @@ local maps = {}
 for _, map in ipairs(vim.api.nvim_get_keymap("n")) do maps[map.lhs] = map.desc end
 for lhs, desc in pairs(expected) do assert(maps[lhs] == desc, lhs .. " mapping missing") end
 assert(vim.fn.maparg("jk", "i") ~= "", "jk mapping missing")
-assert(maps[" e"] == "Explorer (Root Dir)" and maps[" E"] == "Explorer (cwd)", "explorer aliases missing")
+assert(maps[" e"] == "Explorer (Root Dir)" and maps[" E"] == "Explorer (cwd)", "explorer mappings missing")
+assert(maps[" ,"] == "Buffers" and maps[" :"] == "Command History", "picker mappings missing")
+for _, lhs in ipairs({ " fb", " fe", " fE", " sc" }) do
+  assert(maps[lhs] == nil, lhs .. " duplicate mapping must stay removed")
+end
 assert(maps.H == "Prev Buffer" and maps.L == "Next Buffer", "buffer navigation missing")
 assert(maps["s"] == "Flash" and maps["S"] == "Flash Treesitter", "Flash mappings missing")
 assert(maps["]t"] == "Next Todo Comment" and maps["[t"] == "Previous Todo Comment", "Todo navigation missing")
@@ -109,16 +112,17 @@ for _, plugin in ipairs({
   "nvim-lspconfig",
   "nvim-treesitter",
   "nvim-treesitter-textobjects",
-  "nvim-ts-autotag",
   "persistence.nvim",
   "render-markdown.nvim",
   "snacks.nvim",
   "todo-comments.nvim",
   "trouble.nvim",
-  "ts-comments.nvim",
   "yanky.nvim",
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
+end
+for _, plugin in ipairs({ "friendly-snippets", "nvim-ts-autotag", "ts-comments.nvim" }) do
+  assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
 require("lazy").load({ plugins = { "conform.nvim" } })

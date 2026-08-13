@@ -327,7 +327,6 @@ local plugins = {
   {
     "saghen/blink.cmp",
     lazy = true,
-    dependencies = { "rafamadriz/friendly-snippets" },
     opts = {
       completion = { list = { selection = { auto_insert = true } } },
       keymap = { preset = "default", ["<C-e>"] = { "cancel", "fallback" } },
@@ -337,7 +336,6 @@ local plugins = {
   { "folke/trouble.nvim", cmd = "Trouble", opts = { modes = { lsp = { win = { position = "right" } } } } },
   { "folke/todo-comments.nvim", event = { "BufReadPost", "BufNewFile" }, opts = {} },
   { "folke/noice.nvim", event = "VeryLazy", dependencies = { "MunifTanjim/nui.nvim" }, opts = { presets = { bottom_search = true, command_palette = true, long_message_to_split = true } } },
-  { "folke/ts-comments.nvim", event = "VeryLazy", opts = {} },
   {
     "mason-org/mason.nvim",
     event = { "BufReadPre", "BufNewFile" },
@@ -421,7 +419,6 @@ local plugins = {
     event = "VeryLazy",
     opts = { move = { set_jumps = true } },
   },
-  { "windwp/nvim-ts-autotag", event = { "BufReadPre", "BufNewFile" }, opts = {} },
   {
     "nvim-treesitter/nvim-treesitter",
     lazy = false,
@@ -565,7 +562,6 @@ end
 map("n", "<leader><space>", function() Snacks.picker.files({ cwd = root() }) end, "Find Files (Root Dir)")
 map("n", "<leader>/", function() Snacks.picker.grep({ cwd = root() }) end, "Grep (Root Dir)")
 map("n", "<leader>,", function() Snacks.picker.buffers() end, "Buffers")
-map("n", "<leader>fb", function() Snacks.picker.buffers() end, "Buffers")
 map("n", "<leader>fB", function() Snacks.picker.buffers({ hidden = true, nofile = true }) end, "Buffers (all)")
 map("n", "<leader>fc", function() Snacks.picker.files({ cwd = vim.fn.stdpath("config") }) end, "Find Config File")
 map("n", "<leader>fF", function() Snacks.picker.files() end, "Find Files (cwd)")
@@ -573,8 +569,6 @@ map("n", "<leader>fg", function() Snacks.picker.git_files() end, "Find Files (gi
 map("n", "<leader>fr", function() Snacks.picker.recent() end, "Recent")
 map("n", "<leader>fR", function() Snacks.picker.recent({ filter = { cwd = true } }) end, "Recent (cwd)")
 map("n", "<leader>fp", function() Snacks.picker.projects() end, "Projects")
-map("n", "<leader>fe", function() Snacks.explorer({ cwd = root() }) end, "Explorer (Root Dir)")
-map("n", "<leader>fE", function() Snacks.explorer() end, "Explorer (cwd)")
 map("n", "<leader>e", function() Snacks.explorer({ cwd = root() }) end, "Explorer (Root Dir)")
 map("n", "<leader>E", function() Snacks.explorer() end, "Explorer (cwd)")
 map("n", "<leader>gg", function() Snacks.lazygit({ cwd = roots.git() }) end, "Lazygit (Root Dir)")
@@ -602,7 +596,6 @@ map("n", "<leader>:", function() Snacks.picker.command_history() end, "Command H
 map("n", "<leader>s\"", function() Snacks.picker.registers() end, "Registers")
 map("n", "<leader>s/", function() Snacks.picker.search_history() end, "Search History")
 map("n", "<leader>sa", function() Snacks.picker.autocmds() end, "Autocmds")
-map("n", "<leader>sc", function() Snacks.picker.command_history() end, "Command History")
 map("n", "<leader>sC", function() Snacks.picker.commands() end, "Commands")
 map("n", "<leader>sH", function() Snacks.picker.highlights() end, "Highlights")
 map("n", "<leader>sj", function() Snacks.picker.jumps() end, "Jumps")
