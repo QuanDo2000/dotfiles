@@ -325,7 +325,6 @@ local plugins = {
     end,
   },
   { "b0o/SchemaStore.nvim", lazy = true },
-  { "folke/lazydev.nvim", ft = "lua", opts = { library = { { path = "snacks.nvim", words = { "Snacks" } }, { path = "lazy.nvim", words = { "lazy" } } } } },
   {
     "stevearc/conform.nvim",
     event = { "BufReadPre", "BufNewFile" },

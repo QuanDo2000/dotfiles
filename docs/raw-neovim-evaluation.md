@@ -46,7 +46,7 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 
 ## Restored user-visible surface
 
-Trouble, todo-comments, Treesitter textobject movement, six-digit hex highlights, broad buffer/LSP/Git/picker mappings, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, Noice, grug-far, Dial, Yanky, persistence, mini.ai, Flash, render-markdown, shorthand/Tailwind color highlights, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
+Trouble, todo-comments, Treesitter textobject movement, six-digit hex highlights, broad buffer/LSP/Git/picker mappings, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, Noice, grug-far, Dial, Yanky, persistence, mini.ai, Flash, lazydev, render-markdown, shorthand/Tailwind color highlights, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
 
 ## Remaining gaps
 
