@@ -35,7 +35,8 @@ end
 assert(maps.H == "Prev Buffer" and maps.L == "Next Buffer", "buffer navigation missing")
 assert(maps["s"] == "Flash" and maps["S"] == "Flash Treesitter", "Flash mappings missing")
 assert(maps["]t"] == "Next Todo Comment" and maps["[t"] == "Previous Todo Comment", "Todo navigation missing")
-assert(maps["g<C-A>"] == "Increment" and maps["g<C-X>"] == "Decrement", "Dial sequence mappings missing")
+assert(maps["<C-A>"] == nil and maps["<C-X>"] == nil, "native increment mappings must stay unshadowed")
+assert(maps["g<C-A>"] == nil and maps["g<C-X>"] == nil, "Dial sequence mappings must stay removed")
 assert(vim.fn.maparg("gp", "n") ~= "" and vim.fn.maparg("]p", "n") ~= "", "Yanky paste mappings missing")
 assert(maps[" <Tab><Tab>"] == "New Tab", "new tab mapping missing")
 assert(maps[" <Tab>d"] == "Close Tab", "close tab mapping missing")
@@ -118,7 +119,7 @@ for _, plugin in ipairs({
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
 end
-for _, plugin in ipairs({ "friendly-snippets", "grug-far.nvim", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "ts-comments.nvim" }) do
+for _, plugin in ipairs({ "dial.nvim", "friendly-snippets", "grug-far.nvim", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "ts-comments.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")

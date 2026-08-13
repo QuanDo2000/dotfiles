@@ -501,34 +501,6 @@ local plugins = {
     event = { "BufReadPost", "BufNewFile" },
     opts = { system_clipboard = { sync_with_ring = not vim.env.SSH_CONNECTION }, highlight = { timer = 150 } },
   },
-  {
-    "monaqa/dial.nvim",
-    event = "VeryLazy",
-    config = function()
-      local augend = require("dial.augend")
-      local default = {
-        augend.integer.alias.decimal, augend.integer.alias.decimal_int, augend.integer.alias.hex, augend.date.alias["%Y/%m/%d"],
-        augend.constant.alias.en_weekday, augend.constant.alias.en_weekday_full,
-        augend.constant.new({ elements = { "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth" }, word = false, cyclic = true }),
-        augend.constant.new({ elements = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }, word = true, cyclic = true }),
-        augend.constant.alias.bool, augend.constant.alias.Bool,
-        augend.constant.new({ elements = { "&&", "||" }, word = false, cyclic = true }),
-      }
-      local groups = {
-        default = default,
-        vue = { augend.constant.new({ elements = { "let", "const" } }), augend.hexcolor.new({ case = "lower" }), augend.hexcolor.new({ case = "upper" }) },
-        typescript = { augend.constant.new({ elements = { "let", "const" } }) },
-        css = { augend.hexcolor.new({ case = "lower" }), augend.hexcolor.new({ case = "upper" }) },
-        markdown = { augend.constant.new({ elements = { "[ ]", "[x]" }, word = false, cyclic = true }), augend.misc.alias.markdown_header },
-        json = { augend.semver.alias.semver },
-        lua = { augend.constant.new({ elements = { "and", "or" }, word = true, cyclic = true }) },
-        python = { augend.constant.new({ elements = { "and", "or" } }) },
-      }
-      for name, group in pairs(groups) do if name ~= "default" then vim.list_extend(group, default) end end
-      require("dial.config").augends:register_group(groups)
-      vim.g.dials_by_ft = { css = "css", vue = "vue", javascript = "typescript", typescript = "typescript", typescriptreact = "typescript", javascriptreact = "typescript", json = "json", lua = "lua", markdown = "markdown", sass = "css", scss = "css", python = "python" }
-    end,
-  },
   { "folke/persistence.nvim", event = "BufReadPre", opts = {} },
 }
 
@@ -624,17 +596,6 @@ for lhs, rhs, desc in pairs({
   [">P"] = { "<Plug>(YankyPutIndentBeforeShiftRight)", "Put Before and Indent Right" }, ["<P"] = { "<Plug>(YankyPutIndentBeforeShiftLeft)", "Put Before and Indent Left" },
   ["=p"] = { "<Plug>(YankyPutAfterFilter)", "Put After Applying a Filter" }, ["=P"] = { "<Plug>(YankyPutBeforeFilter)", "Put Before Applying a Filter" },
 }) do map("n", lhs, rhs[1], rhs[2]) end
-
-local function dial(increment, g)
-  local mode = vim.fn.mode(true)
-  local visual = mode == "v" or mode == "V" or mode == "\22"
-  local group = vim.g.dials_by_ft and vim.g.dials_by_ft[vim.bo.filetype] or "default"
-  return require("dial.map")[(increment and "inc" or "dec") .. (g and "_g" or "_") .. (visual and "visual" or "normal")](group)
-end
-vim.keymap.set({ "n", "x" }, "<C-a>", function() return dial(true) end, { desc = "Increment", expr = true })
-vim.keymap.set({ "n", "x" }, "<C-x>", function() return dial(false) end, { desc = "Decrement", expr = true })
-vim.keymap.set({ "n", "x" }, "g<C-a>", function() return dial(true, true) end, { desc = "Increment", expr = true })
-vim.keymap.set({ "n", "x" }, "g<C-x>", function() return dial(false, true) end, { desc = "Decrement", expr = true })
 
 map("n", "<leader>qs", function() require("persistence").load() end, "Restore Session")
 map("n", "<leader>qS", function() require("persistence").select() end, "Select Session")
