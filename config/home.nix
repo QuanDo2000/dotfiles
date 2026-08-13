@@ -467,19 +467,6 @@ in
     aggressiveResize = true;
     escapeTime = 10;
     historyLimit = 50000;
-    plugins = [
-      {
-        plugin = pkgs.tmuxPlugins.catppuccin;
-        extraConfig = ''
-          set -g @catppuccin_flavor 'macchiato'
-          set -g @catppuccin_window_status_style 'basic'
-          set -g @catppuccin_window_text ' #{b:pane_current_command}'
-          set -g @catppuccin_window_current_text ' #{b:pane_current_command}'
-          set -g @catppuccin_status_background 'none'
-          set -g @catppuccin_date_time_text ' %Y-%m-%d %H:%M:%S'
-        '';
-      }
-    ];
     extraConfig = builtins.readFile ./unix/.tmux.conf;
   };
 
