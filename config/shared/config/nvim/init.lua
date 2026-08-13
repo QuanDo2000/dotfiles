@@ -194,7 +194,7 @@ local plugins = {
   },
   {
     "folke/snacks.nvim",
-    lazy = false,
+    event = "VimEnter",
     opts = {
       bigfile = { enabled = true },
       explorer = {}, input = {}, picker = {}, quickfile = { enabled = true }, terminal = {}, notifier = {}, lazygit = {},

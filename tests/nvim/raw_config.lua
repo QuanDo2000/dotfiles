@@ -63,6 +63,8 @@ assert(lazy.plugins["mini.icons"].event == "VeryLazy", "Mini Icons should load w
 assert(not lazy.plugins["mini.icons"]._.loaded, "Mini Icons must stay off file-open path")
 assert(lazy.plugins["gitsigns.nvim"].event == "VeryLazy", "Gitsigns should load after startup")
 assert(not lazy.plugins["gitsigns.nvim"]._.loaded, "Gitsigns must stay off file-open path")
+assert(lazy.plugins["snacks.nvim"].event == "VimEnter", "Snacks should load after file opening")
+assert(not lazy.plugins["snacks.nvim"]._.loaded, "Snacks must stay off file-open path")
 assert(vim.env.PATH:match("^" .. vim.pesc(vim.fn.stdpath("data") .. "/mason/bin")), "Mason bin missing from PATH")
 require("lazy").load({ plugins = { "nvim-lspconfig" } })
 for _, server in ipairs({ "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" }) do
@@ -148,6 +150,7 @@ assert(format_on_save, "format-on-save autocmd missing")
 for _, name in ipairs({ "raw_checktime", "raw_highlight_yank", "raw_resize_splits", "raw_last_loc", "raw_auto_create_dir" }) do
   assert(#vim.api.nvim_get_autocmds({ group = name }) > 0, name .. " autocmd missing")
 end
+require("lazy").load({ plugins = { "snacks.nvim" } })
 assert(lazy.plugins["snacks.nvim"]._.loaded, "Snacks must load")
 assert(not Snacks.config.dashboard.enabled, "startup dashboard must stay disabled")
 for _, lhs in ipairs({ " sna", " snd", " snt" }) do
