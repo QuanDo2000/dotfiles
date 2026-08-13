@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+entries=$(rbw list --raw | jq -c '
+  [.[] | select(.type == "login" or .type == "card" or .type == "note")]
+  | sort_by([(.folder // "" | ascii_downcase), (.name | ascii_downcase)])
+')
+
+menu=$(jq -r '
+  .[]
+  | [(.folder // ""), .name, (.user // "")]
+  | map(gsub("[\\t\\r\\n]"; " "))
+  | ((if .[0] == "" then "" else .[0] + "/" end) + .[1] + "  " + .[2])
+' <<<"$entries")
+
+if ! entry_index=$(printf '%s\n' "$menu" | fuzzel --dmenu --index --prompt "" --placeholder "Search vault…" --inner-pad 8); then
+  exit 0
+fi
+[[ $entry_index =~ ^[0-9]+$ ]] || exit 0
+
+entry=$(jq -c --argjson index "$entry_index" '.[$index]' <<<"$entries")
+name=$(jq -r '.name' <<<"$entry")
+user=$(jq -r '.user // ""' <<<"$entry")
+folder=$(jq -r '.folder // ""' <<<"$entry")
+type=$(jq -r '.type' <<<"$entry")
+get_args=(--raw "$name")
+[[ -z $user ]] || get_args+=("$user")
+[[ -z $folder ]] || get_args+=(--folder "$folder")
+details=$(rbw get "${get_args[@]}")
+
+targets=$(jq -c --arg type "$type" --arg user "$user" '
+  def clean: gsub("[\\t\\r\\n]"; " ");
+  def item($label; $value): {label: ($label | clean), value: ($value // "")};
+  def present: select(.value != "");
+  if $type == "login" then [
+    item("Username"; $user),
+    item("Password"; .data.password),
+    (if .data.totp == null then empty else {label: "TOTP", code: true} end),
+    item("Notes"; .notes),
+    (.data.uris[]? | item("URI"; .uri)),
+    (.fields[]? | item("Field: " + .name; .value))
+  ]
+  elif $type == "card" then [
+    item("Number"; .data.number),
+    item("Cardholder"; .data.cardholder_name),
+    item("Brand"; .data.brand),
+    item("Expiry"; ((.data.exp_year // "") + "-" + (.data.exp_month // ""))),
+    item("Code"; .data.code),
+    item("Notes"; .notes),
+    (.fields[]? | item("Field: " + .name; .value))
+  ]
+  else [
+    item("Notes"; .notes),
+    (.fields[]? | item("Field: " + .name; .value))
+  ]
+  end
+  | map(present)
+' <<<"$details")
+
+if ! target_index=$(jq -r '.[].label' <<<"$targets" | fuzzel --dmenu --index --prompt "Choose target" --inner-pad 8); then
+  exit 0
+fi
+[[ $target_index =~ ^[0-9]+$ ]] || exit 0
+
+target=$(jq -ce --argjson index "$target_index" '.[$index] // empty' <<<"$targets") || exit 0
+if [[ $(jq -r '.code // false' <<<"$target") == true ]]; then
+  code_args=("$name")
+  [[ -z $user ]] || code_args+=("$user")
+  [[ -z $folder ]] || code_args+=(--folder "$folder")
+  value=$(rbw code "${code_args[@]}")
+else
+  value=$(jq -r '.value' <<<"$target")
+fi
+
+printf %s "$value" | wl-copy
+sleep 30
+[[ $(wl-paste) != "$value" ]] || wl-copy --clear

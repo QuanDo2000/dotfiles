@@ -140,12 +140,10 @@ let
     grim
     pinentry-gnome3
     rbw
-    rofi-rbw
     rclone
     slurp
     thunar
     wl-clipboard
-    wtype
     xarchiver
     hyprshutdown
     ghostty
@@ -219,24 +217,15 @@ in
       executable = true;
       force = true;
     };
+    ".local/bin/bitwarden-picker" = lib.mkIf pkgs.stdenv.isLinux (forceSource ./unix/bin/bitwarden-picker // {
+      executable = true;
+    });
     ".local/bin/caf" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/bin/caf // {
       executable = true;
     });
   };
 
   programs.home-manager.enable = true;
-
-  xdg.configFile."rofi-rbw.rc".text = lib.mkIf pkgs.stdenv.isLinux ''
-    selector=fuzzel
-    clipboarder=wl-copy
-    typer=wtype
-    prompt=
-    selector-args=--prompt "" --placeholder "Search vault…" --inner-pad 8
-    action=copy
-    target=menu
-    clear-after=30
-    no-cache=true
-  '';
 
   xdg.configFile."restic/storage-offsite-excludes" = lib.mkIf storageOffsiteBackup {
     text = ''

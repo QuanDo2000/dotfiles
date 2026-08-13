@@ -462,19 +462,12 @@ test_home_manager_installs_bitwarden_picker() {
   local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
 
   assert_contains "$home_config" "rbw"
-  assert_contains "$home_config" "rofi-rbw"
-  assert_contains "$home_config" "wtype"
-  assert_contains "$home_config" 'selector=fuzzel'
-  assert_contains "$home_config" 'typer=wtype'
-  assert_contains "$home_config" 'prompt='
-  assert_contains "$home_config" 'selector-args=--prompt "" --placeholder "Search vault…" --inner-pad 8'
-  assert_contains "$home_config" 'action=copy'
-  assert_contains "$home_config" 'target=menu'
-  assert_not_contains "$home_config" 'target=password'
-  assert_contains "$home_config" 'clear-after=30'
-  assert_contains "$home_config" 'no-cache=true'
+  assert_contains "$home_config" '".local/bin/bitwarden-picker"'
+  assert_contains "$home_config" './unix/bin/bitwarden-picker'
+  assert_not_contains "$home_config" "rofi-rbw"
+  assert_not_contains "$home_config" "wtype"
   assert_contains "$hypr_config" 'mainMod .. " + CTRL + Space"'
-  assert_contains "$hypr_config" 'app .. "rofi-rbw"'
+  assert_contains "$hypr_config" 'app .. "bitwarden-picker"'
 }
 
 test_home_manager_installs_anki() {
