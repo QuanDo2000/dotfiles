@@ -109,7 +109,6 @@ for _, plugin in ipairs({
   "conform.nvim",
   "gitsigns.nvim",
   "mason.nvim",
-  "mini.hipatterns",
   "mini.surround",
   "nvim-lint",
   "nvim-lspconfig",
@@ -121,14 +120,10 @@ for _, plugin in ipairs({
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
 end
-for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "mini.ai", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
+for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "mini.ai", "mini.hipatterns", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
-require("lazy").load({ plugins = { "mini.hipatterns" } })
-local highlighters = require("mini.hipatterns").config.highlighters
-assert(highlighters.hex_color, "hex color highlighter missing")
-assert(not highlighters.shorthand and not highlighters.tailwind, "custom color highlighters must stay removed")
 require("lazy").load({ plugins = { "conform.nvim" } })
 local format_on_save = false
 for _, autocmd in ipairs(vim.api.nvim_get_autocmds({ event = "BufWritePre" })) do

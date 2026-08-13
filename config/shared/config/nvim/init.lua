@@ -267,16 +267,6 @@ local plugins = {
     },
   },
   {
-    "nvim-mini/mini.hipatterns",
-    event = { "BufReadPost", "BufNewFile" },
-    config = function()
-      local hipatterns = require("mini.hipatterns")
-      hipatterns.setup({ highlighters = {
-        hex_color = hipatterns.gen_highlighter.hex_color({ priority = 2000 }),
-      } })
-    end,
-  },
-  {
     "saghen/blink.cmp",
     lazy = true,
     opts = {

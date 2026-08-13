@@ -37,7 +37,7 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 - [x] Git: Gitsigns hunk navigation/stage/reset/preview/blame, Snacks status/diff, Lazygit.
 - [x] Terminal/Pi: right-side 80-column Pi terminal, focus/toggle, file/position/selection send, Linux submit, Windows no-auto-submit.
 - [x] Sessions: no automatic session persistence; files and projects reopen explicitly.
-- [x] Editing extras with explicit prior opt-in: mini.surround and six-digit hex-color highlights; native text objects, registers/paste, and `<C-a>`/`<C-x>` cover common editing.
+- [x] Editing extras with explicit prior opt-in: mini.surround; native text objects, registers/paste, and `<C-a>`/`<C-x>` cover common editing.
 - [x] UI: Catppuccin Macchiato, statusline, bufferline, which-key, Snacks notifications, and native command/message UI.
 - [x] Markdown: native syntax and Treesitter highlighting; decorative rendering and browser preview remain intentionally disabled.
 - [x] Platform behavior: Home Manager/Nix on Linux/macOS, writable lock and bootstrap on Windows, Unix-only hash-pinned FFF backend.
@@ -46,7 +46,7 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 
 ## Restored user-visible surface
 
-Trouble, todo-comments, Treesitter textobject movement, six-digit hex highlights, broad buffer/LSP/Git/picker mappings, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, Noice, grug-far, Dial, Yanky, persistence, mini.ai, Flash, lazydev, render-markdown, shorthand/Tailwind color highlights, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
+Trouble, todo-comments, Treesitter textobject movement, broad buffer/LSP/Git/picker mappings, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, Noice, grug-far, Dial, Yanky, persistence, mini.ai, Flash, lazydev, render-markdown, color highlights, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
 
 ## Remaining gaps
 
