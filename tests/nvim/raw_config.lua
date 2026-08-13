@@ -13,8 +13,6 @@ local expected = {
   [" aa"] = "Toggle Pi",
   [" af"] = "Send File",
   [" at"] = "Send Position",
-  [" qs"] = "Restore Session",
-  [" qS"] = "Select Session",
   [" cf"] = "Format",
   [" xx"] = "Diagnostics (Trouble)",
   [" st"] = "Todo",
@@ -66,7 +64,7 @@ for prefix, group in pairs({
   ["<leader>f"] = "file/find",
   ["<leader>g"] = "git",
   ["<leader>gh"] = "hunks",
-  ["<leader>q"] = "quit/session",
+  ["<leader>q"] = "quit",
   ["<leader>s"] = "search",
   ["<leader>sn"] = "messages",
   ["<leader>u"] = "ui",
@@ -113,14 +111,13 @@ for _, plugin in ipairs({
   "nvim-lspconfig",
   "nvim-treesitter",
   "nvim-treesitter-textobjects",
-  "persistence.nvim",
   "snacks.nvim",
   "todo-comments.nvim",
   "trouble.nvim",
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
 end
-for _, plugin in ipairs({ "dial.nvim", "friendly-snippets", "grug-far.nvim", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
+for _, plugin in ipairs({ "dial.nvim", "friendly-snippets", "grug-far.nvim", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
@@ -145,4 +142,7 @@ end
 assert(vim.fn.maparg("<S-Enter>", "c") == "", "Noice command redirect must stay removed")
 assert(maps[" sr"] == nil, "project-wide replace mapping must stay removed")
 assert(maps[" um"] == nil, "Render Markdown mapping must stay removed")
+for _, lhs in ipairs({ " qs", " qS", " ql", " qd" }) do
+  assert(maps[lhs] == nil, lhs .. " session mapping must stay removed")
+end
 print("RAW_CONFIG_OK")

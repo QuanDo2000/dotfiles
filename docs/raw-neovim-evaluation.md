@@ -36,7 +36,7 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 - [x] Picker/explorer: FFF find/grep on Unix; Snacks fallback on Windows; root/cwd files, grep, buffers, recent files, diagnostics, help, keymaps, and Snacks explorer.
 - [x] Git: Gitsigns hunk navigation/stage/reset/preview/blame, Snacks status/diff, Lazygit.
 - [x] Terminal/Pi: right-side 80-column Pi terminal, focus/toggle, file/position/selection send, Linux submit, Windows no-auto-submit.
-- [x] Sessions: current/last restore and opt-out through persistence.nvim.
+- [x] Sessions: no automatic session persistence; files and projects reopen explicitly.
 - [x] Editing extras with explicit prior opt-in: mini.surround, mini.ai, and hex-color highlights; native registers/paste and `<C-a>`/`<C-x>` cover yank history and integer increments.
 - [x] UI: Catppuccin Macchiato, statusline, bufferline, which-key, Snacks notifications, and native command/message UI.
 - [x] Markdown: native syntax and Treesitter highlighting; decorative rendering and browser preview remain intentionally disabled.
@@ -46,7 +46,7 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 
 ## Restored user-visible surface
 
-Flash, Trouble, todo-comments, Treesitter textobject movement, session selector, hex highlights, broad buffer/LSP/Git/picker mappings, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, Noice, grug-far, Dial, Yanky, render-markdown, custom Tailwind color highlights, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
+Flash, Trouble, todo-comments, Treesitter textobject movement, hex highlights, broad buffer/LSP/Git/picker mappings, LSP-first root detection, LazyVim editing options/autocmds, and mini.pairs safeguards are represented directly. Autotag, ts-comments, Noice, grug-far, Dial, Yanky, persistence, render-markdown, custom Tailwind color highlights, dashboard, and duplicate picker aliases were later pruned. Pi behavior remains unchanged.
 
 ## Remaining gaps
 

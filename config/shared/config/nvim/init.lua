@@ -459,7 +459,7 @@ local plugins = {
           { "<leader>f", group = "file/find" },
           { "<leader>g", group = "git" },
           { "<leader>gh", group = "hunks" },
-          { "<leader>q", group = "quit/session" },
+          { "<leader>q", group = "quit" },
           { "<leader>s", group = "search" },
           { "<leader>sn", group = "messages" },
           { "<leader>u", group = "ui" },
@@ -473,7 +473,6 @@ local plugins = {
       },
     },
   },
-  { "folke/persistence.nvim", event = "BufReadPre", opts = {} },
 }
 
 lazy.setup({
@@ -551,10 +550,6 @@ map("n", "<leader>uC", function() Snacks.picker.colorschemes() end, "Colorscheme
 map("n", "<leader>n", function() Snacks.picker.notifications() end, "Notification History")
 map("n", "<leader>up", function() vim.g.minipairs_disable = not vim.g.minipairs_disable; vim.notify("Mini Pairs " .. (vim.g.minipairs_disable and "disabled" or "enabled")) end, "Toggle Mini Pairs")
 map("n", "<leader>un", function() Snacks.notifier.hide() end, "Dismiss All Notifications")
-map("n", "<leader>qs", function() require("persistence").load() end, "Restore Session")
-map("n", "<leader>qS", function() require("persistence").select() end, "Select Session")
-map("n", "<leader>ql", function() require("persistence").load({ last = true }) end, "Restore Last Session")
-map("n", "<leader>qd", function() require("persistence").stop() end, "Don't Save Current Session")
 map({ "n", "x", "o" }, "s", function() require("flash").jump() end, "Flash")
 map({ "n", "x", "o" }, "S", function() require("flash").treesitter() end, "Flash Treesitter")
 map("o", "r", function() require("flash").remote() end, "Remote Flash")
