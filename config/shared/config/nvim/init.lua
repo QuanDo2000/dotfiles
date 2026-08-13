@@ -274,14 +274,6 @@ local plugins = {
       local hipatterns = require("mini.hipatterns")
       hipatterns.setup({ highlighters = {
         hex_color = hipatterns.gen_highlighter.hex_color({ priority = 2000 }),
-        shorthand = {
-          pattern = "()#%x%x%x()%f[^%x%w]",
-          group = function(_, _, data)
-            if data.full_match == "#add" then return end
-            local r, g, b = data.full_match:sub(2, 2), data.full_match:sub(3, 3), data.full_match:sub(4, 4)
-            return hipatterns.compute_hex_color_group("#" .. r .. r .. g .. g .. b .. b, "bg")
-          end,
-        },
       } })
     end,
   },
