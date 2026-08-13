@@ -35,9 +35,65 @@ assert(maps["s"] == "Flash" and maps["S"] == "Flash Treesitter", "Flash mappings
 assert(maps["]t"] == "Next Todo Comment" and maps["[t"] == "Previous Todo Comment", "Todo navigation missing")
 assert(maps["g<C-A>"] == "Increment" and maps["g<C-X>"] == "Decrement", "Dial sequence mappings missing")
 assert(vim.fn.maparg("gp", "n") ~= "" and vim.fn.maparg("]p", "n") ~= "", "Yanky paste mappings missing")
+assert(maps[" <Tab><Tab>"] == "New Tab", "new tab mapping missing")
+assert(maps[" <Tab>d"] == "Close Tab", "close tab mapping missing")
+assert(maps[" <Tab>]"] == "Next Tab", "next tab mapping missing")
+assert(maps[" <Tab>["] == "Previous Tab", "previous tab mapping missing")
+for _, lhs in ipairs({ " <Tab>l", " <Tab>o", " <Tab>f" }) do
+  assert(maps[lhs] == nil, lhs .. " redundant tab-page mapping must stay removed")
+end
 
 local lazy = require("lazy.core.config")
 assert(not lazy.plugins.LazyVim, "LazyVim must not be loaded")
+local which_key_opts = lazy.plugins["which-key.nvim"].opts
+local which_key_groups = {}
+for _, section in ipairs(which_key_opts.spec or {}) do
+  for _, item in ipairs(section) do
+    if item.group then which_key_groups[item[1]] = item.group end
+  end
+end
+for prefix, group in pairs({
+  ["<leader><tab>"] = "tabs",
+  ["<leader>a"] = "ai",
+  ["<leader>b"] = "buffer",
+  ["<leader>c"] = "code",
+  ["<leader>f"] = "file/find",
+  ["<leader>g"] = "git",
+  ["<leader>gh"] = "hunks",
+  ["<leader>q"] = "quit/session",
+  ["<leader>s"] = "search",
+  ["<leader>sn"] = "noice",
+  ["<leader>u"] = "ui",
+  ["<leader>x"] = "diagnostics/quickfix",
+  ["["] = "prev",
+  ["]"] = "next",
+  ["g"] = "goto",
+  ["gs"] = "surround",
+  ["z"] = "fold",
+}) do
+  assert(which_key_groups[prefix] == group, prefix .. " WhichKey group missing")
+end
+for pattern, icon in pairs({ hunk = "󰊢 ", prev = " ", next = " ", goto = "󰜴 ", surround = "󰅪 ", fold = " " }) do
+  local resolved = require("which-key.icons").get({ desc = pattern })
+  assert(resolved == icon, pattern .. " WhichKey icon missing")
+end
+vim.cmd.colorscheme("catppuccin-macchiato")
+for target, source in pairs({
+  WhichKeyIconAzure = "Function",
+  WhichKeyIconBlue = "DiagnosticInfo",
+  WhichKeyIconCyan = "DiagnosticHint",
+  WhichKeyIconGreen = "DiagnosticOk",
+  WhichKeyIconGrey = "Normal",
+  WhichKeyIconOrange = "DiagnosticWarn",
+  WhichKeyIconPurple = "Constant",
+  WhichKeyIconRed = "DiagnosticError",
+  WhichKeyIconYellow = "DiagnosticWarn",
+}) do
+  local actual = vim.api.nvim_get_hl(0, { name = target, link = false })
+  local expected = vim.api.nvim_get_hl(0, { name = source, link = false })
+  assert(actual.fg == expected.fg, target .. " color changed")
+  assert(not actual.italic and not (actual.cterm and actual.cterm.italic), target .. " must not be italic")
+end
 for _, plugin in ipairs({
   "blink.cmp",
   "catppuccin",
@@ -74,6 +130,6 @@ assert(format_on_save, "format-on-save autocmd missing")
 for _, name in ipairs({ "raw_checktime", "raw_highlight_yank", "raw_resize_splits", "raw_last_loc", "raw_auto_create_dir" }) do
   assert(#vim.api.nvim_get_autocmds({ group = name }) > 0, name .. " autocmd missing")
 end
-assert(lazy.plugins["snacks.nvim"]._.loaded, "Snacks must load dashboard")
-assert(Snacks.config.dashboard.enabled ~= false, "dashboard missing")
+assert(lazy.plugins["snacks.nvim"]._.loaded, "Snacks must load")
+assert(not Snacks.config.dashboard.enabled, "startup dashboard must stay disabled")
 print("RAW_CONFIG_OK")

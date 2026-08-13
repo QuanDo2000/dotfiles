@@ -138,12 +138,9 @@ map("n", "<leader>|", "<C-w>v", "Split Window Right")
 map("n", "<leader>wd", "<C-w>c", "Delete Window")
 map("n", "<leader>xl", function() local open = vim.fn.getloclist(0, { winid = 0 }).winid ~= 0; pcall(open and vim.cmd.lclose or vim.cmd.lopen) end, "Location List")
 map("n", "<leader>xq", function() local open = vim.fn.getqflist({ winid = 0 }).winid ~= 0; pcall(open and vim.cmd.cclose or vim.cmd.copen) end, "Quickfix List")
-map("n", "<leader><tab>l", "<cmd>tablast<cr>", "Last Tab")
-map("n", "<leader><tab>o", "<cmd>tabonly<cr>", "Close Other Tabs")
-map("n", "<leader><tab>f", "<cmd>tabfirst<cr>", "First Tab")
 map("n", "<leader><tab><tab>", "<cmd>tabnew<cr>", "New Tab")
-map("n", "<leader><tab>]", "<cmd>tabnext<cr>", "Next Tab")
 map("n", "<leader><tab>d", "<cmd>tabclose<cr>", "Close Tab")
+map("n", "<leader><tab>]", "<cmd>tabnext<cr>", "Next Tab")
 map("n", "<leader><tab>[", "<cmd>tabprevious<cr>", "Previous Tab")
 map("n", "[q", function() if package.loaded.trouble and require("trouble").is_open() then require("trouble").prev({ skip_groups = true, jump = true }) else pcall(vim.cmd.cprev) end end, "Previous Trouble/Quickfix Item")
 map("n", "]q", function() if package.loaded.trouble and require("trouble").is_open() then require("trouble").next({ skip_groups = true, jump = true }) else pcall(vim.cmd.cnext) end end, "Next Trouble/Quickfix Item")
@@ -171,7 +168,23 @@ local plugins = {
     name = "catppuccin",
     lazy = false,
     priority = 1000,
-    opts = { flavour = "macchiato", background = { light = "latte", dark = "macchiato" } },
+    opts = {
+      flavour = "macchiato",
+      background = { light = "latte", dark = "macchiato" },
+      custom_highlights = function(colors)
+        return {
+          WhichKeyIconAzure = { fg = colors.blue },
+          WhichKeyIconBlue = { fg = colors.sky },
+          WhichKeyIconCyan = { fg = colors.teal },
+          WhichKeyIconGreen = { fg = colors.green },
+          WhichKeyIconGrey = { fg = colors.text },
+          WhichKeyIconOrange = { fg = colors.yellow },
+          WhichKeyIconPurple = { fg = colors.peach },
+          WhichKeyIconRed = { fg = colors.red },
+          WhichKeyIconYellow = { fg = colors.yellow },
+        }
+      end,
+    },
     config = function(_, options)
       require("catppuccin").setup(options)
       vim.cmd.colorscheme("catppuccin-macchiato")
@@ -182,22 +195,6 @@ local plugins = {
     lazy = false,
     opts = {
       bigfile = { enabled = true },
-      dashboard = {
-        preset = {
-          pick = function(source, options) Snacks.picker.pick(source == "live_grep" and "grep" or source == "oldfiles" and "recent" or source, options) end,
-          keys = {
-            { icon = " ", key = "f", desc = "Find File", action = ":lua Snacks.picker.files({ cwd = require('config.root').get() })" },
-            { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
-            { icon = " ", key = "p", desc = "Projects", action = ":lua Snacks.picker.projects()" },
-            { icon = " ", key = "g", desc = "Find Text", action = ":lua Snacks.picker.grep({ cwd = require('config.root').get() })" },
-            { icon = " ", key = "r", desc = "Recent Files", action = ":lua Snacks.picker.recent()" },
-            { icon = " ", key = "c", desc = "Config", action = ":lua Snacks.picker.files({ cwd = vim.fn.stdpath('config') })" },
-            { icon = " ", key = "s", desc = "Restore Session", section = "session" },
-            { icon = "󰒲 ", key = "l", desc = "Lazy", action = ":Lazy" },
-            { icon = " ", key = "q", desc = "Quit", action = ":qa" },
-          },
-        },
-      },
       explorer = {}, input = {}, picker = {}, quickfile = { enabled = true }, terminal = {}, notifier = {}, lazygit = {},
     },
     config = function(_, options)
@@ -465,7 +462,45 @@ local plugins = {
   },
   { "nvim-lualine/lualine.nvim", event = "VeryLazy", dependencies = { "mini.icons" }, opts = { options = { globalstatus = true } } },
   { "akinsho/bufferline.nvim", event = "VeryLazy", dependencies = { "mini.icons" }, opts = {} },
-  { "folke/which-key.nvim", event = "VeryLazy", opts = { preset = "helix" } },
+  {
+    "folke/which-key.nvim",
+    event = "VeryLazy",
+    opts = {
+      preset = "helix",
+      icons = {
+        rules = {
+          { pattern = "hunk", icon = "󰊢 ", color = "orange" },
+          { pattern = "prev", icon = " ", color = "cyan" },
+          { pattern = "next", icon = " ", color = "cyan" },
+          { pattern = "goto", icon = "󰜴 ", color = "blue" },
+          { pattern = "surround", icon = "󰅪 ", color = "yellow" },
+          { pattern = "fold", icon = " ", color = "purple" },
+        },
+      },
+      spec = {
+        {
+          mode = { "n", "x" },
+          { "<leader><tab>", group = "tabs" },
+          { "<leader>a", group = "ai" },
+          { "<leader>b", group = "buffer" },
+          { "<leader>c", group = "code" },
+          { "<leader>f", group = "file/find" },
+          { "<leader>g", group = "git" },
+          { "<leader>gh", group = "hunks" },
+          { "<leader>q", group = "quit/session" },
+          { "<leader>s", group = "search" },
+          { "<leader>sn", group = "noice" },
+          { "<leader>u", group = "ui" },
+          { "<leader>x", group = "diagnostics/quickfix" },
+          { "[", group = "prev" },
+          { "]", group = "next" },
+          { "g", group = "goto" },
+          { "gs", group = "surround" },
+          { "z", group = "fold" },
+        },
+      },
+    },
+  },
   {
     "gbprod/yanky.nvim",
     event = { "BufReadPost", "BufNewFile" },
