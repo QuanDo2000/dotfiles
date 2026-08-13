@@ -54,6 +54,9 @@ end
 
 local lazy = require("lazy.core.config")
 assert(not lazy.plugins.LazyVim, "LazyVim must not be loaded")
+local lsp_options = lazy.plugins["mason-lspconfig.nvim"].opts
+assert(vim.deep_equal(lsp_options.automatic_enable, lsp_options.ensure_installed), "only intended LSP servers should auto-enable")
+assert(not vim.tbl_contains(lsp_options.automatic_enable, "stylua"), "StyLua formatter must not auto-enable as LSP")
 local which_key_opts = lazy.plugins["which-key.nvim"].opts
 local which_key_groups = {}
 for _, section in ipairs(which_key_opts.spec or {}) do

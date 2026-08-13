@@ -294,7 +294,10 @@ local plugins = {
     "mason-org/mason-lspconfig.nvim",
     event = { "BufReadPre", "BufNewFile" },
     dependencies = { "mason.nvim", "neovim/nvim-lspconfig", "saghen/blink.cmp" },
-    opts = { ensure_installed = { "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" } },
+    opts = {
+      ensure_installed = { "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" },
+      automatic_enable = { "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" },
+    },
     config = function(_, options)
       local capabilities = require("blink.cmp").get_lsp_capabilities()
       vim.lsp.config("*", { capabilities = capabilities })
