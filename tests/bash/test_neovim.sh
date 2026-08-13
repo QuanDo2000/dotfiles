@@ -46,6 +46,7 @@ test_neovim_uses_raw_config() {
   assert_not_contains "$(<"$config/lazy-lock.json")" '"neotest"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"dial.nvim"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"friendly-snippets"'
+  assert_not_contains "$(<"$config/lazy-lock.json")" '"mini.ai"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"grug-far.nvim"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"noice.nvim"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"nui.nvim"'
