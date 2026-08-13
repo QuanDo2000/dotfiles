@@ -43,6 +43,12 @@ test_neovim_uses_raw_config() {
   assert_contains "$(<"$config/init.lua")" "vim.g.raw_neovim = true"
   assert_not_contains "$(<"$config/init.lua")" "LazyVim/LazyVim"
   assert_not_contains "$(<"$config/init.lua")" "markdown-toc"
+  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.autocmds"
+  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.commands"
+  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.highlights"
+  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.man"
+  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.command_history"
+  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.search_history"
   assert_not_contains "$(<"$config/lazy-lock.json")" '"LazyVim"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"neotest"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"dial.nvim"'
