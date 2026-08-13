@@ -33,7 +33,27 @@ ERROR_EMIT = """                this._emit({
                         ? `Context overflow recovery failed: ${errorMessage}`
                         : `Auto-compaction failed: ${errorMessage}`,
                 });"""
+LATE_STEERING = """                if (inputResult.action === "transform") {
+                    currentText = inputResult.text;
+                    currentImages = inputResult.images ?? currentImages;
+                }
+            }
+            // Expand skill commands (/skill:name args) and prompt templates (/template args)"""
+LATE_STEERING_PATCHED = """                if (inputResult.action === "transform") {
+                    currentText = inputResult.text;
+                    currentImages = inputResult.images ?? currentImages;
+                }
+            }
+            // Input hooks can outlive the core agent run while session post-run work is still settling.
+            // Wait before classifying delivery so late steering starts a new run instead of stranding.
+            if (this.isStreaming && !this.agent.state.isStreaming) {
+                await this.waitForIdle();
+            }
+            // Expand skill commands (/skill:name args) and prompt templates (/template args)"""
 PATCHES = (CANCEL_EMIT, ABORT_EMIT, SUCCESS_EMIT, ERROR_EMIT)
+REPLACEMENTS = tuple(
+    (emit, f"{emit[: len(emit) - len(emit.lstrip())]}{CLEAR}\n{emit}") for emit in PATCHES
+) + ((LATE_STEERING, LATE_STEERING_PATCHED),)
 
 
 def main() -> int:
@@ -48,17 +68,26 @@ def main() -> int:
         print(f"Failed to read {path}: {exc}", file=sys.stderr)
         return 1
 
-    patched = tuple((emit, f"{emit[: len(emit) - len(emit.lstrip())]}{CLEAR}\n{emit}") for emit in PATCHES)
-    patched_counts = tuple(source.count(replacement) for _, replacement in patched)
-    if all(count == 1 for count in patched_counts):
+    states = []
+    for original, replacement in REPLACEMENTS:
+        if source.count(replacement) == 1:
+            states.append("patched")
+        elif source.count(replacement) == 0 and source.count(original) == 1:
+            states.append("original")
+        else:
+            states.append("drift")
+
+    if all(state == "patched" for state in states):
         return 0
-    if any(patched_counts) or any(source.count(emit) != 1 for emit in PATCHES):
+    upgrade = all(state == "patched" for state in states[:-1]) and states[-1] == "original"
+    if not (all(state == "original" for state in states) or upgrade):
         print(f"Pi compaction patch source drift in {path}", file=sys.stderr)
         return 1
 
     result = source
-    for emit, replacement in patched:
-        result = result.replace(emit, replacement)
+    for state, (original, replacement) in zip(states, REPLACEMENTS):
+        if state == "original":
+            result = result.replace(original, replacement)
 
     mode = stat.S_IMODE(path.stat().st_mode)
     descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
