@@ -332,7 +332,6 @@ local plugins = {
       keymap = { preset = "default", ["<C-e>"] = { "cancel", "fallback" } },
     },
   },
-  { "MagicDuck/grug-far.nvim", cmd = { "GrugFar", "GrugFarWithin" }, opts = { headerMaxWidth = 80 } },
   { "folke/trouble.nvim", cmd = "Trouble", opts = { modes = { lsp = { win = { position = "right" } } } } },
   { "folke/todo-comments.nvim", event = { "BufReadPost", "BufNewFile" }, opts = {} },
   {
@@ -646,10 +645,6 @@ map({ "n", "x", "o" }, "S", function() require("flash").treesitter() end, "Flash
 map("o", "r", function() require("flash").remote() end, "Remote Flash")
 map({ "o", "x" }, "R", function() require("flash").treesitter_search() end, "Treesitter Search")
 map({ "n", "x", "o" }, "<C-Space>", function() require("flash").treesitter({ actions = { ["<C-Space>"] = "next", ["<BS>"] = "prev" } }) end, "Treesitter Incremental Selection")
-map({ "n", "x" }, "<leader>sr", function()
-  local extension = vim.bo.buftype == "" and vim.fn.expand("%:e")
-  require("grug-far").open({ transient = true, prefills = { filesFilter = extension ~= "" and "*." .. extension or nil } })
-end, "Search and Replace")
 map("n", "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>", "Diagnostics (Trouble)")
 map("n", "<leader>xX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", "Buffer Diagnostics (Trouble)")
 map("n", "<leader>cs", "<cmd>Trouble symbols toggle<cr>", "Symbols (Trouble)")
@@ -720,7 +715,7 @@ vim.api.nvim_create_autocmd("BufReadPost", { group = augroup("last_loc"), callba
   local mark = vim.api.nvim_buf_get_mark(event.buf, '"')
   if mark[1] > 0 and mark[1] <= vim.api.nvim_buf_line_count(event.buf) then pcall(vim.api.nvim_win_set_cursor, 0, mark) end
 end })
-vim.api.nvim_create_autocmd("FileType", { group = augroup("close_with_q"), pattern = { "checkhealth", "gitsigns-blame", "grug-far", "help", "lspinfo", "notify", "qf", "startuptime", "tsplayground" }, callback = function(event)
+vim.api.nvim_create_autocmd("FileType", { group = augroup("close_with_q"), pattern = { "checkhealth", "gitsigns-blame", "help", "lspinfo", "notify", "qf", "startuptime", "tsplayground" }, callback = function(event)
   vim.bo[event.buf].buflisted = false
   vim.schedule(function() vim.keymap.set("n", "q", function() vim.cmd.close(); pcall(vim.api.nvim_buf_delete, event.buf, { force = true }) end, { buffer = event.buf, silent = true }) end)
 end })
