@@ -293,13 +293,6 @@ local plugins = {
     event = { "BufReadPost", "BufNewFile" },
     config = function()
       local hipatterns = require("mini.hipatterns")
-      local colors = {
-        slate = "64748b", gray = "6b7280", zinc = "71717a", neutral = "737373", stone = "78716c", red = "ef4444",
-        orange = "f97316", amber = "f59e0b", yellow = "eab308", lime = "84cc16", green = "22c55e", emerald = "10b981",
-        teal = "14b8a6", cyan = "06b6d4", sky = "0ea5e9", blue = "3b82f6", indigo = "6366f1", violet = "8b5cf6",
-        purple = "a855f7", fuchsia = "d946ef", pink = "ec4899", rose = "f43f5e",
-      }
-      local groups = {}
       hipatterns.setup({ highlighters = {
         hex_color = hipatterns.gen_highlighter.hex_color({ priority = 2000 }),
         shorthand = {
@@ -310,18 +303,7 @@ local plugins = {
             return hipatterns.compute_hex_color_group("#" .. r .. r .. g .. g .. b .. b, "bg")
           end,
         },
-        tailwind = {
-          pattern = "%f[%w:-]()[%w:-]+%-([a-z]+)%-500()%f[^%w:-]",
-          group = function(_, _, data)
-            local color = data.full_match:match("%-([a-z]+)%-500$")
-            if not colors[color] then return end
-            local name = "MiniHipatternsTailwind" .. color
-            if not groups[name] then vim.api.nvim_set_hl(0, name, { bg = "#" .. colors[color] }); groups[name] = true end
-            return name
-          end,
-        },
       } })
-      vim.api.nvim_create_autocmd("ColorScheme", { callback = function() groups = {} end })
     end,
   },
   {

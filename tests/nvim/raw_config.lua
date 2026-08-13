@@ -122,6 +122,10 @@ for _, plugin in ipairs({ "dial.nvim", "friendly-snippets", "grug-far.nvim", "no
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
+require("lazy").load({ plugins = { "mini.hipatterns" } })
+local highlighters = require("mini.hipatterns").config.highlighters
+assert(highlighters.hex_color and highlighters.shorthand, "hex color highlighters missing")
+assert(not highlighters.tailwind, "custom Tailwind color highlighter must stay removed")
 require("lazy").load({ plugins = { "conform.nvim" } })
 local format_on_save = false
 for _, autocmd in ipairs(vim.api.nvim_get_autocmds({ event = "BufWritePre" })) do
