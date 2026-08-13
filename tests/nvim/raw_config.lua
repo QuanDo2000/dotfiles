@@ -31,7 +31,12 @@ for _, lhs in ipairs({ " fb", " fe", " fE", " sc" }) do
   assert(maps[lhs] == nil, lhs .. " duplicate mapping must stay removed")
 end
 assert(maps.H == "Prev Buffer" and maps.L == "Next Buffer", "buffer navigation missing")
-assert(maps["s"] == "Flash" and maps["S"] == "Flash Treesitter", "Flash mappings missing")
+for _, lhs in ipairs({ "s", "S" }) do
+  assert(vim.fn.maparg(lhs, "n") == "", lhs .. " native mapping must stay unshadowed")
+end
+for _, mapping in ipairs({ { "s", "x" }, { "S", "x" }, { "s", "o" }, { "S", "o" }, { "r", "o" }, { "R", "o" }, { "R", "x" }, { "<C-Space>", "n" }, { "<C-Space>", "x" }, { "<C-Space>", "o" } }) do
+  assert(vim.fn.maparg(mapping[1], mapping[2]) == "", mapping[1] .. " Flash mapping must stay removed")
+end
 assert(maps["]t"] == "Next Todo Comment" and maps["[t"] == "Previous Todo Comment", "Todo navigation missing")
 assert(maps["<C-A>"] == nil and maps["<C-X>"] == nil, "native increment mappings must stay unshadowed")
 assert(maps["g<C-A>"] == nil and maps["g<C-X>"] == nil, "Dial sequence mappings must stay removed")
@@ -102,7 +107,6 @@ for _, plugin in ipairs({
   "blink.cmp",
   "catppuccin",
   "conform.nvim",
-  "flash.nvim",
   "gitsigns.nvim",
   "mason.nvim",
   "mini.hipatterns",
@@ -117,7 +121,7 @@ for _, plugin in ipairs({
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
 end
-for _, plugin in ipairs({ "dial.nvim", "friendly-snippets", "grug-far.nvim", "mini.ai", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
+for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "mini.ai", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")

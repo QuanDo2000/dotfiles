@@ -257,7 +257,6 @@ local plugins = {
       end
     end,
   },
-  { "folke/flash.nvim", event = "VeryLazy", opts = {} },
   {
     "nvim-mini/mini.surround",
     event = "VeryLazy",
@@ -521,11 +520,6 @@ map("n", "<leader>uC", function() Snacks.picker.colorschemes() end, "Colorscheme
 map("n", "<leader>n", function() Snacks.picker.notifications() end, "Notification History")
 map("n", "<leader>up", function() vim.g.minipairs_disable = not vim.g.minipairs_disable; vim.notify("Mini Pairs " .. (vim.g.minipairs_disable and "disabled" or "enabled")) end, "Toggle Mini Pairs")
 map("n", "<leader>un", function() Snacks.notifier.hide() end, "Dismiss All Notifications")
-map({ "n", "x", "o" }, "s", function() require("flash").jump() end, "Flash")
-map({ "n", "x", "o" }, "S", function() require("flash").treesitter() end, "Flash Treesitter")
-map("o", "r", function() require("flash").remote() end, "Remote Flash")
-map({ "o", "x" }, "R", function() require("flash").treesitter_search() end, "Treesitter Search")
-map({ "n", "x", "o" }, "<C-Space>", function() require("flash").treesitter({ actions = { ["<C-Space>"] = "next", ["<BS>"] = "prev" } }) end, "Treesitter Incremental Selection")
 map("n", "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>", "Diagnostics (Trouble)")
 map("n", "<leader>xX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", "Buffer Diagnostics (Trouble)")
 map("n", "<leader>cs", "<cmd>Trouble symbols toggle<cr>", "Symbols (Trouble)")
