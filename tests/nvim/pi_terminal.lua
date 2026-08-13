@@ -1,20 +1,19 @@
 local terminal = dofile(assert(vim.env.PI_TERMINAL_MODULE))
 local original_send = vim.api.nvim_chan_send
-local sent, command, options, action, root = "/repo"
+local sent, command, options, action
 local buffer = vim.api.nvim_create_buf(false, true)
-local other_buffer = vim.api.nvim_create_buf(false, true)
 vim.b[buffer].terminal_job_id = 42
 vim.b[buffer].snacks_terminal = { cmd = { "pi" } }
 vim.bo[buffer].filetype = "snacks_terminal"
-vim.b[other_buffer].terminal_job_id = 43
 
-_G.LazyVim = { root = function() return root end }
+local original_root = vim.fs.root
+vim.fs.root = function() return "/repo" end
 _G.Snacks = {
   terminal = {
     get = function(cmd, opts)
       command, options = cmd, opts
       return {
-        buf = opts.cwd == "/repo" and buffer or other_buffer,
+        buf = buffer,
         show = function(self) return self end,
         focus = function(self) action = "focus"; return self end,
       }
@@ -40,10 +39,8 @@ vim.api.nvim_win_set_buf(0, buffer)
 vim.cmd.wincmd("p")
 local previous_window = vim.api.nvim_get_current_win()
 vim.cmd.wincmd("p")
-root = "/other-repo"
 terminal.focus()
 assert(vim.api.nvim_get_current_win() == previous_window)
-root = "/repo"
 
 terminal.send("linux", false)
 assert(vim.deep_equal(command, { "pi" }))
@@ -56,4 +53,5 @@ assert(command == "pi")
 assert(sent == "windows")
 
 vim.api.nvim_chan_send = original_send
+vim.fs.root = original_root
 print("PI_TERMINAL_OK")

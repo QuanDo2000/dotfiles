@@ -8,9 +8,15 @@ local function command(windows)
   return is_windows(windows) and "pi" or { "pi" }
 end
 
+local function root()
+  local file = vim.api.nvim_buf_get_name(0)
+  local start = file ~= "" and vim.fs.dirname(file) or (vim.uv or vim.loop).cwd()
+  return vim.fs.root(start, { ".git", "flake.nix" }) or (vim.uv or vim.loop).cwd()
+end
+
 local function options()
   return {
-    cwd = LazyVim.root(),
+    cwd = root(),
     win = { position = "right", width = 80 },
   }
 end
@@ -18,7 +24,7 @@ end
 local function current_file()
   local file = vim.api.nvim_buf_get_name(0)
   if file == "" then return end
-  return "@" .. (vim.fs.relpath(LazyVim.root(), file) or file)
+  return "@" .. (vim.fs.relpath(root(), file) or file)
 end
 
 local function terminal(windows)

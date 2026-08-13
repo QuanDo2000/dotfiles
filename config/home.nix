@@ -6,7 +6,6 @@ let
   standaloneLinux = pkgs.stdenv.isLinux && !nixosSystem;
   homeDir =
     if pkgs.stdenv.isDarwin then "/Users/${machine.username}" else "/home/${machine.username}";
-  psCommand = if pkgs.stdenv.isDarwin then "/bin/ps" else "${pkgs.procps}/bin/ps";
   forceSource = source: {
     inherit source;
     force = true;
@@ -126,6 +125,7 @@ let
     nil
     pi-agent
     shellcheck
+    statix
     vtsls
   ] ++ lib.optionals pkgs.stdenv.isLinux [
     gcc
@@ -366,8 +366,6 @@ in
     plugins = [ pkgs.vimPlugins.lazy-nvim ];
     initLua = builtins.readFile ./shared/config/nvim/init.lua;
     extraPackages = with pkgs; [
-      lua5_1
-      luarocks
       tree-sitter
       unzip
     ];
@@ -761,32 +759,6 @@ in
       fi
       chmod u+w "$target"
     done
-  '';
-
-  home.activation.seedLazyVimConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    target="$HOME/.config/nvim/lazyvim.json"
-    source="${./shared/config/nvim/lazyvim.json}"
-    repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/config/nvim/lazyvim.json"
-    apply_seed=
-    base="$HOME/.local/state/dotfiles/lazyvim-seed.json"
-
-    mkdir -p "$(dirname "$target")"
-    if [ -f "$target" ] && [ ! -L "$target" ]; then
-      if [ -w "$repo_seed" ]; then
-        apply_seed="$repo_seed"
-      fi
-      if "${psCommand}" -A -o comm= | "${pkgs.gnugrep}/bin/grep" -Eq '(^|/)nvim$'; then
-        echo "Warning: Skipping LazyVim config sync while Neovim is running" >&2
-      else
-        "${pkgs.python3}/bin/python3" "${../scripts/seed_merge}/lazyvim.py" "$target" "$source" "$apply_seed" "$base" || echo "Warning: failed to sync LazyVim config seed" >&2
-      fi
-    else
-      rm -f "$target"
-      cp "$source" "$target"
-      mkdir -p "$(dirname "$base")"
-      cp "$source" "$base"
-    fi
-    chmod u+w "$target"
   '';
 
   home.activation.seedLazyLock = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

@@ -237,7 +237,7 @@ def update_fff(repo: Path) -> None:
                 updated[group][platform] = data  # type: ignore[index]
     atomic_json(pins_path, updated)
 
-    fff_lua = repo / "config/shared/config/nvim/lua/plugins/fff.lua"
+    fff_lua = repo / "config/shared/config/nvim/init.lua"
     replace_once(fff_lua, f'version = "v{current["version"]}"', f'version = "v{version}"')
     lock_path = repo / "config/shared/config/nvim/lazy-lock.json"
     lock = json.loads(lock_path.read_text(encoding="utf-8"))

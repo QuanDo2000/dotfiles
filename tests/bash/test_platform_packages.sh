@@ -121,7 +121,7 @@ test_code_search_stack_enables_auto_index_and_agent_workflows() {
   local codex agents nvim_fff
   codex="$(<"$REPO_DIR/config/shared/ai/codex/config.toml")"
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-  nvim_fff="$(<"$REPO_DIR/config/shared/config/nvim/lua/plugins/fff.lua")"
+  nvim_fff="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
 
   assert_contains "$HOME_CONFIG" 'config set auto_index true'
   assert_contains "$HOME_CONFIG" 'config set auto_watch true'

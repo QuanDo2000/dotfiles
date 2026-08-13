@@ -13,7 +13,7 @@ function test_parameter_binder_dispatches_dry_command {
     Assert-Contains $output 'Updating AI tools and configs'
     Assert-Contains $output 'Installing agent CLIs'
     Assert-False ($output -like '*Installing packages*') 'AI update should skip system packages'
-    Assert-False ($output -like '*LazyVim*') 'AI update should skip LazyVim'
+    Assert-False ($output -like '*Neovim plugins*') 'AI update should skip Neovim plugins'
 }
 
 # Lock the short-form CLI aliases in place.
