@@ -283,7 +283,7 @@ local plugins = {
     config = function()
       require("mason").setup()
       require("mason-registry").refresh(function()
-        for _, name in ipairs({ "markdownlint-cli2", "markdown-toc", "stylua" }) do
+        for _, name in ipairs({ "markdownlint-cli2", "stylua" }) do
           local package = require("mason-registry").get_package(name)
           if not package:is_installed() then package:install() end
         end
@@ -320,13 +320,6 @@ local plugins = {
     event = { "BufReadPre", "BufNewFile" },
     opts = {
       formatters = {
-        ["markdown-toc"] = {
-          condition = function(_, context)
-            for _, line in ipairs(vim.api.nvim_buf_get_lines(context.buf, 0, -1, false)) do
-              if line:find("<!%-%- toc %-%->") then return true end
-            end
-          end,
-        },
         ["markdownlint-cli2"] = {
           condition = function(_, context)
             for _, diagnostic in ipairs(vim.diagnostic.get(context.buf)) do
@@ -337,8 +330,8 @@ local plugins = {
       },
       formatters_by_ft = {
         lua = { "stylua" },
-        markdown = { "prettier", "markdownlint-cli2", "markdown-toc" },
-        ["markdown.mdx"] = { "prettier", "markdownlint-cli2", "markdown-toc" },
+        markdown = { "prettier", "markdownlint-cli2" },
+        ["markdown.mdx"] = { "prettier", "markdownlint-cli2" },
         nix = { "nixfmt" },
       },
       format_on_save = { timeout_ms = 500, lsp_format = "fallback" },

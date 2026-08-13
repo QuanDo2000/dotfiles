@@ -30,7 +30,7 @@ Config size counts tracked `config/shared/config/nvim` files. Lua LOC/bytes coun
 - [x] Core editing: leader keys, `jk`, clipboard, OSC 52 over SSH, line numbers, undo, search, splits, diagnostics, native comments, folds, and standard buffer/window commands.
 - [x] Completion: Blink LSP/path/snippet/buffer completion, auto-insert selection, and `<C-e>` cancel; the optional friendly-snippets collection is omitted.
 - [x] LSP: Bash, JSON/SchemaStore, Lua, Markdown, Nix, TOML, YAML/SchemaStore; diagnostics; definitions/references/implementation/type, hover, rename, code actions; inlay hints remain disabled.
-- [x] Formatting: Conform format-on-save and `<leader>cf`; Lua, Markdown/MDX, Nix, then LSP fallback.
+- [x] Formatting: Conform format-on-save and `<leader>cf`; Lua, Markdown/MDX, Nix, then LSP fallback; automatic Markdown TOC generation is omitted.
 - [x] Linting: markdownlint-cli2 and statix on write/insert leave.
 - [x] Treesitter: parser install/update plus highlighting/indent for shell, Git, JSON, Lua, Markdown, Nix, TOML, Vim, and YAML.
 - [x] Picker/explorer: FFF find/grep on Unix; Snacks fallback on Windows; root/cwd files, grep, buffers, recent files, diagnostics, help, keymaps, and Snacks explorer.
