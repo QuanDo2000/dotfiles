@@ -473,11 +473,6 @@ local plugins = {
       },
     },
   },
-  {
-    "gbprod/yanky.nvim",
-    event = { "BufReadPost", "BufNewFile" },
-    opts = { system_clipboard = { sync_with_ring = not vim.env.SSH_CONNECTION }, highlight = { timer = 150 } },
-  },
   { "folke/persistence.nvim", event = "BufReadPre", opts = {} },
 }
 
@@ -556,23 +551,6 @@ map("n", "<leader>uC", function() Snacks.picker.colorschemes() end, "Colorscheme
 map("n", "<leader>n", function() Snacks.picker.notifications() end, "Notification History")
 map("n", "<leader>up", function() vim.g.minipairs_disable = not vim.g.minipairs_disable; vim.notify("Mini Pairs " .. (vim.g.minipairs_disable and "disabled" or "enabled")) end, "Toggle Mini Pairs")
 map("n", "<leader>un", function() Snacks.notifier.hide() end, "Dismiss All Notifications")
-map("n", "<leader>p", function() Snacks.picker.yanky() end, "Open Yank History")
-
-map({ "n", "x" }, "y", "<Plug>(YankyYank)", "Yank Text")
-map({ "n", "x" }, "p", "<Plug>(YankyPutAfter)", "Put Text After Cursor")
-map({ "n", "x" }, "P", "<Plug>(YankyPutBefore)", "Put Text Before Cursor")
-map({ "n", "x" }, "gp", "<Plug>(YankyGPutAfter)", "Put Text After Selection")
-map({ "n", "x" }, "gP", "<Plug>(YankyGPutBefore)", "Put Text Before Selection")
-map("n", "[y", "<Plug>(YankyCycleForward)", "Cycle Forward Through Yank History")
-map("n", "]y", "<Plug>(YankyCycleBackward)", "Cycle Backward Through Yank History")
-for lhs, rhs, desc in pairs({
-  ["]p"] = { "<Plug>(YankyPutIndentAfterLinewise)", "Put Indented After Cursor" }, ["[p"] = { "<Plug>(YankyPutIndentBeforeLinewise)", "Put Indented Before Cursor" },
-  ["]P"] = { "<Plug>(YankyPutIndentAfterLinewise)", "Put Indented After Cursor" }, ["[P"] = { "<Plug>(YankyPutIndentBeforeLinewise)", "Put Indented Before Cursor" },
-  [">p"] = { "<Plug>(YankyPutIndentAfterShiftRight)", "Put and Indent Right" }, ["<p"] = { "<Plug>(YankyPutIndentAfterShiftLeft)", "Put and Indent Left" },
-  [">P"] = { "<Plug>(YankyPutIndentBeforeShiftRight)", "Put Before and Indent Right" }, ["<P"] = { "<Plug>(YankyPutIndentBeforeShiftLeft)", "Put Before and Indent Left" },
-  ["=p"] = { "<Plug>(YankyPutAfterFilter)", "Put After Applying a Filter" }, ["=P"] = { "<Plug>(YankyPutBeforeFilter)", "Put Before Applying a Filter" },
-}) do map("n", lhs, rhs[1], rhs[2]) end
-
 map("n", "<leader>qs", function() require("persistence").load() end, "Restore Session")
 map("n", "<leader>qS", function() require("persistence").select() end, "Select Session")
 map("n", "<leader>ql", function() require("persistence").load({ last = true }) end, "Restore Last Session")
