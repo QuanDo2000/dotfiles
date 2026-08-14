@@ -168,7 +168,8 @@ Windows font pins, vendored skills, and Neovim plugins. It runs full
 checks, shows the resulting uncommitted diff, and requires confirmation before
 activation; non-interactive runs must pass `--force`. Use `dotfile update ai`
 to update only tracked AI configs, Codex and Pi release pins, managed AI
-packages, and Pi extensions. On NixOS the full update ends with:
+packages, and Pi extensions. AI-only updates use the same isolated validation,
+diff review, and approval boundary. On NixOS the full update ends with:
 
 ```bash
 nix flake update --flake ~/dotfiles

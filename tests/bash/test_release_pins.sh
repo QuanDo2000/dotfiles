@@ -104,6 +104,241 @@ test_dependency_clean_check_detects_dirty_linked_worktree() {
   DOTFILES_DIR="$old_dotfiles"
 }
 
+test_dependency_fingerprint_binds_head() {
+  local repo="$TEST_TMPDIR/head-fingerprint" old_dotfiles="$DOTFILES_DIR" before after
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'content\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  DOTFILES_DIR="$repo"
+  before="$(_dependency_update_fingerprint)"
+  git -C "$repo" commit --allow-empty -qm next
+  after="$(_dependency_update_fingerprint)"
+  [[ "$before" != "$after" ]] || echo "  fingerprint must include HEAD" >> "$ERROR_FILE"
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_marker_rejects_unvalidated_state() {
+  local repo="$TEST_TMPDIR/marker-state" old_dotfiles="$DOTFILES_DIR" expected status=0
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'clean\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  printf 'validated\n' > "$repo/managed"
+  DOTFILES_DIR="$repo"
+  expected="$(_dependency_update_fingerprint)"
+  printf 'tampered\n' > "$repo/managed"
+
+  _write_dependency_update_marker ai "$expected" || status=$?
+
+  assert_equals "1" "$status"
+  if [[ -e "$repo/.git/dotfile-ai-update" ]]; then
+    echo "  marker must not record unvalidated state" >> "$ERROR_FILE"
+  fi
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_marker_requires_validated_fingerprint() {
+  local repo="$TEST_TMPDIR/marker-expected" old_dotfiles="$DOTFILES_DIR" status=0
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'clean\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  printf 'changed\n' > "$repo/managed"
+  DOTFILES_DIR="$repo"
+
+  _write_dependency_update_marker ai || status=$?
+
+  assert_equals "1" "$status"
+  if [[ -e "$repo/.git/dotfile-ai-update" ]]; then
+    echo "  marker must require validated fingerprint" >> "$ERROR_FILE"
+  fi
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_fingerprint_fails_when_git_inspection_fails() {
+  local old_dotfiles="$DOTFILES_DIR" status=0
+  DOTFILES_DIR="$TEST_TMPDIR/fingerprint-failure"
+  mkdir -p "$DOTFILES_DIR"
+  git() {
+    case "$*" in
+      *'rev-parse HEAD'*) printf '0123456789012345678901234567890123456789\n' ;;
+      *'ls-files --others'*) : ;;
+      *'diff --binary HEAD'*) return 1 ;;
+      *) return 1 ;;
+    esac
+  }
+
+  _dependency_update_fingerprint >/dev/null || status=$?
+
+  assert_equals "1" "$status"
+  unset -f git
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_pending_reports_git_inspection_failure() {
+  local repo="$TEST_TMPDIR/pending-git-failure" old_dotfiles="$DOTFILES_DIR" output status=0
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'clean\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  printf 'changed\n' > "$repo/managed"
+  DOTFILES_DIR="$repo"
+  printf 'fingerprint\n' > "$repo/.git/dotfile-ai-update"
+  git() {
+    if [[ "$*" == *'status --porcelain'* ]]; then return 1; fi
+    command git "$@"
+  }
+
+  output="$(_dependency_update_pending ai 2>&1)" || status=$?
+
+  assert_equals "1" "$status"
+  assert_contains "$output" "Failed to inspect dependency repository"
+  unset -f git
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_update_lock_is_shared_by_linked_worktrees() {
+  if ! declare -F _acquire_dependency_update_lock >/dev/null; then
+    echo "  missing dependency update lock" >> "$ERROR_FILE"
+    return
+  fi
+  local repo="$TEST_TMPDIR/common-lock" worktree="$TEST_TMPDIR/common-lock-worktree"
+  local old_dotfiles="$DOTFILES_DIR" lock status=0
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  : > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  git -C "$repo" worktree add -q "$worktree"
+  DOTFILES_DIR="$repo"
+  _acquire_dependency_update_lock
+  lock="$DEPENDENCY_UPDATE_LOCK"
+  DOTFILES_DIR="$worktree"
+
+  _acquire_dependency_update_lock >/dev/null || status=$?
+
+  assert_equals "1" "$status"
+  DOTFILES_DIR="$repo"
+  _release_dependency_update_lock "$lock"
+  DEPENDENCY_UPDATE_LOCK=
+  git -C "$repo" worktree remove --force "$worktree"
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_update_lock_rejects_live_owner() {
+  if ! declare -F _acquire_dependency_update_lock >/dev/null; then
+    echo "  missing dependency update lock" >> "$ERROR_FILE"
+    return
+  fi
+  local repo="$TEST_TMPDIR/dependency-lock" old_dotfiles="$DOTFILES_DIR" lock status=0
+  git init -q "$repo"
+  DOTFILES_DIR="$repo"
+  _acquire_dependency_update_lock
+  lock="$DEPENDENCY_UPDATE_LOCK"
+
+  _acquire_dependency_update_lock >/dev/null || status=$?
+
+  assert_equals "1" "$status"
+  _release_dependency_update_lock "$lock"
+  DEPENDENCY_UPDATE_LOCK=
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_marker_rejects_opposite_scope() {
+  local repo="$TEST_TMPDIR/marker-conflict" old_dotfiles="$DOTFILES_DIR" status=0
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'clean\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  printf 'changed\n' > "$repo/managed"
+  DOTFILES_DIR="$repo"
+  local expected
+  expected="$(_dependency_update_fingerprint)"
+  _write_dependency_update_marker full "$expected"
+
+  _write_dependency_update_marker ai "$expected" || status=$?
+
+  assert_equals "1" "$status"
+  if [[ -e "$repo/.git/dotfile-ai-update" ]]; then
+    echo "  conflicting AI marker must not be written" >> "$ERROR_FILE"
+  fi
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_non_git_dependency_refresh_fails_without_mutation() {
+  local root="$TEST_TMPDIR/non-git-refresh" old_dotfiles="$DOTFILES_DIR" status=0
+  mkdir -p "$root"
+  printf 'old\n' > "$root/managed"
+  DOTFILES_DIR="$root"
+  _test_live_refresh() { printf 'changed\n' > "$DOTFILES_DIR/managed"; }
+  _validate_dependency_update() { :; }
+
+  _refresh_dependency_set _test_live_refresh || status=$?
+
+  assert_equals "1" "$status"
+  assert_equals "old" "$(<"$root/managed")"
+  unset -f _test_live_refresh _validate_dependency_update
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_markers_are_scoped() {
+  local repo="$TEST_TMPDIR/scoped-marker" old_dotfiles="$DOTFILES_DIR"
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'clean\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  printf 'changed\n' > "$repo/managed"
+  DOTFILES_DIR="$repo"
+  local expected
+  expected="$(_dependency_update_fingerprint)"
+
+  _write_dependency_update_marker ai "$expected"
+
+  assert_file_exists "$repo/.git/dotfile-ai-update"
+  if [[ -e "$repo/.git/dotfile-dependency-update" ]]; then
+    echo "  AI update must not write full dependency marker" >> "$ERROR_FILE"
+  fi
+  assert_exit_code 0 _dependency_update_pending ai
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_refresh_runs_selected_updater_in_isolated_worktree() {
+  local repo="$TEST_TMPDIR/selected-refresh" old_dotfiles="$DOTFILES_DIR" source_dir="$TEST_TMPDIR/source-path"
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'old\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  DOTFILES_DIR="$repo"
+  source_dir="$repo"
+  _test_ai_refresh() {
+    [[ "$DOTFILES_DIR" != "$source_dir" ]] || return 1
+    printf 'ai\n' > "$DOTFILES_DIR/managed"
+  }
+  _validate_dependency_update() { [[ "$(<"$DOTFILES_DIR/managed")" == ai ]]; }
+
+  _refresh_dependency_set _test_ai_refresh
+
+  assert_equals "ai" "$(<"$repo/managed")"
+  unset -f _test_ai_refresh _validate_dependency_update
+  DOTFILES_DIR="$old_dotfiles"
+}
+
 test_dependency_refresh_preserves_concurrent_changes() {
   local repo
   repo="$TEST_TMPDIR/repo"
@@ -134,7 +369,7 @@ test_dependency_refresh_preserves_concurrent_changes() {
 }
 
 test_dependency_refresh_uses_isolated_worktree() {
-  local repo status
+  local repo status refresh_status=0
   repo="$TEST_TMPDIR/repo"
   mkdir -p "$repo"
   git -C "$repo" init -q
@@ -150,8 +385,9 @@ test_dependency_refresh_uses_isolated_worktree() {
     _update_all_dependency_pins() { printf 'added\n' > "$DOTFILES_DIR/added"; }
     _validate_dependency_update() { [[ "$(<"$DOTFILES_DIR/managed")" == "new" ]]; }
     _refresh_dependency_set
-  )
+  ) || refresh_status=$?
 
+  assert_equals "0" "$refresh_status"
   assert_equals "new" "$(<"$repo/managed")"
   assert_equals "added" "$(<"$repo/added")"
   status="$(git -C "$repo" status --short)"

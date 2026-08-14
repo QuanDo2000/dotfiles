@@ -162,6 +162,8 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "### Unix Commands"
   assert_contains "$readme_text" "update [ai]"
   assert_contains "$readme_text" "Update only AI tools and configs"
+  assert_contains "$readme_text" 'AI-only updates use the same isolated validation'
+  assert_contains "$readme_text" 'diff review, and approval boundary'
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
   assert_contains "$readme_text" "codex       Update pinned Codex release package"
   assert_contains "$readme_text" "lix-installer"

@@ -61,17 +61,26 @@ function run_checked_flow {
   shift 3
   [[ "$precheck" == "true" ]] && DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
   if [[ "$pull_repo" == "true" ]]; then
-    if [[ "$DRY" == "false" && "$operation" == "update_packages" ]]; then
+    if [[ "$DRY" == "false" ]] && _dependency_update_markers_conflict; then
+      fail "Conflicting pending dependency updates require manual review"
+    elif [[ "$DRY" == "false" && "$operation" == "update_packages" ]]; then
       if _dependency_update_pending; then
         info "Resuming pending dependency update without pulling repository"
+      elif _dependency_update_pending ai; then
+        fail "Full update requires finishing pending AI dependency update first"
       else
         _require_clean_dependency_tree
         update_repo
       fi
     elif [[ "$DRY" == "false" && "$operation" == "update_ai" ]]; then
-      _dependency_update_pending && fail "AI update requires finishing pending dependency update first"
-      _require_clean_dependency_tree
-      update_repo
+      if _dependency_update_pending ai; then
+        info "Resuming pending AI dependency update without pulling repository"
+      elif _dependency_update_pending; then
+        fail "AI update requires finishing pending full dependency update first"
+      else
+        _require_clean_dependency_tree
+        update_repo
+      fi
     else
       update_repo
     fi
@@ -141,7 +150,7 @@ done
 case "${1:-all}" in
 all)
   [[ $# -le 1 ]] || fail "Unexpected all argument: ${2:-}"
-  if [[ "$DRY" == "false" ]] && _dependency_update_pending; then
+  if [[ "$DRY" == "false" ]] && { _dependency_update_pending || _dependency_update_pending ai; }; then
     fail "Pending dependency update must be reviewed before setup"
   fi
   setup_dotfiles
@@ -158,7 +167,7 @@ update)
   ;;
 packages)
   [[ $# -eq 1 ]] || fail "Unexpected packages argument: ${2:-}"
-  if [[ "$DRY" == "false" ]] && _dependency_update_pending; then
+  if [[ "$DRY" == "false" ]] && { _dependency_update_pending || _dependency_update_pending ai; }; then
     fail "Pending dependency update must be reviewed before package installation"
   fi
   run_checked_flow false false install_packages

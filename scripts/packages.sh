@@ -480,17 +480,40 @@ function update_ai {
     nixos|debian|arch|mac) ;;
     unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
   esac
+  if [[ "$DRY" == "false" ]]; then
+    _begin_dependency_update || fail "Another dependency update is already running"
+  fi
 
-  _update_codex_release_package
-  _update_pi_release_package
+  if [[ "$DRY" == "true" ]]; then
+    _refresh_ai_dependency_set
+    _validate_dependency_update
+  elif _dependency_update_markers_conflict; then
+    fail "Conflicting pending dependency updates require manual review"
+  elif _dependency_update_pending ai; then
+    _validate_pending_dependency_update ai
+    info "Resuming validated AI dependency update"
+  else
+    _require_clean_dependency_tree
+    _refresh_dependency_set _refresh_ai_dependency_set \
+      || fail "AI dependency refresh failed; working tree was not changed"
+    _write_dependency_update_marker ai "$DEPENDENCY_UPDATE_FINGERPRINT" \
+      || fail "Failed to record validated AI dependency update"
+  fi
+  _approve_dependency_update
+  if [[ "$DRY" == "false" ]]; then
+    _validate_pending_dependency_update ai
+  fi
   case "$platform" in
-    nixos)   _nixos_rebuild_switch ;;
-    debian)  _home_manager_switch linux ;;
-    arch)    _home_manager_switch arch-server ;;
-    mac)     _darwin_rebuild_switch ;;
+    nixos)   DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _nixos_rebuild_switch ;;
+    debian)  DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch linux ;;
+    arch)    DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch arch-server ;;
+    mac)     DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _darwin_rebuild_switch ;;
   esac
   _cleanup_codex_runtime_after_update "$codex_version_before"
   _update_pi_extensions
+  _finish_dependency_update ai
+  [[ "$DRY" == "true" ]] || _end_dependency_update \
+    || fail "Failed to release dependency update lock"
   success "Finished AI update"
 }
 
@@ -503,21 +526,28 @@ function update_packages {
     nixos|debian|arch|mac) ;;
     unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
   esac
+  if [[ "$DRY" == "false" ]]; then
+    _begin_dependency_update || fail "Another dependency update is already running"
+  fi
   if [[ "$DRY" == "true" ]]; then
-    _update_flake_inputs
-    _update_all_dependency_pins
+    _refresh_all_dependency_set
     _validate_dependency_update
+  elif _dependency_update_markers_conflict; then
+    fail "Conflicting pending dependency updates require manual review"
   elif _dependency_update_pending; then
     _validate_pending_dependency_update
     info "Resuming validated dependency update"
   else
     _require_clean_dependency_tree
-    _refresh_dependency_set \
+    _refresh_dependency_set _refresh_all_dependency_set \
       || fail "Dependency refresh failed; working tree was not changed"
-    _write_dependency_update_marker \
+    _write_dependency_update_marker full "$DEPENDENCY_UPDATE_FINGERPRINT" \
       || fail "Failed to record validated dependency update"
   fi
   _approve_dependency_update
+  if [[ "$DRY" == "false" ]]; then
+    _validate_pending_dependency_update
+  fi
   case "$platform" in
     nixos)   DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _nixos_rebuild_switch ;;
     debian)  DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch linux ;;
@@ -528,6 +558,8 @@ function update_packages {
   _update_pi_extensions
   _sync_fff_nvim
   _finish_dependency_update
+  [[ "$DRY" == "true" ]] || _end_dependency_update \
+    || fail "Failed to release dependency update lock"
   success "Finished update"
   _report_fff_nvim_warning
 }

@@ -644,53 +644,166 @@ function _update_all_dependency_pins {
     neovim "Neovim plugins"
 }
 
+function _refresh_all_dependency_set {
+  _update_flake_inputs
+  _update_all_dependency_pins
+}
+
+function _refresh_ai_dependency_set {
+  _update_codex_release_package
+  _update_pi_release_package
+}
+
 function _dependency_git_repository {
   [[ "$(git -C "$DOTFILES_DIR" rev-parse --is-inside-work-tree 2>/dev/null || true)" == "true" ]]
 }
 
 function _dependency_update_marker {
-  local git_dir
+  local scope="${1:-full}" git_dir marker
+  case "$scope" in
+    full) marker=dotfile-dependency-update ;;
+    ai) marker=dotfile-ai-update ;;
+    *) return 1 ;;
+  esac
   git_dir="$(git -C "$DOTFILES_DIR" rev-parse --absolute-git-dir)" || return 1
-  printf '%s/dotfile-dependency-update\n' "$git_dir"
+  printf '%s/%s\n' "$git_dir" "$marker"
+}
+
+function _dependency_git_common_dir {
+  local common
+  common="$(git -C "$DOTFILES_DIR" rev-parse --git-common-dir)" || return 1
+  if [[ "$common" != /* ]]; then
+    common="$(cd "$DOTFILES_DIR/$common" && pwd -P)" || return 1
+  fi
+  printf '%s\n' "$common"
+}
+
+function _acquire_dependency_update_lock {
+  local common lock identity owner owner_dir claim journal pid="${BASHPID:-$$}"
+  common="$(_dependency_git_common_dir)" || return 1
+  lock="$common/dotfile-dependency-update.lock"
+  identity="$(_release_owner_identity "$pid")" || return 1
+
+  if [[ ! -e "$lock" && ! -L "$lock" ]]; then
+    owner_dir="$(mktemp -d "${lock}.owner.XXXXXX")" || return 1
+    printf '%s\n' "$identity" > "$owner_dir/pid" \
+      || { rm -rf "$owner_dir"; return 1; }
+    if ln -s "$(basename "$owner_dir")" "$lock" 2>/dev/null; then
+      DEPENDENCY_UPDATE_LOCK="$lock"
+      return 0
+    fi
+    rm -rf "$owner_dir"
+  fi
+
+  owner_dir="$(_release_journal_owner_dir "$lock" "$lock")" || return 1
+  owner="$(cat "$owner_dir/pid" 2>/dev/null)" || return 1
+  _release_owner_identity_valid "$owner" || return 1
+  _release_owner_is_live "$owner" && return 1
+
+  claim="$(mktemp "${lock}.claim.XXXXXX")" || return 1
+  printf '%s\n' "$identity" > "$claim" || { rm -f "$claim"; return 1; }
+  journal="$claim.journal"
+  mv "$lock" "$journal" 2>/dev/null || { rm -f "$claim"; return 1; }
+  owner_dir="$(_release_journal_owner_dir "$journal" "$lock")" \
+    || { rm -f "$journal" "$claim"; return 1; }
+  rm -f "$journal" "$claim"
+  rm -rf "$owner_dir"
+  _acquire_dependency_update_lock
+}
+
+function _release_dependency_update_lock {
+  local lock="${1:-${DEPENDENCY_UPDATE_LOCK:-}}" owner identity owner_dir pid="${BASHPID:-$$}"
+  [[ -n "$lock" && -L "$lock" ]] || return 0
+  owner_dir="$(_release_journal_owner_dir "$lock" "$lock")" || return 1
+  owner="$(cat "$owner_dir/pid" 2>/dev/null)" || return 1
+  identity="$(_release_owner_identity "$pid")" || return 1
+  [[ "$owner" == "$identity" ]] || return 1
+  rm -f "$lock" || return 1
+  rm -rf "$owner_dir"
+}
+
+function _begin_dependency_update {
+  local git_dir common
+  git_dir="$(git -C "$DOTFILES_DIR" rev-parse --absolute-git-dir)" || return 1
+  common="$(_dependency_git_common_dir)" || return 1
+  [[ "$git_dir" == "$common" ]] || return 1
+  _acquire_dependency_update_lock || return 1
+  trap '_release_dependency_update_lock "${DEPENDENCY_UPDATE_LOCK:-}"' EXIT
+  trap '_release_dependency_update_lock "${DEPENDENCY_UPDATE_LOCK:-}"; exit 1' HUP INT TERM
+}
+
+function _end_dependency_update {
+  _release_dependency_update_lock "${DEPENDENCY_UPDATE_LOCK:-}" || return 1
+  DEPENDENCY_UPDATE_LOCK=
+  trap - EXIT HUP INT TERM
 }
 
 function _dependency_update_fingerprint {
-  local tmp untracked
+  local tmp untracked_list head untracked fingerprint status=0
   tmp="$(mktemp)" || return 1
-  {
-    git -C "$DOTFILES_DIR" diff --binary HEAD --
+  untracked_list="$(mktemp)" || { rm -f "$tmp"; return 1; }
+  head="$(git -C "$DOTFILES_DIR" rev-parse HEAD)" \
+    || { rm -f "$tmp" "$untracked_list"; return 1; }
+  git -C "$DOTFILES_DIR" ls-files --others --exclude-standard -z > "$untracked_list" \
+    || { rm -f "$tmp" "$untracked_list"; return 1; }
+  (
+    printf 'head:%s\n' "$head"
+    git -C "$DOTFILES_DIR" diff --binary HEAD -- || exit 1
     while IFS= read -r -d '' untracked; do
       printf 'untracked:%s:' "$untracked"
-      _file_sha256 "$DOTFILES_DIR/$untracked"
-    done < <(git -C "$DOTFILES_DIR" ls-files --others --exclude-standard -z)
-  } > "$tmp" || { rm -f "$tmp"; return 1; }
-  _file_sha256 "$tmp"
-  rm -f "$tmp"
+      _file_sha256 "$DOTFILES_DIR/$untracked" || exit 1
+    done < "$untracked_list"
+  ) > "$tmp" || status=$?
+  if (( status != 0 )); then
+    rm -f "$tmp" "$untracked_list"
+    return "$status"
+  fi
+  fingerprint="$(_file_sha256 "$tmp")" \
+    || { rm -f "$tmp" "$untracked_list"; return 1; }
+  rm -f "$tmp" "$untracked_list"
+  printf '%s\n' "$fingerprint"
 }
 
 function _dependency_update_pending {
-  local marker
-  _dependency_git_repository || return 1
-  marker="$(_dependency_update_marker)" || return 1
+  local scope="${1:-full}" marker status
+  if ! _dependency_git_repository; then
+    [[ ! -e "$DOTFILES_DIR/.git" ]] || fail "Failed to inspect dependency repository"
+    return 1
+  fi
+  marker="$(_dependency_update_marker "$scope")" || return 1
   [[ -f "$marker" ]] || return 1
-  if [[ -z "$(git -C "$DOTFILES_DIR" status --porcelain)" ]]; then
-    rm -f "$marker"
+  status="$(git -C "$DOTFILES_DIR" status --porcelain)" \
+    || fail "Failed to inspect dependency repository"
+  if [[ -z "$status" ]]; then
+    rm -f "$marker" || fail "Failed to remove stale dependency update marker"
     return 1
   fi
 }
 
+function _dependency_update_markers_conflict {
+  _dependency_update_pending full && _dependency_update_pending ai
+}
+
 function _write_dependency_update_marker {
-  local marker fingerprint
-  _dependency_git_repository || return 0
-  marker="$(_dependency_update_marker)" || return 1
+  local scope="${1:-full}" expected="${2:-}" marker other_scope other_marker fingerprint
+  _dependency_git_repository || return 1
+  case "$scope" in
+    full) other_scope=ai ;;
+    ai) other_scope=full ;;
+    *) return 1 ;;
+  esac
+  marker="$(_dependency_update_marker "$scope")" || return 1
+  other_marker="$(_dependency_update_marker "$other_scope")" || return 1
+  [[ ! -e "$other_marker" && -n "$expected" ]] || return 1
   fingerprint="$(_dependency_update_fingerprint)" || return 1
+  [[ "$fingerprint" == "$expected" ]] || return 1
   printf '%s\n' "$fingerprint" > "$marker.tmp" \
     && mv "$marker.tmp" "$marker"
 }
 
 function _validate_pending_dependency_update {
-  local marker expected actual
-  marker="$(_dependency_update_marker)" || fail "Failed to find pending dependency update"
+  local scope="${1:-full}" marker expected actual
+  marker="$(_dependency_update_marker "$scope")" || fail "Failed to find pending dependency update"
   expected="$(cat "$marker" 2>/dev/null || true)"
   actual="$(_dependency_update_fingerprint)" || fail "Failed to inspect pending dependency update"
   [[ -n "$expected" && "$expected" == "$actual" ]] \
@@ -698,63 +811,81 @@ function _validate_pending_dependency_update {
 }
 
 function _refresh_dependency_set {
-  if ! _dependency_git_repository; then
-    _update_flake_inputs
-    _update_all_dependency_pins
-    _validate_dependency_update
-    return
-  fi
-
-  local source_dir="$DOTFILES_DIR" worktree patch status=0
-  worktree="$(mktemp -d)" || return 1
-  rmdir "$worktree" || return 1
-  patch="$(mktemp)" || return 1
-  if ! git -C "$source_dir" worktree add --quiet --detach "$worktree" HEAD; then
-    rm -f "$patch"
-    return 1
-  fi
+  local updater="${1:-_refresh_all_dependency_set}" source_dir="$DOTFILES_DIR" result status=0
+  DEPENDENCY_UPDATE_FINGERPRINT=
+  _dependency_git_repository || return 1
+  result="$(mktemp)" || return 1
 
   (
-    export DOTFILES_DIR="$worktree"
-    cd "$worktree" || exit 1
-    _update_flake_inputs
-    _update_all_dependency_pins
-    _validate_dependency_update
-    git add -A
-    git diff --cached --binary HEAD -- > "$patch"
+    local worktree="" patch="" base_fingerprint="" fingerprint="" base expected actual
+    _cleanup_dependency_refresh() {
+      [[ -z "$worktree" ]] || git -C "$source_dir" worktree remove --force "$worktree" >/dev/null 2>&1 || true
+      rm -f "$patch" "$base_fingerprint" "$fingerprint"
+    }
+    trap _cleanup_dependency_refresh EXIT
+    trap 'exit 1' HUP INT TERM
+
+    worktree="$(mktemp -d)" || exit 1
+    rmdir "$worktree" || exit 1
+    patch="$(mktemp)" || exit 1
+    base_fingerprint="$(mktemp)" || exit 1
+    fingerprint="$(mktemp)" || exit 1
+    git -C "$source_dir" worktree add --quiet --detach "$worktree" HEAD || exit 1
+
+    (
+      export DOTFILES_DIR="$worktree"
+      cd "$worktree" || exit 1
+      _dependency_update_fingerprint > "$base_fingerprint" || exit 1
+      "$updater" || exit 1
+      _validate_dependency_update || exit 1
+      _dependency_update_fingerprint > "$fingerprint" || exit 1
+      git add -A || exit 1
+      git diff --cached --binary HEAD -- > "$patch" || exit 1
+    )
+
+    local source_status
+    source_status="$(git -C "$source_dir" status --porcelain)" || exit 1
+    [[ -z "$source_status" ]] || exit 1
+    base="$(<"$base_fingerprint")"
+    actual="$(_dependency_update_fingerprint)" || exit 1
+    [[ -n "$base" && "$actual" == "$base" ]] || exit 1
+    if [[ -s "$patch" ]]; then
+      git -C "$source_dir" apply --binary "$patch" || exit 1
+    fi
+    expected="$(<"$fingerprint")"
+    actual="$(_dependency_update_fingerprint)" || exit 1
+    if [[ -z "$expected" || "$actual" != "$expected" ]]; then
+      [[ ! -s "$patch" ]] || git -C "$source_dir" apply --reverse --binary "$patch" >/dev/null 2>&1 || true
+      exit 1
+    fi
+    printf '%s\n' "$expected" > "$result"
   ) || status=$?
 
-  git -C "$source_dir" worktree remove --force "$worktree" >/dev/null \
-    || status=1
   if (( status != 0 )); then
-    rm -f "$patch"
+    rm -f "$result"
     return "$status"
   fi
-
-  if [[ -n "$(git -C "$source_dir" status --porcelain)" ]]; then
-    rm -f "$patch"
-    return 1
-  fi
-  if [[ -s "$patch" ]]; then
-    git -C "$source_dir" apply --binary "$patch" \
-      || { rm -f "$patch"; return 1; }
-  fi
-  rm -f "$patch"
+  DEPENDENCY_UPDATE_FINGERPRINT="$(cat "$result")" \
+    || { rm -f "$result"; return 1; }
+  rm -f "$result"
+  [[ -n "$DEPENDENCY_UPDATE_FINGERPRINT" ]] || return 1
 }
 
 function _finish_dependency_update {
   [[ "$DRY" == "true" ]] && return
-  local marker
+  local scope="${1:-full}" marker
   _dependency_git_repository || return 0
-  marker="$(_dependency_update_marker)" || return 1
+  marker="$(_dependency_update_marker "$scope")" || return 1
   rm -f "$marker" "$marker.tmp"
 }
 
 function _require_clean_dependency_tree {
   [[ "$DRY" == "true" ]] && return
-  _dependency_git_repository || return
-  [[ -z "$(git -C "$DOTFILES_DIR" status --porcelain)" ]] \
-    || fail "Dependency update requires a clean repository"
+  _dependency_git_repository || fail "Dependency update requires a Git repository"
+  local status
+  status="$(git -C "$DOTFILES_DIR" status --porcelain)" \
+    || fail "Failed to inspect dependency repository"
+  [[ -z "$status" ]] || fail "Dependency update requires a clean repository"
 }
 
 function _validate_dependency_update {
@@ -766,23 +897,35 @@ function _validate_dependency_update {
 }
 
 function _approve_dependency_update {
-  if [[ "$DRY" == "true" ]] || ! _dependency_git_repository; then
-    return
-  fi
-  [[ -n "$(git -C "$DOTFILES_DIR" status --porcelain)" ]] || return
-  git -C "$DOTFILES_DIR" status --short
-  git -C "$DOTFILES_DIR" diff --
-  git -C "$DOTFILES_DIR" diff --cached --
-  local untracked
+  [[ "$DRY" == "true" ]] && return
+  _dependency_git_repository || fail "Dependency update requires a Git repository"
+  local status untracked untracked_list diff_status answer
+  status="$(git -C "$DOTFILES_DIR" status --porcelain)" \
+    || fail "Failed to inspect dependency repository"
+  [[ -n "$status" ]] || return
+  git -C "$DOTFILES_DIR" status --short || fail "Failed to show dependency status"
+  git -C "$DOTFILES_DIR" diff -- || fail "Failed to show dependency diff"
+  git -C "$DOTFILES_DIR" diff --cached -- || fail "Failed to show staged dependency diff"
+  untracked_list="$(mktemp)" || fail "Failed to inspect untracked dependency files"
+  git -C "$DOTFILES_DIR" ls-files --others --exclude-standard > "$untracked_list" \
+    || { rm -f "$untracked_list"; fail "Failed to inspect untracked dependency files"; }
   while IFS= read -r untracked; do
-    git -C "$DOTFILES_DIR" diff --no-index -- /dev/null "$untracked" || true
-  done < <(git -C "$DOTFILES_DIR" ls-files --others --exclude-standard)
+    if git -C "$DOTFILES_DIR" diff --no-index -- /dev/null "$DOTFILES_DIR/$untracked"; then
+      :
+    else
+      diff_status=$?
+      if (( diff_status > 1 )); then
+        rm -f "$untracked_list"
+        fail "Failed to show untracked dependency diff"
+      fi
+    fi
+  done < "$untracked_list"
+  rm -f "$untracked_list"
   if [[ "$FORCE" == "true" ]]; then
     info "Activating reviewed dependency changes because --force was supplied"
     return
   fi
   [[ -t 0 ]] || fail "Dependency pins changed; review the diff, then rerun with --force to activate"
-  local answer
   printf '  [ ?? ] Activate these dependency changes? [y/N] ' >&2
   read -r answer
   [[ "$answer" =~ ^[Yy]$ ]] || fail "Dependency activation cancelled; changes remain for review"

@@ -116,6 +116,13 @@ test_install_packages_syncs_fff_nvim() {
 
 test_update_packages_syncs_fff_nvim() {
   local calls="$TEST_TMPDIR/calls.log"
+  mkdir -p "$DOTFILES_DIR"
+  git init -q "$DOTFILES_DIR"
+  git -C "$DOTFILES_DIR" config user.email test@example.com
+  git -C "$DOTFILES_DIR" config user.name Test
+  : > "$DOTFILES_DIR/.test-root"
+  git -C "$DOTFILES_DIR" add .test-root
+  git -C "$DOTFILES_DIR" commit -qm initial
   detect_platform() { printf 'nixos\n'; }
   _update_flake_inputs() { :; }
   _update_all_dependency_pins() { :; }
