@@ -220,6 +220,7 @@ function InstallPackages {
         Invoke-Winget "winget upgrade $pkg failed" @('upgrade', '--id', $pkg, '--exact')
     }
 
+    AddToUserPath (Join-Path $env:ProgramFiles 'LLVM\bin')
     Success "Finished installing packages"
 }
 

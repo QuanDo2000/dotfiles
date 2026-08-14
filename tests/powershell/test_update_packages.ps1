@@ -3,12 +3,15 @@
 function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:OriginalWingetHas = (Get-Command WingetHas).ScriptBlock
+    $script:OriginalAddToUserPath = (Get-Command AddToUserPath).ScriptBlock
+    Set-FunctionMock 'AddToUserPath' { }
 }
 
 function TestTeardown {
     Clear-CommandMock 'winget'
     Set-FunctionMock 'WingetHas' $script:OriginalWingetHas
-    Remove-Variable -Name MissingWingetPackages, AllInstalled -Scope Script -ErrorAction SilentlyContinue
+    Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
+    Remove-Variable -Name MissingWingetPackages, AllInstalled, AddedUserPath -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
 }
 
@@ -164,6 +167,18 @@ function test_invokewinget_accepts_no_applicable_upgrade {
     }
 
     Assert-False $threw 'Winget no-applicable-update exit should be accepted for upgrades'
+}
+
+function test_installpackages_adds_llvm_to_user_path {
+    $script:Dry = $false
+    $script:AddedUserPath = $null
+    Set-FunctionMock 'WingetHas' { return $true }
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
+    Set-FunctionMock 'AddToUserPath' { param($dir) $script:AddedUserPath = $dir }
+
+    InstallPackages 6>&1 | Out-Null
+
+    Assert-Equals (Join-Path $env:ProgramFiles 'LLVM\bin') $script:AddedUserPath
 }
 
 function test_installpackages_propagates_winget_failures {
