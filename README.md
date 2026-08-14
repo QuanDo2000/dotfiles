@@ -47,7 +47,6 @@ then use this repo's pinned flake to install Home Manager user tools and config:
 
 ```bash
 git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
-~/dotfiles/dotfile packages
 ~/dotfiles/dotfile all
 ```
 
@@ -152,7 +151,7 @@ nix-shell -p git --run 'git clone https://github.com/QuanDo2000/dotfiles.git ~/d
 Per-machine values live in tracked `config/host.nix`; hardware settings live in
 tracked `config/hardware-configuration.nix`. Edit those files before the first
 rebuild if the username, hostname, timezone, NixOS stateVersion, disks, or CPU
-settings differ. Then `bash ./dotfile all` for the rest of the dotfiles.
+settings differ. The package command performs initial NixOS activation and Home Manager setup.
 The NixOS flake target is `#${hostName}` from `config/host.nix`; the current
 tracked host uses `#nixos`.
 
@@ -193,12 +192,11 @@ The `dotfile` command itself is installed by Home Manager on NixOS/macOS; use
 
 ## Testing
 
-Tests run in a Docker container to avoid touching your host filesystem. Requires Docker.
+Bash tests run in the pinned Nix development shell. Requires Nix.
 
 ```bash
-./tests/bash/runner.sh                    # Run all tests in Docker
-./tests/bash/runner.sh test_utils.sh      # Run a single test file
-./tests/bash/runner.sh --no-docker        # Run directly on host (no Docker)
+nix develop path:. -c bash tests/bash/runner.sh
+nix develop path:. -c bash tests/bash/runner.sh test_utils.sh
 ```
 
 PowerShell tests (Windows):

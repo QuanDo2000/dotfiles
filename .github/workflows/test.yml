@@ -16,7 +16,7 @@ jobs:
 
       - name: Run bash tests
         shell: bash
-        run: nix develop . -c bash ./tests/bash/runner.sh --no-docker
+        run: nix develop . -c bash ./tests/bash/runner.sh
 
       - name: Build native extension packages
         run: nix build .#fff-nvim-backend .#pi-extensions --no-link
@@ -60,7 +60,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v22
 
       - name: Run bash tests
-        run: nix develop . -c bash ./tests/bash/runner.sh --no-docker
+        run: nix develop . -c bash ./tests/bash/runner.sh
 
       - name: Run flake check
         run: nix flake check --no-build --all-systems

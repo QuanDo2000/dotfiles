@@ -64,8 +64,8 @@ Scripts share state via exported globals: `DRY`, `QUIET`, `FORCE`. These are set
 Tests live under `tests/` with one suite per platform.
 
 ```bash
-bash tests/bash/runner.sh                  # all bash tests (runs in Docker by default)
-bash tests/bash/runner.sh --no-docker      # all bash tests on host (faster while iterating)
+nix develop path:. -c bash tests/bash/runner.sh  # all bash tests in pinned environment
+bash tests/bash/runner.sh --no-docker             # direct host run when tools are available
 bash tests/bash/runner.sh test_platform_packages.sh # single file
 pwsh tests/powershell/runner.ps1           # PowerShell tests (Windows / pwsh)
 ./scripts/check.sh                         # local full check: bash, pwsh if present, Nix flake, ShellCheck via Nix

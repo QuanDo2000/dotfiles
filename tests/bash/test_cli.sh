@@ -14,15 +14,21 @@ teardown() {
 link_core_dotfiles() {
   mkdir -p "$HOME/.local/bin"
   local f src
-  for f in .zshrc .tmux.conf .gitconfig; do
-    case "$f" in
-      .zshrc) src="$REPO_DIR/config/unix/.zshrc.base" ;;
-      .gitconfig) src="$REPO_DIR/config/shared/$f" ;;
-      *) src="$REPO_DIR/config/unix/$f" ;;
-    esac
-    ln -s "$src" "$HOME/$f"
-  done
+  ln -s "$REPO_DIR/config/unix/.zshrc.base" "$HOME/.zshrc"
+  mkdir -p "$HOME/.config/tmux" "$HOME/.config/git"
+  ln -s "$REPO_DIR/config/unix/.tmux.conf" "$HOME/.config/tmux/tmux.conf"
+  ln -s "$REPO_DIR/config/shared/.gitconfig" "$HOME/.config/git/config"
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
+  mkdir -p "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.codex" "$HOME/.pi/agent"
+  ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/init.lua"
+  ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/fff-nvim-backend"
+  : > "$HOME/.codex/config.toml"
+  : > "$HOME/.pi/agent/settings.json"
+  : > "$HOME/.pi/agent/mcp.json"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
+  chmod +x "$HOME/.local/bin/fff-mcp-agent"
+  : > "$TEST_HOME/obsidian-sync.service"
+  ln -s "$TEST_HOME/obsidian-sync.service" "$HOME/.config/systemd/user/obsidian-sync.service"
 }
 
 assert_checked_flow() {
@@ -31,7 +37,9 @@ assert_checked_flow() {
   local expected_checks="${3:-2}"
 
   assert_equals "$expected_checks" "$(grep -c "Verifying symlinks" <<<"$output")"
-  assert_equals "1" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
+  local expected_skips=1
+  [[ "$pulls_repo" == "true" ]] && expected_skips=2
+  assert_equals "$expected_skips" "$(grep -c "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true" <<<"$output")"
   if [[ "$pulls_repo" == "true" ]]; then
     assert_contains "$output" "Updating dotfiles repo"
   else
@@ -116,7 +124,7 @@ test_dry_run_default_command() {
 
   local output exit_code
   set +e
-  output=$(bash "$DOTFILE_CMD" --dry all 2>&1)
+  output=$(bash "$DOTFILE_CMD" --dry 2>&1)
   exit_code=$?
   set -e
 
@@ -262,6 +270,74 @@ test_dry_run_obsidian_headless_command_updates_release_pin_only() {
   assert_not_contains "$output" "Updating packages"
 }
 
+test_update_reexecutes_after_pull_with_original_flags() {
+  local root="$TEST_HOME/reexec" bin="$TEST_HOME/bin" calls="$TEST_HOME/calls"
+  mkdir -p "$root/scripts" "$bin"
+  cp "$DOTFILE_CMD" "$root/dotfile"
+  chmod +x "$root/dotfile"
+  printf 'calls=%s\n' "$calls" > "$root/state"
+  cat > "$root/scripts/utils.sh" <<'EOF'
+info() { :; }
+success() { :; }
+fail() { printf '%s\n' "$*" >&2; return 1; }
+doctor() { :; }
+EOF
+  for module in platform.sh releases.sh pins.sh doctor.sh obsidian.sh; do
+    printf ':\n' > "$root/scripts/$module"
+  done
+  cat > "$root/scripts/packages.sh" <<'EOF'
+update_packages() { printf 'old\n' >> "$DOTFILES_DIR/operation"; }
+EOF
+  cat > "$root/scripts/releases.sh" <<'EOF'
+_dependency_update_pending() { return 1; }
+_require_clean_dependency_tree() { :; }
+EOF
+  cat > "$bin/git" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$DOTFILES_DIR/git.calls"
+if [[ "$*" == *"pull --rebase --autostash"* ]]; then
+  cat > "$DOTFILES_DIR/scripts/packages.sh" <<'SCRIPT'
+update_packages() { printf 'fresh:%s:%s\n' "$FORCE" "$QUIET" >> "$DOTFILES_DIR/operation"; }
+SCRIPT
+fi
+EOF
+  chmod +x "$bin/git"
+  local output status=0
+  output=$(DOTFILES_DIR="$root" PATH="$bin:$PATH" bash "$DOTFILE_CMD" --force --quiet update 2>&1) || status=$?
+  if [[ "$status" != 0 ]]; then printf 'reexec output: %s\n' "$output" >> "$ERROR_FILE"; fi
+  assert_equals "0" "$status"
+  assert_equals "1" "$(grep -c 'pull --rebase --autostash' "$root/git.calls" 2>/dev/null || true)"
+  assert_equals 'fresh:true:true' "$(<"$root/operation")"
+}
+
+test_update_does_not_pull_dirty_repository() {
+  local root="$TEST_HOME/dirty" bin="$TEST_HOME/bin-dirty"
+  mkdir -p "$root/scripts" "$bin"
+  for module in utils.sh platform.sh packages.sh releases.sh pins.sh doctor.sh obsidian.sh; do
+    printf ':\n' > "$root/scripts/$module"
+  done
+  cat > "$root/scripts/utils.sh" <<'EOF'
+info() { :; }
+success() { :; }
+fail() { printf '%s\n' "$*" >&2; return 1; }
+doctor() { :; }
+EOF
+  cat > "$root/scripts/releases.sh" <<'EOF'
+_dependency_update_pending() { return 1; }
+_require_clean_dependency_tree() { return 1; }
+EOF
+  printf 'update_packages() { :; }\n' > "$root/scripts/packages.sh"
+  printf '#!/usr/bin/env bash\nprintf pulled > "$DOTFILES_DIR/pulled"\n' > "$bin/git"
+  chmod +x "$bin/git"
+  local output status=0
+  output=$(DOTFILES_DIR="$root" PATH="$bin:$PATH" bash "$DOTFILE_CMD" update 2>&1) || status=$?
+  assert_equals "1" "$status"
+  assert_not_contains "$output" 'pulled'
+  if [[ -e "$root/pulled" ]]; then
+    echo "  dirty update unexpectedly called git pull" >> "$ERROR_FILE"
+  fi
+}
+
 test_update_runs_doctor_before_package_update() {
   is_windows_bash && return 0
   mock_uname Linux
@@ -321,6 +397,8 @@ test_readme_nixos_fresh_install_does_not_sudo_dotfile_script() {
   readme_text="$(<"$REPO_DIR/README.md")"
   assert_not_contains "$readme_text" "sudo bash ./dotfile packages"
   assert_not_contains "$readme_text" "sudo bash ./dotfile all"
+  assert_not_contains "$readme_text" 'bash ./dotfile packages` then `bash ./dotfile all'
+  assert_not_contains "$readme_text" "Then `bash ./dotfile all`"
 }
 
 test_help_flags_exit_zero() {
@@ -341,6 +419,52 @@ test_update_ai_rejects_extra_arguments() {
   assert_equals "1" "$exit_code"
   assert_contains "$output" "Unexpected update argument: extra"
   assert_not_contains "$output" "Verifying symlinks"
+}
+
+test_explicit_all_rejects_extra_arguments() {
+  local output exit_code=0
+  output=$(bash "$DOTFILE_CMD" --dry all extra 2>&1) || exit_code=$?
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "Unexpected all argument: extra"
+}
+
+test_leaf_commands_reject_extra_arguments() {
+  local command output exit_code
+  for command in all packages obsidian codex obsidian-headless; do
+    output=$(bash "$DOTFILE_CMD" --dry "$command" extra 2>&1) || exit_code=$?
+    assert_equals "1" "$exit_code"
+    assert_contains "$output" "Unexpected $command argument: extra"
+    exit_code=0
+  done
+  output=$(bash "$DOTFILE_CMD" --dry doctor --fast extra 2>&1) || exit_code=$?
+  assert_equals "1" "$exit_code"
+  assert_contains "$output" "Unexpected doctor argument: extra"
+}
+
+test_pending_dependency_marker_blocks_all_and_packages() {
+  local repo="$TEST_HOME/pending-repo"
+  cp -a "$REPO_DIR/." "$repo"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name test
+  git -C "$repo" add -A && git -C "$repo" commit -qm baseline
+  printf pending > "$repo/.git/dotfile-dependency-update"
+  printf dirty > "$repo/pending.txt"
+  local command output status
+  for command in all packages; do
+    status=0
+    output="$(DOTFILES_DIR="$repo" bash "$repo/dotfile" "$command" 2>&1)" || status=$?
+    assert_equals "1" "$status"
+    assert_contains "$output" "Pending dependency update"
+    assert_not_contains "$output" "Installing packages"
+  done
+}
+
+test_update_uses_fast_doctor_preflight() {
+  local dotfile_text
+  dotfile_text="$(<"$DOTFILE_CMD")"
+  assert_contains "$dotfile_text" 'run_checked_flow true true update_packages'
+  assert_contains "$dotfile_text" 'DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor'
 }
 
 test_unknown_command_fails() {

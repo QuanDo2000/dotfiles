@@ -21,9 +21,10 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
     eval "$name() { printf '%s\\n' '$name' >> '$calls'; }"
   done
 
+  _run_python_pin_batch() { printf '%s\n' _run_python_pin_batch >> "$calls"; }
   _update_all_dependency_pins
 
-  assert_equals $'_update_lix_installer_pins\n_update_codex_release_package\n_update_pi_release_package\n_update_obsidian_headless_package\n_update_codebase_memory_release\n_update_fff_release\n_update_pi_extensions_release\n_update_webcord_release\n_update_anki_zoom\n_update_firacode_pin\n_update_vendored_skills\n_update_neovim_plugins' "$(<"$calls")"
+  assert_equals $'_update_lix_installer_pins\n_update_codex_release_package\n_update_pi_release_package\n_update_obsidian_headless_package\n_run_python_pin_batch' "$(<"$calls")"
 
   for name in \
     _update_lix_installer_pins _update_codex_release_package _update_pi_release_package \
@@ -32,6 +33,35 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
     _update_firacode_pin _update_vendored_skills _update_neovim_plugins; do
     unset -f "$name"
   done
+  unset -f _run_python_pin_batch
+}
+
+test_codebase_memory_verification_uses_cosign_without_nested_nix() {
+  local source="$REPO_DIR/scripts/update_pins.py"
+  local source_text
+  source_text="$(<"$source")"
+  assert_contains "$source_text" '"cosign", "verify-blob"'
+  assert_contains "$source_text" '"--bundle", str(bundle)'
+  assert_contains "$source_text" '"--certificate-identity", "https://github.com/DeusData/codebase-memory-mcp/.github/workflows/release.yml@refs/heads/main"'
+  assert_contains "$source_text" '"--certificate-oidc-issuer", "https://token.actions.githubusercontent.com"'
+  assert_not_contains "$source_text" '"nix", "develop", f"path:{repo}", "-c", "cosign"'
+}
+
+test_python_pin_batch_uses_one_nix_develop_and_preserves_order() {
+  local calls="$TEST_TMPDIR/pin-batch.log"
+  nix() {
+    printf '%s\n' "$*" >> "$calls"
+    return 0
+  }
+  DRY=false
+  _run_python_pin_batch \
+    codebase-memory "codebase-memory release" \
+    fff "FFF release" \
+    pi-extensions "Pi extension closure"
+
+  assert_equals "1" "$(wc -l < "$calls")"
+  assert_contains "$(<"$calls")" "codebase-memory fff pi-extensions"
+  unset -f nix
 }
 
 test_all_dependency_pin_updaters_dry_run_without_network() {

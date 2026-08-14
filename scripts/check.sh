@@ -10,7 +10,7 @@ run() {
   "$@"
 }
 
-run nix develop "$flake" -c bash "$repo_dir/tests/bash/runner.sh" --no-docker
+run nix develop "$flake" -c bash "$repo_dir/tests/bash/runner.sh"
 
 run nix develop "$flake" -c pwsh "$repo_dir/tests/powershell/runner.ps1"
 

@@ -97,6 +97,23 @@ test_update_mac_switches_existing_darwin_rebuild() {
   unset -f command _load_nix_profile nix sudo
 }
 
+test_darwin_rebuild_refreshes_managed_path_after_switch() {
+  DRY=false
+  local calls="$TEST_TMPDIR/path-refresh.log"
+  command() {
+    if [[ "${1:-}" == "-v" && "${2:-}" =~ ^(nix|darwin-rebuild)$ ]]; then return 0; fi
+    builtin command "$@"
+  }
+  _load_nix_profile() { :; }
+  sudo() { :; }
+  _refresh_managed_path() { printf 'refreshed\n' >> "$calls"; }
+
+  _darwin_rebuild_switch
+
+  assert_equals "refreshed" "$(<"$calls")"
+  unset -f command _load_nix_profile sudo _refresh_managed_path
+}
+
 test_update_mac_bootstraps_nix_darwin_when_missing() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"

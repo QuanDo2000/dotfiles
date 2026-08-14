@@ -28,8 +28,8 @@ function test_installers_dry_run_before_external_commands {
     }
 }
 
-function test_installextras_dry_run_chains_font_and_node {
+function test_installextras_dry_run_installs_font_only {
     $output = InstallExtras 6>&1 | Out-String
     Assert-Contains $output 'Installing FiraCode Nerd Font'
-    Assert-Contains $output 'Installing Node.js LTS'
+    Assert-False ($output -match 'Installing Node.js LTS') 'extras should not install Node.js'
 }

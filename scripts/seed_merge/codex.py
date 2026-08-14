@@ -8,6 +8,7 @@ import tomllib
 
 live_path, seed_path, apply_path = sys.argv[1:]
 RETIRED_MARKETPLACES = {"ponytail"}
+RUNTIME_ONLY_KEYS = {"marketplaces", "projects"}
 
 
 def load(path):
@@ -18,7 +19,7 @@ def load(path):
 def missing_from_seed(live, seed):
     missing = {}
     for key, value in live.items():
-        if key == "hooks":
+        if key in RUNTIME_ONLY_KEYS or key == "hooks":
             continue
         if key not in seed:
             missing[key] = value

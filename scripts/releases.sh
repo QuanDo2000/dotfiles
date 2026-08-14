@@ -633,14 +633,15 @@ function _update_all_dependency_pins {
   _update_codex_release_package
   _update_pi_release_package
   _update_obsidian_headless_package
-  _update_codebase_memory_release
-  _update_fff_release
-  _update_pi_extensions_release
-  _update_webcord_release
-  _update_anki_zoom
-  _update_firacode_pin
-  _update_vendored_skills
-  _update_neovim_plugins
+  _run_python_pin_batch \
+    codebase-memory "codebase-memory release" \
+    fff "FFF release" \
+    pi-extensions "Pi extension closure" \
+    webcord "WebCord release" \
+    anki-zoom "Anki Zoom add-on" \
+    firacode "FiraCode Nerd Font" \
+    skills "vendored agent skills" \
+    neovim "Neovim plugins"
 }
 
 function _dependency_git_repository {

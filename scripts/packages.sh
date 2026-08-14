@@ -196,6 +196,19 @@ function _ensure_nix {
   fi
 }
 
+function _refresh_managed_path {
+  local dir user_name
+  user_name="${USER:-$(id -un)}"
+  for dir in \
+    /run/current-system/sw/bin \
+    "$HOME/.nix-profile/bin" \
+    "/etc/profiles/per-user/$user_name/bin" \
+    "$HOME/.local/bin"; do
+    [[ -d "$dir" && ":$PATH:" != *":$dir:"* ]] && PATH="$dir:$PATH"
+  done
+  export PATH
+}
+
 function _home_manager_switch {
   local profile="${1:-linux}" target
   if [[ "$DRY" == "true" ]]; then
@@ -303,6 +316,7 @@ function _darwin_rebuild_switch {
     _run_nix_managed_switch "nix-darwin bootstrap switch failed" \
       sudo HOME=/var/root nix run "$DOTFILES_DIR#darwin-rebuild" -- switch --flake "$target"
   fi
+  _refresh_managed_path
 }
 
 function update_mac {
@@ -388,9 +402,33 @@ function _sync_fff_nvim {
   local output plugin="$HOME/.local/share/nvim/lazy/fff.nvim"
   local release="$plugin/target/release"
   local backend="$HOME/.config/nvim/fff-nvim-backend"
-  if ! output="$(nvim --headless "+Lazy! restore fff.nvim" +qa 2>&1)"; then
-    FFF_NVIM_WARNING="Lazy restore failed:\n$output"
-    return
+  local target="$release/libfff_nvim.so"
+  [ "$(uname -s)" = Darwin ] && target="$release/libfff_nvim.dylib"
+  local cache="${XDG_CACHE_HOME:-$HOME/.cache}/dotfile/nvim/fff-nvim.state"
+  local lock="$DOTFILES_DIR/config/shared/config/nvim/lazy-lock.json"
+  local lock_hash expected_commit plugin_commit backend_path backend_hash cached=false
+  expected_commit="$(jq -r '."fff.nvim".commit // empty' "$lock" 2>/dev/null || true)"
+
+  if [ -n "$expected_commit" ] && [ -f "$lock" ] && [ -d "$plugin" ] && [ -f "$backend" ]; then
+    lock_hash="$(_file_sha256 "$lock" 2>/dev/null || true)"
+    plugin_commit="$(git -C "$plugin" rev-parse HEAD 2>/dev/null || true)"
+    backend_path="$(resolve_symlink "$backend" 2>/dev/null || true)"
+    backend_hash="$(_file_sha256 "$backend" 2>/dev/null || true)"
+    if [ -n "$lock_hash" ] && [ "$plugin_commit" = "$expected_commit" ] \
+      && [ -z "$(git -C "$plugin" status --porcelain 2>/dev/null)" ] \
+      && [ -n "$backend_path" ] \
+      && grep -Fqx "lock=$lock_hash" "$cache" 2>/dev/null \
+      && grep -Fqx "plugin=$plugin_commit" "$cache" 2>/dev/null \
+      && grep -Fqx "backend=$backend_path:$backend_hash" "$cache" 2>/dev/null; then
+      cached=true
+    fi
+  fi
+
+  if [ "$cached" != true ]; then
+    if ! output="$(nvim --headless "+Lazy! restore fff.nvim" +qa 2>&1)"; then
+      FFF_NVIM_WARNING="Lazy restore failed:\n$output"
+      return
+    fi
   fi
   if [ ! -d "$plugin" ]; then
     FFF_NVIM_WARNING="Lazy sync did not install $plugin"
@@ -400,10 +438,24 @@ function _sync_fff_nvim {
     FFF_NVIM_WARNING="Nix-managed fff.nvim backend is missing: $backend"
     return
   fi
-  local target="$release/libfff_nvim.so"
-  [ "$(uname -s)" = Darwin ] && target="$release/libfff_nvim.dylib"
   if ! mkdir -p "$release" || ! ln -sfn "$backend" "$target"; then
     FFF_NVIM_WARNING="Could not link Nix-managed fff.nvim backend at $target"
+    return
+  fi
+
+  lock_hash="$(_file_sha256 "$lock" 2>/dev/null || true)"
+  plugin_commit="$(git -C "$plugin" rev-parse HEAD 2>/dev/null || true)"
+  backend_path="$(resolve_symlink "$backend" 2>/dev/null || true)"
+  backend_hash="$(_file_sha256 "$backend" 2>/dev/null || true)"
+  if [ -n "$lock_hash" ] && [ "$plugin_commit" = "$expected_commit" ] \
+    && [ -z "$(git -C "$plugin" status --porcelain 2>/dev/null)" ] \
+    && [ -n "$backend_path" ]; then
+    mkdir -p "$(dirname "$cache")"
+    {
+      printf 'lock=%s\n' "$lock_hash"
+      printf 'plugin=%s\n' "$plugin_commit"
+      printf 'backend=%s:%s\n' "$backend_path" "$backend_hash"
+    } > "$cache.tmp" && mv "$cache.tmp" "$cache"
   fi
 }
 

@@ -8,7 +8,7 @@ function _obsidian_check_prereqs {
   if ! is_linux; then
     fail "Obsidian sync setup is only supported on Linux"
   fi
-  if ! command -v ob >/dev/null 2>&1; then
+  if [[ "$DRY" != "true" ]] && ! command -v ob >/dev/null 2>&1; then
     fail "ob not found. Run 'dotfile update' to install the Nix-managed obsidian-headless package"
   fi
 }
@@ -136,7 +136,7 @@ function setup_obsidian {
   _obsidian_check_cli
 
   local existing_vault_path
-  if [[ "$FORCE" != "true" ]] && existing_vault_path="$(_obsidian_existing_vault_path)"; then
+  if [[ "$DRY" != "true" && "$FORCE" != "true" ]] && existing_vault_path="$(_obsidian_existing_vault_path)"; then
     info "Vault at $existing_vault_path is already configured; skipping Obsidian Sync setup"
     _obsidian_start_service
     success "$OBSIDIAN_SERVICE_NAME is managed by Home Manager"

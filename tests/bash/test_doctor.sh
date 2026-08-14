@@ -14,8 +14,30 @@ teardown() {
 
 link_valid_core_dotfiles() {
   local root="${1:-$DOTFILES_DIR}"
-  ln -s "$root/.zshrc" "$HOME/.zshrc"
-  ln -s "$root/bin/dotfile" "$HOME/.local/bin/dotfile"
+  mkdir -p "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.codex" "$HOME/.pi/agent"
+  local store_target="" candidate
+  if [[ "$root" == /nix/store/* ]]; then
+    for candidate in /nix/store/*; do
+      [[ -e "$candidate" ]] || continue
+      store_target="$candidate"
+      break
+    done
+  else
+    mkdir -p "$root/.config/nvim" "$root/.config/systemd/user" "$root/bin"
+    touch "$root/.zshrc" "$root/.tmux.conf" "$root/.gitconfig" "$root/.config/nvim/init.lua" "$root/.config/nvim/fff-nvim-backend" "$root/.config/systemd/user/obsidian-sync.service" "$root/bin/dotfile"
+  fi
+  ln -s "${store_target:-$root/.zshrc}" "$HOME/.zshrc"
+  ln -s "${store_target:-$root/.tmux.conf}" "$HOME/.config/tmux/tmux.conf"
+  ln -s "${store_target:-$root/.gitconfig}" "$HOME/.config/git/config"
+  ln -s "${store_target:-$root/.config/nvim/init.lua}" "$HOME/.config/nvim/init.lua"
+  ln -s "${store_target:-$root/.config/nvim/fff-nvim-backend}" "$HOME/.config/nvim/fff-nvim-backend"
+  ln -s "${store_target:-$root/.config/systemd/user/obsidian-sync.service}" "$HOME/.config/systemd/user/obsidian-sync.service"
+  ln -s "${store_target:-$root/bin/dotfile}" "$HOME/.local/bin/dotfile"
+  : > "$HOME/.codex/config.toml"
+  : > "$HOME/.pi/agent/settings.json"
+  : > "$HOME/.pi/agent/mcp.json"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
+  chmod +x "$HOME/.local/bin/fff-mcp-agent"
 }
 
 test_doctor_symlink_valid() {
@@ -98,6 +120,46 @@ test_doctor_is_a_small_smoke_check() {
   fi
 }
 
+test_doctor_finds_managed_fff_without_session_path() {
+  mkdir -p "$HOME/.local/bin"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
+  chmod +x "$HOME/.local/bin/fff-mcp-agent"
+  command() { return 1; }
+  errors=0
+  _check_managed_commands
+  assert_equals "4" "$errors"
+  unset -f command
+}
+
+test_doctor_rejects_dangling_managed_links() {
+  mkdir -p "$DOTFILES_DIR" "$HOME/.config/tmux"
+  ln -s "$DOTFILES_DIR/missing" "$HOME/.config/tmux/tmux.conf"
+  errors=0
+  _check_symlink .config/tmux/tmux.conf debian
+  assert_equals "1" "$errors"
+}
+
+test_doctor_fails_missing_runtime_health() {
+  errors=0
+  _check_writable_file .missing-runtime-file
+  assert_equals "1" "$errors"
+  command() { return 1; }
+  _check_managed_commands
+  assert_equals "6" "$errors"
+  unset -f command
+}
+
+test_doctor_checks_managed_runtime_health() {
+  local doctor_text
+  doctor_text="$(<"$REPO_DIR/scripts/doctor.sh")"
+  assert_contains "$doctor_text" '_check_symlink .config/tmux/tmux.conf'
+  assert_contains "$doctor_text" '_check_symlink .config/git/config'
+  assert_contains "$doctor_text" '.config/nvim/init.lua'
+  assert_contains "$doctor_text" '.codex/config.toml'
+  assert_contains "$doctor_text" '.pi/agent/settings.json'
+  assert_contains "$doctor_text" 'obsidian-sync.service'
+}
+
 test_doctor_symlink_wrong_target() {
   mkdir -p "$DOTFILES_DIR"
   mkdir -p "$HOME/other"
@@ -140,6 +202,18 @@ test_doctor_accepts_repo_dotfile_command_link() {
   ln -s "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
   echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
+  mkdir -p "$HOME/.config/nvim" "$HOME/.codex" "$HOME/.pi/agent"
+  mkdir -p "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/systemd/user"
+  for path in .config/tmux/tmux.conf .config/git/config .config/nvim/init.lua .config/nvim/fff-nvim-backend .config/systemd/user/obsidian-sync.service; do
+    mkdir -p "$DOTFILES_DIR/$(dirname "$path")"
+    : > "$DOTFILES_DIR/$path"
+    ln -s "$DOTFILES_DIR/$path" "$HOME/$path"
+  done
+  : > "$HOME/.codex/config.toml"
+  : > "$HOME/.pi/agent/settings.json"
+  : > "$HOME/.pi/agent/mcp.json"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
+  chmod +x "$HOME/.local/bin/fff-mcp-agent"
 
   local output
   output=$(doctor 2>&1) || true

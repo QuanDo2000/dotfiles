@@ -23,6 +23,14 @@ test_neovim_provisions_nix_linter() {
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "statix"
 }
 
+test_neovim_provisions_configured_formatters() {
+  local config mason
+  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
+  mason="$(grep -F 'for _, name in ipairs' <<<"$config")"
+  assert_contains "$mason" '"prettier"'
+  assert_contains "$mason" '"nixfmt"'
+}
+
 test_neovim_owns_only_used_build_and_mason_tools() {
   local config home
   config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
@@ -144,6 +152,38 @@ test_sync_fff_nvim_runs_headless_lazy_sync_and_links_nix_backend() {
   unset -f nvim
 }
 
+test_sync_fff_nvim_cache_skips_restore_when_state_matches() {
+  local old_dotfiles="$DOTFILES_DIR"
+  DOTFILES_DIR="$TEST_TMPDIR/dotfiles"
+  mkdir -p "$DOTFILES_DIR/config/shared/config/nvim"
+  local plugin="$HOME/.local/share/nvim/lazy/fff.nvim" lock="$DOTFILES_DIR/config/shared/config/nvim/lazy-lock.json"
+  local backend="$HOME/.config/nvim/fff-nvim-backend" cache="$HOME/.cache/dotfile/nvim/fff-nvim.state"
+  mkdir -p "$plugin" "$(dirname "$backend")" "$(dirname "$cache")"
+  git -C "$plugin" init -q
+  git -C "$plugin" config user.email test@example.com
+  git -C "$plugin" config user.name test
+  printf plugin > "$plugin/plugin"
+  git -C "$plugin" add plugin && git -C "$plugin" commit -qm init
+  printf backend > "$TEST_TMPDIR/backend.bin"
+  ln -s "$TEST_TMPDIR/backend.bin" "$backend"
+  local commit lock_hash backend_state
+  commit="$(git -C "$plugin" rev-parse HEAD)"
+  jq --arg commit "$commit" '."fff.nvim".commit = $commit' "$REPO_DIR/config/shared/config/nvim/lazy-lock.json" > "$lock"
+  lock_hash="$(sha256sum "$lock" | awk '{print $1}')"
+  backend_state="$(resolve_symlink "$backend")"
+  printf 'lock=%s\nplugin=%s\nbackend=%s:%s\n' "$lock_hash" "$commit" "$backend_state" "$(sha256sum "$backend" | awk '{print $1}')" > "$cache"
+  nvim() { return 1; }
+  DRY=false
+
+  _sync_fff_nvim
+
+  assert_equals "" "$FFF_NVIM_WARNING"
+  assert_file_exists "$cache"
+  assert_symlink "$plugin/target/release/libfff_nvim.so" "$backend"
+  unset -f nvim
+  DOTFILES_DIR="$old_dotfiles"
+}
+
 test_sync_fff_nvim_does_not_compile_backend() {
   DRY=false
   mkdir -p "$HOME/.config/nvim"
@@ -157,6 +197,46 @@ test_sync_fff_nvim_does_not_compile_backend() {
 
   assert_equals "" "$FFF_NVIM_WARNING"
   unset -f nvim nix
+}
+
+test_sync_fff_nvim_noop_restore_wrong_head_does_not_cache() {
+  local old_dotfiles="$DOTFILES_DIR" repo="$TEST_TMPDIR/lock-repo" plugin="$HOME/.local/share/nvim/lazy/fff.nvim" backend="$HOME/.config/nvim/fff-nvim-backend"
+  DOTFILES_DIR="$repo"
+  mkdir -p "$repo/config/shared/config/nvim" "$plugin" "$(dirname "$backend")"
+  cp "$REPO_DIR/config/shared/config/nvim/lazy-lock.json" "$repo/config/shared/config/nvim/lazy-lock.json"
+  git -C "$plugin" init -q
+  git -C "$plugin" config user.email test@example.com
+  git -C "$plugin" config user.name test
+  printf plugin > "$plugin/plugin"
+  git -C "$plugin" add plugin && git -C "$plugin" commit -qm init
+  printf backend > "$TEST_TMPDIR/backend.bin"
+  ln -s "$TEST_TMPDIR/backend.bin" "$backend"
+  nvim() { :; }
+  rm -f "$HOME/.cache/dotfile/nvim/fff-nvim.state"
+  _sync_fff_nvim
+  if [[ -e "$HOME/.cache/dotfile/nvim/fff-nvim.state" ]]; then
+    echo "  wrong-head restore must not create cache" >> "$ERROR_FILE"
+  fi
+  unset -f nvim
+  DOTFILES_DIR="$old_dotfiles"
+}
+
+test_sync_fff_nvim_cache_invalidates_when_plugin_changes() {
+  local plugin="$HOME/.local/share/nvim/lazy/fff.nvim" backend="$HOME/.config/nvim/fff-nvim-backend"
+  mkdir -p "$plugin" "$(dirname "$backend")"
+  git -C "$plugin" init -q
+  git -C "$plugin" config user.email test@example.com
+  git -C "$plugin" config user.name test
+  printf plugin > "$plugin/plugin"
+  git -C "$plugin" add plugin && git -C "$plugin" commit -qm init
+  printf backend > "$backend"
+  nvim() { printf '%s\n' "$*" >> "$TEST_TMPDIR/nvim.log"; }
+  DRY=false
+
+  _sync_fff_nvim
+
+  assert_contains "$(<"$TEST_TMPDIR/nvim.log")" 'Lazy! restore fff.nvim'
+  unset -f nvim
 }
 
 test_sync_fff_nvim_failure_warns_without_failing_update() {
@@ -204,18 +284,78 @@ test_fff_nvim_uses_hash_pinned_nix_backend() {
   assert_not_contains "$config" 'cargo build'
 }
 
+_raw_neovim_cache_write() {
+  local source="$1" cache="$2" marker="$3" tmp
+  tmp="${cache}.tmp.$$"
+  rm -rf "$tmp" "$cache" "$marker" "$marker.tmp.$$"
+  mkdir -p "$(dirname "$cache")" "$tmp"
+  cp -R "$source/." "$tmp/"
+  mv "$tmp" "$cache"
+  : > "$marker.tmp.$$"
+  mv "$marker.tmp.$$" "$marker"
+}
+
+_raw_neovim_cache_read() {
+  local cache="$1" marker="$2" target="$3"
+  [[ -f "$marker" && -d "$cache" ]] || return 1
+  mkdir -p "$target"
+  cp -R "$cache/." "$target/"
+}
+
+test_raw_neovim_cache_round_trip_copies_plugin_tree() {
+  local source="$TEST_TMPDIR/source-lazy" cache="$TEST_TMPDIR/cache/plugins" target="$TEST_TMPDIR/target-lazy"
+  mkdir -p "$source/fff.nvim/lua" "$source/other.nvim"
+  printf 'plugin-state\n' > "$source/fff.nvim/lua/init.lua"
+  printf 'other-state\n' > "$source/other.nvim/state"
+  _raw_neovim_cache_write "$source" "$cache" "$TEST_TMPDIR/cache/complete"
+  _raw_neovim_cache_read "$cache" "$TEST_TMPDIR/cache/complete" "$target"
+  assert_file_exists "$target/fff.nvim/lua/init.lua"
+  assert_equals 'plugin-state' "$(<"$target/fff.nvim/lua/init.lua")"
+  assert_file_exists "$target/other.nvim/state"
+  assert_file_exists "$TEST_TMPDIR/cache/complete"
+}
+
 test_raw_neovim_headless_config() {
-  local data lazy output
+  local data source_lazy output status lock_hash cache_root cached_plugins marker lazy_dir
   data="$(mktemp -d)"
-  lazy="${LAZY_NVIM_PATH:-$ORIG_HOME/.local/share/nvim/lazy/lazy.nvim}"
-  mkdir -p "$data/config" "$data/data/nvim/lazy"
+  source_lazy="${LAZY_NVIM_PATH:-$ORIG_HOME/.local/share/nvim/lazy/lazy.nvim}"
+  lock_hash="$(sha256sum "$REPO_DIR/config/shared/config/nvim/lazy-lock.json" | awk '{print $1}')"
+  cache_root="${XDG_CACHE_HOME:-$ORIG_HOME/.cache}/dotfile/nvim/test-plugins/$lock_hash"
+  cached_plugins="$cache_root/plugins"
+  marker="$cache_root/complete"
+  lazy_dir="$data/data/nvim/lazy"
+  mkdir -p "$data/config" "$lazy_dir"
   cp -R "$REPO_DIR/config/shared/config/nvim" "$data/config/nvim"
-  ln -s "$lazy" "$data/data/nvim/lazy/lazy.nvim"
+
+  if [[ "${DOTFILE_NEOVIM_TEST_FRESH:-false}" != true ]] && _raw_neovim_cache_read "$cached_plugins" "$marker" "$lazy_dir"; then
+    :
+  fi
+  ln -s "$source_lazy" "$lazy_dir/lazy.nvim"
+  set +e
   output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
     FFF_FRECENCY_DB="$data/fff-frecency" FFF_HISTORY_DB="$data/fff-history" \
     nvim --headless -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" -eq 0 && ! -f "$marker" && "${DOTFILE_NEOVIM_TEST_FRESH:-false}" != true ]]; then
+    rm -f "$lazy_dir/lazy.nvim"
+    _raw_neovim_cache_write "$lazy_dir" "$cached_plugins" "$marker"
+    ln -s "$source_lazy" "$lazy_dir/lazy.nvim"
+  fi
+  assert_equals "0" "$status"
   assert_contains "$output" "RAW_CONFIG_OK"
   rm -rf "$data"
+}
+
+test_raw_neovim_cache_is_lock_keyed_and_bypassable() {
+  local test_text
+  test_text="$(<"$REPO_DIR/tests/bash/test_neovim.sh")"
+  assert_contains "$test_text" 'DOTFILE_NEOVIM_TEST_FRESH'
+  assert_contains "$test_text" 'test-plugins/$lock_hash'
+  assert_contains "$test_text" 'cached_plugins="$cache_root/plugins"'
+  assert_contains "$test_text" 'marker="$cache_root/complete"'
+  assert_contains "$test_text" '_raw_neovim_cache_write "$lazy_dir" "$cached_plugins" "$marker"'
+  assert_contains "$test_text" 'ln -s "$source_lazy" "$lazy_dir/lazy.nvim"'
 }
 
 test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {

@@ -15,6 +15,72 @@ SUNSET_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
 INPUT_METHOD_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/input-method-status.sh")"
 SSH_CONFIG="$(<"$REPO_DIR/config/shared/.ssh/config")"
 
+test_nvm_numeric_default_selects_matching_version() {
+  local nvm_root="$TEST_TMPDIR/nvm-home" nvm_home output
+  nvm_home="$nvm_root/.nvm"
+  mkdir -p "$nvm_home/versions/node/v10.2.0/bin" "$nvm_home/versions/node/v10.24.1/bin" "$nvm_home/versions/node/v20.19.0/bin"
+  printf 'ready\n' > "$nvm_home/nvm.sh"
+  touch "$nvm_home/versions/node/v10.2.0/bin/node" "$nvm_home/versions/node/v10.24.1/bin/node" "$nvm_home/versions/node/v20.19.0/bin/node"
+  chmod +x "$nvm_home/versions/node"/v*/bin/node
+  mkdir -p "$nvm_home/alias"
+  printf '10\n' > "$nvm_home/alias/default"
+  output=$(HOME="$nvm_root" zsh -f -c 'source "$1"; print -r -- $path[1]' zsh "$REPO_DIR/config/unix/.zshrc.base")
+  assert_contains ":$output:" ":$nvm_home/versions/node/v10.24.1/bin:"
+  assert_not_contains "$output" "$nvm_home/versions/node/v20.19.0/bin"
+}
+
+test_nvm_numeric_default_does_not_select_unrelated_major() {
+  local nvm_root="$TEST_TMPDIR/nvm-unmatched" nvm_home output
+  nvm_home="$nvm_root/.nvm"
+  mkdir -p "$nvm_home/versions/node/v20.19.0/bin" "$nvm_home/alias"
+  printf 'ready\n' > "$nvm_home/nvm.sh"
+  printf '10\n' > "$nvm_home/alias/default"
+  touch "$nvm_home/versions/node/v20.19.0/bin/node"
+  chmod +x "$nvm_home/versions/node/v20.19.0/bin/node"
+  output=$(HOME="$nvm_root" zsh -f -c 'source "$1"; print -r -- $path[1]' zsh "$REPO_DIR/config/unix/.zshrc.base")
+  assert_not_contains "$output" "$nvm_home/versions/node/v20.19.0/bin"
+}
+
+test_nvm_fallback_uses_portable_zsh_selection() {
+  local zshrc
+  zshrc="$(<"$REPO_DIR/config/unix/.zshrc.base")"
+  assert_not_contains "$zshrc" 'sort -V'
+  assert_not_contains "$zshrc" 'find "$NVM_DIR/versions/node"'
+  assert_contains "$zshrc" 'NVM_DIR/versions/node/'
+  assert_contains "$zshrc" 'setopt localoptions numericglobsort'
+}
+
+test_nvm_resolves_chained_alias_and_numeric_fallback() {
+  local chain_home="$TEST_TMPDIR/chain-home" fallback_home="$TEST_TMPDIR/fallback-home"
+  mkdir -p "$chain_home/.nvm/versions/node/v18.2.0/bin" "$chain_home/.nvm/alias"
+  printf 'ready\n' > "$chain_home/.nvm/nvm.sh"
+  printf 'lts\n' > "$chain_home/.nvm/alias/default"
+  printf 'v18.2.0\n' > "$chain_home/.nvm/alias/lts"
+  touch "$chain_home/.nvm/versions/node/v18.2.0/bin/node"
+  chmod +x "$chain_home/.nvm/versions/node/v18.2.0/bin/node"
+  local chained
+  chained="$(HOME="$chain_home" zsh -f -c 'source "$1"; print -r -- $path[1]' zsh "$REPO_DIR/config/unix/.zshrc.base")"
+  assert_equals "$chain_home/.nvm/versions/node/v18.2.0/bin" "$chained"
+
+  mkdir -p "$fallback_home/.nvm/versions/node/v2.9.0/bin" "$fallback_home/.nvm/versions/node/v10.1.0/bin"
+  printf 'ready\n' > "$fallback_home/.nvm/nvm.sh"
+  touch "$fallback_home/.nvm/versions/node/v2.9.0/bin/node" "$fallback_home/.nvm/versions/node/v10.1.0/bin/node"
+  chmod +x "$fallback_home/.nvm"/versions/node/*/bin/node
+  local newest
+  newest="$(HOME="$fallback_home" zsh -f -c 'source "$1"; print -r -- $path[1]' zsh "$REPO_DIR/config/unix/.zshrc.base")"
+  assert_equals "$fallback_home/.nvm/versions/node/v10.1.0/bin" "$newest"
+}
+
+test_hyprsunset_status_uses_defaults_when_installed_config_missing() {
+  local home="$TEST_TMPDIR/hypr-home"
+  mkdir -p "$home/.local/bin" "$home/.config/hypr"
+  ln -s "$REPO_DIR/scripts/hyprsunset-status.sh" "$home/.local/bin/hyprsunset-status"
+  local output
+  output="$(HOME="$home" XDG_CONFIG_HOME="$home/.config" HYPRSUNSET_RUNNING=false "$home/.local/bin/hyprsunset-status" 12:00)"
+  assert_contains "$output" 'Night light service is inactive'
+  assert_not_contains "$output" 'awk:'
+}
+
 test_ssh_config_keeps_required_forwarding_without_unused_ports() {
   assert_not_contains "$SSH_CONFIG" "LocalForward"
   assert_equals "2" "$(grep -c '^[[:space:]]*ForwardX11 yes$' <<< "$SSH_CONFIG")"
@@ -188,6 +254,8 @@ test_codex_seeds_have_no_remote_ponytail_marketplace() {
     assert_not_contains "$contents" '[marketplaces.ponytail]'
     assert_not_contains "$contents" '[plugins."ponytail@ponytail"]'
     assert_not_contains "$contents" 'source_type = "git"'
+    assert_not_contains "$contents" '[marketplaces.'
+    assert_not_contains "$contents" '[projects.'
   done
 }
 
@@ -662,7 +730,11 @@ test_hyprland_exposes_keybind_list() {
   script="$(<"$REPO_DIR/scripts/show-keybinds.sh")"
 
   assert_contains "$config" 'description = description'
-  assert_contains "$config" 'scripts/show-keybinds.sh'
+  assert_contains "$config" '$HOME/.local/bin/show-keybinds'
+  assert_not_contains "$config" '$HOME/dotfiles/scripts/show-keybinds.sh'
+  assert_contains "$HOME_CONFIG" '".local/bin/input-method-status"'
+  assert_contains "$HOME_CONFIG" '".local/bin/hyprsunset-status"'
+  assert_contains "$HOME_CONFIG" '".local/bin/show-keybinds"'
   assert_contains "$script" 'hyprctl binds -j'
   assert_contains "$script" 'fuzzel --dmenu'
 }
@@ -671,9 +743,11 @@ test_waybar_shows_hyprsunset_status() {
   local config="$WAYBAR_CONFIG" style="$WAYBAR_STYLE" status_script="$SUNSET_STATUS_SCRIPT" day night
 
   assert_contains "$config" '"custom/hyprsunset"'
-  assert_contains "$config" 'scripts/hyprsunset-status.sh'
+  assert_contains "$config" '$HOME/.local/bin/hyprsunset-status'
+  assert_not_contains "$config" '$HOME/dotfiles/scripts/hyprsunset-status.sh'
   assert_contains "$style" "#custom-hyprsunset.active"
-  assert_contains "$status_script" 'repo="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"'
+  assert_contains "$status_script" 'config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprsunset.conf"'
+  assert_not_contains "$status_script" 'repo="$(cd --'
   assert_not_contains "$status_script" "mapfile"
 
   day="$(HYPRSUNSET_RUNNING=true "$REPO_DIR/scripts/hyprsunset-status.sh" 12:00)"
@@ -690,8 +764,10 @@ test_waybar_shows_input_method() {
   local config="$WAYBAR_CONFIG" style="$WAYBAR_STYLE" status_script="$INPUT_METHOD_STATUS_SCRIPT" english vietnamese chinese
 
   assert_contains "$config" '"custom/input-method"'
-  assert_contains "$config" 'scripts/input-method-status.sh'
-  assert_contains "$config" '"on-click": "$HOME/dotfiles/scripts/input-method-status.sh --next"'
+  assert_contains "$config" '$HOME/.local/bin/input-method-status'
+  assert_contains "$config" '"on-click": "$HOME/.local/bin/input-method-status --next"'
+  assert_not_contains "$config" '$HOME/dotfiles/scripts/input-method-status.sh'
+  assert_contains "$config" '"interval": 5'
   assert_contains "$style" "#custom-input-method"
 
   english="$("$REPO_DIR/scripts/input-method-status.sh" keyboard-us)"

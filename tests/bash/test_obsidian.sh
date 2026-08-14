@@ -68,6 +68,21 @@ test_check_prereqs_succeeds_with_all_tools() {
   fi
 }
 
+test_setup_obsidian_dry_run_does_not_require_ob_or_probe_vaults() {
+  export DRY=true
+  export PATH="$FAKE_BIN:/usr/bin:/bin"
+  mkdir -p "$HOME/Documents/existing-vault"
+  printf 'should not be probed\n' > "$HOME/Documents/existing-vault/sentinel"
+
+  local output exit_code=0
+  output=$(setup_obsidian 2>&1) || exit_code=$?
+
+  assert_equals "0" "$exit_code"
+  assert_contains "$output" "Would run: ob login (interactive)"
+  assert_contains "$output" "Would run: ob sync-setup"
+  assert_file_exists "$HOME/Documents/existing-vault/sentinel"
+}
+
 # ---------------------------------------------------------------------------
 # _obsidian_check_cli
 # ---------------------------------------------------------------------------

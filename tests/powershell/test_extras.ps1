@@ -71,6 +71,69 @@ function test_installfiracodenerdfont_rejects_archive_without_fonts {
     Assert-Throws { InstallFiraCodeNerdFont 6>&1 | Out-Null } 'archive without font files should fail'
 }
 
+function test_installfiracodenerdfont_skips_download_when_complete_pinned_set_is_installed {
+    $script:Dry = $false
+    $script:FiraCodeNerdFontVersion = '9.9.9'
+    $fontDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    $styles = 'Bold', 'Light', 'Medium', 'Regular', 'Retina', 'SemiBold'
+    $families = 'FiraCodeNerdFont', 'FiraCodeNerdFontMono', 'FiraCodeNerdFontPropo'
+    New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
+    foreach ($family in $families) {
+        foreach ($style in $styles) {
+            [IO.File]::WriteAllText((Join-Path $fontDir "$family-$style-9.9.9.ttf"), 'installed')
+        }
+    }
+    Set-CommandMock 'Invoke-WebRequest' { throw 'download should not occur' }
+    Set-CommandMock 'New-ItemProperty' {
+        param($Path, $Name, $Value, [switch]$Force)
+        $script:RegisteredFonts[$Name] = $Value
+    }
+    Set-CommandMock 'icacls' { $script:IcaclsCalls += ,($args -join ' '); $global:LASTEXITCODE = 0 }
+    $script:RegisteredFonts = @{}
+    $script:IcaclsCalls = @()
+
+    InstallFiraCodeNerdFont 6>&1 | Out-Null
+
+    Assert-Equals 18 $script:RegisteredFonts.Count 'complete font set should refresh registry entries'
+    Assert-True ($script:IcaclsCalls.Count -gt 0) 'complete font set should refresh packaged-app ACL'
+
+    Assert-Equals 'installed' ([IO.File]::ReadAllText((Join-Path $fontDir 'FiraCodeNerdFont-Regular-9.9.9.ttf'))) 'complete pinned font set should remain untouched'
+}
+
+function test_installfiracodenerdfont_update_bypasses_fast_path {
+    $script:Dry = $false
+    $script:UpdateFontDownloadCalled = $false
+    $script:FiraCodeNerdFontVersion = '9.9.9'
+    $fontDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    $styles = 'Bold', 'Light', 'Medium', 'Regular', 'Retina', 'SemiBold'
+    $families = 'FiraCodeNerdFont', 'FiraCodeNerdFontMono', 'FiraCodeNerdFontPropo'
+    New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
+    foreach ($family in $families) {
+        foreach ($style in $styles) {
+            [IO.File]::WriteAllText((Join-Path $fontDir "$family-$style-9.9.9.ttf"), 'old font')
+        }
+    }
+    Set-CommandMock 'Invoke-WebRequest' { $script:UpdateFontDownloadCalled = $true; throw 'update download reached' }
+
+    Assert-Throws { InstallFiraCodeNerdFont -Update 6>&1 | Out-Null } 'update should bypass font fast path'
+    Assert-True $script:UpdateFontDownloadCalled 'update should attempt font download'
+}
+
+function test_installextras_forwards_update_to_font_installer {
+    $definition = (Get-Command InstallExtras).Definition
+    Assert-True ($definition.Contains('InstallFiraCodeNerdFont -Update:$Update')) 'InstallExtras should forward update switch'
+}
+
+function test_installfiracodenerdfont_force_bypasses_fast_path {
+    $script:Dry = $false
+    $script:Force = $true
+    $script:TestFontArchive = Join-Path $script:_TestTmp.FullName 'FiraCode.zip'
+    New-TestFontArchive $script:TestFontArchive
+    Use-TestFontRelease $script:TestFontArchive
+    InstallFiraCodeNerdFont 6>&1 | Out-Null
+    Assert-Equals 'new font' ([IO.File]::ReadAllText((Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts\FiraCodeNerdFont-Bold-9.9.9.ttf'))) 'force should refresh pinned font'
+}
+
 function test_installfiracodenerdfont_is_idempotent {
     $script:Dry = $false
     $script:TestFontArchive = Join-Path $script:_TestTmp.FullName 'FiraCode.zip'

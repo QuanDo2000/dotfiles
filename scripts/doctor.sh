@@ -16,8 +16,8 @@ _check_symlink() {
   if [ -L "$target" ]; then
     local link_target
     link_target="$(resolve_symlink "$target")"
-    if [[ "$link_target" == "$DOTFILES_DIR/"* ]] \
-      || { is_home_manager_platform "$platform" && [[ "$link_target" == /nix/store/* ]]; }; then
+    if [[ -e "$target" ]] && { [[ "$link_target" == "$DOTFILES_DIR/"* ]] \
+      || { is_home_manager_platform "$platform" && [[ "$link_target" == /nix/store/* ]]; }; }; then
       success "$name -> $link_target"
     else
       fail_soft "$name points to $link_target (expected $DOTFILES_DIR/... or Home Manager store target)"
@@ -38,8 +38,8 @@ _check_dotfile_command() {
   if [ -L "$target" ]; then
     local link_target
     link_target="$(resolve_symlink "$target")"
-    if [[ "$link_target" == "$DOTFILES_DIR/dotfile" ]] \
-      || { is_home_manager_platform "$platform" && [[ "$link_target" == /nix/store/* ]]; }; then
+    if [[ -e "$target" ]] && { [[ "$link_target" == "$DOTFILES_DIR/dotfile" ]] \
+      || { is_home_manager_platform "$platform" && [[ "$link_target" == /nix/store/* ]]; }; }; then
       success ".local/bin/dotfile -> $link_target"
     else
       fail_soft ".local/bin/dotfile points to $link_target (expected $DOTFILES_DIR/dotfile or Home Manager store target)"
@@ -50,6 +50,47 @@ _check_dotfile_command() {
     errors=$((errors + 1))
   else
     fail_soft ".local/bin/dotfile not found"
+    errors=$((errors + 1))
+  fi
+}
+
+_check_writable_file() {
+  local name="$1" target="$HOME/$1"
+  if [[ -f "$target" && -w "$target" ]]; then
+    success "$name writable"
+  else
+    fail_soft "$name missing or not writable"
+    errors=$((errors + 1))
+  fi
+}
+
+_check_managed_commands() {
+  local command_name
+  for command_name in nvim codex pi codebase-memory-mcp; do
+    if command -v "$command_name" >/dev/null 2>&1; then
+      success "$command_name available"
+    else
+      fail_soft "$command_name not found"
+      errors=$((errors + 1))
+    fi
+  done
+  local fff_agent="$HOME/.local/bin/fff-mcp-agent"
+  if [[ -x "$fff_agent" ]]; then
+    success "fff-mcp-agent available"
+  else
+    fail_soft "fff-mcp-agent not found at $fff_agent"
+    errors=$((errors + 1))
+  fi
+}
+
+_check_obsidian_service() {
+  is_linux || return 0
+  [[ "$DRY" == true ]] && return 0
+  local target="$HOME/.config/systemd/user/obsidian-sync.service"
+  if [[ -L "$target" && -e "$target" ]]; then
+    success "obsidian-sync.service installed"
+  else
+    fail_soft "obsidian-sync.service not installed"
     errors=$((errors + 1))
   fi
 }
@@ -176,7 +217,16 @@ function doctor {
   _check_release_transactions
   info "Verifying symlinks..."
   _check_symlink .zshrc "$platform"
+  _check_symlink .config/tmux/tmux.conf "$platform"
+  _check_symlink .config/git/config "$platform"
+  _check_symlink .config/nvim/init.lua "$platform"
+  _check_symlink .config/nvim/fff-nvim-backend "$platform"
   _check_dotfile_command "$platform"
+  _check_writable_file .codex/config.toml
+  _check_writable_file .pi/agent/settings.json
+  _check_writable_file .pi/agent/mcp.json
+  _check_managed_commands
+  _check_obsidian_service
   _check_nix_config "$platform"
 
   echo ""

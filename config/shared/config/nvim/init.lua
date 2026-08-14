@@ -299,8 +299,15 @@ local plugins = {
   {
     "saghen/blink.cmp",
     version = "1.*",
-    lazy = true,
+    event = { "InsertEnter", "CmdlineEnter" },
     opts = {
+      cmdline = {
+        completion = {
+          menu = {
+            auto_show = function() return vim.fn.getcmdtype() == ":" end,
+          },
+        },
+      },
       completion = { list = { selection = { auto_insert = true } } },
       keymap = { preset = "default", ["<C-e>"] = { "cancel", "fallback" } },
     },
@@ -318,7 +325,7 @@ local plugins = {
         vim.schedule(function() vim.api.nvim_exec_autocmds("FileType", { buffer = 0 }) end)
       end)
       registry.refresh(function()
-        for _, name in ipairs({ "bash-language-server", "json-lsp", "lua-language-server", "markdownlint-cli2", "marksman", "nil", "stylua", "taplo", "yaml-language-server" }) do
+        for _, name in ipairs({ "bash-language-server", "json-lsp", "lua-language-server", "markdownlint-cli2", "marksman", "nil", "nixfmt", "prettier", "stylua", "taplo", "yaml-language-server" }) do
           local package = registry.get_package(name)
           if not package:is_installed() then package:install() end
         end

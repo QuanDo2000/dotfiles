@@ -193,6 +193,19 @@ function test_global_agents_file_is_not_linked_on_windows {
     Assert-False (($sources -join "`n") -match 'ai[\\/]AGENTS\.md') 'global AGENTS.md should not be linked on Windows'
 }
 
+function test_linkpath_skip_all_preserves_existing_directory {
+    $source = Join-Path $env:USERPROFILE 'source'
+    $destination = Join-Path $env:USERPROFILE 'destination'
+    New-Item -ItemType Directory -Force -Path $source, $destination | Out-Null
+    'keep' | Set-Content -LiteralPath (Join-Path $destination 'sentinel.txt')
+    $script:SkipAll = $true
+
+    LinkPath $source $destination $true
+
+    Assert-FileExists (Join-Path $destination 'sentinel.txt') 'SkipAll should preserve conflicting directory contents'
+    Assert-False (Test-Path -LiteralPath "$destination.bak") 'SkipAll should not create a directory backup'
+}
+
 function test_linkpath_skips_when_already_linked {
     $src = Join-Path $env:USERPROFILE 'src.txt'
     $dst = Join-Path $env:USERPROFILE 'dst.txt'

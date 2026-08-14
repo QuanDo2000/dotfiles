@@ -68,6 +68,9 @@ end
 
 local lazy = require("lazy.core.config")
 assert(not lazy.plugins.LazyVim, "LazyVim must not be loaded")
+local blink = lazy.plugins["blink.cmp"]
+assert(vim.tbl_contains(blink.event, "CmdlineEnter"), "Blink should load for command-line completion")
+assert(type(blink.opts.cmdline.completion.menu.auto_show) == "function", "Blink command-line suggestions must auto-show selectively")
 local mason = lazy.plugins["mason.nvim"]
 assert(mason.event == "VeryLazy", "Mason should load after startup")
 assert(not mason._.loaded, "Mason must stay off file-open path")

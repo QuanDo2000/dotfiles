@@ -30,6 +30,9 @@ approval_policy = "on-request"
 memories = true
 multi_agent = true
 
+[marketplaces.local-runtime]
+source = "/tmp/marketplace"
+
 [projects."/home/quando/dotfiles"]
 trust_level = "trusted"
 
@@ -49,7 +52,8 @@ EOF
   assert_contains "$output" "Applied Codex live config additions to tracked seed"
   assert_contains "$(<"$seed")" 'approval_policy = "on-request"'
   assert_contains "$(<"$seed")" "multi_agent = true"
-  assert_contains "$(<"$seed")" '[projects."/home/quando/dotfiles"]'
+  assert_not_contains "$(<"$seed")" '[marketplaces.local-runtime]'
+  assert_not_contains "$(<"$seed")" '[projects."/home/quando/dotfiles"]'
   assert_not_contains "$(<"$seed")" '[hooks]'
   assert_exit_code 0 python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$seed"
   rm -rf "$tmp"

@@ -80,6 +80,24 @@ function test_windows_pi_mcp_uses_spawnable_native_fff_with_persistent_frecency 
     Assert-Equals 'eager' $fff.lifecycle
 }
 
+function test_installai_installs_pinned_node_before_ai_tools {
+    $script:Dry = $false
+    $calls = [Collections.Generic.List[string]]::new()
+    $names = 'InstallFnm', 'InstallCodex', 'InstallCodebaseMemory', 'InstallFffMcp', 'SyncCodexConfig', 'InstallPi', 'InstallPiLanguageServers', 'InstallPiExtensions', 'SyncPiConfigs', 'SyncAiInstructions', 'InstallAiSkills'
+    $original = @{}
+    try {
+        foreach ($name in $names) {
+            $original[$name] = (Get-Command $name).ScriptBlock
+            Set-FunctionMock $name { $calls.Add($MyInvocation.MyCommand.Name) }
+        }
+        InstallAi
+        Assert-Equals 'InstallFnm' $calls[0] 'pinned Node should install first'
+        Assert-Equals 'InstallCodex' $calls[1] 'Codex should follow pinned Node'
+    } finally {
+        foreach ($name in $names) { Set-FunctionMock $name $original[$name] }
+    }
+}
+
 function test_installai_activates_locked_extensions_before_reconciliation {
     $definition = (Get-Command InstallAi).Definition
     $installIndex = $definition.IndexOf('InstallPiExtensions')

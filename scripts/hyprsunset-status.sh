@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprsunset.conf"
-if [[ ! -f "$config" ]]; then
-  config="$repo/config/unix/config/hypr/hyprsunset.conf"
+day=07:00
+night=20:00
+temperature=4500
+if [[ -f "$config" ]]; then
+  times="$(awk '$1 == "time" && $2 == "=" { print $3 }' "$config")"
+  day="$(awk 'NR == 1 { print; exit }' <<<"$times")"
+  night="$(awk 'NR == 2 { print; exit }' <<<"$times")"
+  temperature="$(awk '$1 == "temperature" && $2 == "=" { print $3; exit }' "$config")"
+  day="${day:-07:00}"
+  night="${night:-20:00}"
+  temperature="${temperature:-4500}"
 fi
-
-times="$(awk '$1 == "time" && $2 == "=" { print $3 }' "$config")"
-day="$(awk 'NR == 1 { print; exit }' <<<"$times")"
-night="$(awk 'NR == 2 { print; exit }' <<<"$times")"
-day="${day:-07:00}"
-night="${night:-20:00}"
-temperature="$(awk '$1 == "temperature" && $2 == "=" { print $3; exit }' "$config")"
-temperature="${temperature:-4500}"
 now="${1:-$(date +%H:%M)}"
 running="${HYPRSUNSET_RUNNING:-}"
 if [[ -z "$running" ]]; then

@@ -11,53 +11,14 @@ REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
-NO_DOCKER=false
 TEST_FILES=()
 
 for arg in "$@"; do
     case "$arg" in
-        --no-docker) NO_DOCKER=true ;;
-        *)           TEST_FILES+=("$arg") ;;
+        --docker|--no-docker) : ;; # retained as harmless compatibility flags
+        *)                    TEST_FILES+=("$arg") ;;
     esac
 done
-
-# ---------------------------------------------------------------------------
-# Docker orchestration
-# ---------------------------------------------------------------------------
-in_docker() {
-    [ -f /.dockerenv ]
-}
-
-run_in_docker() {
-    local image_name="dotfiles-test"
-
-    echo "==> Building Docker image..."
-    docker build -t "$image_name" -f - . <<'DOCKERFILE'
-FROM ubuntu:24.04
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        bash coreutils git diffutils ca-certificates jq nodejs python3 \
-    && rm -rf /var/lib/apt/lists/*
-RUN useradd -m -s /bin/bash testuser
-USER testuser
-WORKDIR /home/testuser
-DOCKERFILE
-
-    echo "==> Running tests inside Docker container..."
-    local docker_args=(
-        docker run --rm
-        -v "${REPO_DIR}:/home/testuser/dotfiles:ro"
-        -w /home/testuser/dotfiles
-        "$image_name"
-        bash /home/testuser/dotfiles/tests/bash/runner.sh --no-docker
-    )
-    docker_args+=("${TEST_FILES[@]}")
-    "${docker_args[@]}"
-}
-
-if ! in_docker && [ "$NO_DOCKER" = false ]; then
-    run_in_docker
-    exit $?
-fi
 
 # ---------------------------------------------------------------------------
 # Test framework — assertions

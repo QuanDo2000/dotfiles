@@ -18,11 +18,6 @@ clear_terminal = []
 "gpt-5.5" = 4
 "gpt-5.6-sol" = 1
 
-[marketplaces.openai-bundled]
-last_updated = "2026-07-30T03:10:45Z"
-source_type = "local"
-source = "/home/quando/.codex/.tmp/bundled-marketplaces/openai-bundled"
-
 [plugins."superpowers@openai-curated"]
 enabled = true
 
@@ -31,21 +26,6 @@ enabled = true
 
 [plugins."visualize@openai-bundled"]
 enabled = true
-
-[projects."/home/quando/dotfiles"]
-trust_level = "trusted"
-
-[projects."/Users/quando/dotfiles"]
-trust_level = "trusted"
-
-[projects."/Users/quando"]
-trust_level = "trusted"
-
-[projects."/home/quando"]
-trust_level = "trusted"
-
-[projects."/home/quando/Downloads"]
-trust_level = "trusted"
 
 [mcp_servers.fff]
 command = "/usr/bin/env"

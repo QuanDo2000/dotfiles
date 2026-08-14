@@ -16,7 +16,8 @@ test_check_script_runs_repo_verification() {
   check_text="$(<"$REPO_DIR/scripts/check.sh")"
   flake_text="$(<"$REPO_DIR/flake.nix")"
 
-  assert_contains "$check_text" 'nix develop "$flake" -c bash "$repo_dir/tests/bash/runner.sh" --no-docker'
+  assert_contains "$check_text" 'nix develop "$flake" -c bash "$repo_dir/tests/bash/runner.sh"'
+  assert_not_contains "$check_text" '--no-docker'
   assert_contains "$check_text" 'nix develop "$flake" -c pwsh "$repo_dir/tests/powershell/runner.ps1"'
   assert_not_contains "$check_text" 'command -v pwsh'
   assert_contains "$check_text" 'nix flake check "$flake" --no-build --all-systems'
@@ -39,11 +40,18 @@ test_check_script_runs_repo_verification() {
   assert_contains "$flake_text" "shellcheck"
 }
 
-test_docker_test_environment_includes_python() {
+test_bash_runner_defaults_to_nix_environment() {
+  local runner_text
+  runner_text="$(<"$REPO_DIR/tests/bash/runner.sh")"
+  assert_not_contains "$runner_text" 'docker build'
+  assert_not_contains "$runner_text" 'Docker orchestration'
+}
+
+test_bash_runner_has_no_docker_path() {
   local runner_text
   runner_text="$(<"$REPO_DIR/tests/bash/runner.sh")"
 
-  assert_contains "$runner_text" "python3"
+  assert_not_contains "$runner_text" "docker build"
 }
 
 test_bash_runner_accepts_multiple_test_files() {

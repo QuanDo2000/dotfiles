@@ -21,6 +21,7 @@ else
 fi
 export DOTFILES_DIR
 REPO_URL="https://github.com/QuanDo2000/dotfiles.git"
+ORIGINAL_ARGS=("$@")
 
 SCRIPTS_DIR="$DOTFILES_DIR/scripts"
 
@@ -45,9 +46,10 @@ source "$SCRIPTS_DIR/obsidian.sh"
 
 function update_repo {
   info "Updating dotfiles repo..."
-  if [[ "$DRY" == "false" ]]; then
+  if [[ "$DRY" == "false" && "${DOTFILE_REEXEC:-false}" != "true" ]]; then
     cd "$DOTFILES_DIR" || return
     git pull --rebase --autostash || fail "Failed to pull dotfiles repo"
+    DOTFILE_REEXEC=true exec "$DOTFILES_DIR/dotfile" "${ORIGINAL_ARGS[@]}"
   fi
   success "Finished updating repo"
 }
@@ -55,10 +57,26 @@ function update_repo {
 function run_checked_flow {
   local pull_repo="$1"
   local precheck="$2"
-  shift 2
-  [[ "$precheck" == "true" ]] && doctor
-  [[ "$pull_repo" == "true" ]] && update_repo
-  "$@"
+  local operation="$3"
+  shift 3
+  [[ "$precheck" == "true" ]] && DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
+  if [[ "$pull_repo" == "true" ]]; then
+    if [[ "$DRY" == "false" && "$operation" == "update_packages" ]]; then
+      if _dependency_update_pending; then
+        info "Resuming pending dependency update without pulling repository"
+      else
+        _require_clean_dependency_tree
+        update_repo
+      fi
+    elif [[ "$DRY" == "false" && "$operation" == "update_ai" ]]; then
+      _dependency_update_pending && fail "AI update requires finishing pending dependency update first"
+      _require_clean_dependency_tree
+      update_repo
+    else
+      update_repo
+    fi
+  fi
+  "$operation" "$@"
   DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
 }
 
@@ -121,7 +139,13 @@ done
 
 # Run command
 case "${1:-all}" in
-all) setup_dotfiles ;;
+all)
+  [[ $# -le 1 ]] || fail "Unexpected all argument: ${2:-}"
+  if [[ "$DRY" == "false" ]] && _dependency_update_pending; then
+    fail "Pending dependency update must be reviewed before setup"
+  fi
+  setup_dotfiles
+  ;;
 update)
   case "${2:-}" in
     "") run_checked_flow true true update_packages ;;
@@ -132,19 +156,35 @@ update)
     *) fail "Unknown update target: $2" ;;
   esac
   ;;
-packages) run_checked_flow false false install_packages ;;
-obsidian) setup_obsidian ;;
-codex) update_codex_release ;;
+packages)
+  [[ $# -eq 1 ]] || fail "Unexpected packages argument: ${2:-}"
+  if [[ "$DRY" == "false" ]] && _dependency_update_pending; then
+    fail "Pending dependency update must be reviewed before package installation"
+  fi
+  run_checked_flow false false install_packages
+  ;;
+obsidian)
+  [[ $# -eq 1 ]] || fail "Unexpected obsidian argument: ${2:-}"
+  setup_obsidian
+  ;;
+codex)
+  [[ $# -eq 1 ]] || fail "Unexpected codex argument: ${2:-}"
+  update_codex_release
+  ;;
 lix-installer)
   [[ $# -eq 1 ]] || fail "Unexpected lix-installer argument: ${2:-}"
   update_lix_installer_pins
   ;;
-obsidian-headless) update_obsidian_headless_release ;;
+obsidian-headless)
+  [[ $# -eq 1 ]] || fail "Unexpected obsidian-headless argument: ${2:-}"
+  update_obsidian_headless_release
+  ;;
 doctor)
+  [[ $# -le 2 ]] || fail "Unexpected doctor argument: ${3:-}"
   case "${2:-}" in
     "") ;;
     --fast) export DOTFILE_DOCTOR_SKIP_NIX_EVAL=true ;;
-    *) fail "Unknown doctor option: $2" ;;
+    *) fail "Unexpected doctor argument: $2" ;;
   esac
   doctor
   ;;

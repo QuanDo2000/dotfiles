@@ -106,18 +106,45 @@ zle -N zle-line-init
 # first time `nvm`/`nvm use` runs in a session.
 export NVM_DIR="$HOME/.nvm"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
-  # Resolve the default Node version's bin dir without sourcing nvm.
-  _nvm_default=$( [ -r "$NVM_DIR/alias/default" ] && cat "$NVM_DIR/alias/default" )
-  _nvm_bin=""
-  case "$_nvm_default" in
-    v*) [ -d "$NVM_DIR/versions/node/$_nvm_default/bin" ] \
-          && _nvm_bin="$NVM_DIR/versions/node/$_nvm_default/bin" ;;
-  esac
-  # Non-concrete alias (node/stable/lts/*) or unresolved → newest installed version.
-  [ -n "$_nvm_bin" ] || _nvm_bin=$(find "$NVM_DIR/versions/node" -mindepth 2 -maxdepth 2 \
-    -type d -name bin 2>/dev/null | sort -V | tail -n1)
+  # Resolve default and symbolic aliases without sourcing nvm or GNU utilities.
+  _nvm_default_bin() {
+    setopt localoptions numericglobsort nullglob
+    local alias_name=default alias_value target depth=0
+    while (( depth++ < 8 )); do
+      alias_value=""
+      [ -r "$NVM_DIR/alias/$alias_name" ] && alias_value="$(<"$NVM_DIR/alias/$alias_name")"
+      [[ -n "$alias_value" ]] || break
+      target="${alias_value%%$'\n'*}"
+      if [[ "$target" =~ '^([0-9]+)(\.([0-9]+))?(\.([0-9]+))?$' ]]; then
+        local major="${match[1]}" minor="${match[3]}" patch="${match[5]}" version candidate index
+        local -a versions=( "$NVM_DIR"/versions/node/v*(/) )
+        for (( index = ${#versions}; index >= 1; index-- )); do
+          version="${versions[index]}"
+          candidate="${${version:t}#v}"
+          [[ "$candidate" == "$major".* ]] || continue
+          [[ -z "$minor" || "$candidate" == "$major.$minor".* || "$candidate" == "$major.$minor" ]] || continue
+          [[ -z "$patch" || "$candidate" == "$major.$minor.$patch" ]] || continue
+          if [[ -x "$version/bin/node" ]]; then
+            print -r -- "$version/bin"
+            return
+          fi
+        done
+        return
+      fi
+      [[ "$target" == v* ]] || { alias_name="$target"; continue; }
+      if [[ -x "$NVM_DIR/versions/node/$target/bin/node" ]]; then
+        print -r -- "$NVM_DIR/versions/node/$target/bin"
+        return
+      fi
+      break
+    done
+    local -a versions=( "$NVM_DIR"/versions/node/v*(/) )
+    (( ${#versions} )) && print -r -- "${versions[-1]}/bin"
+  }
+  _nvm_bin="$(_nvm_default_bin)"
   [ -n "$_nvm_bin" ] && [ -d "$_nvm_bin" ] && PATH="$_nvm_bin:$PATH"
-  unset _nvm_default _nvm_bin
+  unset -f _nvm_default_bin
+  unset _nvm_bin
 
   # Lazy-load full nvm (management commands) on first use, then hand off.
   nvm() {

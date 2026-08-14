@@ -168,7 +168,7 @@ def update_codebase_memory(repo: Path) -> None:
         download(github_asset(release, "checksums.txt")["browser_download_url"], checksums)
         download(github_asset(release, "checksums.txt.bundle")["browser_download_url"], bundle)
         run(
-            "nix", "develop", f"path:{repo}", "-c", "cosign", "verify-blob",
+            "cosign", "verify-blob",
             "--bundle", str(bundle),
             "--certificate-identity", "https://github.com/DeusData/codebase-memory-mcp/.github/workflows/release.yml@refs/heads/main",
             "--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
@@ -562,10 +562,10 @@ def update_neovim(repo: Path) -> None:
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print(f"Usage: {Path(sys.argv[0]).name} TARGET REPO", file=sys.stderr)
+    if len(sys.argv) < 3:
+        print(f"Usage: {Path(sys.argv[0]).name} TARGET [TARGET ...] REPO", file=sys.stderr)
         return 2
-    target, repo_arg = sys.argv[1:]
+    targets, repo_arg = sys.argv[1:-1], sys.argv[-1]
     repo = Path(repo_arg).resolve()
     handlers = {
         "codebase-memory": update_codebase_memory,
@@ -577,14 +577,15 @@ def main() -> int:
         "skills": update_skills,
         "neovim": update_neovim,
     }
-    try:
-        handlers[target](repo)
-    except KeyError:
-        print(f"Unknown pin target: {target}", file=sys.stderr)
-        return 2
-    except Exception as error:
-        print(f"pin update failed: {error}", file=sys.stderr)
-        return 1
+    for target in targets:
+        try:
+            handlers[target](repo)
+        except KeyError:
+            print(f"Unknown pin target: {target}", file=sys.stderr)
+            return 2
+        except Exception as error:
+            print(f"pin update failed for {target}: {error}", file=sys.stderr)
+            return 1
     return 0
 
 

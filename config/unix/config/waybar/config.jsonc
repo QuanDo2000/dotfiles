@@ -77,14 +77,14 @@
   },
 
   "custom/input-method": {
-    "exec": "$HOME/dotfiles/scripts/input-method-status.sh",
+    "exec": "$HOME/.local/bin/input-method-status",
     "return-type": "json",
-    "interval": 1,
-    "on-click": "$HOME/dotfiles/scripts/input-method-status.sh --next"
+    "interval": 5,
+    "on-click": "$HOME/.local/bin/input-method-status --next"
   },
 
   "custom/hyprsunset": {
-    "exec": "$HOME/dotfiles/scripts/hyprsunset-status.sh",
+    "exec": "$HOME/.local/bin/hyprsunset-status",
     "return-type": "json",
     "interval": 60
   },
@@ -131,7 +131,7 @@
     "format": "󰐥",
     "tooltip-format": "Power menu",
     "menu": "on-click",
-    "menu-file": "$HOME/dotfiles/config/unix/config/waybar/power-menu.xml",
+    "menu-file": "$HOME/.config/waybar/power-menu.xml",
     "menu-actions": {
       "lock": "loginctl lock-session",
       "suspend": "systemctl suspend",

@@ -108,6 +108,11 @@ function LinkPath($source, $destination, [bool]$isDirectory = $false) {
             return
         }
 
+        if ($script:SkipAll) {
+            Success "Skipped $source"
+            return
+        }
+
         if ($isDirectory) {
             $overwrite = $script:Force
             $backup = -not $script:Force
@@ -248,8 +253,36 @@ function Grant-FontReadAccess($Path) {
 }
 
 function InstallFiraCodeNerdFont {
+    param([switch]$Update)
     Info "Installing FiraCode Nerd Font..."
     if ($script:Dry) { return }
+
+    $fontDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
+    $styles = @('Bold', 'Light', 'Medium', 'Regular', 'Retina', 'SemiBold')
+    $families = @('FiraCodeNerdFont', 'FiraCodeNerdFontMono', 'FiraCodeNerdFontPropo')
+    $complete = $true
+    foreach ($family in $families) {
+        foreach ($style in $styles) {
+            if (-not (Test-Path -LiteralPath (Join-Path $fontDir "$family-$style-$script:FiraCodeNerdFontVersion.ttf") -PathType Leaf)) {
+                $complete = $false
+                break
+            }
+        }
+        if (-not $complete) { break }
+    }
+    if ($complete -and -not $script:Force -and -not $Update) {
+        $registry = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+        Grant-FontReadAccess $fontDir
+        foreach ($family in $families) {
+            foreach ($style in $styles) {
+                $baseName = "$family-$style"
+                $target = Join-Path $fontDir "$baseName-$script:FiraCodeNerdFontVersion.ttf"
+                New-ItemProperty -Path $registry -Name "$baseName (TrueType)" -Value $target -Force | Out-Null
+            }
+        }
+        Success "FiraCode Nerd Font $script:FiraCodeNerdFontVersion already installed"
+        return
+    }
 
     $archive = Join-Path ([IO.Path]::GetTempPath()) "FiraCode-$([Guid]::NewGuid().ToString('N')).zip"
     $extract = Join-Path ([IO.Path]::GetTempPath()) "FiraCode-$([Guid]::NewGuid().ToString('N'))"
@@ -259,7 +292,6 @@ function InstallFiraCodeNerdFont {
             throw "FiraCode Nerd Font checksum mismatch"
         }
         Expand-Archive -LiteralPath $archive -DestinationPath $extract
-        $fontDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
         $registry = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
         $fonts = @(Get-ChildItem -LiteralPath $extract -File | Where-Object Extension -In '.ttf', '.otf')
         if ($fonts.Count -eq 0) { throw "FiraCode Nerd Font archive contains no fonts" }
@@ -326,8 +358,7 @@ function InstallFnm {
 
 function InstallExtras {
     param([switch]$Update)
-    InstallFiraCodeNerdFont
-    InstallFnm
+    InstallFiraCodeNerdFont -Update:$Update
 }
 
 function InstallManagedPackages {
@@ -1189,6 +1220,7 @@ function InstallAi {
     Info "Installing agent CLIs..."
     if ($script:Dry) { return }
 
+    InstallFnm
     InstallCodex -Update:$Update
 
     InstallCodebaseMemory -Update:$Update

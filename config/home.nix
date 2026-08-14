@@ -220,6 +220,15 @@ in
     ".local/bin/bitwarden-picker" = lib.mkIf pkgs.stdenv.isLinux (forceSource ./unix/bin/bitwarden-picker // {
       executable = true;
     });
+    ".local/bin/input-method-status" = lib.mkIf pkgs.stdenv.isLinux (forceSource ../scripts/input-method-status.sh // {
+      executable = true;
+    });
+    ".local/bin/hyprsunset-status" = lib.mkIf pkgs.stdenv.isLinux (forceSource ../scripts/hyprsunset-status.sh // {
+      executable = true;
+    });
+    ".local/bin/show-keybinds" = lib.mkIf pkgs.stdenv.isLinux (forceSource ../scripts/show-keybinds.sh // {
+      executable = true;
+    });
     ".local/bin/caf" = lib.mkIf pkgs.stdenv.isDarwin (forceSource ./mac/bin/caf // {
       executable = true;
     });
