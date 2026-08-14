@@ -2,6 +2,8 @@
 
 function TestSetup {
     Initialize-TestEnv | Out-Null
+    $script:OriginalProgramFiles = $env:ProgramFiles
+    $env:ProgramFiles = Join-Path $env:USERPROFILE 'Program Files'
     $script:OriginalWingetHas = (Get-Command WingetHas).ScriptBlock
     $script:OriginalAddToUserPath = (Get-Command AddToUserPath).ScriptBlock
     Set-FunctionMock 'AddToUserPath' { }
@@ -11,7 +13,9 @@ function TestTeardown {
     Clear-CommandMock 'winget'
     Set-FunctionMock 'WingetHas' $script:OriginalWingetHas
     Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
-    Remove-Variable -Name MissingWingetPackages, AllInstalled, AddedUserPath -Scope Script -ErrorAction SilentlyContinue
+    if ($null -eq $script:OriginalProgramFiles) { Remove-Item Env:ProgramFiles -ErrorAction SilentlyContinue }
+    else { $env:ProgramFiles = $script:OriginalProgramFiles }
+    Remove-Variable -Name MissingWingetPackages, AllInstalled, AddedUserPath, OriginalProgramFiles -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
 }
 
