@@ -50,6 +50,7 @@
           powershell
           python3
           shellcheck
+          tmux
         ];
       };
     in

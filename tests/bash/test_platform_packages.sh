@@ -127,6 +127,28 @@ test_tmux_owns_catppuccin_theme_without_plugin() {
   assert_contains "$tmux_config" '%Y-%m-%d %H:%M:%S'
 }
 
+test_tmux_config_parses_and_applies_theme() {
+  local socket="$TEST_TMPDIR/tmux.sock" config="$HOME/.config/tmux/tmux.conf"
+  local stderr="$TEST_TMPDIR/tmux.stderr" status=0
+  mkdir -p "$(dirname "$config")"
+  cp "$REPO_DIR/config/unix/.tmux.conf" "$config"
+  _cleanup_tmux_test() {
+    trap - RETURN
+    env HOME="$HOME" TMUX= tmux -S "$socket" kill-server >/dev/null 2>&1 || true
+  }
+  trap _cleanup_tmux_test RETURN
+
+  env HOME="$HOME" TMUX= tmux -S "$socket" -f "$config" new-session -d -s audit 'sleep 30' 2> "$stderr" || status=$?
+
+  assert_equals "0" "$status"
+  assert_equals "" "$(<"$stderr")"
+  if (( status == 0 )); then
+    assert_equals "fg=#cad3f5,bold,bg=#6e738d" "$(env HOME="$HOME" TMUX= tmux -S "$socket" show-options -gv menu-selected-style)"
+    assert_equals "bg=#24273a,fg=#cad3f5" "$(env HOME="$HOME" TMUX= tmux -S "$socket" show-options -gv popup-style)"
+    assert_equals "fg=#494d64" "$(env HOME="$HOME" TMUX= tmux -S "$socket" show-options -gv popup-border-style)"
+  fi
+}
+
 test_code_search_stack_uses_current_full_feature_packages() {
   local fff codebase codebase_pins fff_pins pi_extensions
   fff="$(<"$REPO_DIR/packages/fff-mcp.nix")"

@@ -45,7 +45,7 @@ Platform config lives under `config/`. Unix links are managed by Home Manager fr
 2. **config/unix/** - Unix shell/tool configs plus Linux desktop configs (`.zshrc.base`, `.tmux.conf`, ghostty, hyprland, waybar, fcitx5). Home Manager gates hyprland, waybar, and fcitx5 to Linux.
 3. **config/mac/** - macOS-only files used by `dotfile.ps1` or platform-specific Home Manager logic.
 4. **config/windows/** - Windows-specific (PowerShell profile, Windows Terminal settings). Used by `dotfile.ps1`.
-5. **config/nixos/** - NixOS-only. `configuration.nix` is a tracked full-desktop system config used through the repo flake. Per-machine values (username, hostname, timezone, stateVersion) live in tracked `config/host.nix`; hardware settings live in tracked `config/hardware-configuration.nix`. Edit those files when provisioning a different host. App config files (hyprland, waybar, etc.) and shell/tmux plugin paths are managed by Home Manager from `config/home.nix`. On NixOS the imperative package installers are skipped; packages come from the rebuild.
+5. **config/nixos/** - NixOS-only. `configuration.nix` is a tracked full-desktop system config used through the repo flake. Per-machine values (username, hostname, timezone, stateVersion) live in tracked `config/host.nix`; hardware settings live in tracked `config/hardware-configuration.nix`. Edit those files when provisioning a different host. App config files (hyprland, waybar, etc.) and shell/tmux settings are managed by Home Manager from `config/home.nix`. On NixOS the imperative package installers are skipped; packages come from the rebuild.
 
 Files in `config/` subdirectories of each platform layer are linked into `~/.config/` by Home Manager. Top-level dotfiles are linked directly to `$HOME`.
 

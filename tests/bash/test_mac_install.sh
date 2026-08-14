@@ -203,21 +203,24 @@ test_set_zsh_default_skips_on_mac() {
 # ---------------------------------------------------------------------------
 
 test_dotfile_packages_command_mac() {
-  mkdir -p "$HOME/.local/bin"
-  local f src
-  for f in .zshrc .tmux.conf .gitconfig; do
-    case "$f" in
-      .zshrc) src="$REPO_DIR/config/unix/.zshrc.base" ;;
-      .gitconfig) src="$REPO_DIR/config/shared/$f" ;;
-      *) src="$REPO_DIR/config/unix/$f" ;;
-    esac
-    ln -s "$src" "$HOME/$f"
-  done
+  mkdir -p "$HOME/.local/bin" "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/nvim" "$HOME/.codex" "$HOME/.pi/agent"
+  ln -s "$REPO_DIR/config/unix/.zshrc.base" "$HOME/.zshrc"
+  ln -s "$REPO_DIR/config/unix/.tmux.conf" "$HOME/.config/tmux/tmux.conf"
+  ln -s "$REPO_DIR/config/shared/.gitconfig" "$HOME/.config/git/config"
+  ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/init.lua"
+  ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/fff-nvim-backend"
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
+  : > "$HOME/.codex/config.toml"
+  : > "$HOME/.pi/agent/settings.json"
+  : > "$HOME/.pi/agent/mcp.json"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/pi"
+  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
+  chmod +x "$HOME/.local/bin/pi" "$HOME/.local/bin/fff-mcp-agent"
   with_nix_agent_tools
 
-  local output
-  output=$(DOTFILES_DIR="$REPO_DIR" DOTFILE_DOCTOR_SKIP_NIX_EVAL=true bash "$DOTFILE_CMD" --dry packages 2>&1)
+  local output status=0
+  output=$(PATH="$HOME/.local/bin:$PATH" DOTFILES_DIR="$REPO_DIR" DOTFILE_DOCTOR_SKIP_NIX_EVAL=true bash "$DOTFILE_CMD" --dry packages 2>&1) || status=$?
 
+  assert_equals "0" "$status"
   assert_contains "$output" "Mac"
 }
