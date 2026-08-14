@@ -9,6 +9,7 @@ package-lock.json
 
 .worktrees/
 .pi-subagents/
+.pi/
 /shared/
 
 test_output.log
