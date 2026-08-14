@@ -1,27 +1,27 @@
 {
-  "version": "0.10.2",
+  "version": "0.10.4",
   "linux": {
     "amd64": {
       "file": "codebase-memory-mcp-linux-amd64.tar.gz",
-      "sha256": "6e3bb7353be21407a78e67b5465e53e3afb1a4a213e7a561606900ac08dcfdd6",
-      "nixHash": "sha256-bju3NTviFAenjme1Rl5T46+xpKIT56VhYGkArAjc/dY="
+      "sha256": "8ecb45f1680b28af30518a167dcf557ca0bb8137b2e444ac4353fc7667edd96d",
+      "nixHash": "sha256-jstF8WgLKK8wUYoWfc9VfKC7gTey5ESsQ1P8dmft2W0="
     }
   },
   "darwin": {
     "arm64": {
       "file": "codebase-memory-mcp-darwin-arm64.tar.gz",
-      "sha256": "fa3ee085485fd9c16d1c1bd8a102df518862dabd2d6a09e4c6d8dfb3cd2a7eb4",
-      "nixHash": "sha256-+j7ghUhf2cFtHBvYoQLfUYhi2r0tagnkxtjfs80qfrQ="
+      "sha256": "c8814e2e48c72a4dcafc183d436664393d2b22460eb0b826c7982a36800701a2",
+      "nixHash": "sha256-yIFOLkjHKk3K/Bg9Q2ZkOT0rIkYOsLgmx5gqNoAHAaI="
     }
   },
   "windows": {
     "amd64": {
       "file": "codebase-memory-mcp-windows-amd64.zip",
-      "sha256": "8f08e5c5b480e625adf9d4560765a860d493a690df6ded5b94127283ec5b660a"
+      "sha256": "54176ed9f7b69a862b3b5c4a9fec31e14639f85f1e48a4f895fca9799c2cd000"
     },
     "arm64": {
       "file": "codebase-memory-mcp-windows-arm64.zip",
-      "sha256": "b77b81975021b879ca53cdd94c60b48cc5de102194b52117938a2187a42f89c6"
+      "sha256": "8d3dc2e44c3d53bf88831d654403548ac577b33a935108eeed4096e8726ddcef"
     }
   }
 }
