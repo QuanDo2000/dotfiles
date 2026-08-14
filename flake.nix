@@ -39,6 +39,7 @@
         inherit overlays;
       };
       devShell = pkgs: pkgs.mkShell {
+        LAZY_NVIM_PATH = "${pkgs.vimPlugins.lazy-nvim}";
         packages = with pkgs; [
           cosign
           git

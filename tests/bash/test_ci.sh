@@ -24,6 +24,7 @@ test_ci_dev_shell_includes_script_dependencies() {
 
   assert_contains "$flake" "jq"
   assert_contains "$flake" "cosign"
+  assert_contains "$flake" 'LAZY_NVIM_PATH = "${pkgs.vimPlugins.lazy-nvim}";'
   assert_contains "$(<"$REPO_DIR/scripts/update_pins.py")" '"nix", "develop", f"path:{repo}", "-c", "cosign"'
 }
 

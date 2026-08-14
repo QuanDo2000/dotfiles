@@ -204,11 +204,13 @@ test_fff_nvim_uses_hash_pinned_nix_backend() {
 }
 
 test_raw_neovim_headless_config() {
-  local data output
+  local data lazy output
   data="$(mktemp -d)"
-  mkdir -p "$data/config"
+  lazy="${LAZY_NVIM_PATH:-$ORIG_HOME/.local/share/nvim/lazy/lazy.nvim}"
+  mkdir -p "$data/config" "$data/data/nvim/lazy"
   cp -R "$REPO_DIR/config/shared/config/nvim" "$data/config/nvim"
-  output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$ORIG_HOME/.local/share" \
+  ln -s "$lazy" "$data/data/nvim/lazy/lazy.nvim"
+  output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
     FFF_FRECENCY_DB="$data/fff-frecency" FFF_HISTORY_DB="$data/fff-history" \
     nvim --headless -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1)"
   assert_contains "$output" "RAW_CONFIG_OK"
