@@ -52,6 +52,7 @@ test_tmux_owns_catppuccin_theme_without_plugin() {
   assert_not_contains "$HOME_CONFIG" 'tmuxPlugins.catppuccin'
   assert_not_contains "$tmux_config" '@catppuccin_'
   assert_contains "$tmux_config" 'set -g mode-style "bg=#363a4f,bold"'
+  assert_contains "$tmux_config" 'set -g status-style "default"'
   assert_contains "$tmux_config" 'set -g window-status-current-format'
   assert_contains "$tmux_config" 'set -g status-right '
   assert_contains "$tmux_config" '%Y-%m-%d %H:%M:%S'
