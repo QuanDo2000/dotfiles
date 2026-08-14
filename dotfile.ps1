@@ -764,7 +764,13 @@ function InstallFffMcp {
             if ((Get-FileHash -Algorithm SHA256 $download).Hash -ne $expectedHash) {
                 throw 'FFF MCP download hash mismatch'
             }
-            Move-Item -LiteralPath $download -Destination $destination -Force
+            if (Test-Path -LiteralPath $destination) {
+                $processes = @(Get-Process -Name 'fff-mcp' -ErrorAction SilentlyContinue)
+                $processes | Stop-Process -Force -ErrorAction Stop
+                $processes | Wait-Process -Timeout 5 -ErrorAction Stop
+                Remove-Item -LiteralPath $destination -Force
+            }
+            Move-Item -LiteralPath $download -Destination $destination
         } finally {
             Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue
         }

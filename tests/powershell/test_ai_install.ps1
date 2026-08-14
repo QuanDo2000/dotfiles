@@ -29,7 +29,7 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'New-Item', 'Copy-Item', 'Expand-Archive', 'Start-Process', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck', 'RepairPiCompactionSteering') {
+    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'Get-Process', 'New-Item', 'Copy-Item', 'Expand-Archive', 'Move-Item', 'Start-Process', 'Stop-Process', 'Wait-Process', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck', 'RepairPiCompactionSteering') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
@@ -305,6 +305,35 @@ function test_installfffmcp_installs_verified_windows_binary_for_codex {
     $codex = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\codex\config.toml')
     Assert-Contains $codex 'command = "cmd.exe"'
     Assert-Contains $codex '"fff-mcp-agent.cmd"'
+}
+
+function test_installfffmcp_stops_running_server_before_update {
+    $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\fff-release.json') | ConvertFrom-Json
+    $binDir = Join-Path $env:USERPROFILE '.local\bin'
+    New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+    'old' | Set-Content -NoNewline (Join-Path $binDir 'fff-mcp.exe')
+    $script:FffProcessesStopped = $false
+    Set-CommandMock 'Get-Process' { [pscustomobject]@{ ProcessName = 'fff-mcp' } }
+    Set-CommandMock 'Stop-Process' { $script:FffProcessesStopped = $true }
+    Set-CommandMock 'Wait-Process' { }
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force)
+        if (Test-Path -LiteralPath $Destination) { throw 'Cannot create a file when that file already exists.' }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+    }
+    Set-CommandMock 'Invoke-WebRequest' {
+        param($Uri, $OutFile)
+        'new' | Set-Content -NoNewline $OutFile
+    }
+    Set-CommandMock 'Get-FileHash' {
+        [pscustomobject]@{ Hash = $pins.mcp.'windows-x64'.sha256 }
+    }
+    Set-FunctionMock 'AddToUserPath' { }
+
+    InstallFffMcp -Update
+
+    Assert-True $script:FffProcessesStopped 'running FFF MCP server should stop before replacing its executable'
+    Assert-Equals 'new' (Get-Content -Raw (Join-Path $binDir 'fff-mcp.exe'))
 }
 
 function test_syncaiinstructions_copies_shared_file_for_codex_and_pi {
