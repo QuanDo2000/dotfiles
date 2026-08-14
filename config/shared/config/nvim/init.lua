@@ -298,6 +298,7 @@ local plugins = {
   },
   {
     "saghen/blink.cmp",
+    version = "1.*",
     lazy = true,
     opts = {
       completion = { list = { selection = { auto_insert = true } } },
