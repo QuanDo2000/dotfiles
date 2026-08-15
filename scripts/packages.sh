@@ -196,6 +196,31 @@ function _refresh_managed_path {
   export PATH
 }
 
+function _stop_codebase_memory_sessions_if_updating {
+  local current requested pids pin="$DOTFILES_DIR/packages/codebase-memory-mcp-release.json"
+  [[ -r "$pin" ]] || return 0
+  requested="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$pin")"
+  [[ -n "$requested" ]] || return 0
+  current="$(codebase-memory-mcp --version 2>/dev/null | awk 'NR == 1 { print $2 }' || true)"
+  [[ "$current" == "$requested" ]] && return 0
+  pids="$(pgrep -f '(^|/)codebase-memory-mcp([[:space:]]|$)' || true)"
+  [[ -n "$pids" ]] || return 0
+
+  info "Stopping CBM sessions for version update..."
+  # PIDs come from pgrep and must be word-split for kill.
+  # shellcheck disable=SC2086
+  kill $pids 2>/dev/null || true
+  for _ in {1..50}; do
+    pids="$(pgrep -f '(^|/)codebase-memory-mcp([[:space:]]|$)' || true)"
+    [[ -z "$pids" ]] && return 0
+    sleep 0.1
+  done
+  # shellcheck disable=SC2086
+  kill -KILL $pids 2>/dev/null || true
+  pids="$(pgrep -f '(^|/)codebase-memory-mcp([[:space:]]|$)' || true)"
+  [[ -z "$pids" ]]
+}
+
 function _home_manager_switch {
   local profile="${1:-linux}" target
   if [[ "$DRY" == "true" ]]; then
@@ -205,6 +230,8 @@ function _home_manager_switch {
   fi
 
   _ensure_nix
+  _stop_codebase_memory_sessions_if_updating \
+    || fail "Failed to stop active CBM sessions"
   target="$(_linux_home_manager_target "$profile")"
   if command -v home-manager >/dev/null 2>&1; then
     _run_nix_managed_switch "home-manager switch failed" \
@@ -296,6 +323,8 @@ function _darwin_rebuild_switch {
   fi
 
   _ensure_nix
+  _stop_codebase_memory_sessions_if_updating \
+    || fail "Failed to stop active CBM sessions"
   if command -v darwin-rebuild >/dev/null 2>&1; then
     _run_nix_managed_switch "darwin-rebuild switch failed" \
       sudo HOME=/var/root darwin-rebuild switch --flake "$target"
@@ -346,6 +375,8 @@ function _nixos_rebuild_switch {
     return
   fi
 
+  _stop_codebase_memory_sessions_if_updating \
+    || fail "Failed to stop active CBM sessions"
   _run_nix_managed_switch "nixos-rebuild switch failed" sudo nixos-rebuild switch --flake "$target"
 
   if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then

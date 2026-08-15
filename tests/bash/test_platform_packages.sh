@@ -88,6 +88,36 @@ test_ssh_config_keeps_required_forwarding_without_unused_ports() {
   assert_equals "3" "$(grep -c '^[[:space:]]*ForwardAgent yes$' <<< "$SSH_CONFIG")"
 }
 
+test_codebase_memory_sessions_stop_before_version_upgrade() {
+  local process_state="$TEST_TMPDIR/cbm-processes" process_calls="$TEST_TMPDIR/cbm-process-calls"
+  mkdir -p "$DOTFILES_DIR/packages"
+  printf '{"version":"0.10.5"}\n' > "$DOTFILES_DIR/packages/codebase-memory-mcp-release.json"
+  printf 'running\n' > "$process_state"
+
+  codebase-memory-mcp() { printf 'codebase-memory-mcp 0.10.4\n'; }
+  pgrep() { [[ -e "$process_state" ]] && printf '101\n102\n'; }
+  kill() { printf '%s\n' "$*" >> "$process_calls"; rm -f "$process_state"; }
+  sleep() { :; }
+
+  assert_exit_code 0 _stop_codebase_memory_sessions_if_updating
+  assert_contains "$(<"$process_calls")" "101 102"
+}
+
+test_codebase_memory_sessions_stay_running_without_version_upgrade() {
+  local process_calls="$TEST_TMPDIR/cbm-process-calls"
+  mkdir -p "$DOTFILES_DIR/packages"
+  printf '{"version":"0.10.5"}\n' > "$DOTFILES_DIR/packages/codebase-memory-mcp-release.json"
+
+  codebase-memory-mcp() { printf 'codebase-memory-mcp 0.10.5\n'; }
+  pgrep() { printf '101\n'; }
+  kill() { printf '%s\n' "$*" >> "$process_calls"; }
+
+  assert_exit_code 0 _stop_codebase_memory_sessions_if_updating
+  if [[ -e "$process_calls" ]]; then
+    echo "  FAILED: matching CBM version should not stop active sessions" >> "$ERROR_FILE"
+  fi
+}
+
 test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
   assert_contains "${ARCH_PACKAGES[*]}" "curl"
