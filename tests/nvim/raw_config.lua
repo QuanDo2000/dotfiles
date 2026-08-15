@@ -68,11 +68,16 @@ end
 
 local lazy = require("lazy.core.config")
 assert(not lazy.plugins.LazyVim, "LazyVim must not be loaded")
+assert(lazy.options.install.missing == false, "ordinary startup must not install plugins")
+if not windows then
+  assert(not vim.o.runtimepath:find(vim.fn.stdpath("data") .. "/lazy/lazy.nvim", 1, true), "Unix must use Nix-managed lazy.nvim")
+end
 local blink = lazy.plugins["blink.cmp"]
 assert(vim.tbl_contains(blink.event, "CmdlineEnter"), "Blink should load for command-line completion")
 assert(type(blink.opts.cmdline.completion.menu.auto_show) == "function", "Blink command-line suggestions must auto-show selectively")
 local mason = lazy.plugins["mason.nvim"]
-assert(mason.event == "VeryLazy", "Mason should load after startup")
+assert(vim.tbl_contains(mason.cmd, "Mason"), "Mason UI command missing")
+assert(not mason.event, "Mason must not provision tools during startup")
 assert(not mason._.loaded, "Mason must stay off file-open path")
 assert(lazy.plugins["todo-comments.nvim"].event == "VeryLazy", "Todo Comments should load after startup")
 assert(not lazy.plugins["todo-comments.nvim"]._.loaded, "Todo Comments must stay off file-open path")
@@ -158,12 +163,19 @@ for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
-require("lazy").load({ plugins = { "conform.nvim" } })
-local format_on_save = false
-for _, autocmd in ipairs(vim.api.nvim_get_autocmds({ event = "BufWritePre" })) do
-  if autocmd.desc == "Format on save" then format_on_save = true end
+require("lazy").load({ plugins = { "conform.nvim", "nvim-lint" } })
+local conform = lazy.plugins["conform.nvim"].opts
+assert(vim.deep_equal(conform.formatters_by_ft.markdown, { "prettier", "markdownlint-cli2" }), "Markdown formatter ownership changed")
+assert(not conform.formatters, "Markdown formatter must not depend on stale diagnostics")
+local lint = require("lint")
+assert(not lint.linters_by_ft.markdown, "Markdownlint must have one owner")
+local lint_events = {}
+for _, autocmd in ipairs(vim.api.nvim_get_autocmds({ event = { "BufWritePre", "BufWritePost", "InsertLeave" } })) do
+  if autocmd.desc == "Format on save" then lint_events.format_on_save = true end
+  if autocmd.group_name == "raw_lint" then lint_events[autocmd.event] = true end
 end
-assert(format_on_save, "format-on-save autocmd missing")
+assert(lint_events.format_on_save, "format-on-save autocmd missing")
+assert(lint_events.BufWritePost and not lint_events.InsertLeave, "lint must run only after writes")
 for _, name in ipairs({ "raw_checktime", "raw_highlight_yank", "raw_resize_splits", "raw_last_loc", "raw_auto_create_dir" }) do
   assert(#vim.api.nvim_get_autocmds({ group = name }) > 0, name .. " autocmd missing")
 end

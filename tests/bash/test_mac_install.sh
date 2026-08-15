@@ -219,7 +219,8 @@ test_dotfile_packages_command_mac() {
   with_nix_agent_tools
 
   local output status=0
-  output=$(PATH="$HOME/.local/bin:$PATH" DOTFILES_DIR="$REPO_DIR" DOTFILE_DOCTOR_SKIP_NIX_EVAL=true bash "$DOTFILE_CMD" --dry packages 2>&1) || status=$?
+  output=$(PATH="$HOME/.local/bin:$PATH" DOTFILES_DIR="$REPO_DIR" DOTFILE_DOCTOR_SKIP_NIX_EVAL=true \
+    DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME=true bash "$DOTFILE_CMD" --dry packages 2>&1) || status=$?
 
   assert_equals "0" "$status"
   assert_contains "$output" "Mac"

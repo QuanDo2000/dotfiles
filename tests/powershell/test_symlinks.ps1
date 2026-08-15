@@ -26,6 +26,8 @@ function test_windows_neovim_bootstraps_lazy_at_reviewed_lock {
     Assert-Contains $lazyConfig 'https://github.com/folke/lazy.nvim.git'
     Assert-Contains $lazyConfig 'lazy-lock.json'
     Assert-Contains $lazyConfig '"checkout", "--force", commit'
+    Assert-Contains $lazyConfig 'vim.env.DOTFILE_NVIM_SYNC == "1"'
+    Assert-Contains $lazyConfig 'lazy.nvim is missing; run dotfile update'
     Assert-False ($lazyConfig -like '*--branch=stable*') 'lazy.nvim bootstrap should use reviewed commit'
     Assert-Equals '85c7ff3711b730b4030d03144f6db6375044ae82' $lock.'lazy.nvim'.commit
 }

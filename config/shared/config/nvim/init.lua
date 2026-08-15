@@ -173,18 +173,25 @@ map("n", "<leader><tab>[", "<cmd>tabprevious<cr>", "Previous Tab")
 map("n", "[q", function() if package.loaded.trouble and require("trouble").is_open() then require("trouble").prev({ skip_groups = true, jump = true }) else pcall(vim.cmd.cprev) end end, "Previous Trouble/Quickfix Item")
 map("n", "]q", function() if package.loaded.trouble and require("trouble").is_open() then require("trouble").next({ skip_groups = true, jump = true }) else pcall(vim.cmd.cnext) end end, "Next Trouble/Quickfix Item")
 
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if vim.fn.has("win32") == 1 then
+  local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
   local lock = vim.json.decode(table.concat(vim.fn.readfile(vim.fn.stdpath("config") .. "/lazy-lock.json"), "\n"))
   local commit = assert(lock["lazy.nvim"] and lock["lazy.nvim"].commit, "lazy.nvim lock is missing")
+  local syncing = vim.env.DOTFILE_NVIM_SYNC == "1"
   if not (vim.uv or vim.loop).fs_stat(lazypath) then
+    if not syncing then error("lazy.nvim is missing; run dotfile update") end
+    vim.fn.mkdir(vim.fs.dirname(lazypath), "p")
     vim.fn.system({ "git", "clone", "--filter=blob:none", "--no-checkout", "https://github.com/folke/lazy.nvim.git", lazypath })
     if vim.v.shell_error ~= 0 then vim.fn.delete(lazypath, "rf"); error("Failed to clone lazy.nvim") end
   end
-  vim.fn.system({ "git", "-C", lazypath, "checkout", "--force", commit })
-  if vim.v.shell_error ~= 0 then error("Failed to checkout locked lazy.nvim") end
+  if syncing then
+    vim.fn.system({ "git", "-C", lazypath, "fetch", "--filter=blob:none", "origin" })
+    if vim.v.shell_error ~= 0 then error("Failed to fetch lazy.nvim") end
+    vim.fn.system({ "git", "-C", lazypath, "checkout", "--force", commit })
+    if vim.v.shell_error ~= 0 then error("Failed to checkout locked lazy.nvim") end
+  end
+  vim.opt.rtp:prepend(lazypath)
 end
-vim.opt.rtp:prepend(lazypath)
 
 local ok, lazy = pcall(require, "lazy")
 if not ok then error("lazy.nvim is missing; run dotfile update") end
@@ -237,17 +244,7 @@ local plugins = {
     "dmtrKovalenko/fff.nvim",
     enabled = vim.fn.has("win32") ~= 1,
     version = "v0.10.3",
-    build = function(plugin)
-      local uv = vim.uv or vim.loop
-      local source = vim.fn.stdpath("config") .. "/fff-nvim-backend"
-      local extension = vim.fn.has("mac") == 1 and "dylib" or "so"
-      local target = plugin.dir .. "/target/release/libfff_nvim." .. extension
-      if not uv.fs_stat(source) then error("Nix-managed fff.nvim backend is missing: " .. source) end
-      vim.fn.mkdir(vim.fs.dirname(target), "p")
-      vim.fn.delete(target)
-      local linked, err = uv.fs_symlink(source, target)
-      if not linked then error("Failed to link fff.nvim backend: " .. (err or "unknown error")) end
-    end,
+    build = function(plugin) require("config.sync").link_fff(plugin) end,
     opts = {
       frecency = { db_path = vim.env.FFF_FRECENCY_DB or vim.fn.expand("~/.local/state/fff/frecency") },
       history = { db_path = vim.env.FFF_HISTORY_DB or vim.fn.expand("~/.local/state/fff/history") },
@@ -316,21 +313,8 @@ local plugins = {
   { "folke/todo-comments.nvim", event = "VeryLazy", opts = {} },
   {
     "mason-org/mason.nvim",
-    event = "VeryLazy",
     cmd = { "Mason", "MasonInstall", "MasonUpdate" },
-    config = function()
-      require("mason").setup()
-      local registry = require("mason-registry")
-      registry:on("package:install:success", function()
-        vim.schedule(function() vim.api.nvim_exec_autocmds("FileType", { buffer = 0 }) end)
-      end)
-      registry.refresh(function()
-        for _, name in ipairs({ "bash-language-server", "json-lsp", "lua-language-server", "markdownlint-cli2", "marksman", "nil", "nixfmt", "prettier", "stylua", "taplo", "yaml-language-server" }) do
-          local package = registry.get_package(name)
-          if not package:is_installed() then package:install() end
-        end
-      end)
-    end,
+    opts = {},
   },
   {
     "neovim/nvim-lspconfig",
@@ -355,15 +339,6 @@ local plugins = {
     "stevearc/conform.nvim",
     event = { "BufReadPre", "BufNewFile" },
     opts = {
-      formatters = {
-        ["markdownlint-cli2"] = {
-          condition = function(_, context)
-            for _, diagnostic in ipairs(vim.diagnostic.get(context.buf)) do
-              if diagnostic.source == "markdownlint" then return true end
-            end
-          end,
-        },
-      },
       formatters_by_ft = {
         lua = { "stylua" },
         markdown = { "prettier", "markdownlint-cli2" },
@@ -377,8 +352,11 @@ local plugins = {
     "mfussenegger/nvim-lint",
     event = { "BufReadPost", "BufNewFile" },
     config = function()
-      require("lint").linters_by_ft = { markdown = { "markdownlint-cli2" }, nix = vim.fn.executable("statix") == 1 and { "statix" } or {} }
-      vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, { callback = function() require("lint").try_lint() end })
+      require("lint").linters_by_ft = { nix = vim.fn.executable("statix") == 1 and { "statix" } or {} }
+      vim.api.nvim_create_autocmd("BufWritePost", {
+        group = vim.api.nvim_create_augroup("raw_lint", { clear = true }),
+        callback = function() require("lint").try_lint() end,
+      })
     end,
   },
   {
@@ -466,7 +444,7 @@ lazy.setup({
   spec = plugins,
   defaults = { lazy = true, version = false },
   checker = { enabled = false, notify = false },
-  install = { colorscheme = { "catppuccin-macchiato", "habamax" } },
+  install = { missing = false, colorscheme = { "catppuccin-macchiato", "habamax" } },
   performance = { rtp = { disabled_plugins = { "gzip", "tarPlugin", "tohtml", "tutor", "zipPlugin" } } },
 })
 

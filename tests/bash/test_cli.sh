@@ -5,9 +5,11 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 setup() {
   TEST_HOME="$(mktemp -d)"
   export HOME="$TEST_HOME"
+  export DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME=true
 }
 
 teardown() {
+  unset DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME
   rm -rf "$TEST_HOME"
 }
 
@@ -466,7 +468,7 @@ test_update_uses_fast_doctor_preflight() {
   local dotfile_text
   dotfile_text="$(<"$DOTFILE_CMD")"
   assert_contains "$dotfile_text" 'run_checked_flow true true update_packages'
-  assert_contains "$dotfile_text" 'DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor'
+  assert_contains "$dotfile_text" 'DOTFILE_DOCTOR_SKIP_NIX_EVAL=true DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME=true doctor'
 }
 
 test_unknown_command_fails() {

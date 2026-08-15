@@ -1262,26 +1262,34 @@ function Get-NeovimDataPath($nvim) {
 }
 
 function Sync-NeovimPlugins {
-    Info "Installing or updating Neovim plugins..."
+    Info "Installing or updating Neovim plugins and tools..."
     if ($script:Dry) { return }
 
+    $nvim = Get-NeovimCommand
+    if (-not $nvim) { throw "nvim executable not found" }
+    $previousSync = $env:DOTFILE_NVIM_SYNC
     try {
-        $nvim = Get-NeovimCommand
-        if (-not $nvim) { throw "nvim executable not found" }
-        & $nvim --headless "+Lazy! restore" "+qa" 2>&1 | ForEach-Object { Write-Host $_ }
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Neovim plugin sync failed; Neovim may finish setup on first start"
+        $env:DOTFILE_NVIM_SYNC = '1'
+        $output = (& $nvim --headless "+lua require('config.sync').plugins(false); require('config.sync').tools(); print('RAW_NEOVIM_SYNC_OK')" "+qa" 2>&1) -join "`n"
+        $exitCode = $LASTEXITCODE
+    } finally {
+        if ($null -eq $previousSync) {
+            Remove-Item Env:DOTFILE_NVIM_SYNC -ErrorAction SilentlyContinue
         } else {
-            $dataPath = Get-NeovimDataPath $nvim
-            if (-not $dataPath) { throw "could not determine Neovim data path" }
-            $lazyRoot = Join-Path $dataPath "lazy"
-            if (-not (Test-Path -LiteralPath (Join-Path $lazyRoot "lazy.nvim")) -or
-                -not (Test-Path -LiteralPath (Join-Path $lazyRoot "snacks.nvim"))) {
-                Write-Warning "Neovim plugin sync did not install lazy.nvim and snacks.nvim; Neovim may finish setup on first start"
-            }
+            $env:DOTFILE_NVIM_SYNC = $previousSync
         }
-    } catch {
-        Write-Warning "Neovim plugin sync failed; Neovim may finish setup on first start: $_"
+    }
+    if ($output) { Write-Host $output }
+    if ($exitCode -ne 0 -or -not $output.Contains('RAW_NEOVIM_SYNC_OK')) {
+        throw "Neovim plugin or tool sync failed: $output"
+    }
+
+    $dataPath = Get-NeovimDataPath $nvim
+    if (-not $dataPath) { throw "could not determine Neovim data path" }
+    $lazyRoot = Join-Path $dataPath "lazy"
+    if (-not (Test-Path -LiteralPath (Join-Path $lazyRoot "lazy.nvim")) -or
+        -not (Test-Path -LiteralPath (Join-Path $lazyRoot "snacks.nvim"))) {
+        throw "Neovim plugin sync did not install lazy.nvim and snacks.nvim"
     }
 }
 

@@ -64,6 +64,54 @@ _check_writable_file() {
   fi
 }
 
+_check_neovim_runtime() {
+  if [[ "${DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME:-false}" == "true" ]]; then
+    info "Skipping Neovim runtime verification: DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME=true"
+    return 0
+  fi
+  local tracked="$DOTFILES_DIR/config/shared/config/nvim" runtime="$HOME/.config/nvim"
+  [[ -f "$tracked/init.lua" && -f "$tracked/lazy-lock.json" ]] || return 0
+
+  local before="$errors" provider_prelude
+  provider_prelude='vim.g.loaded_node_provider=0;vim.g.loaded_perl_provider=0;vim.g.loaded_ruby_provider=0;vim.g.loaded_python3_provider=0'
+  if [[ ! -f "$runtime/init.lua" ]] \
+    || { ! cmp -s "$tracked/init.lua" "$runtime/init.lua" \
+      && { [[ "$(head -n 1 "$runtime/init.lua" 2>/dev/null)" != "$provider_prelude" ]] \
+        || ! tail -n +2 "$runtime/init.lua" | cmp -s "$tracked/init.lua" -; }; }; then
+    fail_soft "Neovim config differs from tracked generated config"
+    errors=$((errors + 1))
+  fi
+
+  if [[ ! -d "$runtime/lua" ]] || ! diff -qr "$tracked/lua/" "$runtime/lua/" >/dev/null 2>&1; then
+    fail_soft "Neovim Lua config differs from tracked generated config"
+    errors=$((errors + 1))
+  fi
+
+  local tracked_lock runtime_lock
+  tracked_lock="$(jq -cS . "$tracked/lazy-lock.json" 2>/dev/null || true)"
+  runtime_lock="$(jq -cS . "$runtime/lazy-lock.json" 2>/dev/null || true)"
+  if [[ -z "$tracked_lock" || "$runtime_lock" != "$tracked_lock" ]]; then
+    fail_soft "Neovim lock differs from tracked lock"
+    errors=$((errors + 1))
+  fi
+
+  local name expected plugin actual
+  while IFS=$'\t' read -r name expected; do
+    [[ "$name" == lazy.nvim ]] && continue
+    plugin="$HOME/.local/share/nvim/lazy/$name"
+    actual="$(git -C "$plugin" rev-parse HEAD 2>/dev/null || true)"
+    if [[ "$actual" != "$expected" ]]; then
+      fail_soft "$name commit differs from tracked lock"
+      errors=$((errors + 1))
+    elif [[ -n "$(git -C "$plugin" status --porcelain 2>/dev/null)" ]]; then
+      fail_soft "$name worktree differs from tracked checkout"
+      errors=$((errors + 1))
+    fi
+  done < <(jq -r 'to_entries[] | [.key, .value.commit] | @tsv' "$tracked/lazy-lock.json" 2>/dev/null)
+
+  [[ "$errors" != "$before" ]] || success "Neovim config, lock, and plugin commits match"
+}
+
 _check_managed_commands() {
   local command_name
   for command_name in nvim codex pi codebase-memory-mcp; do
@@ -221,6 +269,7 @@ function doctor {
   _check_symlink .config/git/config "$platform"
   _check_symlink .config/nvim/init.lua "$platform"
   _check_symlink .config/nvim/fff-nvim-backend "$platform"
+  _check_neovim_runtime
   _check_dotfile_command "$platform"
   _check_writable_file .codex/config.toml
   _check_writable_file .pi/agent/settings.json

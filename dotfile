@@ -59,7 +59,8 @@ function run_checked_flow {
   local precheck="$2"
   local operation="$3"
   shift 3
-  [[ "$precheck" == "true" ]] && DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
+  [[ "$precheck" == "true" ]] \
+    && DOTFILE_DOCTOR_SKIP_NIX_EVAL=true DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME=true doctor
   if [[ "$pull_repo" == "true" ]]; then
     if [[ "$DRY" == "false" ]] && _dependency_update_markers_conflict; then
       fail "Conflicting pending dependency updates require manual review"

@@ -12,6 +12,27 @@ teardown() {
   cleanup_test_env
 }
 
+setup_neovim_health_fixture() {
+  local config="$DOTFILES_DIR/config/shared/config/nvim" runtime="$HOME/.config/nvim"
+  local plugin="$HOME/.local/share/nvim/lazy/sample.nvim"
+  mkdir -p "$config/lua/config" "$runtime/lua/config" "$plugin"
+  printf 'print("tracked")\n' > "$config/init.lua"
+  printf 'return {}\n' > "$config/lua/config/sync.lua"
+  cp "$config/lua/config/sync.lua" "$runtime/lua/config/sync.lua"
+  printf 'vim.g.loaded_node_provider=0;vim.g.loaded_perl_provider=0;vim.g.loaded_ruby_provider=0;vim.g.loaded_python3_provider=0\n' > "$runtime/init.lua"
+  cat "$config/init.lua" >> "$runtime/init.lua"
+  git -C "$plugin" init -q
+  git -C "$plugin" config user.email test@example.com
+  git -C "$plugin" config user.name Test
+  printf 'one\n' > "$plugin/file"
+  git -C "$plugin" add file
+  git -C "$plugin" commit -qm one
+  local commit
+  commit="$(git -C "$plugin" rev-parse HEAD)"
+  jq -n --arg commit "$commit" '{"sample.nvim": {branch: "main", commit: $commit}}' > "$config/lazy-lock.json"
+  cp "$config/lazy-lock.json" "$runtime/lazy-lock.json"
+}
+
 link_valid_core_dotfiles() {
   local root="${1:-$DOTFILES_DIR}"
   mkdir -p "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.codex" "$HOME/.pi/agent"
@@ -149,6 +170,66 @@ test_doctor_fails_missing_runtime_health() {
   unset -f command
 }
 
+test_doctor_accepts_current_neovim_runtime() {
+  setup_neovim_health_fixture
+  errors=0
+
+  _check_neovim_runtime
+
+  assert_equals "0" "$errors"
+}
+
+test_doctor_reports_generated_neovim_config_drift() {
+  setup_neovim_health_fixture
+  printf 'print("stale")\n' >> "$HOME/.config/nvim/init.lua"
+  errors=0
+  local output_file="$TEST_TMPDIR/neovim-config-doctor.log" output
+  _check_neovim_runtime > "$output_file" 2>&1
+  output="$(<"$output_file")"
+
+  assert_equals "1" "$errors"
+  assert_contains "$output" "Neovim config differs"
+}
+
+test_doctor_reports_generated_neovim_lua_drift() {
+  setup_neovim_health_fixture
+  printf 'return { stale = true }\n' > "$HOME/.config/nvim/lua/config/sync.lua"
+  errors=0
+  local output_file="$TEST_TMPDIR/neovim-lua-doctor.log" output
+  _check_neovim_runtime > "$output_file" 2>&1
+  output="$(<"$output_file")"
+
+  assert_equals "1" "$errors"
+  assert_contains "$output" "Neovim Lua config differs"
+}
+
+test_doctor_reports_neovim_lock_drift() {
+  setup_neovim_health_fixture
+  jq '."sample.nvim".commit = "deadbeef"' "$HOME/.config/nvim/lazy-lock.json" > "$TEST_TMPDIR/runtime-lock.json"
+  mv "$TEST_TMPDIR/runtime-lock.json" "$HOME/.config/nvim/lazy-lock.json"
+  errors=0
+  local output_file="$TEST_TMPDIR/neovim-lock-doctor.log" output
+  _check_neovim_runtime > "$output_file" 2>&1
+  output="$(<"$output_file")"
+
+  assert_equals "1" "$errors"
+  assert_contains "$output" "Neovim lock differs"
+}
+
+test_doctor_reports_neovim_plugin_commit_drift() {
+  setup_neovim_health_fixture
+  local plugin="$HOME/.local/share/nvim/lazy/sample.nvim"
+  printf 'two\n' > "$plugin/file"
+  git -C "$plugin" commit -qam two
+  errors=0
+  local output_file="$TEST_TMPDIR/neovim-plugin-doctor.log" output
+  _check_neovim_runtime > "$output_file" 2>&1
+  output="$(<"$output_file")"
+
+  assert_equals "1" "$errors"
+  assert_contains "$output" "sample.nvim commit differs"
+}
+
 test_doctor_checks_managed_runtime_health() {
   local doctor_text
   doctor_text="$(<"$REPO_DIR/scripts/doctor.sh")"
@@ -182,6 +263,18 @@ test_doctor_rejects_prefix_sibling_checkout() {
 
   assert_contains "$output" "expected"
   assert_not_contains "$output" "All checks passed"
+}
+
+test_doctor_reports_neovim_plugin_worktree_drift() {
+  setup_neovim_health_fixture
+  printf 'dirty\n' >> "$HOME/.local/share/nvim/lazy/sample.nvim/file"
+  errors=0
+  local output_file="$TEST_TMPDIR/neovim-plugin-worktree-doctor.log" output
+  _check_neovim_runtime > "$output_file" 2>&1
+  output="$(<"$output_file")"
+
+  assert_equals "1" "$errors"
+  assert_contains "$output" "sample.nvim worktree differs"
 }
 
 test_doctor_requires_dotfile_command_link() {

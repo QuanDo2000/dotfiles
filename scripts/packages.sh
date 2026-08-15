@@ -391,76 +391,33 @@ function update_nixos {
   success "Finished update for NixOS"
 }
 
-function _sync_fff_nvim {
-  FFF_NVIM_WARNING=
+function _sync_neovim {
+  NEOVIM_SYNC_ERROR=
   if [ "$DRY" = true ]; then
-    info "Would install or update fff.nvim"
+    info "Would restore Neovim plugins and tools"
     return
   fi
 
-  info "Installing or updating fff.nvim..."
+  info "Restoring Neovim plugins and tools..."
   local output plugin="$HOME/.local/share/nvim/lazy/fff.nvim"
-  local release="$plugin/target/release"
   local backend="$HOME/.config/nvim/fff-nvim-backend"
-  local target="$release/libfff_nvim.so"
-  [ "$(uname -s)" = Darwin ] && target="$release/libfff_nvim.dylib"
-  local cache="${XDG_CACHE_HOME:-$HOME/.cache}/dotfile/nvim/fff-nvim.state"
-  local lock="$DOTFILES_DIR/config/shared/config/nvim/lazy-lock.json"
-  local lock_hash expected_commit plugin_commit backend_path backend_hash cached=false
-  expected_commit="$(jq -r '."fff.nvim".commit // empty' "$lock" 2>/dev/null || true)"
 
-  if [ -n "$expected_commit" ] && [ -f "$lock" ] && [ -d "$plugin" ] && [ -f "$backend" ]; then
-    lock_hash="$(_file_sha256 "$lock" 2>/dev/null || true)"
-    plugin_commit="$(git -C "$plugin" rev-parse HEAD 2>/dev/null || true)"
-    backend_path="$(resolve_symlink "$backend" 2>/dev/null || true)"
-    backend_hash="$(_file_sha256 "$backend" 2>/dev/null || true)"
-    if [ -n "$lock_hash" ] && [ "$plugin_commit" = "$expected_commit" ] \
-      && [ -z "$(git -C "$plugin" status --porcelain 2>/dev/null)" ] \
-      && [ -n "$backend_path" ] \
-      && grep -Fqx "lock=$lock_hash" "$cache" 2>/dev/null \
-      && grep -Fqx "plugin=$plugin_commit" "$cache" 2>/dev/null \
-      && grep -Fqx "backend=$backend_path:$backend_hash" "$cache" 2>/dev/null; then
-      cached=true
-    fi
+  if ! output="$(nvim --headless "+lua require('config.sync').plugins(true); require('config.sync').tools(); print('RAW_NEOVIM_SYNC_OK')" +qa 2>&1)"; then
+    NEOVIM_SYNC_ERROR="Neovim plugin or tool sync failed:\n$output"
+    return 1
   fi
-
-  if [ "$cached" != true ]; then
-    if ! output="$(nvim --headless "+Lazy! restore fff.nvim" +qa 2>&1)"; then
-      FFF_NVIM_WARNING="Lazy restore failed:\n$output"
-      return
-    fi
+  if [[ "$output" != *RAW_NEOVIM_SYNC_OK* ]]; then
+    NEOVIM_SYNC_ERROR="Neovim plugin or tool sync did not complete:\n$output"
+    return 1
   fi
   if [ ! -d "$plugin" ]; then
-    FFF_NVIM_WARNING="Lazy sync did not install $plugin"
-    return
+    NEOVIM_SYNC_ERROR="Neovim plugin sync did not install $plugin"
+    return 1
   fi
   if [ ! -f "$backend" ]; then
-    FFF_NVIM_WARNING="Nix-managed fff.nvim backend is missing: $backend"
-    return
+    NEOVIM_SYNC_ERROR="Nix-managed fff.nvim backend is missing: $backend"
+    return 1
   fi
-  if ! mkdir -p "$release" || ! ln -sfn "$backend" "$target"; then
-    FFF_NVIM_WARNING="Could not link Nix-managed fff.nvim backend at $target"
-    return
-  fi
-
-  lock_hash="$(_file_sha256 "$lock" 2>/dev/null || true)"
-  plugin_commit="$(git -C "$plugin" rev-parse HEAD 2>/dev/null || true)"
-  backend_path="$(resolve_symlink "$backend" 2>/dev/null || true)"
-  backend_hash="$(_file_sha256 "$backend" 2>/dev/null || true)"
-  if [ -n "$lock_hash" ] && [ "$plugin_commit" = "$expected_commit" ] \
-    && [ -z "$(git -C "$plugin" status --porcelain 2>/dev/null)" ] \
-    && [ -n "$backend_path" ]; then
-    mkdir -p "$(dirname "$cache")"
-    {
-      printf 'lock=%s\n' "$lock_hash"
-      printf 'plugin=%s\n' "$plugin_commit"
-      printf 'backend=%s:%s\n' "$backend_path" "$backend_hash"
-    } > "$cache.tmp" && mv "$cache.tmp" "$cache"
-  fi
-}
-
-function _report_fff_nvim_warning {
-  [ -z "${FFF_NVIM_WARNING:-}" ] || warn "fff.nvim setup failed; Neovim may start without FFF.\n$FFF_NVIM_WARNING"
 }
 
 function _update_pi_extensions {
@@ -556,12 +513,13 @@ function update_packages {
   esac
   _cleanup_codex_runtime_after_update "$codex_version_before"
   _update_pi_extensions
-  _sync_fff_nvim
+  local neovim_sync_error=
+  _sync_neovim || neovim_sync_error="$NEOVIM_SYNC_ERROR"
   _finish_dependency_update
   [[ "$DRY" == "true" ]] || _end_dependency_update \
     || fail "Failed to release dependency update lock"
+  [ -z "$neovim_sync_error" ] || fail "$neovim_sync_error"
   success "Finished update"
-  _report_fff_nvim_warning
 }
 
 function install_packages {
@@ -575,7 +533,6 @@ function install_packages {
   esac
 
   set_zsh_default
-  _sync_fff_nvim
+  _sync_neovim || fail "$NEOVIM_SYNC_ERROR"
   success "Finished install"
-  _report_fff_nvim_warning
 }
