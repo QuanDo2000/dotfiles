@@ -60,18 +60,17 @@ function M.plugins(clean)
   local lazy = require("lazy")
   local lockfile = require("lazy.core.config").options.lockfile
   local reviewed_lock = vim.fn.readfile(lockfile, "b")
-  local installed, install_error = pcall(function()
-    lazy.install({ wait = true, show = false, lockfile = true }):wait()
-    lazy_errors()
-  end)
-  restore_lock(lockfile, reviewed_lock)
-  if not installed then error(install_error, 0) end
-  lazy.restore({ wait = true, show = false }):wait()
-  lazy_errors()
-  if clean then
-    lazy.clean({ wait = true, show = false }):wait()
-    lazy_errors()
+  local function run(operation)
+    local ok, err = pcall(function()
+      operation():wait()
+      lazy_errors()
+    end)
+    restore_lock(lockfile, reviewed_lock)
+    if not ok then error(err, 0) end
   end
+  run(function() return lazy.install({ wait = true, show = false, lockfile = true }) end)
+  run(function() return lazy.restore({ wait = true, show = false }) end)
+  if clean then run(function() return lazy.clean({ wait = true, show = false }) end) end
 
   local fff = require("lazy.core.config").plugins["fff.nvim"]
   if fff and fff.enabled ~= false then

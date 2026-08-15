@@ -38,10 +38,12 @@ package.preload["lazy"] = function()
       local lazy_lock = require("lazy.manage.lock")
       lazy_lock.load()
       assert(lazy_lock.lock.sample == "reviewed", "reviewed lock cache must be restored before Lazy restore")
+      vim.fn.writefile({ "normalized" }, lockfile)
       return runner("restore")
     end,
     clean = function(options)
       assert(options.wait and options.show == false)
+      vim.fn.writefile({ "normalized" }, lockfile)
       return runner("clean")
     end,
     load = function(options)
