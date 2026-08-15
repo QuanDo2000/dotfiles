@@ -79,6 +79,7 @@ test_neovim_uses_raw_config() {
   assert_not_contains "$(<"$config/lazy-lock.json")" '"nvim-ts-autotag"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"persistence.nvim"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"render-markdown.nvim"'
+  assert_not_contains "$(<"$config/init.lua")" 'render-markdown.nvim'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"ts-comments.nvim"'
   assert_not_contains "$(<"$config/lazy-lock.json")" '"yanky.nvim"'
   assert_contains "$(<"$config/init.lua")" 'version = "1.*"'
