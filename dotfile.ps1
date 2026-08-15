@@ -203,6 +203,12 @@ function Invoke-NativeChecked($FailureMessage, [scriptblock]$Command) {
     if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
 }
 
+function Expand-WindowsTarArchive($Archive, $Destination) {
+    $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+    if (-not (Test-Path -LiteralPath $tar -PathType Leaf)) { throw 'Windows tar command not found' }
+    & $tar -xzf $Archive -C $Destination
+}
+
 function InstallPackages {
     Info "Installing packages..."
     if ($script:Dry) { return }
@@ -443,7 +449,6 @@ function InstallCodex {
             throw "Pinned Codex release is incomplete: $releaseDir"
         }
         if (-not (Test-Path -LiteralPath $releaseDir)) {
-            if (-not (Get-Command tar -ErrorAction SilentlyContinue)) { throw "tar command not found for Codex package extraction" }
             New-Item -ItemType Directory -Force -Path $releasesDir | Out-Null
             $tempDir = Join-Path ([IO.Path]::GetTempPath()) "codex-install-$([Guid]::NewGuid().ToString('N'))"
             $stagingDir = Join-Path $releasesDir ".staging.$([Guid]::NewGuid().ToString('N'))"
@@ -455,7 +460,7 @@ function InstallCodex {
                 Invoke-WebRequest -Uri $uri -OutFile $archive -UseBasicParsing
                 $archiveLock = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
                 if ((Get-StreamSha256 $archiveLock) -ne $expectedHash) { throw "Codex package checksum mismatch" }
-                Invoke-NativeChecked "Codex package extraction failed" { tar -xzf $archive -C $stagingDir }
+                Invoke-NativeChecked "Codex package extraction failed" { Expand-WindowsTarArchive $archive $stagingDir }
                 if (-not (Test-CodexRelease $stagingDir $version)) { throw "Codex package is incomplete or has wrong version" }
                 $archiveLock.Dispose()
                 $archiveLock = $null
@@ -623,7 +628,7 @@ function InstallPiExtensions {
             try {
                 if ((Get-StreamSha256 $archiveStream) -ne [string]$asset.sha256) { throw "better-sqlite3 package checksum mismatch" }
                 $betterDir = Join-Path $staging 'node_modules\better-sqlite3'
-                Invoke-NativeChecked "better-sqlite3 package extraction failed" { tar -xzf $archive -C $betterDir }
+                Invoke-NativeChecked "better-sqlite3 package extraction failed" { Expand-WindowsTarArchive $archive $betterDir }
             } finally { $archiveStream.Dispose() }
             Remove-Item -LiteralPath $archive -Force -ErrorAction Stop
             if (-not (Test-PiExtensionsRelease $staging $pins)) { throw "Installed Pi extension release verification failed" }
@@ -715,7 +720,7 @@ function InstallPi {
                 Invoke-WebRequest -Uri "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-$version.tgz" -OutFile $archive -UseBasicParsing
                 $stream = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
                 if (-not (Test-PiSourceHash $stream $sourceHash)) { throw 'Pi package checksum mismatch' }
-                Invoke-NativeChecked 'Pi package extraction failed' { tar -xzf $archive -C $stage }
+                Invoke-NativeChecked 'Pi package extraction failed' { Expand-WindowsTarArchive $archive $stage }
                 $package = Join-Path $stage 'package'
                 if (-not (Test-Path -LiteralPath $package)) { throw 'Pi package archive missing package directory' }
                 $embeddedLock = Join-Path $package 'npm-shrinkwrap.json'
@@ -1011,10 +1016,13 @@ function Remove-CodebaseMemoryPiSkill($Path) {
 function Invoke-CodebaseMemoryTomlTool($Operation, $Path, [string]$Argument = '') {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
     $tool = Join-Path $script:DotfilesDir 'scripts\seed_merge\toml_tools.py'
-    $python = if (Get-Command py -ErrorAction SilentlyContinue) { @('py', '-3.14') } else { @('python3') }
-    $pythonCommand = @($python)[0]
-    $pythonArgs = if (@($python).Count -gt 1) { @($python)[1..(@($python).Count-1)] } else { @() }
-    $output = if ($Argument) { & $pythonCommand @pythonArgs $tool $Operation $Path $Argument } else { & $pythonCommand @pythonArgs $tool $Operation $Path }
+    $arguments = @($tool, $Operation, $Path)
+    if ($Argument) { $arguments += $Argument }
+    $output = if (Get-Command py -ErrorAction SilentlyContinue) {
+        py -3.14 @arguments
+    } else {
+        python3 @arguments
+    }
     if ($LASTEXITCODE -ne 0) { throw "Codex TOML repair failed: $Operation" }
     return ($output -join "`n").Trim()
 }

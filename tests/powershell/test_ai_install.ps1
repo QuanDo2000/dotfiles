@@ -15,6 +15,7 @@ function TestSetup {
     $codebaseProcessStopper = Get-Command Stop-CodebaseMemoryProcesses -ErrorAction SilentlyContinue
     $codebaseConfigAccessTester = Get-Command Test-CodebaseMemoryConfigDatabaseAccess -ErrorAction SilentlyContinue
     $codebaseConfigRepairer = Get-Command Repair-CodebaseMemoryConfigDatabase -ErrorAction SilentlyContinue
+    $windowsTarExpander = Get-Command Expand-WindowsTarArchive -ErrorAction SilentlyContinue
     $script:OriginalTestCodexRelease = if ($releaseCheck) { $releaseCheck.ScriptBlock } else { $null }
     $script:OriginalSetCodexActivePath = if ($pathSetter) { $pathSetter.ScriptBlock } else { $null }
     $script:OriginalTestCodebaseMemoryRelease = if ($codebaseReleaseCheck) { $codebaseReleaseCheck.ScriptBlock } else { $null }
@@ -24,6 +25,7 @@ function TestSetup {
     $script:OriginalStopCodebaseMemoryProcesses = if ($codebaseProcessStopper) { $codebaseProcessStopper.ScriptBlock } else { $null }
     $script:OriginalTestCodebaseMemoryConfigDatabaseAccess = if ($codebaseConfigAccessTester) { $codebaseConfigAccessTester.ScriptBlock } else { $null }
     $script:OriginalRepairCodebaseMemoryConfigDatabase = if ($codebaseConfigRepairer) { $codebaseConfigRepairer.ScriptBlock } else { $null }
+    $script:OriginalExpandWindowsTarArchive = if ($windowsTarExpander) { $windowsTarExpander.ScriptBlock } else { $null }
     $script:OriginalCodexHome = $env:CODEX_HOME
     Set-CommandMock 'RepairPiCompactionSteering' {}
     if ($script:OriginalStopCodebaseMemoryProcesses) { Set-FunctionMock 'Stop-CodebaseMemoryProcesses' {} }
@@ -45,6 +47,7 @@ function TestTeardown {
     if ($script:OriginalStopCodebaseMemoryProcesses) { Set-FunctionMock 'Stop-CodebaseMemoryProcesses' $script:OriginalStopCodebaseMemoryProcesses }
     if ($script:OriginalTestCodebaseMemoryConfigDatabaseAccess) { Set-FunctionMock 'Test-CodebaseMemoryConfigDatabaseAccess' $script:OriginalTestCodebaseMemoryConfigDatabaseAccess }
     if ($script:OriginalRepairCodebaseMemoryConfigDatabase) { Set-FunctionMock 'Repair-CodebaseMemoryConfigDatabase' $script:OriginalRepairCodebaseMemoryConfigDatabase }
+    if ($script:OriginalExpandWindowsTarArchive) { Set-FunctionMock 'Expand-WindowsTarArchive' $script:OriginalExpandWindowsTarArchive }
     if ($null -eq $script:OriginalCodexHome) { Remove-Item Env:CODEX_HOME -ErrorAction SilentlyContinue } else { $env:CODEX_HOME = $script:OriginalCodexHome }
     Remove-Variable -Name PiInstalled -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
@@ -104,6 +107,24 @@ function test_getcodebasememorywindowsarch_supports_x64_and_arm64 {
     Assert-Equals 'amd64' (Get-CodebaseMemoryWindowsArch 'X64')
     Assert-Equals 'arm64' (Get-CodebaseMemoryWindowsArch 'Arm64')
     Assert-Throws { Get-CodebaseMemoryWindowsArch 'X86' } '32-bit Windows should be rejected'
+}
+
+function test_invokecodebasememorytomltool_passes_script_and_operands_to_python {
+    $config = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $config -Parent) | Out-Null
+    '' | Set-Content -LiteralPath $config
+    $script:TomlToolArguments = @()
+    Set-CommandMock 'py' {
+        $script:TomlToolArguments = @($args)
+        $global:LASTEXITCODE = 0
+    }
+
+    Invoke-CodebaseMemoryTomlTool 'mcp' $config | Out-Null
+
+    Assert-Equals '-3.14' $script:TomlToolArguments[0]
+    Assert-Equals (Join-Path $script:DotfilesDir 'scripts\seed_merge\toml_tools.py') $script:TomlToolArguments[1]
+    Assert-Equals 'mcp' $script:TomlToolArguments[2]
+    Assert-Equals $config $script:TomlToolArguments[3]
 }
 
 function test_codebasememory_archive_rejects_unexpected_members {
@@ -860,8 +881,8 @@ function test_installcodebasememory_rejects_checksum_mismatch_before_extraction 
 
 function test_codex_tar_extracts_locked_archive_in_windows_powershell {
     $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
-    $tarCommand = Get-Command tar.exe -ErrorAction SilentlyContinue
-    if (-not $windowsPowerShell -or -not $tarCommand) { return }
+    $tarCommand = Join-Path $env:SystemRoot 'System32\tar.exe'
+    if (-not $windowsPowerShell -or -not (Test-Path -LiteralPath $tarCommand -PathType Leaf)) { return }
 
     $source = Join-Path $script:_TestTmp.FullName 'codex-package-source'
     $archive = Join-Path $script:_TestTmp.FullName 'codex-package.tar.gz'
@@ -871,7 +892,7 @@ function test_codex_tar_extracts_locked_archive_in_windows_powershell {
         New-Item -ItemType Directory -Force -Path (Split-Path $path -Parent) | Out-Null
         [IO.File]::WriteAllText($path, $relativePath)
     }
-    & $tarCommand.Source -czf $archive -C $source .
+    & $tarCommand -czf $archive -C $source .
     Assert-Equals 0 $LASTEXITCODE
     New-Item -ItemType Directory -Force -Path $destination | Out-Null
 
@@ -883,7 +904,7 @@ function test_codex_tar_extracts_locked_archive_in_windows_powershell {
 $ErrorActionPreference = 'Stop'
 $lock = [IO.File]::Open($env:CODEX_TEST_ARCHIVE, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
 try {
-    tar.exe -xzf $env:CODEX_TEST_ARCHIVE -C $env:CODEX_TEST_DESTINATION
+    & (Join-Path $env:SystemRoot 'System32\tar.exe') -xzf $env:CODEX_TEST_ARCHIVE -C $env:CODEX_TEST_DESTINATION
     if ($LASTEXITCODE -ne 0) { exit 1 }
 } finally {
     $lock.Dispose()
@@ -965,8 +986,9 @@ function test_installcodex_stages_verified_package_before_activation {
         $script:CodexCalls += "download:$Uri"
         [IO.File]::WriteAllText($OutFile, 'archive')
     }
-    Set-CommandMock 'tar' {
-        $script:CodexCalls += "extract:$($args -join ' ')"
+    Set-FunctionMock 'Expand-WindowsTarArchive' {
+        param($Archive, $Destination)
+        $script:CodexCalls += "extract:$Archive -C $Destination"
         $global:LASTEXITCODE = 0
     }
     Set-FunctionMock 'Test-CodexRelease' {
@@ -1026,9 +1048,9 @@ function test_installpi_installs_verified_versioned_release {
     $script:NpmArgs = ''
     Set-CommandMock 'Invoke-WebRequest' { param($Uri, $OutFile) [IO.File]::WriteAllText($OutFile, 'archive') }
     Set-FunctionMock 'Test-PiSourceHash' { $true }
-    Set-CommandMock 'tar' {
-        $destination = $args[[Array]::IndexOf($args, '-C') + 1]
-        $package = Join-Path $destination 'package'
+    Set-FunctionMock 'Expand-WindowsTarArchive' {
+        param($Archive, $Destination)
+        $package = Join-Path $Destination 'package'
         New-Item -ItemType Directory -Force -Path (Join-Path $package 'dist\core') | Out-Null
         Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $package 'npm-shrinkwrap.json')
         "{`"version`":`"$version`",`"devDependencies`":{`"typescript`":`"1.0.0`"}}" | Set-Content (Join-Path $package 'package.json')
