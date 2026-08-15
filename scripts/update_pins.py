@@ -534,9 +534,15 @@ def update_neovim(repo: Path) -> None:
             "XDG_DATA_HOME": str(root / "data"),
             "XDG_STATE_HOME": str(root / "state"),
             "XDG_CACHE_HOME": str(root / "cache"),
+            "FFF_FRECENCY_DB": str(root / "state/fff/frecency"),
+            "FFF_HISTORY_DB": str(root / "state/fff/history"),
         })
         result = subprocess.run(
-            ("nvim", "--headless", "+Lazy! update", "+qa"),
+            (
+                "nvim", "--headless",
+                "+lua require('config.sync').plugins(false)",
+                "+Lazy! update", "+qa",
+            ),
             cwd=repo,
             env=environment,
             text=True,
@@ -578,11 +584,12 @@ def main() -> int:
         "neovim": update_neovim,
     }
     for target in targets:
-        try:
-            handlers[target](repo)
-        except KeyError:
+        handler = handlers.get(target)
+        if handler is None:
             print(f"Unknown pin target: {target}", file=sys.stderr)
             return 2
+        try:
+            handler(repo)
         except Exception as error:
             print(f"pin update failed for {target}: {error}", file=sys.stderr)
             return 1

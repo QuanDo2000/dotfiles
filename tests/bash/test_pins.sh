@@ -46,6 +46,59 @@ test_pin_wrapper_fails_closed_when_updater_fails() {
   unset -f nix
 }
 
+test_neovim_pin_update_provisions_fresh_plugins_and_reports_internal_key_errors() {
+  PYTHONPATH="$REPO_DIR/scripts" TEST_REPO_DIR="$REPO_DIR" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
+import contextlib
+import io
+import json
+import os
+import shutil
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+import update_pins
+
+source = Path(os.environ["TEST_REPO_DIR"])
+repo = Path(os.environ["TEST_TMPDIR"]) / "repo"
+shutil.copytree(source / "config/shared/config/nvim", repo / "config/shared/config/nvim")
+(repo / "packages").mkdir(parents=True)
+shutil.copy2(source / "packages/fff-release.json", repo / "packages/fff-release.json")
+backend = Path(os.environ["TEST_TMPDIR"]) / "backend.so"
+lazy = Path(os.environ["TEST_TMPDIR"]) / "lazy.nvim"
+backend.touch()
+lazy.mkdir()
+commands = []
+
+def fake_run(*args, cwd=None):
+    if args[:2] == ("nix", "build") and "#fff-nvim-backend" in args[2]:
+        return str(backend)
+    return str(lazy)
+
+def fake_subprocess_run(args, **kwargs):
+    commands.append(args)
+    environment = kwargs["env"]
+    assert environment["FFF_FRECENCY_DB"].startswith(environment["XDG_STATE_HOME"])
+    assert environment["FFF_HISTORY_DB"].startswith(environment["XDG_STATE_HOME"])
+    if not any("require('config.sync').plugins(false)" in arg for arg in args):
+        (Path(kwargs["env"]["XDG_CONFIG_HOME"]) / "nvim/lazy-lock.json").write_text("{}\n")
+    return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+update_pins.run = fake_run
+update_pins.subprocess.run = fake_subprocess_run
+update_pins.update_neovim(repo)
+assert any("require('config.sync').plugins(false)" in arg for arg in commands[0])
+
+update_pins.update_neovim = lambda _: (_ for _ in ()).throw(KeyError("fff.nvim"))
+sys.argv = ["update_pins.py", "neovim", str(repo)]
+stderr = io.StringIO()
+with contextlib.redirect_stderr(stderr):
+    status = update_pins.main()
+assert status == 1
+assert "pin update failed for neovim" in stderr.getvalue()
+assert "Unknown pin target" not in stderr.getvalue()
+PY
+}
+
 test_pin_updater_removes_excluded_skill_paths() {
   PYTHONPATH="$REPO_DIR/scripts" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
 import os
