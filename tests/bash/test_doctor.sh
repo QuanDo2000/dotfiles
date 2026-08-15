@@ -179,6 +179,29 @@ test_doctor_accepts_current_neovim_runtime() {
   assert_equals "0" "$errors"
 }
 
+test_doctor_accepts_lazy_generated_help_tags() {
+  setup_neovim_health_fixture
+  mkdir -p "$HOME/.local/share/nvim/lazy/sample.nvim/doc"
+  printf 'generated\n' > "$HOME/.local/share/nvim/lazy/sample.nvim/doc/tags"
+  errors=0
+
+  _check_neovim_runtime
+
+  assert_equals "0" "$errors"
+}
+
+test_doctor_reports_untracked_neovim_plugin_file() {
+  setup_neovim_health_fixture
+  printf 'unexpected\n' > "$HOME/.local/share/nvim/lazy/sample.nvim/untracked"
+  errors=0
+  local output_file="$TEST_TMPDIR/neovim-plugin-untracked-doctor.log" output
+  _check_neovim_runtime > "$output_file" 2>&1
+  output="$(<"$output_file")"
+
+  assert_equals "1" "$errors"
+  assert_contains "$output" "sample.nvim worktree differs"
+}
+
 test_doctor_reports_generated_neovim_config_drift() {
   setup_neovim_health_fixture
   printf 'print("stale")\n' >> "$HOME/.config/nvim/init.lua"

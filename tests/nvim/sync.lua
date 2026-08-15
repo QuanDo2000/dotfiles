@@ -1,9 +1,19 @@
 local module = assert(os.getenv("NVIM_SYNC_MODULE"), "NVIM_SYNC_MODULE missing")
 local calls = {}
 local plugins = { sample = { _ = { tasks = {} } } }
+local lockfile = os.tmpname()
+vim.fn.writefile({ "reviewed" }, lockfile)
 local packages = {}
 local requested = {}
 local refresh_ok, refresh_calls = true, 0
+
+local lock = { lock = {}, _loaded = false }
+function lock.load()
+  if lock._loaded then return end
+  lock.lock = { sample = vim.fn.readfile(lockfile)[1] }
+  lock._loaded = true
+end
+package.preload["lazy.manage.lock"] = function() return lock end
 
 local function runner(name)
   return {
@@ -18,10 +28,16 @@ package.preload["lazy"] = function()
   return {
     install = function(options)
       assert(options.wait and options.show == false and options.lockfile)
+      local lazy_lock = require("lazy.manage.lock")
+      lazy_lock.lock, lazy_lock._loaded = { sample = "stale" }, true
+      vim.fn.writefile({ "stale" }, lockfile)
       return runner("install")
     end,
     restore = function(options)
       assert(options.wait and options.show == false)
+      local lazy_lock = require("lazy.manage.lock")
+      lazy_lock.load()
+      assert(lazy_lock.lock.sample == "reviewed", "reviewed lock cache must be restored before Lazy restore")
       return runner("restore")
     end,
     clean = function(options)
@@ -34,7 +50,7 @@ package.preload["lazy"] = function()
     end,
   }
 end
-package.preload["lazy.core.config"] = function() return { plugins = plugins } end
+package.preload["lazy.core.config"] = function() return { plugins = plugins, options = { lockfile = lockfile } } end
 package.preload["mason-registry"] = function()
   return {
     refresh = function(callback)
@@ -59,6 +75,7 @@ end
 local sync = dofile(module)
 sync.plugins(true)
 assert(vim.deep_equal(calls, { "install", "restore", "clean" }), "plugin sync must install, restore, then clean")
+assert(vim.fn.readfile(lockfile)[1] == "reviewed", "plugin sync must preserve reviewed lock")
 
 plugins.sample._.tasks = {
   {
@@ -68,6 +85,7 @@ plugins.sample._.tasks = {
 }
 local ok, err = pcall(sync.plugins, false)
 assert(not ok and tostring(err):find("build exploded", 1, true), "Lazy task errors must fail sync")
+assert(vim.fn.readfile(lockfile)[1] == "reviewed", "failed plugin sync must preserve reviewed lock")
 plugins.sample._.tasks = {}
 
 sync.tools()

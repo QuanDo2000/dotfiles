@@ -103,7 +103,7 @@ _check_neovim_runtime() {
     if [[ "$actual" != "$expected" ]]; then
       fail_soft "$name commit differs from tracked lock"
       errors=$((errors + 1))
-    elif [[ -n "$(git -C "$plugin" status --porcelain 2>/dev/null)" ]]; then
+    elif [[ -n "$(git -C "$plugin" status --porcelain --untracked-files=all 2>/dev/null | grep -vFx '?? doc/tags')" ]]; then
       fail_soft "$name worktree differs from tracked checkout"
       errors=$((errors + 1))
     fi

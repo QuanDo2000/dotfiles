@@ -14,6 +14,20 @@ local tools = {
   "yaml-language-server",
 }
 
+local function restore_lock(path, contents)
+  local temporary = path .. ".tmp." .. vim.fn.getpid()
+  vim.fn.delete(temporary)
+  if vim.fn.writefile(contents, temporary, "b") ~= 0 then error("Failed to stage reviewed Neovim lock") end
+  vim.fn.setfperm(temporary, vim.fn.getfperm(path))
+  local renamed, err = (vim.uv or vim.loop).fs_rename(temporary, path)
+  if not renamed then
+    vim.fn.delete(temporary)
+    error("Failed to restore reviewed Neovim lock: " .. (err or "unknown error"))
+  end
+  local lock = package.loaded["lazy.manage.lock"]
+  if lock then lock.lock, lock._loaded = {}, false end
+end
+
 local function lazy_errors()
   local errors = {}
   for name, plugin in pairs(require("lazy.core.config").plugins) do
@@ -44,8 +58,14 @@ end
 
 function M.plugins(clean)
   local lazy = require("lazy")
-  lazy.install({ wait = true, show = false, lockfile = true }):wait()
-  lazy_errors()
+  local lockfile = require("lazy.core.config").options.lockfile
+  local reviewed_lock = vim.fn.readfile(lockfile, "b")
+  local installed, install_error = pcall(function()
+    lazy.install({ wait = true, show = false, lockfile = true }):wait()
+    lazy_errors()
+  end)
+  restore_lock(lockfile, reviewed_lock)
+  if not installed then error(install_error, 0) end
   lazy.restore({ wait = true, show = false }):wait()
   lazy_errors()
   if clean then
