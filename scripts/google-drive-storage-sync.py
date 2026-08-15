@@ -50,7 +50,33 @@ def inventory(root):
     return parse_inventory(items, root)
 
 
-def make_plan(remote_dirs, remote_files, storage_dirs, storage_files):
+def matching_hashes(remote_root, storage_root, paths):
+    if not paths:
+        return set()
+    for path in paths:
+        if "\n" in path:
+            raise ValueError(f"newline in path is unsupported: {path!r}")
+
+    def md5sums(root):
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8") as file_list:
+            file_list.write("\n".join(sorted(paths)) + "\n")
+            file_list.flush()
+            output = rclone("md5sum", root, "--files-from-raw", file_list.name, capture=True).stdout
+        return {
+            line[34:]: line[:32]
+            for line in output.splitlines()
+            if len(line) >= 34 and line[32:34] == "  " and all(c in "0123456789abcdef" for c in line[:32].lower())
+        }
+
+    remote_hashes = md5sums(remote_root)
+    storage_hashes = md5sums(storage_root)
+    return {
+        path for path in paths
+        if path in remote_hashes and remote_hashes[path] == storage_hashes.get(path)
+    }
+
+
+def make_plan(remote_dirs, remote_files, storage_dirs, storage_files, same_hashes=frozenset()):
     common_dirs = remote_dirs & storage_dirs
 
     # ponytail: fixed policy filter; add configuration only when another policy exists.
@@ -91,7 +117,10 @@ def make_plan(remote_dirs, remote_files, storage_dirs, storage_files):
             plan["down"].add(path)
         elif path not in remote:
             plan["up"].add(path)
-        elif remote[path][0] == storage[path][0] and abs(remote[path][1] - storage[path][1]) <= 0.001:
+        elif path in same_hashes or (
+            remote[path][0] == storage[path][0]
+            and abs(remote[path][1] - storage[path][1]) <= 0.001
+        ):
             plan["same"] += 1
         elif remote[path][1] > storage[path][1]:
             plan["backup_storage"].add(path)
@@ -141,7 +170,13 @@ def parse_backup_time(name, cutoff):
 def sync_pair(name, remote_root, storage_root, stamp, dry_run):
     remote_dirs, remote_files = inventory(remote_root)
     storage_dirs, storage_files = inventory(storage_root)
-    plan = make_plan(remote_dirs, remote_files, storage_dirs, storage_files)
+    hash_candidates = {
+        path for path in remote_files.keys() & storage_files.keys()
+        if remote_files[path][0] == storage_files[path][0]
+        and abs(remote_files[path][1] - storage_files[path][1]) > 0.001
+    }
+    same_hashes = matching_hashes(remote_root, storage_root, hash_candidates)
+    plan = make_plan(remote_dirs, remote_files, storage_dirs, storage_files, same_hashes)
     print(
         f"{name}: common_dirs={plan['common_dirs']} down={len(plan['down'])} "
         f"down_bytes={plan['down_bytes']} up={len(plan['up'])} up_bytes={plan['up_bytes']} "
@@ -173,6 +208,7 @@ def self_test():
             "shared/replace": (3, new),
             "shared/equal-size-change": (4, new),
             "shared/precision": (5, new + 0.0005),
+            "shared/equal-size-same-content": (6, new),
             "shared/.DS_Store": (9, new),
             "remote-only/skip": (1, new),
         },
@@ -182,18 +218,20 @@ def self_test():
             "shared/replace": (1, old),
             "shared/equal-size-change": (4, old),
             "shared/precision": (5, new),
+            "shared/equal-size-same-content": (6, old),
             "shared/skip.iso": (9, new),
             "shared/._skip": (9, new),
             "shared/secret.PFX": (9, new),
             "shared/Recovery/skip.txt": (9, new),
             "storage-only/skip": (1, new),
         },
+        {"shared/equal-size-same-content"},
     )
     assert plan["down"] == {"shared/down", "shared/replace", "shared/equal-size-change"}
     assert plan["up"] == {"shared/up"}
     assert plan["backup_storage"] == {"shared/replace", "shared/equal-size-change"}
     assert plan["backup_remote"] == set()
-    assert plan["same"] == 1
+    assert plan["same"] == 2
     assert plan["down_bytes"] == 9 and plan["up_bytes"] == 4
     assert plan["skipped_remote"] == 2 and plan["skipped_storage"] == 5
     cutoff = datetime(2026, 2, 1, tzinfo=timezone.utc)
