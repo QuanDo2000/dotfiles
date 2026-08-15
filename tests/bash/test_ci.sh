@@ -51,7 +51,7 @@ test_ci_runs_windows_neovim_integration() {
   assert_contains "$workflow" 'Microsoft\WinGet\Links\nvim.exe'
   assert_contains "$workflow" 'Neovim\bin\nvim.exe'
   assert_contains "$workflow" "tests/powershell/integration_neovim.ps1"
-  assert_contains "$workflow" "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020"
+  assert_contains "$workflow" "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020"
   assert_contains "$workflow" "node-version: $(jq -r .node.version "$REPO_DIR/packages/pi-extensions-release.json")"
   assert_contains "$workflow" "tests/powershell/integration_pi_extensions.ps1"
 
@@ -64,13 +64,13 @@ test_ci_runs_windows_neovim_integration() {
   assert_contains "$integration" "Remove-Item -Recurse -Force"
 }
 
-test_ci_pins_nix_installer_action() {
+test_ci_pins_current_actions() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
-  assert_contains "$workflow" "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09"
-  assert_contains "$workflow" "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020"
-  assert_contains "$workflow" "DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25"
+  assert_contains "$workflow" "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1"
+  assert_contains "$workflow" "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0"
+  assert_contains "$workflow" "DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22"
   assert_contains "$workflow" $'permissions:\n  contents: read'
 }
 
