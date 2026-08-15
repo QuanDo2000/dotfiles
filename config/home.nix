@@ -252,8 +252,12 @@ in
     gtk3.extraConfig.gtk-tooltip-timeout = 200;
   };
 
-  xdg.configFile."mimeapps.list".force = lib.mkIf pkgs.stdenv.hostPlatform.isLinux true;
-  xdg.dataFile."applications/mimeapps.list".force = lib.mkIf pkgs.stdenv.hostPlatform.isLinux true;
+  xdg.configFile."mimeapps.list" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    force = true;
+  };
+  xdg.dataFile."applications/mimeapps.list" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    force = true;
+  };
 
   xdg.mimeApps = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     enable = true;

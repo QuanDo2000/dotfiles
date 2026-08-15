@@ -34,6 +34,7 @@ setup_neovim_health_fixture() {
 }
 
 link_valid_core_dotfiles() {
+  with_nix_agent_tools
   local root="${1:-$DOTFILES_DIR}"
   mkdir -p "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.codex" "$HOME/.pi/agent"
   local store_target="" candidate

@@ -203,7 +203,7 @@ local plugins = {
   {
     "catppuccin/nvim",
     name = "catppuccin",
-    lazy = false,
+    lazy = vim.env.DOTFILE_NVIM_SYNC == "1",
     priority = 1000,
     opts = {
       flavour = "macchiato",
@@ -367,7 +367,7 @@ local plugins = {
   },
   {
     "nvim-treesitter/nvim-treesitter",
-    lazy = false,
+    lazy = vim.env.DOTFILE_NVIM_SYNC == "1",
     build = function()
       require("nvim-treesitter").install({
         "bash", "diff", "git_config", "git_rebase", "gitattributes", "gitcommit", "gitignore", "json", "json5",

@@ -570,8 +570,8 @@ test_home_manager_declares_default_apps() {
   assert_contains "$config" '"inode/directory" = [ "thunar.desktop" ];'
   assert_contains "$config" '"x-scheme-handler/https" = [ "google-chrome.desktop" ];'
   assert_contains "$config" '"application/zip" = [ "xarchiver.desktop" ];'
-  assert_contains "$config" 'xdg.configFile."mimeapps.list".force = lib.mkIf pkgs.stdenv.hostPlatform.isLinux true;'
-  assert_contains "$config" 'xdg.dataFile."applications/mimeapps.list".force = lib.mkIf pkgs.stdenv.hostPlatform.isLinux true;'
+  assert_contains "$config" 'xdg.configFile."mimeapps.list" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {'
+  assert_contains "$config" 'xdg.dataFile."applications/mimeapps.list" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {'
 }
 
 test_home_manager_installs_bitwarden_picker() {

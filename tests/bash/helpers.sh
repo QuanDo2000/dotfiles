@@ -77,7 +77,7 @@ mock_uname_m() {
 
 with_nix_agent_tools() {
   command() {
-    if [[ "${1:-}" == "-v" && "${2:-}" =~ ^(codex|codebase-memory-mcp)$ ]]; then
+    if [[ "${1:-}" == "-v" && "${2:-}" =~ ^(codex|pi|codebase-memory-mcp)$ ]]; then
       printf '/nix/store/test-%s/bin/%s\n' "$2" "$2"
       return 0
     fi
