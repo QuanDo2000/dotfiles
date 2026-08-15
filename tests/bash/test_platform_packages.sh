@@ -162,6 +162,8 @@ test_code_search_stack_uses_current_full_feature_packages() {
   assert_equals "true" "$(jq -r '.version | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")' "$codebase_pins")"
   assert_contains "$codebase" 'codebase-memory-mcp-release.json'
   assert_contains "$codebase" '${source.file}'
+  assert_contains "$codebase" 'stdenv.hostPlatform.isLinux'
+  assert_not_contains "$codebase" 'stdenv.isLinux'
   assert_equals "true" "$(jq -r '.linux.amd64.file | test("^codebase-memory-mcp(-ui)?-linux-amd64.*\\.tar\\.gz$")' "$codebase_pins")"
   assert_equals "true" "$(jq -r '.windows.amd64.file | test("^codebase-memory-mcp(-ui)?-windows-amd64.*\\.zip$")' "$codebase_pins")"
   assert_equals "false" "$(jq -r '.dependencies | has("@ff-labs/pi-fff")' "$pi_extensions")"
@@ -552,6 +554,14 @@ test_nixos_flake_target_fails_when_hostname_missing() {
   unset -f nix
 }
 
+test_home_manager_uses_current_nix_platform_api() {
+  assert_contains "$HOME_CONFIG" 'pkgs.stdenv.hostPlatform.isLinux'
+  assert_contains "$HOME_CONFIG" 'pkgs.stdenv.hostPlatform.isDarwin'
+  assert_not_contains "$HOME_CONFIG" 'pkgs.stdenv.isLinux'
+  assert_not_contains "$HOME_CONFIG" 'pkgs.stdenv.isDarwin'
+  assert_contains "$(<"$REPO_DIR/packages/webcord-release.nix")" 'appimageTools.extract {'
+}
+
 test_home_manager_declares_default_apps() {
   local config="$HOME_CONFIG"
 
@@ -560,8 +570,8 @@ test_home_manager_declares_default_apps() {
   assert_contains "$config" '"inode/directory" = [ "thunar.desktop" ];'
   assert_contains "$config" '"x-scheme-handler/https" = [ "google-chrome.desktop" ];'
   assert_contains "$config" '"application/zip" = [ "xarchiver.desktop" ];'
-  assert_contains "$config" 'xdg.configFile."mimeapps.list".force = lib.mkIf pkgs.stdenv.isLinux true;'
-  assert_contains "$config" 'xdg.dataFile."applications/mimeapps.list".force = lib.mkIf pkgs.stdenv.isLinux true;'
+  assert_contains "$config" 'xdg.configFile."mimeapps.list".force = lib.mkIf pkgs.stdenv.hostPlatform.isLinux true;'
+  assert_contains "$config" 'xdg.dataFile."applications/mimeapps.list".force = lib.mkIf pkgs.stdenv.hostPlatform.isLinux true;'
 }
 
 test_home_manager_installs_bitwarden_picker() {
@@ -635,6 +645,10 @@ test_network_services_apply_safe_process_sandbox() {
   done
 }
 
+test_obsidian_service_skips_non_vault_directories() {
+  assert_contains "$HOME_CONFIG" '[ -d "$vault/.obsidian" ] || continue'
+}
+
 test_google_drive_storage_sync() {
   local exit_code=0
   python3 "$REPO_DIR/scripts/google-drive-storage-sync.py" --self-test >/dev/null 2>&1 || exit_code=$?
@@ -685,7 +699,7 @@ test_home_manager_installs_screenshot_tools() {
 test_home_manager_enables_fuzzel() {
   local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
 
-  assert_contains "$home_config" "programs.fuzzel = lib.mkIf pkgs.stdenv.isLinux"
+  assert_contains "$home_config" "programs.fuzzel = lib.mkIf pkgs.stdenv.hostPlatform.isLinux"
   assert_contains "$home_config" 'terminal = "ghostty";'
   assert_contains "$home_config" 'launch-prefix = "uwsm app --";'
   assert_contains "$hypr_config" 'mainMod .. " + Space"'
@@ -714,7 +728,7 @@ test_hyprshutdown_gracefully_ends_power_actions() {
 
 test_waybar_and_fcitx_use_session_lifecycle() {
   assert_contains "$HOME_CONFIG" "programs.waybar ="
-  assert_contains "$HOME_CONFIG" "systemd.enable = pkgs.stdenv.isLinux;"
+  assert_contains "$HOME_CONFIG" "systemd.enable = pkgs.stdenv.hostPlatform.isLinux;"
   assert_not_contains "$HYPR_CONFIG" "scripts/reload-waybar.sh"
   assert_not_contains "$HYPR_CONFIG" 'fcitx5 -d'
   assert_contains "$HYPR_CONFIG" "systemctl --user restart waybar.service"
@@ -859,7 +873,7 @@ test_hyprland_configures_actual_mouse() {
 test_home_manager_enables_hyprsunset() {
   local home_config="$HOME_CONFIG" sunset_config="$SUNSET_CONFIG"
 
-  assert_contains "$home_config" "services.hyprsunset.enable = pkgs.stdenv.isLinux;"
+  assert_contains "$home_config" "services.hyprsunset.enable = pkgs.stdenv.hostPlatform.isLinux;"
   assert_contains "$home_config" "systemd.user.services.hyprsunset.Unit.X-Restart-Triggers"
   assert_contains "$sunset_config" "time = 07:00"
   assert_contains "$sunset_config" "time = 20:00"
@@ -869,7 +883,7 @@ test_home_manager_enables_hyprsunset() {
 test_home_manager_enables_clipboard_persistence() {
   local config="$HOME_CONFIG"
 
-  assert_contains "$config" "services.wl-clip-persist = lib.mkIf pkgs.stdenv.isLinux"
+  assert_contains "$config" "services.wl-clip-persist = lib.mkIf pkgs.stdenv.hostPlatform.isLinux"
   assert_contains "$config" 'clipboardType = "regular";'
   assert_contains "$config" 'systemd.user.services.wl-clip-persist.Unit.ConditionEnvironment = "WAYLAND_DISPLAY";'
 }
@@ -877,7 +891,7 @@ test_home_manager_enables_clipboard_persistence() {
 test_home_manager_enables_mako() {
   local config="$HOME_CONFIG"
 
-  assert_contains "$config" "services.mako = lib.mkIf pkgs.stdenv.isLinux"
+  assert_contains "$config" "services.mako = lib.mkIf pkgs.stdenv.hostPlatform.isLinux"
   assert_contains "$config" 'output = "DP-3";'
   assert_contains "$config" 'default-timeout = 5000;'
 }
@@ -893,7 +907,7 @@ test_home_manager_declares_default_user_dirs() {
 test_home_manager_enables_hyprpolkitagent() {
   local config="$HOME_CONFIG"
 
-  assert_contains "$config" "services.hyprpolkitagent.enable = pkgs.stdenv.isLinux;"
+  assert_contains "$config" "services.hyprpolkitagent.enable = pkgs.stdenv.hostPlatform.isLinux;"
   assert_contains "$config" 'systemd.user.services.hyprpolkitagent.Unit.ConditionEnvironment = "WAYLAND_DISPLAY";'
 }
 

@@ -51,7 +51,7 @@ test_ci_runs_windows_neovim_integration() {
   assert_contains "$workflow" 'Microsoft\WinGet\Links\nvim.exe'
   assert_contains "$workflow" 'Neovim\bin\nvim.exe'
   assert_contains "$workflow" "tests/powershell/integration_neovim.ps1"
-  assert_contains "$workflow" "actions/setup-node@v4"
+  assert_contains "$workflow" "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020"
   assert_contains "$workflow" "node-version: $(jq -r .node.version "$REPO_DIR/packages/pi-extensions-release.json")"
   assert_contains "$workflow" "tests/powershell/integration_pi_extensions.ps1"
 
@@ -68,8 +68,10 @@ test_ci_pins_nix_installer_action() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
-  assert_contains "$workflow" "DeterminateSystems/nix-installer-action@v"
-  assert_not_contains "$workflow" "DeterminateSystems/nix-installer-action@main"
+  assert_contains "$workflow" "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09"
+  assert_contains "$workflow" "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020"
+  assert_contains "$workflow" "DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25"
+  assert_contains "$workflow" $'permissions:\n  contents: read'
 }
 
 test_ci_checker_jobs_provision_dependencies() {
@@ -86,6 +88,6 @@ test_ci_checker_jobs_provision_dependencies() {
   assert_not_contains "${workflows,,}" "codespell"
   assert_contains "$lint" "nix develop . -c shellcheck"
   prefix="${lint%%nix develop . -c shellcheck*}"
-  assert_contains "$prefix" "DeterminateSystems/nix-installer-action@v"
+  assert_contains "$prefix" "DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25"
   assert_contains "$(<"$REPO_DIR/flake.nix")" "shellcheck"
 }

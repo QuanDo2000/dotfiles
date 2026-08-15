@@ -10,46 +10,27 @@ fi
 
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {
-  local name="$1"
-  local target="$HOME/$name"
-  local platform="${2:-$(detect_platform)}"
+  local name="$1" platform="${2:-$(detect_platform)}" exact_target="${3:-}"
+  local target="$HOME/$name" expected="$DOTFILES_DIR/... or Home Manager store target"
   if [ -L "$target" ]; then
     local link_target
     link_target="$(resolve_symlink "$target")"
-    if [[ -e "$target" ]] && { [[ "$link_target" == "$DOTFILES_DIR/"* ]] \
+    if [[ -n "$exact_target" ]]; then
+      expected="$exact_target or Home Manager store target"
+    fi
+    if [[ -e "$target" ]] && { { [[ -n "$exact_target" ]] && [[ "$link_target" == "$exact_target" ]]; } \
+      || { [[ -z "$exact_target" ]] && [[ "$link_target" == "$DOTFILES_DIR/"* ]]; } \
       || { is_home_manager_platform "$platform" && [[ "$link_target" == /nix/store/* ]]; }; }; then
       success "$name -> $link_target"
     else
-      fail_soft "$name points to $link_target (expected $DOTFILES_DIR/... or Home Manager store target)"
+      fail_soft "$name points to $link_target (expected $expected)"
       errors=$((errors + 1))
     fi
-  elif [ -f "$target" ]; then
+  elif [ -e "$target" ]; then
     fail_soft "$name exists but is not a symlink"
     errors=$((errors + 1))
   else
     fail_soft "$name not found"
-    errors=$((errors + 1))
-  fi
-}
-
-_check_dotfile_command() {
-  local platform="${1:-$(detect_platform)}"
-  local target="$HOME/.local/bin/dotfile"
-  if [ -L "$target" ]; then
-    local link_target
-    link_target="$(resolve_symlink "$target")"
-    if [[ -e "$target" ]] && { [[ "$link_target" == "$DOTFILES_DIR/dotfile" ]] \
-      || { is_home_manager_platform "$platform" && [[ "$link_target" == /nix/store/* ]]; }; }; then
-      success ".local/bin/dotfile -> $link_target"
-    else
-      fail_soft ".local/bin/dotfile points to $link_target (expected $DOTFILES_DIR/dotfile or Home Manager store target)"
-      errors=$((errors + 1))
-    fi
-  elif [ -e "$target" ]; then
-    fail_soft ".local/bin/dotfile exists but is not a symlink"
-    errors=$((errors + 1))
-  else
-    fail_soft ".local/bin/dotfile not found"
     errors=$((errors + 1))
   fi
 }
@@ -270,7 +251,7 @@ function doctor {
   _check_symlink .config/nvim/init.lua "$platform"
   _check_symlink .config/nvim/fff-nvim-backend "$platform"
   _check_neovim_runtime
-  _check_dotfile_command "$platform"
+  _check_symlink .local/bin/dotfile "$platform" "$DOTFILES_DIR/dotfile"
   _check_writable_file .codex/config.toml
   _check_writable_file .pi/agent/settings.json
   _check_writable_file .pi/agent/mcp.json

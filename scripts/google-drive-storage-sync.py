@@ -29,27 +29,25 @@ def rclone(*args, capture=False):
     )
 
 
-def duplicate_report(result):
-    return "\n".join(part.strip() for part in (result.stdout, result.stderr) if part and part.strip())
-
-
-def ensure_no_duplicates(root):
-    report = duplicate_report(rclone("dedupe", "--dedupe-mode", "list", root, capture=True))
-    if report:
-        raise RuntimeError(f"duplicate Google Drive paths under {root}:\n{report}")
-
-
-def inventory(root):
-    items = json.loads(rclone("lsjson", root, "--recursive", "--no-mimetype", capture=True).stdout)
+def parse_inventory(items, root):
     dirs = {""}
     files = {}
+    seen = set()
     for item in items:
         path = item["Path"].rstrip("/")
+        if path in seen:
+            raise RuntimeError(f"duplicate paths under {root}: {path}")
+        seen.add(path)
         if item["IsDir"]:
             dirs.add(path)
         elif item.get("Size", -1) >= 0:
             files[path] = (item["Size"], datetime.fromisoformat(item["ModTime"].replace("Z", "+00:00")).timestamp())
     return dirs, files
+
+
+def inventory(root):
+    items = json.loads(rclone("lsjson", root, "--recursive", "--no-mimetype", capture=True).stdout)
+    return parse_inventory(items, root)
 
 
 def make_plan(remote_dirs, remote_files, storage_dirs, storage_files):
@@ -93,7 +91,7 @@ def make_plan(remote_dirs, remote_files, storage_dirs, storage_files):
             plan["down"].add(path)
         elif path not in remote:
             plan["up"].add(path)
-        elif remote[path][0] == storage[path][0]:
+        elif remote[path][0] == storage[path][0] and abs(remote[path][1] - storage[path][1]) <= 0.001:
             plan["same"] += 1
         elif remote[path][1] > storage[path][1]:
             plan["backup_storage"].add(path)
@@ -141,7 +139,6 @@ def parse_backup_time(name, cutoff):
 
 
 def sync_pair(name, remote_root, storage_root, stamp, dry_run):
-    ensure_no_duplicates(remote_root)
     remote_dirs, remote_files = inventory(remote_root)
     storage_dirs, storage_files = inventory(storage_root)
     plan = make_plan(remote_dirs, remote_files, storage_dirs, storage_files)
@@ -174,6 +171,8 @@ def self_test():
         {
             "shared/down": (2, new),
             "shared/replace": (3, new),
+            "shared/equal-size-change": (4, new),
+            "shared/precision": (5, new + 0.0005),
             "shared/.DS_Store": (9, new),
             "remote-only/skip": (1, new),
         },
@@ -181,6 +180,8 @@ def self_test():
         {
             "shared/up": (4, new),
             "shared/replace": (1, old),
+            "shared/equal-size-change": (4, old),
+            "shared/precision": (5, new),
             "shared/skip.iso": (9, new),
             "shared/._skip": (9, new),
             "shared/secret.PFX": (9, new),
@@ -188,18 +189,27 @@ def self_test():
             "storage-only/skip": (1, new),
         },
     )
-    assert plan["down"] == {"shared/down", "shared/replace"}
+    assert plan["down"] == {"shared/down", "shared/replace", "shared/equal-size-change"}
     assert plan["up"] == {"shared/up"}
-    assert plan["backup_storage"] == {"shared/replace"}
+    assert plan["backup_storage"] == {"shared/replace", "shared/equal-size-change"}
     assert plan["backup_remote"] == set()
-    assert plan["down_bytes"] == 5 and plan["up_bytes"] == 4
+    assert plan["same"] == 1
+    assert plan["down_bytes"] == 9 and plan["up_bytes"] == 4
     assert plan["skipped_remote"] == 2 and plan["skipped_storage"] == 5
     cutoff = datetime(2026, 2, 1, tzinfo=timezone.utc)
     assert parse_backup_time("20260101T000000Z", cutoff)
     assert not parse_backup_time("20260301T000000Z", cutoff)
     assert not parse_backup_time("keep-me", cutoff)
-    assert duplicate_report(subprocess.CompletedProcess([], 0, "", "")) == ""
-    assert duplicate_report(subprocess.CompletedProcess([], 0, "duplicate", "")) == "duplicate"
+    duplicate_items = [
+        {"Path": "same", "IsDir": False, "Size": 1, "ModTime": "2026-01-01T00:00:00Z"},
+        {"Path": "same", "IsDir": False, "Size": 1, "ModTime": "2026-01-01T00:00:00Z"},
+    ]
+    try:
+        parse_inventory(duplicate_items, "test")
+    except RuntimeError as error:
+        assert "duplicate paths" in str(error)
+    else:
+        raise AssertionError("duplicate paths must fail")
     print("SELF_TEST_OK")
 
 
@@ -212,7 +222,6 @@ def main():
         self_test()
         return
 
-    # ponytail: filename and size are intentional; equal-size content differences are out of scope.
     now = datetime.now(timezone.utc)
     stamp = now.strftime("%Y%m%dT%H%M%SZ")
     conflicts = sum(sync_pair(*pair, stamp, args.dry_run) for pair in PAIRS)

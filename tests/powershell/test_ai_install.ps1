@@ -307,6 +307,22 @@ function test_installfffmcp_installs_verified_windows_binary_for_codex {
     Assert-Contains $codex '"fff-mcp-agent.cmd"'
 }
 
+function test_installfffmcp_skips_current_pinned_binary_during_update {
+    $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\fff-release.json') | ConvertFrom-Json
+    $binDir = Join-Path $env:USERPROFILE '.local\bin'
+    New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+    'current' | Set-Content -NoNewline (Join-Path $binDir 'fff-mcp.exe')
+    $script:FffDownloaded = $false
+    Set-CommandMock 'Invoke-WebRequest' { $script:FffDownloaded = $true }
+    Set-CommandMock 'Get-FileHash' { [pscustomobject]@{ Hash = $pins.mcp.'windows-x64'.sha256 } }
+    Set-FunctionMock 'AddToUserPath' { }
+
+    InstallFffMcp -Update
+
+    Assert-False $script:FffDownloaded 'matching pinned binary should not download again'
+    Assert-Equals 'current' (Get-Content -Raw (Join-Path $binDir 'fff-mcp.exe'))
+}
+
 function test_installfffmcp_stops_running_server_before_update {
     $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\fff-release.json') | ConvertFrom-Json
     $binDir = Join-Path $env:USERPROFILE '.local\bin'
@@ -326,7 +342,9 @@ function test_installfffmcp_stops_running_server_before_update {
         'new' | Set-Content -NoNewline $OutFile
     }
     Set-CommandMock 'Get-FileHash' {
-        [pscustomobject]@{ Hash = $pins.mcp.'windows-x64'.sha256 }
+        param($LiteralPath)
+        $hash = if ($LiteralPath -like '*.download') { $pins.mcp.'windows-x64'.sha256 } else { '0' * 64 }
+        [pscustomobject]@{ Hash = $hash }
     }
     Set-FunctionMock 'AddToUserPath' { }
 

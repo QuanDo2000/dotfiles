@@ -16,9 +16,11 @@ test_check_script_runs_repo_verification() {
   check_text="$(<"$REPO_DIR/scripts/check.sh")"
   flake_text="$(<"$REPO_DIR/flake.nix")"
 
-  assert_contains "$check_text" 'nix develop "$flake" -c bash "$repo_dir/tests/bash/runner.sh"'
+  assert_equals "1" "$(grep -c 'nix develop' <<< "$check_text")"
+  assert_contains "$check_text" 'exec nix develop "$flake" -c env DOTFILE_CHECK_IN_DEV_SHELL=1 bash "$repo_dir/scripts/check.sh"'
+  assert_contains "$check_text" 'run bash "$repo_dir/tests/bash/runner.sh"'
   assert_not_contains "$check_text" '--no-docker'
-  assert_contains "$check_text" 'nix develop "$flake" -c pwsh "$repo_dir/tests/powershell/runner.ps1"'
+  assert_contains "$check_text" 'run pwsh "$repo_dir/tests/powershell/runner.ps1"'
   assert_not_contains "$check_text" 'command -v pwsh'
   assert_contains "$check_text" 'nix flake check "$flake" --no-build --all-systems'
   assert_contains "$check_text" 'flake="path:$repo_dir"'
@@ -26,7 +28,7 @@ test_check_script_runs_repo_verification() {
   assert_contains "$check_text" '"$flake#pi-agent"'
   assert_contains "$check_text" 'if [[ "$(uname -s)" == "Linux" ]]'
   assert_contains "$check_text" 'nix build "${packages[@]}" --no-link'
-  assert_contains "$check_text" 'nix develop "$flake" -c shellcheck'
+  assert_contains "$check_text" 'run shellcheck'
   assert_contains "$flake_text" "pi-agent = final.callPackage ./packages/pi-agent.nix"
   assert_contains "$flake_text" "fff-mcp = final.callPackage ./packages/fff-mcp.nix"
   assert_contains "$flake_text" "fff-nvim-backend = final.callPackage ./packages/fff-nvim-backend.nix"

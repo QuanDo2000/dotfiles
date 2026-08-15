@@ -4,19 +4,32 @@ function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:OriginalProgramFiles = $env:ProgramFiles
     $env:ProgramFiles = Join-Path $env:USERPROFILE 'Program Files'
-    $script:OriginalWingetHas = (Get-Command WingetHas).ScriptBlock
+    $script:OriginalGetInstalledWingetPackages = (Get-Command Get-InstalledWingetPackages).ScriptBlock
     $script:OriginalAddToUserPath = (Get-Command AddToUserPath).ScriptBlock
     Set-FunctionMock 'AddToUserPath' { }
 }
 
 function TestTeardown {
     Clear-CommandMock 'winget'
-    Set-FunctionMock 'WingetHas' $script:OriginalWingetHas
+    Set-FunctionMock 'Get-InstalledWingetPackages' $script:OriginalGetInstalledWingetPackages
     Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
     if ($null -eq $script:OriginalProgramFiles) { Remove-Item Env:ProgramFiles -ErrorAction SilentlyContinue }
     else { $env:ProgramFiles = $script:OriginalProgramFiles }
     Remove-Variable -Name MissingWingetPackages, AllInstalled, AddedUserPath, OriginalProgramFiles -Scope Script -ErrorAction SilentlyContinue
     Clear-TestEnv
+}
+
+function test_refreshprocesspath_preserves_current_process_entries {
+    $originalPath = $env:Path
+    try {
+        $env:Path = 'fnm-active;session-only'
+
+        Refresh-ProcessPath
+
+        Assert-Contains $env:Path 'fnm-active'
+    } finally {
+        $env:Path = $originalPath
+    }
 }
 
 function test_assertwindowshealthy_preserves_caller_process_path {
@@ -141,19 +154,25 @@ function test_update_packages_dry_run_does_not_call_winget {
     Assert-False $script:Called 'winget should not be invoked in dry run'
 }
 
-function test_installpackages_upgrades_only_managed_winget_packages {
+function test_installpackages_inventories_winget_once_and_upgrades_only_managed_packages {
     $script:Dry = $false
     $script:WingetCalls = @()
-    Set-FunctionMock 'WingetHas' { return $true }
     Set-CommandMock 'winget' {
         $script:WingetCalls += ,($args -join ' ')
+        if ($args[0] -eq 'export') {
+            $outputIndex = [Array]::IndexOf($args, '--output')
+            '{"Sources":[{"Packages":[' + ((Get-WingetPackages | ForEach-Object { '{"PackageIdentifier":"' + $_ + '"}' }) -join ',') + ']}]}' |
+                Set-Content -LiteralPath $args[$outputIndex + 1]
+        }
         $global:LASTEXITCODE = 0
     }
 
     InstallPackages 6>&1 | Out-Null
 
     $managed = @(Get-WingetPackages)
-    Assert-Equals $managed.Count $script:WingetCalls.Count
+    Assert-Equals ($managed.Count + 1) $script:WingetCalls.Count
+    Assert-Equals 1 @($script:WingetCalls | Where-Object { $_ -like 'export *' }).Count
+    Assert-Contains $script:WingetCalls[0] '--ignore-unavailable'
     Assert-False (($script:WingetCalls -join "`n") -like '*upgrade --all*') 'unmanaged packages should not be upgraded'
     foreach ($package in $managed) {
         Assert-True ($script:WingetCalls -contains "upgrade --id $package --exact --disable-interactivity --accept-package-agreements --accept-source-agreements") "missing managed upgrade for $package"
@@ -176,7 +195,7 @@ function test_invokewinget_accepts_no_applicable_upgrade {
 function test_installpackages_adds_llvm_to_user_path {
     $script:Dry = $false
     $script:AddedUserPath = $null
-    Set-FunctionMock 'WingetHas' { return $true }
+    Set-FunctionMock 'Get-InstalledWingetPackages' { return @(Get-WingetPackages) }
     Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
     Set-FunctionMock 'AddToUserPath' { param($dir) $script:AddedUserPath = $dir }
 
@@ -185,22 +204,33 @@ function test_installpackages_adds_llvm_to_user_path {
     Assert-Equals (Join-Path $env:ProgramFiles 'LLVM\bin') $script:AddedUserPath
 }
 
-function test_installpackages_propagates_winget_failures {
+function test_installpackages_propagates_winget_install_failure {
     $script:Dry = $false
-    Set-CommandMock 'winget' { $global:LASTEXITCODE = 1 }
+    Set-FunctionMock 'Get-InstalledWingetPackages' { return @() }
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = if ($args[0] -eq 'install') { 1 } else { 0 } }
 
-    foreach ($allInstalled in $false, $true) {
-        $script:AllInstalled = $allInstalled
-        Set-FunctionMock 'WingetHas' { return $script:AllInstalled }
-        Assert-Throws { InstallPackages 6>&1 | Out-Null } 'InstallPackages should propagate Winget failures'
-    }
+    Assert-Throws { InstallPackages 6>&1 | Out-Null } 'InstallPackages should propagate Winget install failures'
+}
+
+function test_installpackages_propagates_winget_upgrade_failure {
+    $script:Dry = $false
+    Set-FunctionMock 'Get-InstalledWingetPackages' { return @(Get-WingetPackages) }
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = if ($args[0] -eq 'upgrade') { 1 } else { 0 } }
+
+    Assert-Throws { InstallPackages 6>&1 | Out-Null } 'InstallPackages should propagate Winget upgrade failures'
 }
 
 function test_installpackages_installs_missing_winget_packages_individually {
     $script:Dry = $false
     $script:MissingWingetPackages = @('Git.Git', 'Neovim.Neovim')
     $script:InstallCalls = @()
-    Set-FunctionMock 'WingetHas' { param($id) return ($script:MissingWingetPackages -notcontains $id) }
+    Set-FunctionMock 'Get-InstalledWingetPackages' {
+        $installed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($package in Get-WingetPackages) {
+            if ($script:MissingWingetPackages -notcontains $package) { $null = $installed.Add($package) }
+        }
+        return $installed
+    }
     Set-CommandMock 'winget' {
         if ($args[0] -eq 'install') { $script:InstallCalls += ,($args -join ' ') }
         $global:LASTEXITCODE = 0

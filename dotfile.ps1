@@ -135,10 +135,8 @@ function LinkPath($source, $destination, [bool]$isDirectory = $false) {
         }
         if ($script:BackupAll -or $backup) {
             $backupPath = "$destination.bak"
-            $oldBackup = Get-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
-            if ($oldBackup) {
-                $recurse = $oldBackup.PSIsContainer -and -not $oldBackup.LinkType
-                Remove-Item -LiteralPath $backupPath -Force -Recurse:$recurse -ErrorAction Stop
+            for ($suffix = 1; Get-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue; $suffix++) {
+                $backupPath = "$destination.bak.$suffix"
             }
             Rename-Item -LiteralPath $destination -NewName (Split-Path $backupPath -Leaf) -ErrorAction Stop
             Success "Moved $destination to $backupPath"
@@ -174,6 +172,17 @@ function WingetHas($id) {
     return ($LASTEXITCODE -eq 0)
 }
 
+function Get-InstalledWingetPackages {
+    $output = Join-Path ([IO.Path]::GetTempPath()) "winget-$([Guid]::NewGuid().ToString('N')).json"
+    try {
+        winget export --output $output --include-versions --ignore-unavailable --disable-interactivity --accept-source-agreements | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'winget package inventory failed' }
+        return @((Get-Content -Raw -LiteralPath $output | ConvertFrom-Json).Sources.Packages.PackageIdentifier)
+    } finally {
+        Remove-Item -LiteralPath $output -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Get-WingetPackages {
     @(
         "Microsoft.PowerShell", "Git.Git", "GnuPG.Gpg4win", "Microsoft.WindowsTerminal",
@@ -205,12 +214,8 @@ function InstallPackages {
 
     $wingetPkgs = @(Get-WingetPackages)
     Info "Checking winget packages ($($wingetPkgs.Count) total)..."
-    $missing = @()
-    for ($i = 0; $i -lt $wingetPkgs.Count; $i++) {
-        $pkg = $wingetPkgs[$i]
-        Info "  [$($i + 1)/$($wingetPkgs.Count)] Checking $pkg..."
-        if (-not (WingetHas $pkg)) { $missing += $pkg }
-    }
+    $installed = @(Get-InstalledWingetPackages)
+    $missing = @($wingetPkgs | Where-Object { $_ -notin $installed })
     if ($missing.Count -gt 0) {
         Info "Installing $($missing.Count) missing winget package(s): $($missing -join ', ')"
         foreach ($pkg in $missing) {
@@ -230,19 +235,11 @@ function InstallPackages {
 }
 
 function Get-StreamSha256($Stream) {
-    $sha256 = [Security.Cryptography.SHA256]::Create()
-    try {
-        $digest = $sha256.ComputeHash($Stream)
-    } finally {
-        $sha256.Dispose()
-        $Stream.Position = 0
-    }
-    return ([BitConverter]::ToString($digest) -replace '-', '').ToLowerInvariant()
+    return (Get-FileHash -InputStream $Stream -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
 function Get-FileSha256($Path) {
-    $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-    try { return Get-StreamSha256 $stream } finally { $stream.Dispose() }
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
 function Grant-FontReadAccess($Path) {
@@ -315,7 +312,7 @@ function InstallFiraCodeNerdFont {
 function Refresh-ProcessPath {
     $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $env:Path = "$machinePath;$userPath"
+    $env:Path = (@($env:Path, $machinePath, $userPath) -split ';' | Where-Object { $_ } | Select-Object -Unique) -join ';'
 }
 
 function Get-PiExtensionsPins {
@@ -786,7 +783,11 @@ function InstallFffMcp {
 
     $binDir = Join-Path $env:USERPROFILE '.local\bin'
     $destination = Join-Path $binDir 'fff-mcp.exe'
-    if ($Update -or -not (Test-Path -LiteralPath $destination)) {
+    $current = Test-Path -LiteralPath $destination -PathType Leaf
+    if ($current) {
+        $current = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant() -eq $expectedHash
+    }
+    if (-not $current) {
         $url = "https://github.com/dmtrKovalenko/fff/releases/download/v$version/$assetFile"
         $download = "$destination.download"
         New-Item -ItemType Directory -Force -Path $binDir | Out-Null

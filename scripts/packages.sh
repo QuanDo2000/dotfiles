@@ -428,83 +428,41 @@ function _update_pi_extensions {
   fi
 }
 
-function update_ai {
-  info "Updating AI tools and configs..."
-  local platform codex_version_before
+function _update_packages_scope {
+  local scope="$1" platform codex_version_before refresh marker label suffix pending_args=()
+  if [[ "$scope" == ai ]]; then
+    refresh=_refresh_ai_dependency_set marker=ai label="AI dependency" suffix="AI update" pending_args=(ai)
+    info "Updating AI tools and configs..."
+  else
+    refresh=_refresh_all_dependency_set marker=full label=Dependency suffix=update
+    info "Updating packages..."
+  fi
   codex_version_before="$(_codex_version)"
   platform="$(detect_platform)"
   case "$platform" in
     nixos|debian|arch|mac) ;;
     unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
   esac
-  if [[ "$DRY" == "false" ]]; then
-    _begin_dependency_update || fail "Another dependency update is already running"
-  fi
+  [[ "$DRY" == "true" ]] || _begin_dependency_update \
+    || fail "Another dependency update is already running"
 
   if [[ "$DRY" == "true" ]]; then
-    _refresh_ai_dependency_set
+    "$refresh"
     _validate_dependency_update
   elif _dependency_update_markers_conflict; then
     fail "Conflicting pending dependency updates require manual review"
-  elif _dependency_update_pending ai; then
-    _validate_pending_dependency_update ai
-    info "Resuming validated AI dependency update"
+  elif _dependency_update_pending "${pending_args[@]}"; then
+    _validate_pending_dependency_update "${pending_args[@]}"
+    info "Resuming validated $label update"
   else
     _require_clean_dependency_tree
-    _refresh_dependency_set _refresh_ai_dependency_set \
-      || fail "AI dependency refresh failed; working tree was not changed"
-    _write_dependency_update_marker ai "$DEPENDENCY_UPDATE_FINGERPRINT" \
-      || fail "Failed to record validated AI dependency update"
+    _refresh_dependency_set "$refresh" \
+      || fail "$label refresh failed; working tree was not changed"
+    _write_dependency_update_marker "$marker" "$DEPENDENCY_UPDATE_FINGERPRINT" \
+      || fail "Failed to record validated $label update"
   fi
   _approve_dependency_update
-  if [[ "$DRY" == "false" ]]; then
-    _validate_pending_dependency_update ai
-  fi
-  case "$platform" in
-    nixos)   DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _nixos_rebuild_switch ;;
-    debian)  DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch linux ;;
-    arch)    DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch arch-server ;;
-    mac)     DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _darwin_rebuild_switch ;;
-  esac
-  _cleanup_codex_runtime_after_update "$codex_version_before"
-  _update_pi_extensions
-  _finish_dependency_update ai
-  [[ "$DRY" == "true" ]] || _end_dependency_update \
-    || fail "Failed to release dependency update lock"
-  success "Finished AI update"
-}
-
-function update_packages {
-  info "Updating packages..."
-  local platform codex_version_before
-  codex_version_before="$(_codex_version)"
-  platform="$(detect_platform)"
-  case "$platform" in
-    nixos|debian|arch|mac) ;;
-    unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
-  esac
-  if [[ "$DRY" == "false" ]]; then
-    _begin_dependency_update || fail "Another dependency update is already running"
-  fi
-  if [[ "$DRY" == "true" ]]; then
-    _refresh_all_dependency_set
-    _validate_dependency_update
-  elif _dependency_update_markers_conflict; then
-    fail "Conflicting pending dependency updates require manual review"
-  elif _dependency_update_pending; then
-    _validate_pending_dependency_update
-    info "Resuming validated dependency update"
-  else
-    _require_clean_dependency_tree
-    _refresh_dependency_set _refresh_all_dependency_set \
-      || fail "Dependency refresh failed; working tree was not changed"
-    _write_dependency_update_marker full "$DEPENDENCY_UPDATE_FINGERPRINT" \
-      || fail "Failed to record validated dependency update"
-  fi
-  _approve_dependency_update
-  if [[ "$DRY" == "false" ]]; then
-    _validate_pending_dependency_update
-  fi
+  [[ "$DRY" == "true" ]] || _validate_pending_dependency_update "${pending_args[@]}"
   case "$platform" in
     nixos)   DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _nixos_rebuild_switch ;;
     debian)  DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch linux ;;
@@ -514,13 +472,17 @@ function update_packages {
   _cleanup_codex_runtime_after_update "$codex_version_before"
   _update_pi_extensions
   local neovim_sync_error=
-  _sync_neovim || neovim_sync_error="$NEOVIM_SYNC_ERROR"
-  _finish_dependency_update
+  [[ "$scope" == ai ]] || _sync_neovim || neovim_sync_error="$NEOVIM_SYNC_ERROR"
+  _finish_dependency_update "${pending_args[@]}"
   [[ "$DRY" == "true" ]] || _end_dependency_update \
     || fail "Failed to release dependency update lock"
   [ -z "$neovim_sync_error" ] || fail "$neovim_sync_error"
-  success "Finished update"
+  success "Finished $suffix"
 }
+
+function update_ai { _update_packages_scope ai; }
+
+function update_packages { _update_packages_scope full; }
 
 function install_packages {
   info "Installing packages..."

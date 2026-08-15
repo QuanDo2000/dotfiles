@@ -702,7 +702,7 @@ test_release_transaction_recovers_interrupted_pair() {
   printf 'old lock\n' > "$transaction_dir/lock.backup"
   mkdir "$transaction_dir/stage"
   printf 'partial download\n' > "$transaction_dir/stage/archive.tgz"
-  sync() {
+  _sync_paths() {
     local count=0
     [[ ! -f "$TEST_TMPDIR/sync-count" ]] || count="$(<"$TEST_TMPDIR/sync-count")"
     printf '%s\n' "$((count + 1))" > "$TEST_TMPDIR/sync-count"
@@ -721,7 +721,19 @@ test_release_transaction_recovers_interrupted_pair() {
     echo "  FAILED: recovered transaction journal and staging should be cleared" >> "$ERROR_FILE"
   fi
   _release_release_transaction "$transaction_dir"
-  unset -f sync
+  unset -f _sync_paths
+}
+
+test_release_transactions_use_targeted_fsync() {
+  local file="$TEST_TMPDIR/fsync/file"
+  mkdir -p "$(dirname "$file")"
+  printf 'durable\n' > "$file"
+
+  _sync_paths "$file" "$(dirname "$file")"
+
+  assert_equals "durable" "$(<"$file")"
+  assert_not_contains "$(<"$REPO_DIR/scripts/releases.sh")" $'\n    && sync'
+  assert_not_contains "$(<"$REPO_DIR/scripts/releases.sh")" $'\n  sync'
 }
 
 test_release_file_pair_rolls_back_when_second_replace_fails() {

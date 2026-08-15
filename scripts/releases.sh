@@ -3,6 +3,30 @@ set -eo pipefail
 
 # Release pin discovery, hashing, and tracked package updates.
 
+function _sync_paths {
+  python3 - "$@" <<'PY'
+import errno
+import os
+import sys
+
+fallback = False
+for path in dict.fromkeys(sys.argv[1:]):
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        try:
+            os.fsync(fd)
+        except OSError as error:
+            if os.path.isdir(path) and error.errno == errno.EINVAL:
+                fallback = True
+            else:
+                raise
+    finally:
+        os.close(fd)
+if fallback:
+    os.sync()
+PY
+}
+
 function _write_lix_installer_pins {
   local linux_hash="$1" darwin_hash="$2"
   local packages_file="${3:-$DOTFILES_DIR/scripts/packages.sh}" tmp
@@ -34,8 +58,14 @@ function _update_lix_installer_pins {
   tmp_dir="$(mktemp -d)" || fail "Failed to create Lix installer temp directory"
   linux_file="$tmp_dir/lix-installer-x86_64-linux"
   darwin_file="$tmp_dir/lix-installer-aarch64-darwin"
-  if ! _download_lix_installer x86_64-linux "$linux_file" \
-    || ! _download_lix_installer aarch64-darwin "$darwin_file"; then
+  _download_lix_installer x86_64-linux "$linux_file" &
+  local linux_pid=$!
+  _download_lix_installer aarch64-darwin "$darwin_file" &
+  local darwin_pid=$!
+  local download_failed=false
+  wait "$linux_pid" || download_failed=true
+  wait "$darwin_pid" || download_failed=true
+  if [[ "$download_failed" == true ]]; then
     rm -rf "$tmp_dir"
     fail "Failed to download Lix installers"
   fi
@@ -149,10 +179,23 @@ function _update_codex_release_package {
 
   info "Updating Codex package to $tag..."
   _ensure_nix
-  linux_hash="$(_prefetch_codex_release_hash "$tag" linux)"
-  darwin_hash="$(_prefetch_codex_release_hash "$tag" darwin)"
-  windows_hashes="$(_codex_windows_release_hashes "$tag")" \
-    || fail "Failed to resolve Codex Windows checksums"
+  local hashes_dir linux_pid darwin_pid windows_pid failed=false windows_failed=false
+  hashes_dir="$(mktemp -d)" || fail "Failed to create Codex hash temp directory"
+  _prefetch_codex_release_hash "$tag" linux > "$hashes_dir/linux" & linux_pid=$!
+  _prefetch_codex_release_hash "$tag" darwin > "$hashes_dir/darwin" & darwin_pid=$!
+  _codex_windows_release_hashes "$tag" > "$hashes_dir/windows" & windows_pid=$!
+  wait "$linux_pid" || failed=true
+  wait "$darwin_pid" || failed=true
+  wait "$windows_pid" || windows_failed=true
+  if [[ "$failed" == true || "$windows_failed" == true ]]; then
+    rm -rf "$hashes_dir"
+    [[ "$windows_failed" == false ]] || fail "Failed to resolve Codex Windows checksums"
+    fail "Failed to resolve Codex release checksums"
+  fi
+  linux_hash="$(<"$hashes_dir/linux")"
+  darwin_hash="$(<"$hashes_dir/darwin")"
+  windows_hashes="$(<"$hashes_dir/windows")"
+  rm -rf "$hashes_dir"
   windows_x64_hash="$(sed -n '1p' <<< "$windows_hashes")"
   windows_arm64_hash="$(sed -n '2p' <<< "$windows_hashes")"
   _write_codex_release_package "$tag" "$linux_hash" "$darwin_hash" "$windows_x64_hash" "$windows_arm64_hash"
@@ -307,15 +350,15 @@ function _recover_release_transaction {
       && cp -p "$owner_dir/lock.backup" "$tmp_lock" \
       && mv "$tmp_package" "$package_file" \
       && mv "$tmp_lock" "$lock_file" \
-      && sync \
+      && _sync_paths "$package_file" "$lock_file" "${package_file%/*}" "${lock_file%/*}" \
       || { rm -f "$tmp_package" "$tmp_lock"; return 1; }
   elif [[ -n "$state" ]]; then
     return 1
   fi
-  rm -f "$owner_dir/state" "$owner_dir/state.tmp" && sync || return 1
+  rm -f "$owner_dir/state" "$owner_dir/state.tmp" && _sync_paths "$owner_dir" || return 1
   rm -f "$owner_dir/package.backup" "$owner_dir/lock.backup"
   rm -rf "$owner_dir/stage"
-  sync
+  _sync_paths "$owner_dir"
 }
 
 function _remove_release_journal {
@@ -366,7 +409,7 @@ function _recover_orphaned_release_journal {
   new_claim="$(mktemp "${transaction_dir}.claim.XXXXXX")" \
     || fail "Failed to prepare interrupted $label recovery claim"
   printf '%s\n' "$identity" > "$new_claim" \
-    && sync \
+    && _sync_paths "$new_claim" "${new_claim%/*}" \
     || { rm -f "$new_claim"; fail "Failed to prepare interrupted $label recovery claim"; }
   new_journal="$new_claim.journal"
   mv "$journal" "$new_journal" 2>/dev/null \
@@ -391,7 +434,7 @@ function _acquire_release_transaction {
     owner_dir="$(mktemp -d "${transaction_dir}.owner.XXXXXX")" \
       || fail "Failed to create $label update owner"
     printf '%s\n' "$identity" > "$owner_dir/pid" \
-      && sync \
+      && _sync_paths "$owner_dir/pid" "$owner_dir" \
       || { rm -rf "$owner_dir"; fail "Failed to initialize $label update lock"; }
     ln -s "$(basename "$owner_dir")" "$transaction_dir" 2>/dev/null \
       || { rm -rf "$owner_dir"; fail "Failed to publish $label update lock"; }
@@ -410,7 +453,7 @@ function _acquire_release_transaction {
   claim="$(mktemp "${transaction_dir}.claim.XXXXXX")" \
     || fail "Failed to prepare interrupted $label recovery claim"
   printf '%s\n' "$identity" > "$claim" \
-    && sync \
+    && _sync_paths "$claim" "${claim%/*}" \
     || { rm -f "$claim"; fail "Failed to prepare interrupted $label recovery claim"; }
   journal="$claim.journal"
   mv "$transaction_dir" "$journal" 2>/dev/null \
@@ -445,21 +488,23 @@ function _install_release_file_pair {
     rm -f "$package_backup" "$lock_backup" "$staged_package" "$staged_lock"
     fail "Failed to back up $label files"
   fi
-  sync || fail "Failed to persist $label backups"
+  _sync_paths "$package_backup" "$lock_backup" "$transaction_dir" \
+    || fail "Failed to persist $label backups"
   printf 'prepared\n' > "$transaction_dir/state.tmp" \
-    && sync \
+    && _sync_paths "$transaction_dir/state.tmp" "$transaction_dir" \
     && mv "$transaction_dir/state.tmp" "$transaction_dir/state" \
-    && sync \
+    && _sync_paths "$transaction_dir/state" "$transaction_dir" \
     || fail "Failed to prepare $label transaction journal"
 
-  if ! mv "$staged_package" "$package_file" || ! mv "$staged_lock" "$lock_file" || ! sync; then
+  if ! mv "$staged_package" "$package_file" || ! mv "$staged_lock" "$lock_file" \
+    || ! _sync_paths "$package_file" "$lock_file" "${package_file%/*}" "${lock_file%/*}"; then
     rm -f "$staged_package" "$staged_lock"
     _recover_release_transaction "$transaction_dir" "$package_file" "$lock_file" "$transaction_dir" \
       || fail "Failed to recover $label after install failure"
     fail "Failed to install $label files"
   fi
   rm -f "$transaction_dir/state" \
-    && sync \
+    && _sync_paths "$transaction_dir" \
     || fail "Failed to commit $label transaction journal"
   rm -f "$package_backup" "$lock_backup" \
     || fail "Failed to clean up $label backups"

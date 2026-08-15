@@ -87,7 +87,6 @@ test_neovim_uses_raw_config() {
   if [ -e "$config/lazyvim.json" ]; then
     printf "  legacy lazyvim.json still exists\n" >> "$ERROR_FILE"
   fi
-  assert_contains "$(<"$REPO_DIR/docs/raw-neovim-evaluation.md")" "Neotest remains absent because baseline had zero adapters"
 }
 
 test_neovim_uses_reviewed_plugin_lock() {

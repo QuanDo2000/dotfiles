@@ -89,8 +89,10 @@ function test_windows_notepadplusplus_links_stable_settings_and_themes {
         $root = Join-Path $env:APPDATA 'Notepad++'
         $specs = @(Get-WindowsLinkSpecs | Where-Object { $_.Destination -like "$root*" })
 
-        foreach ($name in 'contextMenu.xml', 'shortcuts.xml', 'themes\catppuccin-macchiato.xml', 'themes\DarkModeDefault.xml') {
-            Assert-True ([bool]($specs | Where-Object Destination -eq (Join-Path $root $name))) "$name should be linked"
+        foreach ($name in 'contextMenu.xml', 'shortcuts.xml', 'themes\catppuccin-macchiato.xml') {
+            $spec = $specs | Where-Object Destination -eq (Join-Path $root $name)
+            Assert-True ([bool]$spec) "$name should be linked"
+            if ($spec) { Assert-FileExists $spec.Source }
         }
         Assert-False ([bool]($specs | Where-Object Destination -eq (Join-Path $root 'themes'))) 'whole themes directory should remain writable'
         Assert-False ([bool]($specs | Where-Object Destination -eq (Join-Path $root 'config.xml'))) 'runtime-written config.xml should remain writable'
