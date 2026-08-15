@@ -58,7 +58,10 @@ end
 
 function M.plugins(clean)
   local lazy = require("lazy")
-  local lockfile = require("lazy.core.config").options.lockfile
+  local options = require("lazy.core.config").options
+  options.git = options.git or {}
+  options.git.timeout = 600
+  local lockfile = options.lockfile
   local reviewed_lock = vim.fn.readfile(lockfile, "b")
   local function run(operation)
     local ok, err = pcall(function()

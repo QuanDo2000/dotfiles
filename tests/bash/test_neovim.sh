@@ -95,8 +95,8 @@ test_neovim_sync_defers_eager_plugins_until_installed() {
 
   assert_equals "2" "$(grep -c 'lazy = vim.env.DOTFILE_NVIM_SYNC == "1"' <<< "$config")"
   assert_contains "$config" 'concurrency = os.getenv("DOTFILE_NVIM_SYNC") == "1" and 2 or nil'
-  assert_contains "$config" 'filter = os.getenv("DOTFILE_NVIM_SYNC") ~= "1"'
-  assert_contains "$config" 'timeout = os.getenv("DOTFILE_NVIM_SYNC") == "1" and 600 or 120'
+  assert_contains "$config" 'git = { filter = os.getenv("DOTFILE_NVIM_SYNC") ~= "1" }'
+  assert_contains "$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")" 'options.git.timeout = 600'
 }
 
 test_neovim_uses_reviewed_plugin_lock() {
