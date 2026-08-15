@@ -74,6 +74,17 @@ package.preload["mason-registry"] = function()
   }
 end
 
+local executable, has = vim.fn.executable, vim.fn.has
+local has_nix, is_windows = false, true
+vim.fn.executable = function(name)
+  if name == "nix" then return has_nix and 1 or 0 end
+  return executable(name)
+end
+vim.fn.has = function(name)
+  if name == "win32" then return is_windows and 1 or 0 end
+  return has(name)
+end
+
 local sync = dofile(module)
 sync.plugins(true)
 assert(vim.deep_equal(calls, { "install", "restore", "clean" }), "plugin sync must install, restore, then clean")
@@ -92,13 +103,20 @@ plugins.sample._.tasks = {}
 
 sync.tools()
 for _, name in ipairs({
-  "bash-language-server", "json-lsp", "lua-language-server", "markdownlint-cli2", "marksman", "nil",
-  "nixfmt", "prettier", "stylua", "taplo", "yaml-language-server",
+  "bash-language-server", "json-lsp", "lua-language-server", "markdownlint-cli2", "marksman",
+  "prettier", "stylua", "taplo", "yaml-language-server",
 }) do
   assert(requested[name], name .. " was not provisioned")
   assert(packages[name].installed, name .. " was not verified")
 end
+assert(not requested["nil"], "nil must not be provisioned without nix")
+assert(not requested.nixfmt, "nixfmt must not be provisioned on Windows")
 assert(calls[#calls] == "mason", "Mason must load only for explicit tool sync")
+
+has_nix, is_windows = true, false
+sync.tools()
+assert(requested["nil"] and packages["nil"].installed, "nil must be provisioned when nix is available")
+assert(requested.nixfmt and packages.nixfmt.installed, "nixfmt must be provisioned off Windows")
 local initial_refreshes = refresh_calls
 sync.tools()
 assert(refresh_calls == initial_refreshes, "verified tools must not refresh registry")
@@ -107,4 +125,5 @@ packages.prettier.installed = false
 refresh_ok = false
 ok, err = pcall(sync.tools)
 assert(not ok and tostring(err):find("registry refresh failed", 1, true), "registry failure must be clear")
+vim.fn.executable, vim.fn.has = executable, has
 print("NVIM_SYNC_OK")

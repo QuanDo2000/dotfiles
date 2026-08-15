@@ -6,8 +6,6 @@ local tools = {
   "lua-language-server",
   "markdownlint-cli2",
   "marksman",
-  "nil",
-  "nixfmt",
   "prettier",
   "stylua",
   "taplo",
@@ -85,8 +83,11 @@ end
 function M.tools()
   require("lazy").load({ plugins = { "mason.nvim" }, wait = true })
   local registry = require("mason-registry")
+  local required = vim.list_extend({}, tools)
+  if vim.fn.has("win32") ~= 1 then required[#required + 1] = "nixfmt" end
+  if vim.fn.executable("nix") == 1 then required[#required + 1] = "nil" end
   local function verified()
-    for _, name in ipairs(tools) do
+    for _, name in ipairs(required) do
       local ok, package = pcall(registry.get_package, name)
       if not ok or not package:is_installed() then return false end
     end
@@ -103,7 +104,7 @@ function M.tools()
 
     local ok, err = pcall(function()
       local missing = {}
-      for _, name in ipairs(tools) do
+      for _, name in ipairs(required) do
         local package = registry.get_package(name)
         if not package:is_installed() then missing[#missing + 1] = package end
       end

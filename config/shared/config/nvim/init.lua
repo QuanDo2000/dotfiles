@@ -331,7 +331,9 @@ local plugins = {
         before_init = function(_, config) config.settings.yaml.schemas = require("schemastore").yaml.schemas() end,
         settings = { redhat = { telemetry = { enabled = false } }, yaml = { keyOrdering = false, schemaStore = { enable = false, url = "" } } },
       })
-      vim.lsp.enable({ "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" })
+      local servers = { "bashls", "jsonls", "lua_ls", "marksman", "taplo", "yamlls" }
+      if vim.fn.executable("nil") == 1 then servers[#servers + 1] = "nil_ls" end
+      vim.lsp.enable(servers)
     end,
   },
   { "b0o/SchemaStore.nvim", lazy = true },
@@ -343,7 +345,7 @@ local plugins = {
         lua = { "stylua" },
         markdown = { "prettier", "markdownlint-cli2" },
         ["markdown.mdx"] = { "prettier", "markdownlint-cli2" },
-        nix = { "nixfmt" },
+        nix = vim.fn.executable("nixfmt") == 1 and { "nixfmt" } or {},
       },
       format_on_save = { timeout_ms = 500, lsp_format = "fallback" },
     },

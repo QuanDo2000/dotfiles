@@ -132,22 +132,17 @@ test_install_packages_syncs_neovim() {
 
 test_update_packages_syncs_neovim() {
   local calls="$TEST_TMPDIR/calls.log"
-  mkdir -p "$DOTFILES_DIR"
-  git init -q "$DOTFILES_DIR"
-  git -C "$DOTFILES_DIR" config user.email test@example.com
-  git -C "$DOTFILES_DIR" config user.name Test
-  : > "$DOTFILES_DIR/.test-root"
-  git -C "$DOTFILES_DIR" add .test-root
-  git -C "$DOTFILES_DIR" commit -qm initial
+  DRY=true
   detect_platform() { printf 'nixos\n'; }
-  _update_flake_inputs() { :; }
-  _update_all_dependency_pins() { :; }
+  _refresh_all_dependency_set() { :; }
   _validate_dependency_update() { :; }
+  _approve_dependency_update() { :; }
   _nixos_rebuild_switch() { :; }
   _codex_version() { :; }
   _cleanup_codex_runtime_after_update() { :; }
   _update_pi_extensions() { :; }
   _sync_neovim() { printf 'neovim-sync\n' >> "$calls"; }
+  _finish_dependency_update() { :; }
 
   update_packages >/dev/null
 
@@ -255,6 +250,7 @@ test_raw_neovim_cache_round_trip_copies_plugin_tree() {
 }
 
 test_raw_neovim_headless_config() {
+  is_windows_bash && return 0
   local data source_lazy source_backend output missing_output status lock_hash cache_root cached_plugins marker lazy_dir lazy_package
   data="$(mktemp -d)"
   source_lazy="${LAZY_NVIM_PATH:-$ORIG_HOME/.local/share/nvim/lazy/lazy.nvim}"

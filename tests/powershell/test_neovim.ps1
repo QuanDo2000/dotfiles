@@ -49,6 +49,16 @@ function test_windows_lazy_sync_prepares_parent_and_fetches_locked_commit {
     Assert-Contains $config '{ "git", "-C", lazypath, "fetch", "--filter=blob:none", "origin" }'
 }
 
+function test_windows_neovim_skips_nil_without_nix {
+    $config = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\config\nvim\init.lua')
+    $sync = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\config\nvim\lua\config\sync.lua')
+
+    Assert-Contains $sync 'if vim.fn.has("win32") ~= 1 then'
+    Assert-Contains $sync 'if vim.fn.executable("nix") == 1 then'
+    Assert-Contains $config 'if vim.fn.executable("nil") == 1 then'
+    Assert-Contains $config 'nix = vim.fn.executable("nixfmt") == 1 and { "nixfmt" } or {}'
+}
+
 function test_neovim_plugin_sync_fails_without_success_marker {
     $script:Dry = $false
     $originalGetNeovim = (Get-Command Get-NeovimCommand).ScriptBlock
