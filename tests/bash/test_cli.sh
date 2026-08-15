@@ -448,6 +448,7 @@ test_leaf_commands_reject_extra_arguments() {
 test_pending_dependency_marker_blocks_all_and_packages() {
   local repo="$TEST_HOME/pending-repo"
   cp -a "$REPO_DIR/." "$repo"
+  rm -rf "$repo/.git"
   git -C "$repo" init -q
   git -C "$repo" config user.email test@example.com
   git -C "$repo" config user.name test
