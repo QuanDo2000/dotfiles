@@ -75,6 +75,8 @@ test_help_exits_zero() {
   assert_contains "$output" "Update pinned Obsidian Headless package"
   assert_contains "$output" "doctor"
   assert_contains "$output" "Detect dotfile and Nix issues"
+  assert_contains "$output" "check"
+  assert_contains "$output" "Run full repository checks"
   assert_contains "$output" "Bootstrap Obsidian Sync login and vault setup"
   assert_not_contains "$output" "obsidian-config"
 }
@@ -92,6 +94,19 @@ test_dotfiles_dir_override_controls_unix_entrypoint() {
   assert_equals "0" "$exit_code"
   assert_contains "$output" "Usage"
   assert_not_contains "$output" "scripts/utils.sh"
+}
+
+test_check_command_runs_repo_check_script() {
+  local root="$TEST_HOME/check-command"
+  mkdir -p "$root/scripts"
+  cp "$DOTFILE_CMD" "$root/dotfile"
+  for module in utils.sh platform.sh packages.sh releases.sh pins.sh doctor.sh obsidian.sh; do
+    printf ':\n' > "$root/scripts/$module"
+  done
+  printf '#!/usr/bin/env bash\nprintf checked > "$DOTFILES_DIR/check-ran"\n' > "$root/scripts/check.sh"
+
+  assert_exit_code 0 env DOTFILES_DIR="$root" bash "$root/dotfile" check
+  assert_file_exists "$root/check-ran"
 }
 
 test_doctor_command_runs_with_health_checks() {
@@ -174,6 +189,7 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "Update pinned Obsidian Headless package"
   assert_contains "$readme_text" "doctor [--fast]"
   assert_contains "$readme_text" "Detect dotfile and Nix issues"
+  assert_contains "$readme_text" "check       Run full repository checks"
   assert_contains "$readme_text" "Home Manager owns tracked Obsidian settings"
   assert_contains "$readme_text" 'Home Manager owns the `lazy.nvim` bootstrap package'
   assert_contains "$readme_text" 'Home Manager supplies the `fff.nvim` backend from hash-pinned release assets'
@@ -434,7 +450,7 @@ test_explicit_all_rejects_extra_arguments() {
 
 test_leaf_commands_reject_extra_arguments() {
   local command output exit_code
-  for command in all packages obsidian codex obsidian-headless; do
+  for command in all packages obsidian codex obsidian-headless check; do
     output=$(bash "$DOTFILE_CMD" --dry "$command" extra 2>&1) || exit_code=$?
     assert_equals "1" "$exit_code"
     assert_contains "$output" "Unexpected $command argument: extra"

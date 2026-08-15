@@ -84,6 +84,7 @@ Commands:
               Update pinned Obsidian Headless package
   doctor [--fast]
               Detect dotfile and Nix issues
+  check       Run full repository checks
 
 Options:
   -d, --dry   Dry run (no changes made)

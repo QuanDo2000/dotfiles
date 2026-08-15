@@ -113,6 +113,7 @@ Commands:
               Update pinned Obsidian Headless package
   doctor [--fast]
               Detect dotfile and Nix issues
+  check       Run full repository checks
 
 Options:
   -d, --dry     Dry run (no changes made)
@@ -188,6 +189,10 @@ lix-installer)
 obsidian-headless)
   [[ $# -eq 1 ]] || fail "Unexpected obsidian-headless argument: ${2:-}"
   update_obsidian_headless_release
+  ;;
+check)
+  [[ $# -eq 1 ]] || fail "Unexpected check argument: ${2:-}"
+  bash "$SCRIPTS_DIR/check.sh"
   ;;
 doctor)
   [[ $# -le 2 ]] || fail "Unexpected doctor argument: ${3:-}"
