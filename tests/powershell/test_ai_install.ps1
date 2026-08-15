@@ -464,12 +464,24 @@ function test_repaircodebasememorycodexhooks_removes_marker_conflicting_with_inl
     Assert-False ($actual.Contains('# >>> codebase-memory-mcp SessionStart >>>')) 'conflicting managed hook should be removed'
 }
 
+function test_repaircodebasememorycodexhooks_deduplicates_owned_inline_hooks {
+    $config = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $config -Parent) | Out-Null
+    $hook = '{ matcher = "startup|resume|clear|compact", hooks = [{ type = "command", command = "echo \"Code discovery: prefer codebase-memory-mcp (search_graph, trace_path, get_code_snippet, query_graph, search_code) over grep/file-read; run index_repository first if the project is not indexed.\"" }] }'
+    "[hooks]`nSessionStart = [$hook, $hook]" | Set-Content -LiteralPath $config
+
+    Repair-CodebaseMemoryCodexHooks $config
+
+    Assert-True ((Get-Content -Raw -LiteralPath $config).Contains("SessionStart = [$hook]")) 'owned inline hook should appear once'
+}
+
 function test_repaircodebasememorycodexmcp_wraps_owned_section_before_tool_approvals {
     $config = Join-Path $env:USERPROFILE '.codex\config.toml'
     New-Item -ItemType Directory -Force -Path (Split-Path $config -Parent) | Out-Null
     @'
 [mcp_servers.codebase-memory-mcp]
 command = "C:/Users/test/.local/bin/codebase-memory-mcp.exe"
+env_vars = ["CBM_CACHE_DIR"]
 
 [mcp_servers.codebase-memory-mcp.tools.search_graph]
 approval_mode = "approve"
@@ -512,6 +524,23 @@ function test_removedanglinglink_removes_reparse_point_with_missing_target {
     Remove-DanglingLink $link
 
     Assert-False ([bool](Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue)) 'dangling link should be removed'
+}
+
+function test_invokecodebasememoryagentinstall_configures_only_codex_and_repo_owned_pi {
+    $sharedSkill = Join-Path $env:USERPROFILE '.agents\skills\codebase-memory\SKILL.md'
+    New-Item -ItemType Directory -Force -Path (Split-Path $sharedSkill -Parent) | Out-Null
+    $sharedContent = "---`nname: codebase-memory`ndescription: Use graph. Triggers on: architecture`n---"
+    $sharedContent | Set-Content -LiteralPath $sharedSkill
+    $script:CodebaseMemoryAgentArguments = ''
+    Set-FunctionMock 'Invoke-CodebaseMemoryCommand' {
+        param($Executable, $FailureMessage, $Arguments)
+        $script:CodebaseMemoryAgentArguments = $Arguments -join ' '
+    }
+
+    Invoke-CodebaseMemoryAgentInstall 'codebase-memory-mcp.exe'
+
+    Assert-Equals 'install -y --clients=codex' $script:CodebaseMemoryAgentArguments
+    Assert-Equals $sharedContent (Get-Content -Raw -LiteralPath $sharedSkill).TrimEnd("`r", "`n")
 }
 
 function test_invokecodebasememoryagentinstall_restores_approvals_when_repair_fails {
@@ -704,7 +733,7 @@ function test_installcodebasememory_does_not_activate_when_agent_configuration_f
     Set-FunctionMock 'Set-CodebaseMemoryActivePath' { $script:CodebaseMemoryActivated = $true }
     Set-FunctionMock 'Invoke-CodebaseMemoryCommand' {
         param($Executable, $FailureMessage, $Arguments)
-        if (($Arguments -join ' ') -eq 'install -y') { throw 'agent configuration failed' }
+        if (($Arguments -join ' ') -eq 'install -y --clients=codex') { throw 'agent configuration failed' }
     }
 
     Assert-Throws { InstallCodebaseMemory 6>&1 | Out-Null } 'agent configuration failure should surface'
@@ -775,7 +804,7 @@ function test_installcodebasememory_stages_verified_ui_archive_and_configures_di
     Assert-Equals $release $script:ActivatedCodebaseMemoryDir
     $calls = $script:CodebaseMemoryCalls -join "`n"
     Assert-Contains $calls 'download:https://github.com/DeusData/codebase-memory-mcp/releases/download/v1.2.3/codebase-memory-mcp-windows-amd64.zip'
-    Assert-Contains $calls "run:${executable}:install -y"
+    Assert-Contains $calls "run:${executable}:install -y --clients=codex"
     Assert-Contains $calls 'stop:processes'
     Assert-Contains $calls 'repair:config-database'
     Assert-Contains $calls "run:${executable}:config set auto_index true"

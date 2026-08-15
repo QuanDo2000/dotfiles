@@ -175,7 +175,7 @@ function WingetHas($id) {
 function Get-InstalledWingetPackages {
     $output = Join-Path ([IO.Path]::GetTempPath()) "winget-$([Guid]::NewGuid().ToString('N')).json"
     try {
-        winget export --output $output --include-versions --ignore-unavailable --disable-interactivity --accept-source-agreements | Out-Null
+        winget export --output $output --include-versions --disable-interactivity --accept-source-agreements | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'winget package inventory failed' }
         return @((Get-Content -Raw -LiteralPath $output | ConvertFrom-Json).Sources.Packages.PackageIdentifier)
     } finally {
@@ -957,7 +957,7 @@ function Repair-CodebaseMemoryCodexMcp($Path) {
     $sectionEnd = if ($nextHeader.Success) { $header.Index + $header.Length + $nextHeader.Index } else { $content.Length }
     $section = $content.Substring($header.Index, $sectionEnd - $header.Index).TrimEnd("`r", "`n")
     if ($section -notmatch '(?m)^\s*command\s*=\s*["''].*codebase-memory-mcp(?:\.exe)?["'']\s*$') { return }
-    if ($section -match '(?m)^\s*(?!\[mcp_servers\.codebase-memory-mcp\]\s*$|command\s*=|args\s*=\s*\[\s*\]\s*$|#|$)\S') { return }
+    if ($section -match '(?m)^\s*(?!\[mcp_servers\.codebase-memory-mcp\]\s*$|command\s*=|args\s*=\s*\[\s*\]\s*$|env_vars\s*=\s*\[\s*["'']CBM_CACHE_DIR["'']\s*\]\s*$|#|$)\S') { return }
 
     $newline = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
     $managed = "# >>> codebase-memory-mcp MCP >>>${newline}${section}${newline}# <<< codebase-memory-mcp MCP <<<${newline}"
@@ -990,10 +990,20 @@ function Restore-CodebaseMemoryCodexToolApprovals($Path, $Approvals) {
 function Repair-CodebaseMemoryCodexHooks($Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
     $content = Get-Content -Raw -LiteralPath $Path
+    $ownedHook = '{ matcher = "startup|resume|clear|compact", hooks = [{ type = "command", command = "echo \"Code discovery: prefer codebase-memory-mcp (search_graph, trace_path, get_code_snippet, query_graph, search_code) over grep/file-read; run index_repository first if the project is not indexed.\"" }] }'
+    $repaired = $content
+    while ($repaired.Contains("$ownedHook, $ownedHook")) {
+        $repaired = $repaired.Replace("$ownedHook, $ownedHook", $ownedHook)
+    }
+
     $block = [regex]::new('(?ms)\r?\n?# >>> codebase-memory-mcp SessionStart >>>.*?# <<< codebase-memory-mcp SessionStart <<<\r?\n?')
-    $repaired = $block.Replace($content, '', 1)
-    if ($repaired -eq $content -or $repaired -notmatch '(?m)^\s*SessionStart\s*=') { return }
-    [IO.File]::WriteAllText($Path, $repaired, [Text.UTF8Encoding]::new($false))
+    $withoutManagedBlock = $block.Replace($repaired, '', 1)
+    if ($withoutManagedBlock -ne $repaired -and $withoutManagedBlock -match '(?m)^\s*SessionStart\s*=') {
+        $repaired = $withoutManagedBlock
+    }
+    if ($repaired -ne $content) {
+        [IO.File]::WriteAllText($Path, $repaired, [Text.UTF8Encoding]::new($false))
+    }
 }
 
 function Stop-CodebaseMemoryProcesses {
@@ -1045,22 +1055,16 @@ function Repair-CodebaseMemoryConfigDatabase($Path) {
 }
 
 function Invoke-CodebaseMemoryAgentInstall($Executable) {
-    $openCodeRoot = Join-Path $env:USERPROFILE '.config\opencode'
-    foreach ($path in (Join-Path $openCodeRoot 'opencode.json'), (Join-Path $openCodeRoot 'AGENTS.md')) {
-        Remove-DanglingLink $path
-    }
-
     $codexHome = if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { Join-Path $env:USERPROFILE '.codex' } else { $env:CODEX_HOME }
     $codexConfig = Join-Path $codexHome 'config.toml'
     $toolApprovals = Suspend-CodebaseMemoryCodexToolApprovals $codexConfig
     try {
         Repair-CodebaseMemoryCodexMcp $codexConfig
         Repair-CodebaseMemoryCodexHooks $codexConfig
-        Invoke-CodebaseMemoryCommand $Executable 'codebase-memory-mcp agent configuration failed' @('install', '-y')
+        Invoke-CodebaseMemoryCommand $Executable 'codebase-memory-mcp agent configuration failed' @('install', '-y', '--clients=codex')
     } finally {
         Restore-CodebaseMemoryCodexToolApprovals $codexConfig $toolApprovals
         Repair-CodebaseMemoryCodexHooks $codexConfig
-        Repair-CodebaseMemorySkill (Join-Path $env:USERPROFILE '.agents\skills\codebase-memory\SKILL.md')
         Remove-CodebaseMemoryPiSkill (Join-Path $env:USERPROFILE '.pi\agent\skills\codebase-memory')
         Remove-CodebaseMemoryPiAdapter (Join-Path $env:USERPROFILE '.pi\agent\extensions\cbmem.ts')
     }

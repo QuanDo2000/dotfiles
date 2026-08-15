@@ -154,7 +154,7 @@ function test_update_packages_dry_run_does_not_call_winget {
     Assert-False $script:Called 'winget should not be invoked in dry run'
 }
 
-function test_installpackages_inventories_winget_once_and_upgrades_only_managed_packages {
+function test_installpackages_uses_supported_export_options_and_upgrades_only_managed_packages {
     $script:Dry = $false
     $script:WingetCalls = @()
     Set-CommandMock 'winget' {
@@ -172,7 +172,7 @@ function test_installpackages_inventories_winget_once_and_upgrades_only_managed_
     $managed = @(Get-WingetPackages)
     Assert-Equals ($managed.Count + 1) $script:WingetCalls.Count
     Assert-Equals 1 @($script:WingetCalls | Where-Object { $_ -like 'export *' }).Count
-    Assert-Contains $script:WingetCalls[0] '--ignore-unavailable'
+    Assert-False ($script:WingetCalls[0] -like '*--ignore-unavailable*') 'winget export must use supported options'
     Assert-False (($script:WingetCalls -join "`n") -like '*upgrade --all*') 'unmanaged packages should not be upgraded'
     foreach ($package in $managed) {
         Assert-True ($script:WingetCalls -contains "upgrade --id $package --exact --disable-interactivity --accept-package-agreements --accept-source-agreements") "missing managed upgrade for $package"
