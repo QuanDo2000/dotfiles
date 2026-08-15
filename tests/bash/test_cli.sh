@@ -307,7 +307,7 @@ fi
 EOF
   chmod +x "$bin/git"
   local output status=0
-  output=$(DOTFILES_DIR="$root" PATH="$bin:$PATH" bash "$DOTFILE_CMD" --force --quiet update 2>&1) || status=$?
+  output=$(DOTFILE_REEXEC=false DOTFILES_DIR="$root" PATH="$bin:$PATH" bash "$DOTFILE_CMD" --force --quiet update 2>&1) || status=$?
   if [[ "$status" != 0 ]]; then printf 'reexec output: %s\n' "$output" >> "$ERROR_FILE"; fi
   assert_equals "0" "$status"
   assert_equals "1" "$(grep -c 'pull --rebase --autostash' "$root/git.calls" 2>/dev/null || true)"
