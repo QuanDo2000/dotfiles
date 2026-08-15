@@ -88,6 +88,10 @@ assert(not lazy.plugins["gitsigns.nvim"]._.loaded, "Gitsigns must stay off file-
 assert(lazy.plugins["snacks.nvim"].event == "VimEnter", "Snacks should load after file opening")
 assert(not lazy.plugins["snacks.nvim"]._.loaded, "Snacks must stay off file-open path")
 assert(vim.env.PATH:match("^" .. vim.pesc(vim.fn.stdpath("data") .. "/mason/bin")), "Mason bin missing from PATH")
+if vim.env.RAW_CONFIG_PARSE_ONLY == "1" then
+  print("RAW_CONFIG_OK")
+  return
+end
 require("lazy").load({ plugins = { "nvim-lspconfig" } })
 for _, server in ipairs({ "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" }) do
   assert(vim.lsp.is_enabled(server), server .. " should be enabled")

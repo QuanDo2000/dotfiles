@@ -446,7 +446,6 @@ lazy.setup({
   defaults = { lazy = true, version = false },
   checker = { enabled = false, notify = false },
   install = { missing = false, colorscheme = { "catppuccin-macchiato", "habamax" } },
-  git = { filter = os.getenv("DOTFILE_NVIM_SYNC") ~= "1" },
   performance = { rtp = { disabled_plugins = { "gzip", "tarPlugin", "tohtml", "tutor", "zipPlugin" } } },
 })
 

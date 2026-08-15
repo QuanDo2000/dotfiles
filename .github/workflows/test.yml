@@ -51,7 +51,7 @@ jobs:
         shell: pwsh
         run: ./tests/powershell/integration_pi_extensions.ps1
 
-      - name: Test raw Neovim bootstrap (Windows)
+      - name: Test raw Neovim config (Windows)
         shell: pwsh
         run: ./tests/powershell/integration_neovim.ps1
 

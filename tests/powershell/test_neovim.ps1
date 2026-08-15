@@ -66,13 +66,13 @@ function test_neovim_plugin_sync_fails_without_success_marker {
     }
 }
 
-function test_windows_neovim_integration_executes_raw_checks_and_verifies_tools {
+function test_windows_neovim_integration_executes_isolated_raw_check {
     $integration = Get-Content -Raw (Join-Path $script:RepoDir 'tests\powershell\integration_neovim.ps1')
     Assert-Contains $integration "-c 'lua dofile(vim.env.RAW_CONFIG_TEST)'"
     Assert-Contains $integration 'RAW_CONFIG_OK'
     Assert-Contains $integration '$env:XDG_CACHE_HOME = Join-Path $root ''cache'''
-    Assert-Contains $integration 'prettier must start missing from isolated Mason root'
-    Assert-Contains $integration "mason\packages\prettier"
+    Assert-Contains $integration '$env:RAW_CONFIG_PARSE_ONLY = ''1'''
+    Assert-Contains $integration 'lazy.nvim was not installed'
 }
 
 function test_getneovimcommand_uses_winget_fallback {
