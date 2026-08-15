@@ -442,6 +442,7 @@ local plugins = {
 
 lazy.setup({
   spec = plugins,
+  concurrency = os.getenv("DOTFILE_NVIM_SYNC") == "1" and 2 or nil,
   defaults = { lazy = true, version = false },
   checker = { enabled = false, notify = false },
   install = { missing = false, colorscheme = { "catppuccin-macchiato", "habamax" } },
