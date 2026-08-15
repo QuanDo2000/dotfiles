@@ -197,6 +197,7 @@ in
     ".pi/agent/extensions/caveman-default.js" = forceSource ./shared/ai/pi/caveman-default.js;
     ".pi/agent/extensions/ponytail-default.js" = forceSource ./shared/ai/pi/ponytail-default.js;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
+    ".pi/agent/extensions/gpg-signing-display" = forceSource ./shared/ai/pi/gpg-signing-display;
     ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource piExtensions;
     ".local/bin/dotfile" = {
       text = ''
