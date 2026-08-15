@@ -55,13 +55,24 @@ function _obsidian_pick_vault {
   echo "$vault_name"
 }
 
+function _obsidian_canonical_path {
+  local path="$1"
+  if [[ -d "$path" ]]; then
+    (cd "$path" && pwd -P)
+  else
+    local parent
+    parent="$(_obsidian_canonical_path "$(dirname "$path")")" || return 1
+    printf '%s/%s\n' "$parent" "$(basename "$path")"
+  fi
+}
+
 function _obsidian_vault_path {
   local vault_name="$1"
   [[ -n "$vault_name" && "$vault_name" != "." && "$vault_name" != ".." && "$vault_name" != */* ]] || return 1
 
   local base_path vault_path
-  base_path="$(realpath -m -- "$OBSIDIAN_VAULT_BASE")" || return 1
-  vault_path="$(realpath -m -- "$base_path/$vault_name")" || return 1
+  base_path="$(_obsidian_canonical_path "$OBSIDIAN_VAULT_BASE")" || return 1
+  vault_path="$(_obsidian_canonical_path "$base_path/$vault_name")" || return 1
   [[ "$vault_path" == "$base_path"/* ]] || return 1
   printf '%s\n' "$vault_path"
 }
@@ -71,7 +82,7 @@ function _obsidian_require_vault_path {
   local vault_path="$2"
   local expected_path actual_path
   expected_path="$(_obsidian_vault_path "$vault_name")" || fail "Invalid vault name: $vault_name"
-  actual_path="$(realpath -m -- "$vault_path")" || fail "Invalid vault path: $vault_path"
+  actual_path="$(_obsidian_canonical_path "$vault_path")" || fail "Invalid vault path: $vault_path"
   [[ "$actual_path" == "$expected_path" ]] || fail "Invalid vault path: $vault_path"
 }
 

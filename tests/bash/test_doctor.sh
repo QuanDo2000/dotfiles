@@ -331,6 +331,7 @@ test_doctor_accepts_repo_dotfile_command_link() {
   : > "$HOME/.pi/agent/mcp.json"
   printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
   chmod +x "$HOME/.local/bin/fff-mcp-agent"
+  with_nix_agent_tools
 
   local output
   output=$(doctor 2>&1) || true
