@@ -1,7 +1,6 @@
 local M = {}
 
 local tools = {
-  "bash-language-server",
   "json-lsp",
   "lua-language-server",
   "markdownlint-cli2",
@@ -85,7 +84,6 @@ function M.tools()
   local registry = require("mason-registry")
   local required = vim.list_extend({}, tools)
   if vim.fn.has("win32") ~= 1 then required[#required + 1] = "nixfmt" end
-  if vim.fn.executable("nix") == 1 then required[#required + 1] = "nil" end
   local function verified()
     for _, name in ipairs(required) do
       local ok, package = pcall(registry.get_package, name)

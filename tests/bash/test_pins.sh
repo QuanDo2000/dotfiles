@@ -34,17 +34,7 @@ assert "Authorization" not in update_pins.request("https://ankiweb.net/example")
 PY
 }
 
-test_pin_wrapper_fails_closed_when_updater_fails() {
-  DRY=false
-  nix() { return 1; }
 
-  local output status=0
-  output="$(_update_webcord_release 2>&1)" || status=$?
-
-  assert_equals "1" "$status"
-  assert_contains "$output" "Failed to update WebCord release"
-  unset -f nix
-}
 
 test_neovim_pin_update_provisions_fresh_plugins_and_reports_internal_key_errors() {
   PYTHONPATH="$REPO_DIR/scripts" TEST_REPO_DIR="$REPO_DIR" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"

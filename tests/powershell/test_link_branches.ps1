@@ -20,7 +20,17 @@ function Try-Skip-If-No-Symlink-Privilege {
         Remove-Item -LiteralPath $probeDst -Force
         return $false
     } catch {
-        return $true
+        if (Test-SymlinkPrivilegeError $_.Exception) { return $true }
+        throw
+    }
+}
+
+function test_symlink_probe_does_not_hide_unrelated_failures {
+    Set-CommandMock 'New-Item' { throw [IO.IOException]::new('disk full') }
+    try {
+        Assert-Throws { Try-Skip-If-No-Symlink-Privilege } 'unrelated filesystem failure must surface'
+    } finally {
+        Clear-CommandMock 'New-Item'
     }
 }
 

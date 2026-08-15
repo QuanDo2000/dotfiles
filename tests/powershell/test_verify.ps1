@@ -13,9 +13,8 @@ function TestSetup {
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.
     $script:Quiet = $false
-    $script:OriginalWingetHas = (Get-Command WingetHas).ScriptBlock
-    Set-FunctionMock 'WingetHas' { return $true }
     Set-HealthyToolMocks
+    Set-FunctionMock 'Get-InstalledWingetPackages' { @() }
 }
 
 function Set-HealthyToolMocks {
@@ -26,7 +25,6 @@ function Set-HealthyToolMocks {
 function TestTeardown {
     Clear-CommandMock 'Get-Command'
     Clear-CommandMock 'Get-Module'
-    Set-FunctionMock 'WingetHas' $script:OriginalWingetHas
     Clear-TestEnv
 }
 
@@ -126,7 +124,6 @@ function test_verify_rejects_codex_config_symlink {
 }
 
 function test_verify_checks_exact_winget_packages {
-    Set-FunctionMock 'WingetHas' { param($id) return ($id -ne 'Microsoft.PowerShell') }
 
     $output = Verify 6>&1 | Out-String
 

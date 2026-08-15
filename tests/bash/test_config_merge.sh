@@ -10,6 +10,34 @@ test_codex_seed_merge_writes_atomically() {
   assert_contains "$script" "os.replace"
 }
 
+test_codex_seed_merge_round_trips_toml_types() {
+  local tmp script
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/codex.py"
+  cat >"$tmp/live.toml" <<'EOF'
+message = "line 1\nline 2"
+controls = "\b\f\u007f"
+when = 2026-08-15T12:34:56Z
+ratio = inf
+negative = -inf
+unknown = nan
+EOF
+  : >"$tmp/seed.toml"
+  python3 "$script" "$tmp/live.toml" "$tmp/seed.toml" "" >/dev/null
+  python3 - "$tmp/live.toml" <<'PY'
+import math
+import sys
+import tomllib
+value = tomllib.loads(open(sys.argv[1], 'rb').read().decode())
+assert value['message'] == 'line 1\nline 2'
+assert value['controls'] == '\b\f\x7f'
+assert value['when'].year == 2026
+assert math.isinf(value['ratio']) and value['ratio'] > 0
+assert math.isinf(value['negative']) and value['negative'] < 0
+assert math.isnan(value['unknown'])
+PY
+}
+
 test_codex_seed_merge_engine_applies_live_only_nested_toml() {
   if ! python3 -c 'import tomllib' 2>/dev/null; then
     printf '  SKIP  Codex merge test requires Python 3.11+\n'

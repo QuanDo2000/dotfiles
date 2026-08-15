@@ -5,6 +5,7 @@ function TestSetup {
     $script:DotfilesDir = $script:RepoDir
     $script:OriginalInstallCodex = (Get-Command InstallCodex).ScriptBlock
     $script:OriginalAddToUserPath = (Get-Command AddToUserPath).ScriptBlock
+    $script:OriginalTestPiSourceHash = (Get-Command Test-PiSourceHash).ScriptBlock
     $releaseCheck = Get-Command Test-CodexRelease -ErrorAction SilentlyContinue
     $pathSetter = Get-Command Set-CodexActivePath -ErrorAction SilentlyContinue
     $codebaseReleaseCheck = Get-Command Test-CodebaseMemoryRelease -ErrorAction SilentlyContinue
@@ -34,6 +35,7 @@ function TestTeardown {
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
     Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
+    Set-FunctionMock 'Test-PiSourceHash' $script:OriginalTestPiSourceHash
     if ($script:OriginalTestCodexRelease) { Set-FunctionMock 'Test-CodexRelease' $script:OriginalTestCodexRelease }
     if ($script:OriginalSetCodexActivePath) { Set-FunctionMock 'Set-CodexActivePath' $script:OriginalSetCodexActivePath }
     if ($script:OriginalTestCodebaseMemoryRelease) { Set-FunctionMock 'Test-CodebaseMemoryRelease' $script:OriginalTestCodebaseMemoryRelease }
@@ -444,10 +446,7 @@ function Get-TestCodebaseMemoryCodexHookBlock {
 # >>> codebase-memory-mcp SessionStart >>>
 [[hooks.SessionStart]]
 matcher = "startup|resume|clear|compact"
-
-[[hooks.SessionStart.hooks]]
-type = "command"
-command = "codebase-memory-mcp hook-augment"
+hooks = [{ type = "command", command = "codebase-memory-mcp hook-augment" }]
 # <<< codebase-memory-mcp SessionStart <<<
 '@
 }
@@ -495,6 +494,24 @@ approval_mode = "approve"
     Assert-True ($actual.Contains('[mcp_servers.codebase-memory-mcp.tools.search_graph]')) 'tool approval table should remain'
 }
 
+function test_repaircodebasememorycodexhooks_preserves_owned_text_in_multiline_string {
+    $config = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $config -Parent) | Out-Null
+    @'
+note = """
+prefix
+, { matcher = "startup|resume|clear|compact", hooks = [] }
+suffix
+"""
+[hooks]
+SessionStart = []
+'@ | Set-Content -LiteralPath $config
+
+    Repair-CodebaseMemoryCodexHooks $config
+
+    Assert-True ((Get-Content -Raw -LiteralPath $config).Contains(', { matcher = "startup|resume|clear|compact", hooks = [] }')) 'multiline string content must remain unchanged'
+}
+
 function test_repaircodebasememorycodexhooks_preserves_nonconflicting_marker {
     $config = Join-Path $env:USERPROFILE '.codex\config.toml'
     New-Item -ItemType Directory -Force -Path (Split-Path $config -Parent) | Out-Null
@@ -505,26 +522,52 @@ function test_repaircodebasememorycodexhooks_preserves_nonconflicting_marker {
     Assert-Contains (Get-Content -Raw -LiteralPath $config) '# >>> codebase-memory-mcp SessionStart >>>'
 }
 
-function test_linktargetexists_resolves_relative_target_from_link_parent {
-    $link = Join-Path $env:USERPROFILE 'links\config.json'
-    $target = Join-Path $env:USERPROFILE 'links\targets\config.json'
-    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-    '{}' | Set-Content -LiteralPath $target
+function test_repaircodebasememorycodexhooks_ignores_sessionstart_in_multiline_string {
+    $config = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $config -Parent) | Out-Null
+    @'
+note = """
+SessionStart = []
+"""
 
-    Assert-True (Test-LinkTargetExists $link 'targets\config.json') 'relative link target should resolve from link parent'
+# >>> codebase-memory-mcp SessionStart >>>
+[[hooks.SessionStart]]
+matcher = "startup|resume|clear|compact"
+hooks = [{ type = "command", command = "codebase-memory-mcp hook-augment" }]
+# <<< codebase-memory-mcp SessionStart <<<
+'@ | Set-Content -LiteralPath $config
+
+    Repair-CodebaseMemoryCodexHooks $config
+
+    Assert-Contains (Get-Content -Raw -LiteralPath $config) '# >>> codebase-memory-mcp SessionStart >>>'
 }
 
-function test_removedanglinglink_removes_reparse_point_with_missing_target {
-    $target = Join-Path $env:USERPROFILE 'missing-target'
-    $link = Join-Path $env:USERPROFILE 'stale-link'
-    New-Item -ItemType Directory -Force -Path $target | Out-Null
-    New-Item -ItemType Junction -Path $link -Target $target | Out-Null
-    Remove-Item -LiteralPath $target -Force
+function test_repaircodebasememorycodexhooks_rejects_unbalanced_marker_without_truncation {
+    $config = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $config -Parent) | Out-Null
+    $original = "[hooks]`nSessionStart = []`n# >>> codebase-memory-mcp SessionStart >>>`n[projects.keep]`nvalue = 1`n"
+    $original | Set-Content -LiteralPath $config
 
-    Remove-DanglingLink $link
-
-    Assert-False ([bool](Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue)) 'dangling link should be removed'
+    Assert-Throws { Repair-CodebaseMemoryCodexHooks $config 2>$null } 'unbalanced marker should fail closed'
+    Assert-Contains (Get-Content -Raw -LiteralPath $config) '[projects.keep]'
 }
+
+function test_repaircodebasememorycodexmcp_preserves_unknown_user_fields {
+    $config = Join-Path $env:USERPROFILE '.codex\config.toml'
+    New-Item -ItemType Directory -Force -Path (Split-Path $config -Parent) | Out-Null
+    @'
+[mcp_servers.codebase-memory-mcp]
+command = "C:/Users/test/.local/bin/codebase-memory-mcp.exe"
+timeout_sec = 45
+'@ | Set-Content -LiteralPath $config
+
+    Repair-CodebaseMemoryCodexMcp $config
+
+    $actual = Get-Content -Raw -LiteralPath $config
+    Assert-False $actual.Contains('# >>> codebase-memory-mcp MCP >>>') 'custom MCP fields must not become installer-owned'
+    Assert-Contains $actual 'timeout_sec = 45'
+}
+
 
 function test_invokecodebasememoryagentinstall_configures_only_codex_and_repo_owned_pi {
     $sharedSkill = Join-Path $env:USERPROFILE '.agents\skills\codebase-memory\SKILL.md'
@@ -602,25 +645,7 @@ approval_mode = "approve"
     Assert-True ((Get-Content -Raw -LiteralPath $config).Contains('[mcp_servers.codebase-memory-mcp.tools.search_graph]')) 'tool approval tables should be restored'
 }
 
-function test_repaircodebasememoryskill_ignores_description_in_markdown_body {
-    $skill = Join-Path $env:USERPROFILE '.agents\skills\codebase-memory\SKILL.md'
-    New-Item -ItemType Directory -Force -Path (Split-Path $skill -Parent) | Out-Null
-    "---`nname: codebase-memory`n---`n`ndescription: body: text" | Set-Content -LiteralPath $skill
 
-    Repair-CodebaseMemorySkill $skill
-
-    Assert-Contains (Get-Content -Raw -LiteralPath $skill) 'description: body: text'
-}
-
-function test_repaircodebasememoryskill_quotes_yaml_description {
-    $skill = Join-Path $env:USERPROFILE '.agents\skills\codebase-memory\SKILL.md'
-    New-Item -ItemType Directory -Force -Path (Split-Path $skill -Parent) | Out-Null
-    "---`nname: codebase-memory`ndescription: Use graph. Triggers on: architecture`n---`n`n# Codebase Memory" | Set-Content -LiteralPath $skill
-
-    Repair-CodebaseMemorySkill $skill
-
-    Assert-Contains (Get-Content -Raw -LiteralPath $skill) "description: 'Use graph. Triggers on: architecture'"
-}
 
 function test_removecodebasememorypiskill_removes_only_generated_skill {
     $generated = Join-Path $env:USERPROFILE '.pi\agent\skills\codebase-memory'
@@ -992,123 +1017,98 @@ function test_installpilanguageservers_installs_pinned_npm_servers {
     Assert-Contains $install 'bash-language-server@5.6.0'
 }
 
-function test_installpi_repairs_current_package {
-    $script:PiRepaired = $false
-    $pinnedVersion = Get-PinnedPiVersion
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'pi') { return [pscustomobject]@{ Source = 'mock-pi' } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'pi' {
-        if (($args -join ' ') -eq '--version') { $pinnedVersion }
-        $global:LASTEXITCODE = 0
-    }
-    Set-CommandMock 'RepairPiCompactionSteering' { $script:PiRepaired = $true }
-
-    InstallPi -Update
-
-    Assert-True $script:PiRepaired 'Pi install should repair auto-compaction steering delivery'
+function Write-TestPatchedPiSession($Path) {
+    "this._autoCompactionAbortController = undefined;`nawait this.waitForIdle();" | Set-Content -LiteralPath $Path
 }
 
-function test_installpi_installs_official_package_and_checks_command {
-    $script:PiInstalled = $false
-    $script:NpmCalls = @()
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'pi') {
-            if ($script:PiInstalled) { return [pscustomobject]@{ Source = 'mock-pi' } }
-            return $null
-        }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+function test_installpi_installs_verified_versioned_release {
+    $version = Get-PinnedPiVersion
+    $script:NpmArgs = ''
+    Set-CommandMock 'Invoke-WebRequest' { param($Uri, $OutFile) [IO.File]::WriteAllText($OutFile, 'archive') }
+    Set-FunctionMock 'Test-PiSourceHash' { $true }
+    Set-CommandMock 'tar' {
+        $destination = $args[[Array]::IndexOf($args, '-C') + 1]
+        $package = Join-Path $destination 'package'
+        New-Item -ItemType Directory -Force -Path (Join-Path $package 'dist\core') | Out-Null
+        Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $package 'npm-shrinkwrap.json')
+        "{`"version`":`"$version`",`"devDependencies`":{`"typescript`":`"1.0.0`"}}" | Set-Content (Join-Path $package 'package.json')
+        'entry' | Set-Content (Join-Path $package 'dist\cli.js')
+        Write-TestPatchedPiSession (Join-Path $package 'dist\core\agent-session.js')
+        $global:LASTEXITCODE = 0
     }
     Set-CommandMock 'npm' {
-        $script:NpmCalls += ,($args -join ' ')
-        $script:PiInstalled = $true
+        $script:NpmArgs = $args -join ' '
+        $prefix = $args[[Array]::IndexOf($args, '--prefix') + 1]
+        $script:NpmSawDevDependencies = [bool]((Get-Content -Raw (Join-Path $prefix 'package.json') | ConvertFrom-Json).devDependencies)
         $global:LASTEXITCODE = 0
     }
 
     InstallPi
 
-    $pinnedVersion = Get-PinnedPiVersion
-    Assert-Equals "install --global @earendil-works/pi-coding-agent@$pinnedVersion" $script:NpmCalls[0]
+    Assert-Contains $script:NpmArgs 'ci --prefix'
+    Assert-Contains $script:NpmArgs '--omit=dev --ignore-scripts'
+    Assert-False $script:NpmSawDevDependencies 'npm ci manifest must match production-only reviewed shrinkwrap'
+    $launcher = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\bin\pi.cmd'
+    Assert-FileExists $launcher
+    Assert-Equals (Split-Path $launcher -Parent) (($env:Path -split ';')[0])
 }
 
-function test_installpi_does_not_reconcile_extensions_before_locked_config {
-    $script:PiCalls = @()
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'pi') { return [pscustomobject]@{ Source = 'mock-pi' } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'npm' { $global:LASTEXITCODE = 0 }
-    Set-CommandMock 'pi' {
-        $script:PiCalls += ,($args -join ' ')
-        $global:LASTEXITCODE = 0
-    }
-
-    InstallPi -Update
-
-    Assert-False ($script:PiCalls -contains 'update --extensions') 'Pi install should not reconcile extensions before locked config is active'
+function test_installpi_verifies_cached_release_and_rejects_tamper {
+    $version = Get-PinnedPiVersion
+    $root = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
+    $releaseId = -join ((Get-PiSourceDigest (Get-PinnedPiSourceHash)) | ForEach-Object { $_.ToString('x2') })
+    $release = Join-Path $root "releases\$version-$($releaseId.Substring(0, 12))"
+    New-Item -ItemType Directory -Force -Path (Join-Path $release 'dist\core') | Out-Null
+    Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $release 'npm-shrinkwrap.json')
+    '{"version":"0.84.2"}' | Set-Content (Join-Path $release 'package.json')
+    'entry' | Set-Content (Join-Path $release 'dist\cli.js')
+    Write-TestPatchedPiSession (Join-Path $release 'dist\core\agent-session.js')
+    (Get-PiReleaseDigest $release) | Set-Content (Join-Path $release '.release.sha256') -NoNewline
+    InstallPi
+    'tampered' | Set-Content (Join-Path $release 'dist\cli.js')
+    Assert-Throws { InstallPi } 'cached content tamper must be rejected'
 }
 
-function test_installpi_skips_current_package_during_update {
-    $script:NpmCalls = @()
-    $script:PiCalls = @()
-    $pinnedVersion = Get-PinnedPiVersion
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'pi') { return [pscustomobject]@{ Source = 'mock-pi' } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'npm' {
-        $script:NpmCalls += ,($args -join ' ')
-        $global:LASTEXITCODE = 0
-    }
-    Set-CommandMock 'pi' {
-        $call = $args -join ' '
-        $script:PiCalls += ,$call
-        if ($call -eq '--version') { $pinnedVersion }
-        $global:LASTEXITCODE = 0
-    }
+function test_getpinnedpiversion_rejects_invalid_json {
+    $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'invalid-pi-lock'
+    New-Item -ItemType Directory -Force -Path (Join-Path $script:DotfilesDir 'packages') | Out-Null
+    '{"name":"@earendil-works/pi-coding-agent","version":"0.84.2"' | Set-Content (Join-Path $script:DotfilesDir 'packages\pi-agent-npm-shrinkwrap.json')
 
-    InstallPi -Update
-
-    Assert-Equals 0 $script:NpmCalls.Count 'current pinned Pi package should not query npm or reinstall'
-    Assert-False ($script:PiCalls -contains 'update --extensions') 'Pi package update should leave extension reconciliation to InstallAi'
+    Assert-Throws { Get-PinnedPiVersion } 'invalid JSON lock must fail closed'
 }
 
-function test_installpi_replaces_unpinned_version_during_update {
-    $script:NpmCalls = @()
-    $pinnedVersion = Get-PinnedPiVersion
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'pi') { return [pscustomobject]@{ Source = 'mock-pi' } }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'npm' {
-        $script:NpmCalls += ,($args -join ' ')
-        $global:LASTEXITCODE = 0
-    }
-    Set-CommandMock 'pi' {
-        if (($args -join ' ') -eq '--version') { '0.0.0' }
-        $global:LASTEXITCODE = 0
-    }
+function test_getpinnedpiversion_runs_in_windows_powershell {
+    $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if (-not $windowsPowerShell) { return }
+    $escapedScript = $script:DotfileScript.Replace("'", "''")
+    $probe = ". '$escapedScript' -NoMain; if ((Get-PinnedPiVersion) -notmatch '^\d+\.\d+\.\d+') { exit 1 }"
 
-    InstallPi -Update
+    & $windowsPowerShell.Source -NoProfile -NonInteractive -Command $probe
 
-    Assert-True ($script:NpmCalls -contains "install --global @earendil-works/pi-coding-agent@$pinnedVersion") 'update should install reviewed Pi pin'
+    Assert-Equals 0 $LASTEXITCODE
 }
 
-function test_installpi_fails_when_command_is_missing_after_install {
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'pi') { return $null }
-        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
-    }
-    Set-CommandMock 'npm' { $global:LASTEXITCODE = 0 }
+function test_installpi_source_checksum_fails_before_install {
+    Set-CommandMock 'Invoke-WebRequest' { param($Uri, $OutFile) [IO.File]::WriteAllText($OutFile, 'bad') }
+    Set-FunctionMock 'Test-PiSourceHash' { $false }
+    Set-CommandMock 'npm' { throw 'npm must not run after checksum mismatch' }
+    Assert-Throws { InstallPi } 'checksum mismatch must fail before npm'
+}
 
-    Assert-Throws { InstallPi } 'Pi installation should fail when pi is still unavailable'
+function test_pi_release_validation_requires_version_and_entry {
+    $dir = Join-Path $script:_TestTmp.FullName 'pi-release'
+    New-Item -ItemType Directory -Force -Path (Join-Path $dir 'dist\core') | Out-Null
+    $lock = Get-Content -Raw (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json')
+    Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $dir 'npm-shrinkwrap.json')
+    '{"version":"0.84.2","dependencies":{"example-package":"1.0.0"}}' | Set-Content (Join-Path $dir 'package.json')
+    'entry' | Set-Content (Join-Path $dir 'dist\cli.js')
+    Write-TestPatchedPiSession (Join-Path $dir 'dist\core\agent-session.js')
+    (Get-PiReleaseDigest $dir) | Set-Content (Join-Path $dir '.release.sha256') -NoNewline
+    Assert-False (Test-PiRelease $dir '0.84.2' $lock) 'release missing dependency closure must fail'
+    New-Item -ItemType Directory -Force -Path (Join-Path $dir 'node_modules\example-package') | Out-Null
+    '{}' | Set-Content (Join-Path $dir 'node_modules\example-package\package.json')
+    (Get-PiReleaseDigest $dir) | Set-Content (Join-Path $dir '.release.sha256') -NoNewline
+    Assert-True (Test-PiRelease $dir '0.84.2' $lock)
 }
 
 function test_pi_subagents_package_uses_model_tiers_and_provider_scope {

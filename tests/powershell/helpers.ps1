@@ -62,6 +62,7 @@ function Reset-DotfileState {
 function Initialize-TestEnv {
     $script:_TestTmp = New-Item -ItemType Directory -Force -Path (Join-Path ([IO.Path]::GetTempPath()) ("dot_" + [Guid]::NewGuid().ToString('N')))
     $script:_OrigHome = $env:USERPROFILE
+    $script:_OrigHomeEnv = $env:HOME
     $script:_OrigDotfiles = $env:DOTFILES_DIR
     $script:_OrigAppData = $env:APPDATA
     $script:_OrigLocalAppData = $env:LOCALAPPDATA
@@ -100,8 +101,8 @@ function Clear-CommandMock {
 }
 
 function Clear-TestEnv {
-    $env:USERPROFILE = $script:_OrigHome
-    $env:HOME = $script:_OrigHome
+    if ($null -eq $script:_OrigHome) { Remove-Item Env:USERPROFILE -ErrorAction SilentlyContinue } else { $env:USERPROFILE = $script:_OrigHome }
+    if ($null -eq $script:_OrigHomeEnv) { Remove-Item Env:HOME -ErrorAction SilentlyContinue } else { $env:HOME = $script:_OrigHomeEnv }
     $env:DOTFILES_DIR = $script:_OrigDotfiles
     if ($null -eq $script:_OrigAppData) {
         Remove-Item Env:APPDATA -ErrorAction SilentlyContinue

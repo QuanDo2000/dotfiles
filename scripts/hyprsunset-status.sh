@@ -6,10 +6,11 @@ day=07:00
 night=20:00
 temperature=4500
 if [[ -f "$config" ]]; then
-  times="$(awk '$1 == "time" && $2 == "=" { print $3 }' "$config")"
-  day="$(awk 'NR == 1 { print; exit }' <<<"$times")"
-  night="$(awk 'NR == 2 { print; exit }' <<<"$times")"
-  temperature="$(awk '$1 == "temperature" && $2 == "=" { print $3; exit }' "$config")"
+  read -r day night temperature < <(awk '
+    $1 == "time" && $2 == "=" { if (!day) day=$3; else if (!night) night=$3 }
+    $1 == "temperature" && $2 == "=" { temperature=$3 }
+    END { print day, night, temperature }
+  ' "$config")
   day="${day:-07:00}"
   night="${night:-20:00}"
   temperature="${temperature:-4500}"
@@ -34,5 +35,14 @@ else
   class="inactive"
 fi
 
-jq -cn --arg text "$text" --arg tooltip "$tooltip" --arg class "$class" \
-  '{text: $text, tooltip: $tooltip, class: $class}'
+json_escape() {
+  local value=$1
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  value=${value//$'\t'/\\t}
+  printf '%s' "$value"
+}
+printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' \
+  "$(json_escape "$text")" "$(json_escape "$tooltip")" "$(json_escape "$class")"

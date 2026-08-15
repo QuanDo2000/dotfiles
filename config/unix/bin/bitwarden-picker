@@ -72,6 +72,11 @@ else
   value=$(jq -r '.value' <<<"$target")
 fi
 
+clear_clipboard() {
+  local current
+  current="$(wl-paste 2>/dev/null || true)"
+  [[ "$current" == "$value" ]] && wl-copy --clear >/dev/null 2>&1 || true
+}
+trap clear_clipboard EXIT HUP INT TERM
 printf %s "$value" | wl-copy
 sleep 30
-[[ $(wl-paste) != "$value" ]] || wl-copy --clear

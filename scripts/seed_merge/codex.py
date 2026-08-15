@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import datetime
+import json
 import math
 import os
 import re
@@ -73,7 +75,7 @@ def remove_retired_marketplaces(config):
 
 
 def quote(value):
-    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
 
 
 def toml_value(value):
@@ -82,7 +84,13 @@ def toml_value(value):
     if isinstance(value, int) and not isinstance(value, bool):
         return str(value)
     if isinstance(value, float):
-        return str(value) if math.isfinite(value) else quote(str(value))
+        if math.isnan(value):
+            return "nan"
+        if math.isinf(value):
+            return "-inf" if value < 0 else "inf"
+        return str(value)
+    if isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
+        return value.isoformat()
     if isinstance(value, str):
         return quote(value)
     if isinstance(value, list):

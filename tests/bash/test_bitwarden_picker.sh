@@ -41,19 +41,40 @@ count=$(( $(cat "$TEST_TMPDIR/fuzzel-count" 2>/dev/null || echo 0) + 1 ))
 printf %s "$count" > "$TEST_TMPDIR/fuzzel-count"
 if [[ "$count" == 1 ]]; then printf '\''0\n'\''; else printf '\''%s\n'\'' "${TARGET_INDEX:-1}"; fi'
   write_mock wl-copy '
-if [[ "${1:-}" == --clear ]]; then printf CLEAR > "$TEST_TMPDIR/clipboard-cleared"; else cat > "$TEST_TMPDIR/clipboard"; fi'
-  write_mock wl-paste 'cat "$TEST_TMPDIR/clipboard"'
+if [[ "${1:-}" == --clear ]]; then
+  printf CLEAR > "$TEST_TMPDIR/clipboard-cleared"
+else
+  cat > "$TEST_TMPDIR/clipboard"
+  [[ "${WL_COPY_SIGNAL:-}" != true ]] || kill -TERM "$PPID"
+fi'
+  write_mock wl-paste '[[ "${WL_PASTE_FAIL:-}" != true ]] || exit 1; cat "$TEST_TMPDIR/clipboard"'
   write_mock sleep ':'
 
   export TEST_TMPDIR
   "$script"
 
   assert_equals "secret" "$(<"$TEST_TMPDIR/clipboard")"
-  assert_equals "CLEAR" "$(<"$TEST_TMPDIR/clipboard-cleared")"
+  if [[ "${WL_PASTE_FAIL:-}" == true ]]; then
+    [[ ! -e "$TEST_TMPDIR/clipboard-cleared" ]] || echo '  clipboard should not clear after unreadable ownership check' >> "$ERROR_FILE"
+  else
+    assert_equals "CLEAR" "$(<"$TEST_TMPDIR/clipboard-cleared")"
+  fi
   assert_contains "$(<"$TEST_TMPDIR/fuzzel-input-1")" "Work/Example"
   assert_contains "$(<"$TEST_TMPDIR/fuzzel-input-2")" "Username"
   assert_contains "$(<"$TEST_TMPDIR/fuzzel-input-2")" "Password"
   assert_contains "$(<"$TEST_TMPDIR/fuzzel-input-2")" "Field: line break"
+}
+
+test_picker_clears_password_when_signalled_during_copy() {
+  export WL_COPY_SIGNAL=true
+  test_picker_copies_selected_password_and_clears_it
+  unset WL_COPY_SIGNAL
+}
+
+test_picker_tolerates_failed_clipboard_ownership_check() {
+  export WL_PASTE_FAIL=true
+  test_picker_copies_selected_password_and_clears_it
+  unset WL_PASTE_FAIL
 }
 
 test_picker_ignores_invalid_target_index() {

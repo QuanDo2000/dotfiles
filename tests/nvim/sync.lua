@@ -103,19 +103,20 @@ plugins.sample._.tasks = {}
 
 sync.tools()
 for _, name in ipairs({
-  "bash-language-server", "json-lsp", "lua-language-server", "markdownlint-cli2", "marksman",
+  "json-lsp", "lua-language-server", "markdownlint-cli2", "marksman",
   "prettier", "stylua", "taplo", "yaml-language-server",
 }) do
   assert(requested[name], name .. " was not provisioned")
   assert(packages[name].installed, name .. " was not verified")
 end
-assert(not requested["nil"], "nil must not be provisioned without nix")
+assert(not requested["bash-language-server"], "bash-language-server must remain platform-managed")
+assert(not requested["nil"], "nil must remain platform-managed")
 assert(not requested.nixfmt, "nixfmt must not be provisioned on Windows")
 assert(calls[#calls] == "mason", "Mason must load only for explicit tool sync")
 
 has_nix, is_windows = true, false
 sync.tools()
-assert(requested["nil"] and packages["nil"].installed, "nil must be provisioned when nix is available")
+assert(not requested["nil"], "nil must remain platform-managed when nix is available")
 assert(requested.nixfmt and packages.nixfmt.installed, "nixfmt must be provisioned off Windows")
 local initial_refreshes = refresh_calls
 sync.tools()

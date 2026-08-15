@@ -96,6 +96,9 @@ function test_windows_notepadplusplus_links_stable_settings_and_themes {
         }
         Assert-False ([bool]($specs | Where-Object Destination -eq (Join-Path $root 'themes'))) 'whole themes directory should remain writable'
         Assert-False ([bool]($specs | Where-Object Destination -eq (Join-Path $root 'config.xml'))) 'runtime-written config.xml should remain writable'
+        $config = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\Notepad++\config.xml')
+        Assert-False $config.Contains('AppPosition') 'portable config should not pin machine geometry'
+        Assert-False $config.Contains('FindWindowPosition') 'portable config should not pin dialog geometry'
     } finally {
         $env:APPDATA = $oldAppData
     }
@@ -119,6 +122,25 @@ function test_sync_lazy_lock_seeds_writable_file {
         Assert-Contains (Get-Content -Raw $source) 'reviewed'
         Assert-Contains (Get-Content -Raw $target) 'runtime'
     } finally {
+        $script:DotfilesDir = $oldDotfilesDir
+    }
+}
+
+function test_sync_lazy_lock_preserves_old_file_when_replace_fails {
+    $oldDotfilesDir = $script:DotfilesDir
+    try {
+        $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+        $source = Join-Path $script:DotfilesDir 'config\shared\config\nvim\lazy-lock.json'
+        $target = Join-Path $env:LOCALAPPDATA 'nvim\lazy-lock.json'
+        New-Item -ItemType Directory -Force -Path (Split-Path $source -Parent), (Split-Path $target -Parent) | Out-Null
+        '{"plugin":{"commit":"reviewed"}}' | Set-Content $source
+        '{"plugin":{"commit":"old"}}' | Set-Content $target
+        Set-CommandMock 'Move-Item' { throw 'replace failed' }
+
+        Assert-Throws { Sync-LazyLock } 'replacement failure should surface'
+        Assert-Contains (Get-Content -Raw $target) 'old'
+    } finally {
+        Clear-CommandMock 'Move-Item'
         $script:DotfilesDir = $oldDotfilesDir
     }
 }

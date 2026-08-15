@@ -100,6 +100,13 @@ test_arch_packages_are_bootstrap_only() {
   done
 }
 
+test_tmux_avoids_recurring_identity_process() {
+  local tmux_config
+  tmux_config="$(<"$REPO_DIR/config/unix/.tmux.conf")"
+  assert_contains "$tmux_config" '#{E:USER}'
+  assert_not_contains "$tmux_config" '#(whoami)'
+}
+
 test_tmux_uses_native_clipboard_bindings_without_yank_plugin() {
   local tmux_config
   tmux_config="$(<"$REPO_DIR/config/unix/.tmux.conf")"
@@ -334,66 +341,28 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   unset -f command sudo _install_lix _load_nix_profile
 }
 
-test_update_arch_uses_existing_home_manager() {
+
+
+
+
+
+
+test_set_zsh_default_tolerates_unset_shell() {
   DRY=false
-  local calls="$TEST_TMPDIR/calls.log"
+  detect_platform() { printf 'debian\n'; }
   command() {
-    if [[ "${1:-}" == "-v" ]]; then
-      case "${2:-}" in
-        nix|home-manager) return 0 ;;
-      esac
-    fi
+    if [[ "${1:-}" == -v && "${2:-}" == zsh ]]; then printf '/bin/zsh\n'; return 0; fi
     builtin command "$@"
   }
-  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
-  _load_nix_profile() { :; }
-  home-manager() { printf 'home-manager %s\n' "$*" >> "$calls"; }
+  chsh() { :; }
+  local old_shell="${SHELL-}" had_shell=false
+  [[ -v SHELL ]] && had_shell=true
+  unset SHELL
 
-  update_arch >/dev/null 2>&1
+  assert_exit_code 0 set_zsh_default
 
-  local output
-  output="$(<"$calls")"
-  assert_not_contains "$output" "sudo pacman"
-  assert_equals "$(printf 'nix flake update --flake %s\nhome-manager switch --flake %s#testuser@arch-server' "$DOTFILES_DIR" "$DOTFILES_DIR")" "$output"
-  assert_not_contains "$output" "@linux@linux"
-
-  unset -f command sudo _load_nix_profile home-manager
-}
-
-test_update_arch_bootstraps_home_manager_when_missing() {
-  DRY=false
-  local calls="$TEST_TMPDIR/calls.log"
-  command() {
-    if [[ "${1:-}" == "-v" ]]; then
-      case "${2:-}" in
-        nix) return 0 ;;
-        home-manager) return 1 ;;
-      esac
-    fi
-    builtin command "$@"
-  }
-  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
-  _load_nix_profile() { :; }
-
-  update_arch >/dev/null 2>&1
-
-  local output
-  output="$(<"$calls")"
-  assert_not_contains "$output" "sudo pacman"
-  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@arch-server"
-  assert_not_contains "$output" "@linux@linux"
-
-  unset -f command sudo _load_nix_profile
-}
-
-test_update_arch_dry_run_shows_flake_update_then_home_manager_switch() {
-  DRY=true
-
-  local output
-  output=$(update_arch 2>&1)
-
-  assert_contains "$output" "nix flake update --flake $DOTFILES_DIR"
-  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@arch-server"
+  [[ "$had_shell" == true ]] && export SHELL="$old_shell" || unset SHELL
+  unset -f detect_platform command chsh
 }
 
 test_debian_packages_are_bootstrap_only() {
@@ -435,67 +404,11 @@ test_install_debian_bootstraps_nix_and_switches_home_manager() {
   unset -f command sudo _install_lix _load_nix_profile
 }
 
-test_update_debian_uses_existing_home_manager() {
-  DRY=false
-  local calls="$TEST_TMPDIR/calls.log"
-  command() {
-    if [[ "${1:-}" == "-v" ]]; then
-      case "${2:-}" in
-        nix|home-manager) return 0 ;;
-      esac
-    fi
-    builtin command "$@"
-  }
-  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
-  _load_nix_profile() { :; }
-  home-manager() { printf 'home-manager %s\n' "$*" >> "$calls"; }
 
-  update_debian >/dev/null 2>&1
 
-  local output
-  output="$(<"$calls")"
-  assert_not_contains "$output" "sudo apt"
-  assert_equals "$(printf 'nix flake update --flake %s\nhome-manager switch --flake %s#testuser@linux' "$DOTFILES_DIR" "$DOTFILES_DIR")" "$output"
-  assert_not_contains "$output" "@linux@linux"
 
-  unset -f command sudo _load_nix_profile home-manager
-}
 
-test_update_debian_bootstraps_home_manager_when_missing() {
-  DRY=false
-  local calls="$TEST_TMPDIR/calls.log"
-  command() {
-    if [[ "${1:-}" == "-v" ]]; then
-      case "${2:-}" in
-        nix) return 0 ;;
-        home-manager) return 1 ;;
-      esac
-    fi
-    builtin command "$@"
-  }
-  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
-  _load_nix_profile() { :; }
 
-  update_debian >/dev/null 2>&1
-
-  local output
-  output="$(<"$calls")"
-  assert_not_contains "$output" "sudo apt"
-  assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@linux"
-  assert_not_contains "$output" "@linux@linux"
-
-  unset -f command sudo _load_nix_profile
-}
-
-test_update_debian_dry_run_shows_flake_update_then_home_manager_switch() {
-  DRY=true
-
-  local output
-  output=$(update_debian 2>&1)
-
-  assert_contains "$output" "nix flake update --flake $DOTFILES_DIR"
-  assert_contains "$output" "home-manager switch --flake $DOTFILES_DIR#testuser@linux"
-}
 
 test_install_nixos_dry_run() {
   DRY=true
@@ -508,17 +421,7 @@ test_install_nixos_dry_run() {
   assert_not_contains "$output" "neovim"
 }
 
-test_update_nixos_dry_run() {
-  DRY=true
 
-  local output
-  output=$(update_nixos 2>&1)
-
-  assert_contains "$output" "NixOS"
-  assert_contains "$output" "nix flake update --flake $DOTFILES_DIR"
-  assert_contains "$output" "sudo nixos-rebuild switch --flake $DOTFILES_DIR#testhost"
-  assert_not_contains "$output" "--upgrade"
-}
 
 test_nixos_flake_target_reads_host_config_when_nix_is_missing() {
   mkdir -p "$DOTFILES_DIR/config"
@@ -657,7 +560,12 @@ test_google_drive_storage_sync() {
   assert_contains "$HOME_CONFIG" "systemd.user.timers.google-drive-storage-sync"
   assert_contains "$HOME_CONFIG" 'OnCalendar = "daily";'
   assert_contains "$HOME_CONFIG" 'google-drive-sync.lock'
+  assert_contains "$HOME_CONFIG" 'TimeoutStartSec = "65m";'
   assert_contains "$HOME_CONFIG" 'TimeoutStartSec = "infinity";'
+  local lock_wait timeout_minutes
+  lock_wait="$(grep -o -- '--wait [0-9]*' <<<"$HOME_CONFIG" | head -n1 | awk '{print $2}')"
+  timeout_minutes="$(grep -o 'TimeoutStartSec = "[0-9]*m"' <<<"$HOME_CONFIG" | head -n1 | tr -dc '0-9')"
+  (( timeout_minutes * 60 > lock_wait + 1800 )) || echo '  bisync timeout leaves insufficient execution budget after lock wait' >> "$ERROR_FILE"
 }
 
 test_storage_offsite_backup() {
@@ -958,34 +866,26 @@ test_install_nixos_uses_flake_switch() {
   unset -f sudo
 }
 
-test_update_nixos_updates_flake_then_switches() {
-  local calls="$TEST_TMPDIR/update.log"
-  host_config_value() { printf 'testhost\n'; }
-  nix() { printf 'nix %s\n' "$*" >> "$calls"; }
-  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
 
-  update_nixos >/dev/null 2>&1
 
-  local output
-  output="$(<"$calls")"
-  assert_equals "$(printf 'nix flake update --flake %s\nsudo nixos-rebuild switch --flake %s#testhost' "$DOTFILES_DIR" "$DOTFILES_DIR")" "$output"
-  assert_not_contains "$output" "--upgrade"
-  assert_not_contains "$output" "--impure"
 
-  unset -f host_config_value nix sudo
-}
 
-test_update_nixos_reloads_running_hyprland() {
+test_nixos_rebuild_reloads_running_hyprland() {
   local calls="$TEST_TMPDIR/hyprctl.log"
-  nix() { :; }
+  host_config_value() { printf 'testhost\n'; }
   sudo() { :; }
   hyprctl() { printf '%s\n' "$*" >> "$calls"; }
-  local HYPRLAND_INSTANCE_SIGNATURE=test
+  command() {
+    if [[ "${1:-}" == -v && "${2:-}" == hyprctl ]]; then return 0; fi
+    builtin command "$@"
+  }
+  export HYPRLAND_INSTANCE_SIGNATURE=test
 
-  update_nixos >/dev/null 2>&1
+  _nixos_rebuild_switch
 
-  assert_equals "reload" "$(<"$calls")"
-  unset -f nix sudo hyprctl
+  assert_equals 'reload' "$(<"$calls")"
+  unset HYPRLAND_INSTANCE_SIGNATURE
+  unset -f host_config_value sudo hyprctl command
 }
 
 test_install_packages_dispatches_nixos() {

@@ -16,7 +16,9 @@ run() {
 
 run bash "$repo_dir/tests/bash/runner.sh"
 
-run pwsh "$repo_dir/tests/powershell/runner.ps1"
+if command -v pwsh >/dev/null 2>&1; then
+  run pwsh "$repo_dir/tests/powershell/runner.ps1"
+fi
 
 run nix flake check "$flake" --no-build --all-systems
 packages=(

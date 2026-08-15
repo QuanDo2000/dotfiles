@@ -21,7 +21,7 @@ test_check_script_runs_repo_verification() {
   assert_contains "$check_text" 'run bash "$repo_dir/tests/bash/runner.sh"'
   assert_not_contains "$check_text" '--no-docker'
   assert_contains "$check_text" 'run pwsh "$repo_dir/tests/powershell/runner.ps1"'
-  assert_not_contains "$check_text" 'command -v pwsh'
+  assert_contains "$check_text" 'command -v pwsh'
   assert_contains "$check_text" 'nix flake check "$flake" --no-build --all-systems'
   assert_contains "$check_text" 'flake="path:$repo_dir"'
   assert_contains "$check_text" '"$flake#obsidian-headless"'

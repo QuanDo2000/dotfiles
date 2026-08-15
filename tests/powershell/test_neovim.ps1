@@ -54,7 +54,8 @@ function test_windows_neovim_skips_nil_without_nix {
     $sync = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\config\nvim\lua\config\sync.lua')
 
     Assert-Contains $sync 'if vim.fn.has("win32") ~= 1 then'
-    Assert-Contains $sync 'if vim.fn.executable("nix") == 1 then'
+    Assert-False ($sync.Contains('"bash-language-server"')) 'bash-language-server should remain platform-managed'
+    Assert-False ($sync.Contains('"nil"')) 'nil should remain platform-managed'
     Assert-Contains $config 'if vim.fn.executable("nil") == 1 then'
     Assert-Contains $config 'nix = vim.fn.executable("nixfmt") == 1 and { "nixfmt" } or {}'
 }

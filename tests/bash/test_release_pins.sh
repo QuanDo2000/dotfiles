@@ -9,15 +9,7 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
     _update_lix_installer_pins \
     _update_codex_release_package \
     _update_pi_release_package \
-    _update_obsidian_headless_package \
-    _update_codebase_memory_release \
-    _update_fff_release \
-    _update_pi_extensions_release \
-    _update_webcord_release \
-    _update_anki_zoom \
-    _update_firacode_pin \
-    _update_vendored_skills \
-    _update_neovim_plugins; do
+    _update_obsidian_headless_package; do
     eval "$name() { printf '%s\\n' '$name' >> '$calls'; }"
   done
 
@@ -28,9 +20,7 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
 
   for name in \
     _update_lix_installer_pins _update_codex_release_package _update_pi_release_package \
-    _update_obsidian_headless_package _update_codebase_memory_release _update_fff_release \
-    _update_pi_extensions_release _update_webcord_release _update_anki_zoom \
-    _update_firacode_pin _update_vendored_skills _update_neovim_plugins; do
+    _update_obsidian_headless_package; do
     unset -f "$name"
   done
   unset -f _run_python_pin_batch

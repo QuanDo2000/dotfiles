@@ -117,11 +117,13 @@ def make_plan(remote_dirs, remote_files, storage_dirs, storage_files, same_hashe
             plan["down"].add(path)
         elif path not in remote:
             plan["up"].add(path)
-        elif path in same_hashes or (
+        elif path in same_hashes:
+            plan["same"] += 1
+        elif (
             remote[path][0] == storage[path][0]
             and abs(remote[path][1] - storage[path][1]) <= 0.001
         ):
-            plan["same"] += 1
+            plan["conflicts"].add(path)
         elif remote[path][1] > storage[path][1]:
             plan["backup_storage"].add(path)
             plan["down"].add(path)
@@ -173,7 +175,6 @@ def sync_pair(name, remote_root, storage_root, stamp, dry_run):
     hash_candidates = {
         path for path in remote_files.keys() & storage_files.keys()
         if remote_files[path][0] == storage_files[path][0]
-        and abs(remote_files[path][1] - storage_files[path][1]) > 0.001
     }
     same_hashes = matching_hashes(remote_root, storage_root, hash_candidates)
     plan = make_plan(remote_dirs, remote_files, storage_dirs, storage_files, same_hashes)
@@ -231,9 +232,15 @@ def self_test():
     assert plan["up"] == {"shared/up"}
     assert plan["backup_storage"] == {"shared/replace", "shared/equal-size-change"}
     assert plan["backup_remote"] == set()
-    assert plan["same"] == 2
+    assert plan["same"] == 1
+    assert plan["conflicts"] == {"shared/precision"}
     assert plan["down_bytes"] == 9 and plan["up_bytes"] == 4
     assert plan["skipped_remote"] == 2 and plan["skipped_storage"] == 5
+    equal_time_conflict = make_plan(
+        {"", "shared"}, {"shared/file": (4, new)},
+        {"", "shared"}, {"shared/file": (4, new)},
+    )
+    assert equal_time_conflict["conflicts"] == {"shared/file"}
     cutoff = datetime(2026, 2, 1, tzinfo=timezone.utc)
     assert parse_backup_time("20260101T000000Z", cutoff)
     assert not parse_backup_time("20260301T000000Z", cutoff)

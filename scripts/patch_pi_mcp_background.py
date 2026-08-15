@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 """Patch pi-mcp-extension so eager servers start without blocking Pi startup."""
 
-import os
-import stat
 import sys
-import tempfile
 from pathlib import Path
 
 OLD = """    // Start all eager servers concurrently
@@ -31,16 +28,7 @@ def main() -> int:
         print(f"Pi MCP background patch source drift in {path}", file=sys.stderr)
         return 1
 
-    mode = stat.S_IMODE(path.stat().st_mode)
-    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as stream:
-            stream.write(source.replace(OLD, NEW))
-        os.chmod(temporary, mode)
-        os.replace(temporary, path)
-    except BaseException:
-        Path(temporary).unlink(missing_ok=True)
-        raise
+    path.write_text(source.replace(OLD, NEW), encoding="utf-8")
     return 0
 
 

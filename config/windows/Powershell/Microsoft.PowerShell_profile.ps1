@@ -29,7 +29,15 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 
 # jj (jujutsu) completion — dynamic mode
 if (Get-Command jj -ErrorAction SilentlyContinue) {
-    $env:COMPLETE = "powershell"
-    jj | Out-String | Invoke-Expression
-    Remove-Item Env:\COMPLETE
+    $previousComplete = [Environment]::GetEnvironmentVariable('COMPLETE', 'Process')
+    try {
+        $env:COMPLETE = "powershell"
+        jj | Out-String | Invoke-Expression
+    } finally {
+        if ($null -eq $previousComplete) {
+            Remove-Item Env:\COMPLETE -ErrorAction SilentlyContinue
+        } else {
+            $env:COMPLETE = $previousComplete
+        }
+    }
 }

@@ -167,11 +167,6 @@ function UpdateRepo {
     Success "Finished updating repo"
 }
 
-function WingetHas($id) {
-    $null = winget list --id $id --exact --accept-source-agreements 2>$null | Out-String
-    return ($LASTEXITCODE -eq 0)
-}
-
 function Get-InstalledWingetPackages {
     $output = Join-Path ([IO.Path]::GetTempPath()) "winget-$([Guid]::NewGuid().ToString('N')).json"
     try {
@@ -511,13 +506,36 @@ function SyncCodexConfig {
 function Get-PinnedPiVersion {
     $lockPath = Join-Path $script:DotfilesDir 'packages\pi-agent-npm-shrinkwrap.json'
     if (-not (Test-Path -LiteralPath $lockPath)) { throw "Missing Pi package lock: $lockPath" }
-    $lock = Get-Content -Raw -LiteralPath $lockPath
-    if ($lock -notmatch '^\s*\{\s*"name"\s*:\s*"@earendil-works/pi-coding-agent"\s*,\s*"version"\s*:\s*"([^"]+)"') {
-        throw "Failed to parse pinned Pi version: $lockPath"
+    $content = Get-Content -Raw -LiteralPath $lockPath
+    $packagesIndex = $content.IndexOf('"packages"', [StringComparison]::Ordinal)
+    if ($packagesIndex -lt 0) { throw "Failed to parse pinned Pi package lock: $lockPath" }
+    try { $root = ($content.Substring(0, $packagesIndex) + '"packages": {}}') | ConvertFrom-Json } catch { throw "Failed to parse pinned Pi package lock: $lockPath" }
+    $version = [string]$root.version
+    if ([string]$root.name -ne '@earendil-works/pi-coding-agent' -or $version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+        throw "Invalid pinned Pi package lock: $lockPath"
     }
-    $version = $Matches[1]
-    if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw "Invalid pinned Pi version: $version" }
     return $version
+}
+
+function Get-PinnedPiSourceHash {
+    $packagePath = Join-Path $script:DotfilesDir 'packages\pi-agent.nix'
+    $content = Get-Content -Raw -LiteralPath $packagePath
+    $match = [regex]::Match($content, '(?m)^\s*hash\s*=\s*"(sha256-[A-Za-z0-9+/=]+)";')
+    if (-not $match.Success) { throw "Pi package source hash missing: $packagePath" }
+    return $match.Groups[1].Value
+}
+
+function Get-PiSourceDigest($Expected) {
+    $match = [regex]::Match($Expected, '^sha256-([A-Za-z0-9+/=]+)$')
+    if (-not $match.Success) { throw 'Invalid Pi source hash' }
+    try { return [Convert]::FromBase64String($match.Groups[1].Value) } catch { throw 'Invalid Pi source hash' }
+}
+
+function Test-PiSourceHash($Stream, $Expected) {
+    $Stream.Position = 0
+    $actual = [Security.Cryptography.SHA256]::Create().ComputeHash($Stream)
+    $Stream.Position = 0
+    return [Convert]::ToBase64String($actual) -ceq [Convert]::ToBase64String((Get-PiSourceDigest $Expected))
 }
 
 function Get-PiExtensionsWindowsArch($Architecture = $env:PROCESSOR_ARCHITECTURE) {
@@ -639,31 +657,101 @@ function RepairPiCompactionSteering {
     }
 }
 
+function Get-PiReleaseDigest($ReleaseDir) {
+    $root = [IO.Path]::GetFullPath($ReleaseDir).TrimEnd('\', '/')
+    $rows = foreach ($file in Get-ChildItem -LiteralPath $root -File -Recurse | Sort-Object FullName) {
+        if ($file.Name -eq '.release.sha256') { continue }
+        $relative = $file.FullName.Substring($root.Length + 1).Replace('\', '/')
+        "$relative`n$((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant())"
+    }
+    $bytes = [Text.Encoding]::UTF8.GetBytes(($rows -join "`n"))
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha256.ComputeHash($bytes)) -replace '-', '').ToLowerInvariant() } finally { $sha256.Dispose() }
+}
+
+function Test-PiRelease($ReleaseDir, $Version, $Shrinkwrap) {
+    $manifest = Join-Path $ReleaseDir 'package.json'
+    $lock = Join-Path $ReleaseDir 'npm-shrinkwrap.json'
+    $entry = Join-Path $ReleaseDir 'dist\cli.js'
+    $session = Join-Path $ReleaseDir 'dist\core\agent-session.js'
+    $digest = Join-Path $ReleaseDir '.release.sha256'
+    foreach ($path in $manifest, $lock, $entry, $session, $digest) {
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
+    }
+    if ((Get-Content -Raw -LiteralPath $lock) -cne $Shrinkwrap) { return $false }
+    if ((Get-Content -Raw -LiteralPath $digest).Trim() -cne (Get-PiReleaseDigest $ReleaseDir)) { return $false }
+    $sessionContent = Get-Content -Raw -LiteralPath $session
+    if (-not $sessionContent.Contains('this._autoCompactionAbortController = undefined;') -or -not $sessionContent.Contains('await this.waitForIdle();')) { return $false }
+    try { $json = Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json } catch { return $false }
+    foreach ($dependency in $json.dependencies.PSObject.Properties.Name) {
+        if (-not (Test-Path -LiteralPath (Join-Path $ReleaseDir "node_modules\$dependency\package.json") -PathType Leaf)) { return $false }
+    }
+    return [string]$json.version -ceq $Version
+}
+
 function InstallPi {
     param([switch]$Update)
     Info "Installing Pi coding agent..."
     if ($script:Dry) { return }
-
-    $pinnedVersion = Get-PinnedPiVersion
-    $piCommand = Get-Command pi -ErrorAction SilentlyContinue
-    $install = -not $piCommand
-    if ($Update -and $piCommand) {
-        $currentVersion = & pi --version 2>$null | Select-Object -Last 1
-        $install = -not $currentVersion -or $currentVersion.Trim() -ne $pinnedVersion
-    }
-
-    if ($install) {
-        Invoke-NativeChecked "Pi install failed" {
-            npm install --global "@earendil-works/pi-coding-agent@$pinnedVersion"
+    $version = Get-PinnedPiVersion
+    $lockPath = Join-Path $script:DotfilesDir 'packages\pi-agent-npm-shrinkwrap.json'
+    $shrinkwrap = Get-Content -Raw -LiteralPath $lockPath
+    $sourceHash = Get-PinnedPiSourceHash
+    $releaseId = -join ((Get-PiSourceDigest $sourceHash) | ForEach-Object { $_.ToString('x2') })
+    $root = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
+    $releases = Join-Path $root 'releases'
+    $release = Join-Path $releases "$version-$($releaseId.Substring(0,12))"
+    $bin = Join-Path $root 'bin'
+    New-Item -ItemType Directory -Force -Path $releases, $bin | Out-Null
+    $guard = [IO.File]::Open((Join-Path $root 'install.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    try {
+        if (-not (Test-PiRelease $release $version $shrinkwrap)) {
+            if (Test-Path -LiteralPath $release) { throw "Pinned Pi release is incomplete: $release" }
+            $stage = Join-Path $releases ".staging.$([Guid]::NewGuid().ToString('N'))"
+            $archive = Join-Path ([IO.Path]::GetTempPath()) "pi-$([Guid]::NewGuid().ToString('N')).tgz"
+            $stream = $null
+            try {
+                New-Item -ItemType Directory -Force -Path $stage | Out-Null
+                Invoke-WebRequest -Uri "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-$version.tgz" -OutFile $archive -UseBasicParsing
+                $stream = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+                if (-not (Test-PiSourceHash $stream $sourceHash)) { throw 'Pi package checksum mismatch' }
+                Invoke-NativeChecked 'Pi package extraction failed' { tar -xzf $archive -C $stage }
+                $package = Join-Path $stage 'package'
+                if (-not (Test-Path -LiteralPath $package)) { throw 'Pi package archive missing package directory' }
+                $embeddedLock = Join-Path $package 'npm-shrinkwrap.json'
+                if (-not (Test-Path -LiteralPath $embeddedLock)) { throw 'Pi package archive missing npm shrinkwrap' }
+                Invoke-NativeChecked 'Pi embedded npm shrinkwrap mismatch' {
+                    node -e 'const fs=require("fs");const clean=v=>Array.isArray(v)?v.map(clean):v&&typeof v==="object"?Object.fromEntries(Object.keys(v).filter(k=>k!=="integrity").sort().map(k=>[k,clean(v[k])])):v;const a=clean(JSON.parse(fs.readFileSync(process.argv[1],"utf8")));const b=clean(JSON.parse(fs.readFileSync(process.argv[2],"utf8")));process.exit(JSON.stringify(a)===JSON.stringify(b)?0:1)' $embeddedLock $lockPath
+                }
+                Copy-Item -LiteralPath $lockPath -Destination $embeddedLock -Force
+                $manifestPath = Join-Path $package 'package.json'
+                $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+                $manifest.PSObject.Properties.Remove('devDependencies')
+                [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 100), [Text.UTF8Encoding]::new($false))
+                Invoke-NativeChecked 'Pi npm ci failed' { npm ci --prefix $package --omit=dev --ignore-scripts }
+                if ((Get-Content -Raw -LiteralPath $embeddedLock) -cne $shrinkwrap) { throw 'Pi npm install changed the reviewed shrinkwrap' }
+                RepairPiCompactionSteering (Join-Path $package 'dist\core\agent-session.js')
+                [IO.File]::WriteAllText((Join-Path $package '.release.sha256'), (Get-PiReleaseDigest $package), [Text.Encoding]::ASCII)
+                if (-not (Test-PiRelease $package $version $shrinkwrap)) { throw 'Installed Pi package is incomplete or has wrong version' }
+                Move-Item -LiteralPath $package -Destination $release
+            } finally {
+                if ($stream) { $stream.Dispose() }
+                Remove-Item -LiteralPath $archive, $stage -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
-    } else {
-        Info "Already installed Pi coding agent"
-    }
-    Refresh-ProcessPath
-    if (-not (Get-Command pi -ErrorAction SilentlyContinue)) {
-        throw "pi command not found after installation"
-    }
-    RepairPiCompactionSteering
+        if (-not (Test-PiRelease $release $version $shrinkwrap)) { throw 'Installed Pi release verification failed' }
+        $launcher = Join-Path $bin 'pi.cmd'
+        $launcherTemporary = "$launcher.tmp.$([Guid]::NewGuid().ToString('N'))"
+        try {
+            "@echo off`r`nnode `"$release\dist\cli.js`" %*" | Set-Content -LiteralPath $launcherTemporary -Encoding ascii
+            Move-Item -LiteralPath $launcherTemporary -Destination $launcher -Force
+        } finally { Remove-Item -LiteralPath $launcherTemporary -Force -ErrorAction SilentlyContinue }
+        $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+        $entries = @($userPath -split ';' | Where-Object { $_ -and $_ -ine $bin })
+        [Environment]::SetEnvironmentVariable('Path', (@($bin) + $entries) -join ';', 'User')
+        $processEntries = @($env:Path -split ';' | Where-Object { $_ -and $_ -ine $bin })
+        $env:Path = (@($bin) + $processEntries) -join ';'
+    } finally { $guard.Dispose() }
     Success "Finished installing Pi coding agent"
 }
 
@@ -896,18 +984,7 @@ function Invoke-CodebaseMemoryCommand($Executable, $FailureMessage, [string[]]$A
     if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
 }
 
-function Test-LinkTargetExists($Path, $Target) {
-    if (-not $Target) { return (Test-Path -LiteralPath $Path) }
-    $resolved = if ([IO.Path]::IsPathRooted($Target)) { $Target } else { Join-Path (Split-Path $Path -Parent) $Target }
-    return (Test-Path -LiteralPath $resolved)
-}
 
-function Remove-DanglingLink($Path) {
-    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
-    if (-not $item -or -not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { return }
-    $target = @($item.Target)[0]
-    if (-not (Test-LinkTargetExists $Path $target)) { Remove-Item -LiteralPath $Path -Force }
-}
 
 function Remove-CodebaseMemoryPiAdapter($Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
@@ -919,20 +996,6 @@ function Remove-CodebaseMemoryPiAdapter($Path) {
     }
 }
 
-function Repair-CodebaseMemorySkill($Path) {
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
-    $content = Get-Content -Raw -LiteralPath $Path
-    $frontmatter = [regex]::Match($content, '\A---\r?\n(?<body>.*?)\r?\n---(?=\r?\n|\z)', [Text.RegularExpressions.RegexOptions]::Singleline)
-    if (-not $frontmatter.Success) { return }
-    $match = [regex]::Match($frontmatter.Groups['body'].Value, '(?m)^description:\s*([^\r\n]+)\r?$')
-    if (-not $match.Success) { return }
-    $description = $match.Groups[1].Value.Trim()
-    if ($description -notmatch ': ' -or $description.StartsWith("'") -or $description.StartsWith('"')) { return }
-    $replacement = "description: '$($description.Replace("'", "''"))'"
-    $index = $frontmatter.Groups['body'].Index + $match.Index
-    $repaired = $content.Remove($index, $match.Length).Insert($index, $replacement)
-    [IO.File]::WriteAllText($Path, $repaired, [Text.UTF8Encoding]::new($false))
-}
 
 function Remove-CodebaseMemoryPiSkill($Path) {
     $skill = Join-Path $Path 'SKILL.md'
@@ -945,66 +1008,21 @@ function Remove-CodebaseMemoryPiSkill($Path) {
     }
 }
 
-function Repair-CodebaseMemoryCodexMcp($Path) {
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
-    $content = Get-Content -Raw -LiteralPath $Path
-    if ($content.Contains('# >>> codebase-memory-mcp MCP >>>')) { return }
-
-    $header = [regex]::Match($content, '(?m)^\[mcp_servers\.codebase-memory-mcp\]\r?$')
-    if (-not $header.Success) { return }
-    $following = $content.Substring($header.Index + $header.Length)
-    $nextHeader = [regex]::Match($following, '(?m)^\[')
-    $sectionEnd = if ($nextHeader.Success) { $header.Index + $header.Length + $nextHeader.Index } else { $content.Length }
-    $section = $content.Substring($header.Index, $sectionEnd - $header.Index).TrimEnd("`r", "`n")
-    if ($section -notmatch '(?m)^\s*command\s*=\s*["''].*codebase-memory-mcp(?:\.exe)?["'']\s*$') { return }
-    if ($section -match '(?m)^\s*(?!\[mcp_servers\.codebase-memory-mcp\]\s*$|command\s*=|args\s*=\s*\[\s*\]\s*$|env_vars\s*=\s*\[\s*["'']CBM_CACHE_DIR["'']\s*\]\s*$|#|$)\S') { return }
-
-    $newline = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
-    $managed = "# >>> codebase-memory-mcp MCP >>>${newline}${section}${newline}# <<< codebase-memory-mcp MCP <<<${newline}"
-    $repaired = $content.Substring(0, $header.Index) + $managed + $content.Substring($sectionEnd)
-    [IO.File]::WriteAllText($Path, $repaired, [Text.UTF8Encoding]::new($false))
-}
-
-function Suspend-CodebaseMemoryCodexToolApprovals($Path) {
+function Invoke-CodebaseMemoryTomlTool($Operation, $Path, [string]$Argument = '') {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
-    $content = Get-Content -Raw -LiteralPath $Path
-    $matches = @([regex]::Matches($content, '(?ms)^\[mcp_servers\.codebase-memory-mcp\.tools\.[^\]\r\n]+\]\r?\n.*?(?=^\[|\z)'))
-    if ($matches.Count -eq 0) { return '' }
-
-    $saved = ($matches | ForEach-Object { $_.Value.TrimEnd("`r", "`n") }) -join "`n`n"
-    for ($i = $matches.Count - 1; $i -ge 0; $i--) {
-        $content = $content.Remove($matches[$i].Index, $matches[$i].Length)
-    }
-    [IO.File]::WriteAllText($Path, $content, [Text.UTF8Encoding]::new($false))
-    return $saved
+    $tool = Join-Path $script:DotfilesDir 'scripts\seed_merge\toml_tools.py'
+    $python = if (Get-Command py -ErrorAction SilentlyContinue) { @('py', '-3.14') } else { @('python3') }
+    $pythonCommand = @($python)[0]
+    $pythonArgs = if (@($python).Count -gt 1) { @($python)[1..(@($python).Count-1)] } else { @() }
+    $output = if ($Argument) { & $pythonCommand @pythonArgs $tool $Operation $Path $Argument } else { & $pythonCommand @pythonArgs $tool $Operation $Path }
+    if ($LASTEXITCODE -ne 0) { throw "Codex TOML repair failed: $Operation" }
+    return ($output -join "`n").Trim()
 }
 
-function Restore-CodebaseMemoryCodexToolApprovals($Path, $Approvals) {
-    if ([string]::IsNullOrWhiteSpace($Approvals)) { return }
-    $content = Get-Content -Raw -LiteralPath $Path
-    $newline = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
-    $restored = $content.TrimEnd("`r", "`n") + $newline + $newline + ($Approvals -replace "`r?`n", $newline) + $newline
-    [IO.File]::WriteAllText($Path, $restored, [Text.UTF8Encoding]::new($false))
-}
-
-function Repair-CodebaseMemoryCodexHooks($Path) {
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
-    $content = Get-Content -Raw -LiteralPath $Path
-    $ownedHook = '{ matcher = "startup|resume|clear|compact", hooks = [{ type = "command", command = "echo \"Code discovery: prefer codebase-memory-mcp (search_graph, trace_path, get_code_snippet, query_graph, search_code) over grep/file-read; run index_repository first if the project is not indexed.\"" }] }'
-    $repaired = $content
-    while ($repaired.Contains("$ownedHook, $ownedHook")) {
-        $repaired = $repaired.Replace("$ownedHook, $ownedHook", $ownedHook)
-    }
-
-    $block = [regex]::new('(?ms)\r?\n?# >>> codebase-memory-mcp SessionStart >>>.*?# <<< codebase-memory-mcp SessionStart <<<\r?\n?')
-    $withoutManagedBlock = $block.Replace($repaired, '', 1)
-    if ($withoutManagedBlock -ne $repaired -and $withoutManagedBlock -match '(?m)^\s*SessionStart\s*=') {
-        $repaired = $withoutManagedBlock
-    }
-    if ($repaired -ne $content) {
-        [IO.File]::WriteAllText($Path, $repaired, [Text.UTF8Encoding]::new($false))
-    }
-}
+function Repair-CodebaseMemoryCodexMcp($Path) { Invoke-CodebaseMemoryTomlTool 'mcp' $Path | Out-Null }
+function Suspend-CodebaseMemoryCodexToolApprovals($Path) { Invoke-CodebaseMemoryTomlTool 'suspend' $Path }
+function Restore-CodebaseMemoryCodexToolApprovals($Path, $Approvals) { if ($Approvals) { Invoke-CodebaseMemoryTomlTool 'restore' $Path $Approvals | Out-Null } }
+function Repair-CodebaseMemoryCodexHooks($Path) { Invoke-CodebaseMemoryTomlTool 'hooks' $Path | Out-Null }
 
 function Stop-CodebaseMemoryProcesses {
     $processes = @(Get-Process -Name 'codebase-memory-mcp' -ErrorAction SilentlyContinue)
@@ -1478,9 +1496,14 @@ function Sync-LazyLock {
     $source = Join-Path $script:DotfilesDir "config\shared\config\nvim\lazy-lock.json"
     $target = "$env:LOCALAPPDATA\nvim\lazy-lock.json"
     New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-    Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
-    Copy-Item -LiteralPath $source -Destination $target
-    (Get-Item -LiteralPath $target).IsReadOnly = $false
+    $temporary = "$target.tmp.$([Guid]::NewGuid().ToString('N'))"
+    try {
+        Copy-Item -LiteralPath $source -Destination $temporary
+        (Get-Item -LiteralPath $temporary).IsReadOnly = $false
+        Move-Item -LiteralPath $temporary -Destination $target -Force
+    } finally {
+        Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function SetupSymlinks {
@@ -1521,8 +1544,10 @@ function Verify {
     }
 
     Info "Verifying Winget packages..."
+    $installedWinget = @{}
+    foreach ($id in @(Get-InstalledWingetPackages)) { $installedWinget[[string]$id] = $true }
     foreach ($id in Get-WingetPackages) {
-        if (WingetHas $id) {
+        if ($installedWinget.ContainsKey($id)) {
             Success "Winget package: $id"
         } else {
             FailSoft "Winget package missing: $id"

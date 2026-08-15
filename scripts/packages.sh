@@ -10,27 +10,6 @@ DEBIAN_PACKAGES=(
   curl git zsh procps file
 )
 
-function _update_flake_inputs {
-  if [[ "$DRY" == "true" ]]; then
-    _dry_run_nix_managed_switch nix flake update --flake "$DOTFILES_DIR"
-    return
-  fi
-
-  _ensure_nix
-  _run_nix_managed_switch "nix flake update failed" nix flake update --flake "$DOTFILES_DIR"
-}
-
-function _update_home_manager_platform {
-  local platform="$1"
-  local profile="${2:-linux}"
-  info "Updating packages for $platform..."
-  _update_flake_inputs
-  _home_manager_switch "$profile"
-  success "Finished update for $platform"
-}
-
-function update_debian { _update_home_manager_platform Debian linux; }
-
 function install_debian {
   info "Installing packages and programs for Debian..."
   if [[ "$DRY" == "false" ]]; then
@@ -41,11 +20,19 @@ function install_debian {
   success "Finished install for Debian"
 }
 
+function _update_flake_inputs {
+  if [[ "$DRY" == "true" ]]; then
+    _dry_run_nix_managed_switch nix flake update --flake "$DOTFILES_DIR"
+    return
+  fi
+
+  _ensure_nix
+  _run_nix_managed_switch "nix flake update failed" nix flake update --flake "$DOTFILES_DIR"
+}
+
 ARCH_PACKAGES=(
   base-devel curl git zsh
 )
-
-function update_arch { _update_home_manager_platform "Arch Linux" arch-server; }
 
 function install_arch {
   info "Installing packages and programs for Arch Linux..."
@@ -319,13 +306,6 @@ function _darwin_rebuild_switch {
   _refresh_managed_path
 }
 
-function update_mac {
-  info "Updating packages for Mac..."
-  _update_flake_inputs
-  _darwin_rebuild_switch
-  success "Finished update for Mac"
-}
-
 function install_mac {
   info "Installing packages and programs for Mac..."
   _darwin_rebuild_switch
@@ -348,7 +328,7 @@ function set_zsh_default {
     zsh_path="$(command -v zsh || true)"
     if [[ -z "$zsh_path" ]]; then
       info "zsh not installed; skipping default shell change"
-    elif [[ "$SHELL" == "$zsh_path" || "$(basename "$SHELL")" == "zsh" ]]; then
+    elif [[ "${SHELL:-}" == "$zsh_path" || "$(basename "${SHELL:-}")" == "zsh" ]]; then
       info "Already has zsh as default shell"
     else
       chsh -s "$zsh_path"
@@ -380,15 +360,6 @@ function install_nixos {
   info "Installing packages for NixOS..."
   _nixos_rebuild_switch
   success "Finished install for NixOS"
-}
-
-# Update the pinned flake inputs, then rebuild NixOS from them.
-# Usage: update_nixos
-function update_nixos {
-  info "Updating packages for NixOS..."
-  _update_flake_inputs
-  _nixos_rebuild_switch
-  success "Finished update for NixOS"
 }
 
 function _sync_neovim {

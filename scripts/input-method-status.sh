@@ -18,4 +18,4 @@ case "$input_method" in
   *) text="󰌌 ?"; tooltip="Keyboard input unavailable" ;;
 esac
 
-jq -cn --arg text "$text" --arg tooltip "$tooltip" '{text: $text, tooltip: $tooltip}'
+printf '{"text":"%s","tooltip":"%s"}\n' "$text" "$tooltip"

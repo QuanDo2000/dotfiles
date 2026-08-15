@@ -44,7 +44,7 @@ function Run-TestFile($file) {
             $caught = $_
         } finally {
             if ($hasTestTeardown) {
-                try { TestTeardown } catch { }
+                try { TestTeardown } catch { $script:Errors.Add("  TestTeardown FAILED: $($_.Exception.Message)") }
             }
         }
 
