@@ -124,6 +124,7 @@ let
     fff-mcp
     jq
     nil
+    nixfmt
     pi-agent
     shellcheck
     statix

@@ -119,7 +119,7 @@ assert(calls[#calls] == "mason", "Mason must load only for explicit tool sync")
 has_nix, is_windows = true, false
 sync.tools()
 assert(not requested["nil"], "nil must remain platform-managed when nix is available")
-assert(requested.nixfmt and packages.nixfmt.installed, "nixfmt must be provisioned off Windows")
+assert(not requested.nixfmt, "nixfmt must remain platform-managed off Windows")
 local initial_refreshes = refresh_calls
 sync.tools()
 assert(refresh_calls == initial_refreshes, "verified tools must not refresh registry")

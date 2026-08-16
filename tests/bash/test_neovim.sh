@@ -32,10 +32,13 @@ test_neovim_provisions_nix_linter() {
 }
 
 test_neovim_provisions_configured_formatters() {
-  local tools
+  local home tools
+  home="$(<"$REPO_DIR/config/home.nix")"
   tools="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")"
   assert_contains "$tools" '"prettier"'
-  assert_contains "$tools" '"nixfmt"'
+  assert_not_contains "$tools" '"nixfmt"'
+  assert_contains "$home" $'    nixfmt\n'
+  assert_not_contains "$home" "nixfmt-rfc-style"
 }
 
 test_neovim_owns_only_used_build_and_mason_tools() {

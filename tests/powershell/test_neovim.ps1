@@ -49,13 +49,16 @@ function test_windows_lazy_sync_prepares_parent_and_fetches_locked_commit {
     Assert-Contains $config '{ "git", "-C", lazypath, "fetch", "--filter=blob:none", "origin" }'
 }
 
-function test_windows_neovim_skips_nil_without_nix {
+function test_neovim_keeps_nix_tools_platform_managed {
     $config = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\config\nvim\init.lua')
+    $homeConfig = Get-Content -Raw (Join-Path $script:RepoDir 'config\home.nix')
     $sync = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\config\nvim\lua\config\sync.lua')
 
-    Assert-Contains $sync 'if vim.fn.has("win32") ~= 1 then'
     Assert-False ($sync.Contains('"bash-language-server"')) 'bash-language-server should remain platform-managed'
     Assert-False ($sync.Contains('"nil"')) 'nil should remain platform-managed'
+    Assert-False ($sync.Contains('"nixfmt"')) 'nixfmt should remain platform-managed'
+    Assert-Contains $homeConfig "    nixfmt$([Environment]::NewLine)"
+    Assert-False ($homeConfig.Contains('nixfmt-rfc-style')) 'deprecated nixfmt alias should not be used'
     Assert-Contains $config 'if vim.fn.executable("nil") == 1 then'
     Assert-Contains $config 'nix = vim.fn.executable("nixfmt") == 1 and { "nixfmt" } or {}'
 }
