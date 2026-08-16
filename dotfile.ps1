@@ -374,14 +374,14 @@ function Get-CodexWindowsTarget($Architecture) {
 }
 
 function Get-CodexPathValue($PathValue, $BinDir, $ManagedRoot) {
-    $managedRootNormalized = $ManagedRoot.TrimEnd("\", "/")
+    $managedRootNormalized = $ManagedRoot.TrimEnd([char[]](92, 47))
     $legacyBin = Join-Path $env:LOCALAPPDATA "Programs\OpenAI\Codex\bin"
     $entries = @($PathValue -split ";" | Where-Object {
         if (-not $_) { return $false }
-        $entry = $_.TrimEnd("\", "/")
-        return $entry -ine $BinDir.TrimEnd("\", "/") -and
-            $entry -ine $legacyBin.TrimEnd("\", "/") -and
-            -not $entry.StartsWith("$managedRootNormalized\", [StringComparison]::OrdinalIgnoreCase) -and
+        $entry = $_.TrimEnd([char[]](92, 47))
+        return $entry -ine $BinDir.TrimEnd([char[]](92, 47)) -and
+            $entry -ine $legacyBin.TrimEnd([char[]](92, 47)) -and
+            -not $entry.StartsWith($managedRootNormalized + '\', [StringComparison]::OrdinalIgnoreCase) -and
             -not $entry.StartsWith("$managedRootNormalized/", [StringComparison]::OrdinalIgnoreCase)
     })
     return (@($BinDir) + $entries) -join ";"
@@ -663,7 +663,7 @@ function RepairPiCompactionSteering {
 }
 
 function Get-PiReleaseDigest($ReleaseDir) {
-    $root = [IO.Path]::GetFullPath($ReleaseDir).TrimEnd('\', '/')
+    $root = [IO.Path]::GetFullPath($ReleaseDir).TrimEnd([char[]](92, 47))
     $rows = foreach ($file in Get-ChildItem -LiteralPath $root -File -Recurse | Sort-Object FullName) {
         if ($file.Name -eq '.release.sha256') { continue }
         $relative = $file.FullName.Substring($root.Length + 1).Replace('\', '/')
@@ -921,15 +921,15 @@ function Get-CodebaseMemoryWindowsArch($Architecture) {
 }
 
 function Get-CodebaseMemoryPathValue($PathValue, $ReleaseDir, $ReleasesRoot, $LegacyRoot) {
-    $releasesNormalized = $ReleasesRoot.TrimEnd("\", "/")
-    $releaseNormalized = $ReleaseDir.TrimEnd("\", "/")
-    $legacyNormalized = $LegacyRoot.TrimEnd("\", "/")
+    $releasesNormalized = $ReleasesRoot.TrimEnd([char[]](92, 47))
+    $releaseNormalized = $ReleaseDir.TrimEnd([char[]](92, 47))
+    $legacyNormalized = $LegacyRoot.TrimEnd([char[]](92, 47))
     $entries = @($PathValue -split ";" | Where-Object {
         if (-not $_) { return $false }
-        $entry = $_.TrimEnd("\", "/")
+        $entry = $_.TrimEnd([char[]](92, 47))
         return $entry -ine $releaseNormalized -and
             $entry -ine $legacyNormalized -and
-            -not $entry.StartsWith("$releasesNormalized\", [StringComparison]::OrdinalIgnoreCase) -and
+            -not $entry.StartsWith($releasesNormalized + '\', [StringComparison]::OrdinalIgnoreCase) -and
             -not $entry.StartsWith("$releasesNormalized/", [StringComparison]::OrdinalIgnoreCase)
     })
     return (@($ReleaseDir) + $entries) -join ";"

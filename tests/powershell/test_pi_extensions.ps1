@@ -4,6 +4,7 @@ function TestSetup {
     Initialize-TestEnv | Out-Null
     $script:DotfilesDir = $script:RepoDir
     $script:OriginalArchitecture = $env:PROCESSOR_ARCHITECTURE
+    $script:OriginalExpandWindowsTarArchive = (Get-Command Expand-WindowsTarArchive).ScriptBlock
 }
 
 function TestTeardown {
@@ -11,6 +12,7 @@ function TestTeardown {
         Clear-CommandMock $command
     }
     $env:PROCESSOR_ARCHITECTURE = $script:OriginalArchitecture
+    Set-FunctionMock 'Expand-WindowsTarArchive' $script:OriginalExpandWindowsTarArchive
     Clear-TestEnv
 }
 
@@ -201,9 +203,9 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         param($Uri, $OutFile)
         [IO.File]::WriteAllText($OutFile, $archiveText)
     }
-    Set-CommandMock 'tar' {
-        $destination = $args[[Array]::IndexOf($args, '-C') + 1]
-        $nativeDir = Join-Path $destination 'build\Release'
+    Set-FunctionMock 'Expand-WindowsTarArchive' {
+        param($Archive, $Destination)
+        $nativeDir = Join-Path $Destination 'build\Release'
         New-Item -ItemType Directory -Force -Path $nativeDir | Out-Null
         'native' | Set-Content -LiteralPath (Join-Path $nativeDir 'better_sqlite3.node') -Encoding ascii
         $global:LASTEXITCODE = 0

@@ -93,9 +93,9 @@ if vim.env.RAW_CONFIG_PARSE_ONLY == "1" then
   return
 end
 require("lazy").load({ plugins = { "nvim-lspconfig" } })
-for _, server in ipairs({ "bashls", "jsonls", "lua_ls", "marksman", "nil_ls", "taplo", "yamlls" }) do
-  assert(vim.lsp.is_enabled(server), server .. " should be enabled")
-end
+local servers = { "bashls", "jsonls", "lua_ls", "marksman", "taplo", "yamlls" }
+if vim.fn.executable("nil") == 1 then servers[#servers + 1] = "nil_ls" end
+for _, server in ipairs(servers) do assert(vim.lsp.is_enabled(server), server .. " should be enabled") end
 assert(not vim.lsp.is_enabled("stylua"), "StyLua formatter must not enable as LSP")
 local which_key_opts = lazy.plugins["which-key.nvim"].opts
 local which_key_groups = {}

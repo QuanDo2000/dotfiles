@@ -47,6 +47,7 @@
           jq
           neovim
           nodejs
+          pi-agent
           python3
           shellcheck
           tmux
