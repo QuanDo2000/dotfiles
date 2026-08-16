@@ -1100,6 +1100,11 @@ function test_getpinnedpiversion_rejects_invalid_json {
     Assert-Throws { Get-PinnedPiVersion } 'invalid JSON lock must fail closed'
 }
 
+function test_dotfile_script_is_ascii_for_windows_powershell {
+    $nonAscii = @([IO.File]::ReadAllBytes($script:DotfileScript) | Where-Object { $_ -gt 127 })
+    Assert-Equals 0 $nonAscii.Count 'Windows PowerShell 5.1 reads UTF-8 without BOM as ANSI'
+}
+
 function test_getpinnedpiversion_runs_in_windows_powershell {
     $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
     if (-not $windowsPowerShell) { Skip-Test 'Windows PowerShell unavailable'; return }

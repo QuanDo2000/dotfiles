@@ -24,7 +24,7 @@ function Resolve-DotfilesDir($Override, $ScriptPath) {
 }
 
 # Global variables.
-# Don't re-initialise $script:Dry/Quiet/Force here — at a script's top level,
+# Don't re-initialise $script:Dry/Quiet/Force here - at a script's top level,
 # `$script:X` is the same variable as the param `$X`, so re-assigning would
 # clobber values the binder just set from `-d`/`-f`/`-q` flags. Switch params
 # already default to $false, which is all the reset was ever providing.
@@ -341,7 +341,7 @@ function InstallFnm {
         Refresh-ProcessPath
     }
     if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
-        FailSoft "fnm not found on PATH. Skipping Node.js LTS install — open a new shell and re-run 'dotfile.ps1'."
+        FailSoft "fnm not found on PATH. Skipping Node.js LTS install - open a new shell and re-run 'dotfile.ps1'."
         return
     }
 
@@ -1007,7 +1007,7 @@ function Remove-CodebaseMemoryPiSkill($Path) {
     if (-not (Test-Path -LiteralPath $skill -PathType Leaf)) { return }
     $content = Get-Content -Raw -LiteralPath $skill
     if ($content.Contains('name: codebase-memory') -and
-        $content.Contains('# Codebase Memory — Knowledge Graph Tools') -and
+        $content.Contains(('# Codebase Memory {0} Knowledge Graph Tools' -f [char]0x2014)) -and
         $content.Contains('## 15 MCP Tools')) {
         Remove-Item -LiteralPath $Path -Recurse -Force
     }
@@ -1408,7 +1408,7 @@ function Get-WindowsLinkSpecs {
     # Use $env:USERPROFILE rather than $HOME so test fixtures can override the
     # home directory by setting the env var. PowerShell's $HOME automatic
     # variable is read-only and frozen at session start, so $HOME would always
-    # resolve to the real home — leaking test artifacts into ~/Documents etc.
+    # resolve to the real home - leaking test artifacts into ~/Documents etc.
     $userHome = $env:USERPROFILE
     $specs = @()
 
@@ -1458,7 +1458,7 @@ function Get-WindowsLinkSpecs {
     # Jujutsu config (lives at %APPDATA%\jj\config.toml on Windows)
     $specs += New-LinkSpec 'Dir' (Join-Path $sharedPath "config\jj") "$env:APPDATA\jj"
 
-    # starship prompt config — shared with zsh, read from ~/.config/starship.toml.
+    # starship prompt config - shared with zsh, read from ~/.config/starship.toml.
     $specs += New-LinkSpec 'File' (Join-Path $sharedPath "config\starship.toml") (Join-Path $userHome ".config\starship.toml")
 
     # Link the repo-root dotfile.ps1 entry point into a user PATH directory.
