@@ -13,6 +13,7 @@ function TestSetup {
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.
     $script:Quiet = $false
+    $script:OriginalGetInstalledWingetPackages = (Get-Command Get-InstalledWingetPackages).ScriptBlock
     Set-HealthyToolMocks
     Set-FunctionMock 'Get-InstalledWingetPackages' { @() }
 }
@@ -25,6 +26,7 @@ function Set-HealthyToolMocks {
 function TestTeardown {
     Clear-CommandMock 'Get-Command'
     Clear-CommandMock 'Get-Module'
+    Set-FunctionMock 'Get-InstalledWingetPackages' $script:OriginalGetInstalledWingetPackages
     Clear-TestEnv
 }
 
@@ -113,7 +115,10 @@ function test_verify_rejects_codex_config_symlink {
     try {
         New-Item -ItemType SymbolicLink -Path $target -Target $source -ErrorAction Stop | Out-Null
     } catch {
-        if ($_.Exception.Message -match 'privilege|Administrator') { return }
+        if ($_.Exception.Message -match 'privilege|Administrator') {
+            Skip-Test 'symlink privilege unavailable'
+            return
+        }
         throw
     }
 

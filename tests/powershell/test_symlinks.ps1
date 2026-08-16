@@ -176,6 +176,7 @@ function test_migrate_windows_nvim_config_replaces_legacy_directory_link {
     try {
         New-Item -ItemType SymbolicLink -Path $destination -Target $legacySource | Out-Null
     } catch {
+        Skip-Test 'symlink privilege unavailable'
         return
     }
 
@@ -205,7 +206,10 @@ function test_linkpath_file_creates_missing_parent_directory {
     try {
         LinkPath $src $dst
     } catch {
-        if ($_.Exception.Message -match 'privilege|Administrator') { return }
+        if ($_.Exception.Message -match 'privilege|Administrator') {
+            Skip-Test 'symlink privilege unavailable'
+            return
+        }
         throw
     }
 
@@ -240,7 +244,8 @@ function test_linkpath_skips_when_already_linked {
     try {
         New-Item -ItemType SymbolicLink -Path $dst -Target $src | Out-Null
     } catch {
-        return  # no symlink privilege; skip
+        Skip-Test 'symlink privilege unavailable'
+        return
     }
 
     # Re-linking should be a no-op — existing link's Target matches source.

@@ -5,6 +5,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 setup() {
   TEST_HOME="$(mktemp -d)"
   export HOME="$TEST_HOME"
+  unset DOTFILES_DIR
   export DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME=true
 }
 
@@ -58,9 +59,9 @@ test_zsh_vi_insert_mode_can_delete_pasted_text() {
 }
 
 test_help_exits_zero() {
-  local output
-  output=$(bash "$DOTFILE_CMD" -h 2>&1)
-  assert_exit_code 0 bash "$DOTFILE_CMD" -h
+  local output status=0
+  output=$(bash "$DOTFILE_CMD" -h 2>&1) || status=$?
+  assert_equals 0 "$status"
   assert_contains "$output" "Usage"
   assert_contains "$output" "Commands"
   assert_contains "$output" "Options"
@@ -462,19 +463,28 @@ test_leaf_commands_reject_extra_arguments() {
 }
 
 test_pending_dependency_marker_blocks_all_and_packages() {
-  local repo="$TEST_HOME/pending-repo"
-  cp -a "$REPO_DIR/." "$repo"
-  rm -rf "$repo/.git"
-  git -C "$repo" init -q
-  git -C "$repo" config user.email test@example.com
-  git -C "$repo" config user.name test
-  git -C "$repo" add -A && git -C "$repo" commit -qm baseline
+  local repo="$TEST_HOME/pending-repo" bin="$TEST_HOME/bin-pending"
+  mkdir -p "$repo"
+  git -C "$REPO_DIR" ls-files -z |
+    while IFS= read -r -d '' file; do
+      if [[ -e "$REPO_DIR/$file" || -L "$REPO_DIR/$file" ]]; then printf '%s\0' "$file"; fi
+    done |
+    tar -C "$REPO_DIR" --null -T - -cf - | tar -C "$repo" -xf -
+  mkdir -p "$repo/.git" "$bin"
+  cat > "$bin/git" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+  *'rev-parse --is-inside-work-tree'*) printf 'true\n' ;;
+  *'rev-parse --absolute-git-dir'*) printf '%s/.git\n' "$2" ;;
+  *'status --porcelain'*) printf ' M pending.txt\n' ;;
+esac
+EOF
+  chmod +x "$bin/git"
   printf pending > "$repo/.git/dotfile-dependency-update"
-  printf dirty > "$repo/pending.txt"
   local command output status
   for command in all packages; do
     status=0
-    output="$(DOTFILES_DIR="$repo" bash "$repo/dotfile" "$command" 2>&1)" || status=$?
+    output="$(DOTFILES_DIR="$repo" PATH="$bin:$PATH" bash "$repo/dotfile" "$command" 2>&1)" || status=$?
     assert_equals "1" "$status"
     assert_contains "$output" "Pending dependency update"
     assert_not_contains "$output" "Installing packages"

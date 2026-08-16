@@ -14,11 +14,22 @@ $TestFiles = @($args)
 $Total = 0
 $Passed = 0
 $Failed = 0
+$Skipped = 0
 
 function Run-TestFile($file) {
     Write-Host "--- $(Split-Path $file -Leaf) ---"
 
-    . $file
+    try {
+        . $file
+    } catch {
+        $script:Total++
+        $script:Failed++
+        Write-Host "  LOAD FAILED  $(Split-Path $file -Leaf): $($_.Exception.Message)" -ForegroundColor Red
+        Get-Command -CommandType Function -Name 'test_*' -ErrorAction SilentlyContinue |
+            ForEach-Object { Remove-Item "function:$($_.Name)" -ErrorAction SilentlyContinue }
+        Remove-Item 'function:\TestSetup', 'function:\TestTeardown' -ErrorAction SilentlyContinue
+        return
+    }
 
     $tests = Get-Command -CommandType Function -Name 'test_*' -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty Name
@@ -34,6 +45,7 @@ function Run-TestFile($file) {
     foreach ($t in $tests) {
         $script:Total++
         $script:Errors = [System.Collections.Generic.List[string]]::new()
+        $script:CurrentTestSkipped = $null
         Reset-DotfileState
 
         $caught = $null
@@ -53,6 +65,9 @@ function Run-TestFile($file) {
             Write-Host "  FAIL  $t" -ForegroundColor Red
             if ($caught) { Write-Host "    (exception: $($caught.Exception.Message))" }
             foreach ($e in $script:Errors) { Write-Host $e }
+        } elseif ($script:CurrentTestSkipped) {
+            $script:Skipped++
+            Write-Host "  SKIP  ${t}: $script:CurrentTestSkipped" -ForegroundColor Yellow
         } else {
             $script:Passed++
             Write-Host "  PASS  $t" -ForegroundColor Green
@@ -85,6 +100,6 @@ if (-not $files) {
 foreach ($f in $files) { Run-TestFile $f }
 
 Write-Host ""
-Write-Host "=== Results: $Passed passed, $Failed failed, $Total total ==="
+Write-Host "=== Results: $Passed passed, $Failed failed, $Skipped skipped, $Total total ==="
 if ($Failed -gt 0) { exit 1 }
 exit 0

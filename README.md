@@ -201,8 +201,10 @@ nix develop path:. -c bash tests/bash/runner.sh
 nix develop path:. -c bash tests/bash/runner.sh test_utils.sh
 ```
 
-PowerShell tests (Windows):
+PowerShell tests and Windows integrations require PowerShell, Node.js, and Neovim:
 
 ```powershell
 ./tests/powershell/runner.ps1
+./tests/powershell/integration_pi_extensions.ps1
+./tests/powershell/integration_neovim.ps1
 ```

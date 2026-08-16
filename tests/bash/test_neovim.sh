@@ -203,22 +203,46 @@ test_fff_nvim_uses_hash_pinned_nix_backend() {
   assert_not_contains "$config" 'cargo build'
 }
 
+_raw_neovim_cache_lock() {
+  local lock="$1" attempts=0
+  mkdir -p "$(dirname "$lock")"
+  until mkdir "$lock" 2>/dev/null; do
+    attempts=$((attempts + 1))
+    (( attempts < 200 )) || return 1
+    sleep 0.05
+  done
+}
+
 _raw_neovim_cache_write() {
-  local source="$1" cache="$2" marker="$3" tmp
+  local source="$1" cache="$2" marker="$3" tmp lock rc=0
   tmp="${cache}.tmp.$$"
-  rm -rf "$tmp" "$cache" "$marker" "$marker.tmp.$$"
-  mkdir -p "$(dirname "$cache")" "$tmp"
-  cp -R "$source/." "$tmp/"
-  mv "$tmp" "$cache"
-  : > "$marker.tmp.$$"
-  mv "$marker.tmp.$$" "$marker"
+  lock="${marker%/*}/.lock"
+  _raw_neovim_cache_lock "$lock" || return 1
+  if rm -rf "$tmp" "$cache" "$marker" "$marker.tmp.$$" \
+    && mkdir -p "$(dirname "$cache")" "$tmp" \
+    && cp -R "$source/." "$tmp/" \
+    && mv "$tmp" "$cache" \
+    && : > "$marker.tmp.$$" \
+    && mv "$marker.tmp.$$" "$marker"; then
+    rc=0
+  else
+    rc=$?
+  fi
+  rmdir "$lock" || return 1
+  return "$rc"
 }
 
 _raw_neovim_cache_read() {
-  local cache="$1" marker="$2" target="$3"
-  [[ -f "$marker" && -d "$cache" ]] || return 1
-  mkdir -p "$target"
-  cp -R "$cache/." "$target/"
+  local cache="$1" marker="$2" target="$3" lock rc=0
+  lock="${marker%/*}/.lock"
+  _raw_neovim_cache_lock "$lock" || return 1
+  if [[ -f "$marker" && -d "$cache" ]] && mkdir -p "$target" && cp -R "$cache/." "$target/"; then
+    rc=0
+  else
+    rc=1
+  fi
+  rmdir "$lock" || return 1
+  return "$rc"
 }
 
 _raw_neovim_cache_seed() {
@@ -241,6 +265,22 @@ test_raw_neovim_cache_reuses_previous_lock() {
   assert_exit_code 0 _raw_neovim_cache_seed "$root" new "$target"
   assert_equals cached "$(<"$target/sample.nvim/state")"
   DOTFILE_NEOVIM_TEST_FRESH=true assert_exit_code 1 _raw_neovim_cache_seed "$root" new "$target"
+}
+
+test_raw_neovim_cache_serializes_publication() {
+  local root="$TEST_TMPDIR/cache" source="$TEST_TMPDIR/source" pid
+  mkdir -p "$root/new/.lock" "$source/sample.nvim"
+  printf 'cached\n' > "$source/sample.nvim/state"
+
+  _raw_neovim_cache_write "$source" "$root/new/plugins" "$root/new/complete" &
+  pid=$!
+  sleep 0.1
+  if [[ -e "$root/new/complete" ]]; then
+    printf '  cache published while lock was held\n' >> "$ERROR_FILE"
+  fi
+  rmdir "$root/new/.lock"
+  wait "$pid"
+  assert_file_exists "$root/new/complete"
 }
 
 test_raw_neovim_headless_config() {
@@ -271,7 +311,7 @@ test_raw_neovim_headless_config() {
       -c "lua require('fff'); print('FFF_REQUIRE_OK')" +qa 2>&1)"
   status=$?
   set -e
-  if [[ "$status" -eq 0 && "$output" == *"RAW_PLUGIN_SYNC_OK"* && "$output" == *"FFF_REQUIRE_OK"* \
+  if [[ "$status" -eq 0 && "$output" == *"RAW_PLUGIN_SYNC_OK"* && "$output" == *"RAW_CONFIG_OK"* && "$output" == *"FFF_REQUIRE_OK"* \
     && ! -f "$marker" && "${DOTFILE_NEOVIM_TEST_FRESH:-false}" != true ]]; then
     _raw_neovim_cache_write "$lazy_dir" "$cached_plugins" "$marker"
   fi

@@ -20,7 +20,10 @@ function Try-Skip-If-No-Symlink-Privilege {
         Remove-Item -LiteralPath $probeDst -Force
         return $false
     } catch {
-        if (Test-SymlinkPrivilegeError $_.Exception) { return $true }
+        if (Test-SymlinkPrivilegeError $_.Exception) {
+            Skip-Test 'symlink privilege unavailable'
+            return $true
+        }
         throw
     }
 }

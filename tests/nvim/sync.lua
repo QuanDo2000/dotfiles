@@ -129,4 +129,5 @@ refresh_ok = false
 ok, err = pcall(sync.tools)
 assert(not ok and tostring(err):find("registry refresh failed", 1, true), "registry failure must be clear")
 vim.fn.executable, vim.fn.has = executable, has
+vim.fn.delete(lockfile)
 print("NVIM_SYNC_OK")

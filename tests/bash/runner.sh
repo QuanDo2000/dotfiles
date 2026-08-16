@@ -7,18 +7,8 @@ export MSYS=winsymlinks:nativestrict
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-
-# ---------------------------------------------------------------------------
-# Argument parsing
-# ---------------------------------------------------------------------------
-TEST_FILES=()
-
-for arg in "$@"; do
-    case "$arg" in
-        --docker|--no-docker) : ;; # retained as harmless compatibility flags
-        *)                    TEST_FILES+=("$arg") ;;
-    esac
-done
+TEST_FILES=("$@")
+cd "$REPO_DIR"
 
 # ---------------------------------------------------------------------------
 # Test framework — assertions
@@ -111,17 +101,35 @@ run_test_file() {
         ERROR_FILE="$(mktemp)"
         export ERROR_FILE
 
-        # Run in subshell with errexit disabled so assertions don't abort early.
-        # Assertions communicate failures via ERROR_FILE, not exit codes.
+        # Assertions record failures without returning nonzero. Run test and
+        # teardown in nested shells so errexit catches unhandled commands while
+        # teardown still runs after a test failure.
         local exit_code=0
+        set +e
         (
-            set +e
-            if $has_setup; then setup; fi
-            "$t"
-            _rc=$?
-            if $has_teardown; then teardown; fi
-            exit "$_rc"
-        ) || exit_code=$?
+            local setup_rc=0 setup_last_rc=0 test_rc=0 teardown_rc=0
+            if $has_setup; then
+                set -E
+                trap 'setup_rc=$?' ERR
+                setup
+                setup_last_rc=$?
+                trap - ERR
+                (( setup_rc == 0 )) && setup_rc=$setup_last_rc
+            fi
+            if (( setup_rc == 0 )); then
+                (set -e; "$t")
+                test_rc=$?
+            fi
+            if $has_teardown; then
+                (set -e; teardown)
+                teardown_rc=$?
+            fi
+            (( setup_rc != 0 )) && exit "$setup_rc"
+            (( test_rc != 0 )) && exit "$test_rc"
+            exit "$teardown_rc"
+        )
+        exit_code=$?
+        set -e
 
         # Evaluate results
         local errors=""

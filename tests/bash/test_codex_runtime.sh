@@ -261,10 +261,12 @@ test_update_packages_cleans_codex_runtime_when_version_changes() {
     MOCK_CODEX_VERSION="codex-cli 0.144.1"
   }
 
-  OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
+  local status=0
+  OS_RELEASE="$osrel" update_packages >/dev/null 2>&1 || status=$?
 
   local output
   output="$(<"$calls")"
+  assert_equals 0 "$status"
   assert_contains "$output" "home-manager-switch"
   assert_contains "$output" "codex-stop"
   assert_contains "$output" "$HOME/.codex/models_cache.json"
@@ -286,10 +288,12 @@ test_update_packages_skips_codex_runtime_cleanup_when_version_is_same() {
     printf 'home-manager-switch\n' >> "$calls"
   }
 
-  OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
+  local status=0
+  OS_RELEASE="$osrel" update_packages >/dev/null 2>&1 || status=$?
 
   local output
   output="$(<"$calls")"
+  assert_equals 0 "$status"
   assert_contains "$output" "nix flake update --flake"
   assert_contains "$output" "home-manager-switch"
   assert_not_contains "$output" "codex-stop"
@@ -313,10 +317,12 @@ test_update_packages_cleans_codex_runtime_when_model_cache_is_stale() {
     printf 'home-manager-switch\n' >> "$calls"
   }
 
-  OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
+  local status=0
+  OS_RELEASE="$osrel" update_packages >/dev/null 2>&1 || status=$?
 
   local output
   output="$(<"$calls")"
+  assert_equals 0 "$status"
   assert_contains "$output" "home-manager-switch"
   assert_contains "$output" "codex-stop"
   assert_contains "$output" "$HOME/.codex/models_cache.json"

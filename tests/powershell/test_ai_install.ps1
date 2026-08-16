@@ -141,7 +141,7 @@ function test_codebasememory_archive_rejects_unexpected_members {
 
 function test_codebasememory_expands_locked_zip_in_windows_powershell {
     $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
-    if (-not $windowsPowerShell) { return }
+    if (-not $windowsPowerShell) { Skip-Test 'Windows PowerShell unavailable'; return }
 
     $source = Join-Path $script:_TestTmp.FullName 'codebase-zip-source'
     $archive = Join-Path $script:_TestTmp.FullName 'codebase-package.zip'
@@ -704,7 +704,7 @@ function test_removecodebasememorypiadapter_preserves_user_owned_extension {
 }
 
 function test_repaircodebasememoryconfigdatabase_elevates_acl_repair {
-    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { return }
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { Skip-Test 'Windows-only ACL repair'; return }
 
     $database = "$env:USERPROFILE/.cache/codebase-memory-mcp/_config.db"
     $normalizedDatabase = [IO.Path]::GetFullPath($database)
@@ -765,7 +765,7 @@ function test_installcodebasememory_keeps_published_executable_used_by_agent_con
     InstallCodebaseMemory 6>&1 | Out-Null
 
     Assert-FileExists $legacy
-    Assert-FileExists $release
+    Assert-DirectoryExists $release
 }
 
 function test_installcodebasememory_does_not_activate_when_agent_configuration_fails {
@@ -846,7 +846,7 @@ function test_installcodebasememory_stages_verified_ui_archive_and_configures_di
 
     $release = Join-Path $env:LOCALAPPDATA "Programs\codebase-memory-mcp\releases\1.2.3-windows-amd64-$($archiveHash.Substring(0, 12))"
     $executable = Join-Path $release 'codebase-memory-mcp.exe'
-    Assert-FileExists $release
+    Assert-DirectoryExists $release
     Assert-Equals $release $script:ActivatedCodebaseMemoryDir
     $calls = $script:CodebaseMemoryCalls -join "`n"
     Assert-Contains $calls 'download:https://github.com/DeusData/codebase-memory-mcp/releases/download/v1.2.3/codebase-memory-mcp-windows-amd64.zip'
@@ -881,8 +881,9 @@ function test_installcodebasememory_rejects_checksum_mismatch_before_extraction 
 
 function test_codex_tar_extracts_locked_archive_in_windows_powershell {
     $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if (-not $windowsPowerShell -or -not $env:SystemRoot) { Skip-Test 'Windows PowerShell unavailable'; return }
     $tarCommand = Join-Path $env:SystemRoot 'System32\tar.exe'
-    if (-not $windowsPowerShell -or -not (Test-Path -LiteralPath $tarCommand -PathType Leaf)) { return }
+    if (-not (Test-Path -LiteralPath $tarCommand -PathType Leaf)) { Skip-Test 'Windows tar unavailable'; return }
 
     $source = Join-Path $script:_TestTmp.FullName 'codex-package-source'
     $archive = Join-Path $script:_TestTmp.FullName 'codex-package.tar.gz'
@@ -1005,7 +1006,7 @@ function test_installcodex_stages_verified_package_before_activation {
     InstallCodex 6>&1 | Out-Null
 
     $release = Join-Path $env:CODEX_HOME "packages\standalone\releases\1.2.3-x86_64-pc-windows-msvc-$($archiveHash.Substring(0, 12))"
-    Assert-FileExists $release
+    Assert-DirectoryExists $release
     Assert-Equals (Join-Path $release 'bin') $script:ActivatedCodexBin
     Assert-Contains ($script:CodexCalls -join "`n") 'download:https://github.com/openai/codex/releases/download/rust-v1.2.3/codex-package-x86_64-pc-windows-msvc.tar.gz'
     $finalVerification = [Array]::IndexOf($script:CodexCalls, "verify:$release")
@@ -1101,7 +1102,7 @@ function test_getpinnedpiversion_rejects_invalid_json {
 
 function test_getpinnedpiversion_runs_in_windows_powershell {
     $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
-    if (-not $windowsPowerShell) { return }
+    if (-not $windowsPowerShell) { Skip-Test 'Windows PowerShell unavailable'; return }
     $escapedScript = $script:DotfileScript.Replace("'", "''")
     $probe = ". '$escapedScript' -NoMain; if ((Get-PinnedPiVersion) -notmatch '^\d+\.\d+\.\d+') { exit 1 }"
 

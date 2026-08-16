@@ -6,12 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   bash-macos:
     runs-on: macos-26
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -21,11 +26,15 @@ jobs:
         shell: bash
         run: nix develop . -c bash ./tests/bash/runner.sh
 
-      - name: Build native extension packages
-        run: nix build .#fff-nvim-backend .#pi-extensions --no-link
+      - name: Evaluate nix-darwin configuration
+        run: nix eval --raw .#darwinConfigurations.mac.system.drvPath
+
+      - name: Build custom packages
+        run: nix build .#codex .#codebase-memory-mcp .#fff-mcp .#fff-nvim-backend .#pi-extensions --no-link
 
   powershell:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -57,16 +66,26 @@ jobs:
 
   nix:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Run ShellCheck
+        run: nix develop . -c shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh
 
       - name: Run bash tests
         run: nix develop . -c bash ./tests/bash/runner.sh
 
       - name: Run flake check
         run: nix flake check --no-build --all-systems
+
+      - name: Evaluate Home Manager configurations
+        run: |
+          username=$(nix eval --raw --file config/host.nix username)
+          nix eval --raw ".#homeConfigurations.\"$username@linux\".activationPackage.drvPath"
+          nix eval --raw ".#homeConfigurations.\"$username@arch-server\".activationPackage.drvPath"
 
       - name: Build custom packages
         run: nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions .#fff-mcp .#fff-nvim-backend .#codebase-memory-mcp --no-link

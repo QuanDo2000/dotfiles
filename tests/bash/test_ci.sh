@@ -39,7 +39,10 @@ test_ci_runs_direct_nix_checks() {
   assert_not_contains "$workflow" "run: ./scripts/check.sh"
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
   assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions .#fff-mcp .#fff-nvim-backend .#codebase-memory-mcp --no-link'
-  assert_contains "$workflow" 'nix build .#fff-nvim-backend .#pi-extensions --no-link'
+  assert_contains "$workflow" 'nix build .#codex .#codebase-memory-mcp .#fff-mcp .#fff-nvim-backend .#pi-extensions --no-link'
+  assert_contains "$workflow" 'darwinConfigurations.mac.system.drvPath'
+  assert_contains "$workflow" 'homeConfigurations.\"$username@linux\".activationPackage.drvPath'
+  assert_contains "$workflow" 'homeConfigurations.\"$username@arch-server\".activationPackage.drvPath'
   assert_contains "$check" '"$flake#fff-nvim-backend"'
 }
 
@@ -75,19 +78,20 @@ test_ci_pins_current_actions() {
 }
 
 test_ci_checker_jobs_provision_dependencies() {
-  local lint prefix workflows="" workflow
-  lint="$(<"$REPO_DIR/.github/workflows/lint.yml")"
+  local workflow
+  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
-  shopt -s nullglob
-  for workflow in "$REPO_DIR"/.github/workflows/*.{yml,yaml}; do
-    workflows+="$(<"$workflow")"$'\n'
-  done
-  shopt -u nullglob
-
-  assert_not_contains "${workflows,,}" "cspell"
-  assert_not_contains "${workflows,,}" "codespell"
-  assert_contains "$lint" "nix develop . -c shellcheck"
-  prefix="${lint%%nix develop . -c shellcheck*}"
-  assert_contains "$prefix" "DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25"
+  assert_not_contains "${workflow,,}" "cspell"
+  assert_not_contains "${workflow,,}" "codespell"
+  assert_contains "$workflow" "nix develop . -c shellcheck"
+  assert_not_contains "$(find "$REPO_DIR/.github/workflows" -maxdepth 1 -type f -name 'lint.*' -print)" 'lint.'
   assert_contains "$(<"$REPO_DIR/flake.nix")" "shellcheck"
+}
+
+test_ci_cancels_superseded_runs_and_bounds_jobs() {
+  local workflow
+  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+
+  assert_contains "$workflow" 'cancel-in-progress: true'
+  assert_equals 3 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
 }

@@ -23,6 +23,9 @@ test_check_script_runs_repo_verification() {
   assert_contains "$check_text" 'run pwsh "$repo_dir/tests/powershell/runner.ps1"'
   assert_contains "$check_text" 'command -v pwsh'
   assert_contains "$check_text" 'nix flake check "$flake" --no-build --all-systems'
+  assert_contains "$check_text" 'darwinConfigurations.mac.system.drvPath'
+  assert_contains "$check_text" 'homeConfigurations.\"$username@linux\".activationPackage.drvPath'
+  assert_contains "$check_text" 'homeConfigurations.\"$username@arch-server\".activationPackage.drvPath'
   assert_contains "$check_text" 'flake="path:$repo_dir"'
   assert_contains "$check_text" '"$flake#obsidian-headless"'
   assert_contains "$check_text" '"$flake#pi-agent"'
@@ -47,19 +50,39 @@ test_bash_runner_defaults_to_nix_environment() {
   runner_text="$(<"$REPO_DIR/tests/bash/runner.sh")"
   assert_not_contains "$runner_text" 'docker build'
   assert_not_contains "$runner_text" 'Docker orchestration'
-}
-
-test_bash_runner_has_no_docker_path() {
-  local runner_text
-  runner_text="$(<"$REPO_DIR/tests/bash/runner.sh")"
-
-  assert_not_contains "$runner_text" "docker build"
+  assert_not_contains "$runner_text" '--no-docker'
 }
 
 test_bash_runner_accepts_multiple_test_files() {
-  local output
-  output="$(bash "$REPO_DIR/tests/bash/runner.sh" --no-docker test_utils.sh test_platform.sh 2>&1)"
+  local fixtures="$TEST_TMPDIR/fixtures" output
+  mkdir -p "$fixtures"
+  printf 'test_one() { :; }\n' > "$fixtures/test_one.sh"
+  printf 'test_two() { :; }\n' > "$fixtures/test_two.sh"
 
-  assert_contains "$output" "--- test_utils.sh ---"
-  assert_contains "$output" "--- test_platform.sh ---"
+  output="$(bash "$REPO_DIR/tests/bash/runner.sh" "$fixtures/test_one.sh" "$fixtures/test_two.sh" 2>&1)"
+
+  assert_contains "$output" "--- test_one.sh ---"
+  assert_contains "$output" "--- test_two.sh ---"
+}
+
+test_bash_runner_fails_setup_and_teardown_errors() {
+  local fixtures="$TEST_TMPDIR/fixtures" output status=0
+  mkdir -p "$fixtures"
+  printf 'setup() { false; :; }\nteardown() { :; }\ntest_body() { :; }\n' > "$fixtures/test_setup.sh"
+  output="$(bash "$REPO_DIR/tests/bash/runner.sh" "$fixtures/test_setup.sh" 2>&1)" || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'FAIL  test_body'
+
+  status=0
+  printf 'teardown() { return 43; }\ntest_body() { :; }\n' > "$fixtures/test_teardown.sh"
+  output="$(bash "$REPO_DIR/tests/bash/runner.sh" "$fixtures/test_teardown.sh" 2>&1)" || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'FAIL  test_body'
+}
+
+test_bash_runner_uses_repo_working_directory() {
+  local output status=0
+  output="$(cd / && bash "$REPO_DIR/tests/bash/runner.sh" test_caveman_default.sh 2>&1)" || status=$?
+  assert_equals 0 "$status"
+  assert_contains "$output" '0 failed'
 }

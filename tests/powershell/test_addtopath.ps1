@@ -24,7 +24,7 @@ function test_addtouserpath_already_present_does_not_duplicate_process_path {
     # branch without having to write to the user registry.
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $existing = @($userPath -split ';' | Where-Object { $_ })[0]
-    if (-not $existing) { return }
+    if (-not $existing) { Skip-Test 'user PATH has no entries'; return }
     if (-not (($env:Path -split ';') -contains $existing)) {
         $env:Path = "$env:Path;$existing"
     }

@@ -65,7 +65,7 @@ Tests live under `tests/` with one suite per platform.
 
 ```bash
 nix develop path:. -c bash tests/bash/runner.sh  # all bash tests in pinned environment
-bash tests/bash/runner.sh --no-docker             # direct host run when tools are available
+bash tests/bash/runner.sh                         # direct host run when tools are available
 bash tests/bash/runner.sh test_platform_packages.sh # single file
 pwsh tests/powershell/runner.ps1           # PowerShell tests (Windows / pwsh)
 ./scripts/check.sh                         # local full check: bash, pwsh if present, Nix flake, ShellCheck via Nix

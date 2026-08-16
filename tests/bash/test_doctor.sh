@@ -62,28 +62,6 @@ link_valid_core_dotfiles() {
   chmod +x "$HOME/.local/bin/fff-mcp-agent"
 }
 
-test_doctor_symlink_valid() {
-  mkdir -p "$DOTFILES_DIR"
-  echo "content" > "$DOTFILES_DIR/.zshrc"
-  ln -s "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
-
-  if [[ ! -L "$HOME/.zshrc" ]]; then
-    echo "  Expected $HOME/.zshrc to be a symlink" >> "$ERROR_FILE"
-    return
-  fi
-  local link_target
-  link_target="$(readlink "$HOME/.zshrc")"
-  assert_contains "$link_target" "$DOTFILES_DIR"
-}
-
-test_doctor_file_not_symlink() {
-  echo "not a symlink" > "$HOME/.zshrc"
-  if [[ -L "$HOME/.zshrc" ]]; then
-    echo "  File should be regular, not a symlink" >> "$ERROR_FILE"
-  fi
-  assert_file_exists "$HOME/.zshrc"
-}
-
 test_doctor_recovers_interrupted_release_transaction() {
   mkdir -p "$DOTFILES_DIR/packages/.pi-update.transaction"
   printf 'new package\n' > "$DOTFILES_DIR/packages/pi-agent.nix"

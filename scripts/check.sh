@@ -21,6 +21,13 @@ if command -v pwsh >/dev/null 2>&1; then
 fi
 
 run nix flake check "$flake" --no-build --all-systems
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  run nix eval --raw "$flake#darwinConfigurations.mac.system.drvPath"
+else
+  username="$(nix eval --raw --file "$repo_dir/config/host.nix" username)"
+  run nix eval --raw "$flake#homeConfigurations.\"$username@linux\".activationPackage.drvPath"
+  run nix eval --raw "$flake#homeConfigurations.\"$username@arch-server\".activationPackage.drvPath"
+fi
 packages=(
   "$flake#codex"
   "$flake#pi-extensions"

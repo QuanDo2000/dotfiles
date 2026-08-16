@@ -36,6 +36,7 @@ assert math.isinf(value['ratio']) and value['ratio'] > 0
 assert math.isinf(value['negative']) and value['negative'] < 0
 assert math.isnan(value['unknown'])
 PY
+  rm -rf "$tmp"
 }
 
 test_codex_seed_merge_engine_applies_live_only_nested_toml() {

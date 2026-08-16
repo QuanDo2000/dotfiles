@@ -2,7 +2,7 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
-test_caveman_extension_injects_full_mode_by_default() {
+test_caveman_extension_modes() {
   local skill status=0
   skill="$(mktemp)"
   cat > "$skill" <<'EOF'
@@ -18,106 +18,49 @@ EOF
   CAVEMAN_SKILL_PATH="$skill" node - <<'NODE' || status=$?
 const assert = require("node:assert/strict");
 const caveman = require("./config/shared/ai/pi/caveman-default.js");
-const handlers = {};
 
-caveman({
-  appendEntry() {},
-  on(name, handler) { handlers[name] = handler; },
-  registerCommand() {},
-});
+function load() {
+  const commands = {};
+  const handlers = {};
+  const entries = [];
+  caveman({
+    appendEntry(customType, data) { entries.push({ type: "custom", customType, data }); },
+    on(name, handler) { handlers[name] = handler; },
+    registerCommand(name, command) { commands[name] = command; },
+  });
+  return { commands, handlers, entries };
+}
 
-const result = handlers.before_agent_start({ systemPrompt: "BASE" });
+let extension = load();
+let result = extension.handlers.before_agent_start({ systemPrompt: "BASE" });
 assert.match(result.systemPrompt, /^BASE\n\nCAVEMAN MODE ACTIVE — level: full/);
 assert.match(result.systemPrompt, /Keep all technical substance\./);
 assert.doesNotMatch(result.systemPrompt, /name: caveman/);
-NODE
 
-  assert_equals 0 "$status"
-  rm -f "$skill"
-}
-
-test_caveman_extension_honors_session_disable() {
-  local skill status=0
-  skill="$(mktemp)"
-  printf '%s\n' '# Caveman' 'Stay terse.' > "$skill"
-
-  CAVEMAN_SKILL_PATH="$skill" node - <<'NODE' || status=$?
-const assert = require("node:assert/strict");
-const caveman = require("./config/shared/ai/pi/caveman-default.js");
-const handlers = {};
-const entries = [];
-
-caveman({
-  appendEntry(customType, data) { entries.push({ type: "custom", customType, data }); },
-  on(name, handler) { handlers[name] = handler; },
-  registerCommand() {},
-});
-
-handlers.input({ text: "stop caveman", source: "interactive" });
-assert.equal(handlers.before_agent_start({ systemPrompt: "BASE" }), undefined);
-assert.deepEqual(entries.at(-1), {
+extension = load();
+extension.handlers.input({ text: "stop caveman", source: "interactive" });
+assert.equal(extension.handlers.before_agent_start({ systemPrompt: "BASE" }), undefined);
+assert.deepEqual(extension.entries.at(-1), {
   type: "custom",
   customType: "caveman-mode",
   data: { mode: "off" },
 });
-NODE
 
-  assert_equals 0 "$status"
-  rm -f "$skill"
-}
-
-test_caveman_extension_changes_level_with_command() {
-  local skill status=0
-  skill="$(mktemp)"
-  printf '%s\n' '# Caveman' 'Stay terse.' > "$skill"
-
-  CAVEMAN_SKILL_PATH="$skill" node - <<'NODE' || status=$?
-const assert = require("node:assert/strict");
-const caveman = require("./config/shared/ai/pi/caveman-default.js");
-const commands = {};
-const handlers = {};
-const entries = [];
-
-caveman({
-  appendEntry(customType, data) { entries.push({ type: "custom", customType, data }); },
-  on(name, handler) { handlers[name] = handler; },
-  registerCommand(name, command) { commands[name] = command; },
-});
-
-commands.caveman.handler("ultra", { ui: { notify() {} } });
-const result = handlers.before_agent_start({ systemPrompt: "BASE" });
+extension = load();
+extension.commands.caveman.handler("ultra", { ui: { notify() {} } });
+result = extension.handlers.before_agent_start({ systemPrompt: "BASE" });
 assert.match(result.systemPrompt, /CAVEMAN MODE ACTIVE — level: ultra/);
-assert.deepEqual(entries.at(-1).data, { mode: "ultra" });
-NODE
+assert.deepEqual(extension.entries.at(-1).data, { mode: "ultra" });
 
-  assert_equals 0 "$status"
-  rm -f "$skill"
-}
-
-test_caveman_extension_restores_session_mode() {
-  local skill status=0
-  skill="$(mktemp)"
-  printf '%s\n' '# Caveman' 'Stay terse.' > "$skill"
-
-  CAVEMAN_SKILL_PATH="$skill" node - <<'NODE' || status=$?
-const assert = require("node:assert/strict");
-const caveman = require("./config/shared/ai/pi/caveman-default.js");
-const handlers = {};
-
-caveman({
-  appendEntry() {},
-  on(name, handler) { handlers[name] = handler; },
-  registerCommand() {},
-});
-
-handlers.session_start({}, {
+extension = load();
+extension.handlers.session_start({}, {
   sessionManager: {
     getBranch() {
       return [{ type: "custom", customType: "caveman-mode", data: { mode: "wenyan-full" } }];
     },
   },
 });
-const result = handlers.before_agent_start({ systemPrompt: "BASE" });
+result = extension.handlers.before_agent_start({ systemPrompt: "BASE" });
 assert.match(result.systemPrompt, /CAVEMAN MODE ACTIVE — level: wenyan-full/);
 NODE
 

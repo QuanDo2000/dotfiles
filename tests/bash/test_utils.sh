@@ -75,8 +75,9 @@ test_success_force_flag() {
 }
 
 test_fail_output_contains_message() {
-  local output
-  output=$(fail "specific error" 2>&1 || true)
+  local output status=0
+  output=$(fail "specific error" 2>&1) || status=$?
+  assert_equals 1 "$status"
   assert_contains "$output" "specific error"
 }
 

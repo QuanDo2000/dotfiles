@@ -156,6 +156,7 @@ function test_installpiextensions_rechecks_staged_lock_before_npm {
 }
 
 function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_release {
+    if (-not $IsWindows) { Skip-Test 'Windows-only native archive installation'; return }
     $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'repo'
     New-PiExtensionTestFixture $script:DotfilesDir
     $env:PROCESSOR_ARCHITECTURE = 'AMD64'

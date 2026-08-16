@@ -18,7 +18,7 @@ function Assert-Equals($Expected, $Actual) {
 }
 
 function Assert-Contains($Haystack, $Needle) {
-    if ($Haystack -notlike "*$Needle*") {
+    if (-not ([string]$Haystack).Contains([string]$Needle)) {
         $script:Errors.Add("  Assert-Contains FAILED: '$Haystack' does not contain '$Needle'")
     }
 }
@@ -39,9 +39,19 @@ function Assert-Throws([scriptblock]$Action, $Message = 'action did not throw') 
 }
 
 function Assert-FileExists($Path) {
-    if (-not (Test-Path -LiteralPath $Path)) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         $script:Errors.Add("  Assert-FileExists FAILED: '$Path' does not exist")
     }
+}
+
+function Assert-DirectoryExists($Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        $script:Errors.Add("  Assert-DirectoryExists FAILED: '$Path' does not exist")
+    }
+}
+
+function Skip-Test([string]$Reason) {
+    $script:CurrentTestSkipped = $Reason
 }
 
 # --- Fixtures -----------------------------------------------------------------
