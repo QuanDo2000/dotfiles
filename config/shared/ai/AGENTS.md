@@ -24,6 +24,12 @@ Research, review, diagnosis, and recommendations remain read-only unless the use
 
 Treat historical child output and notifications as evidence, not current state. Re-check live run status before steering, stopping, resuming, or discarding delegated work.
 
+## Hermes Skill Promotion
+
+Recommend promotion when a Hermes-generated skill is useful across machines or projects. Do not copy it automatically. At task close, name the skill and its current path, explain why it is broadly reusable, propose `config/shared/ai/skills/<name>/` as the tracked destination, and note any machine-specific paths, secrets, or assumptions that must be removed.
+
+Promote only after explicit user approval. Sanitize machine-specific paths, secrets, and assumptions before copying, then copy the complete skill directory, including referenced scripts and assets. Add Unix ownership in `config/home.nix`, add the name to Windows `InstallAiSkills`, and update focused installation tests. Preserve upstream provenance metadata when applicable. Verify discovery in every intended harness; if a harness does not consume `~/.agents/skills`, keep or add its native installation. Avoid duplicate discovery: remove the Hermes copy only after tracked installation is verified on the current machine.
+
 ## Version Control
 
 Default to Jujutsu (`jj`) for new or otherwise uninitialized projects. If a project already uses Git and is not a Jujutsu workspace, keep using Git rather than converting it; when both are present, prefer Jujutsu. Fall back to Git when Jujutsu is unavailable or a required integration supports only Git.

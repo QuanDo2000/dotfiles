@@ -344,6 +344,21 @@ test_all_ai_agents_delegate_efficiently() {
 }
 
 
+test_agents_recommend_promoting_reusable_hermes_skills() {
+  local agents
+  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+
+  assert_contains "$agents" 'Recommend promotion when a Hermes-generated skill is useful across machines or projects.'
+  assert_contains "$agents" 'Do not copy it automatically.'
+  assert_contains "$agents" 'config/shared/ai/skills/<name>/'
+  assert_contains "$agents" 'config/home.nix'
+  assert_contains "$agents" 'Windows `InstallAiSkills`'
+  assert_contains "$agents" 'Sanitize machine-specific paths, secrets, and assumptions before copying'
+  assert_contains "$agents" 'Verify discovery in every intended harness'
+  assert_contains "$agents" 'remove the Hermes copy only after tracked installation is verified'
+}
+
+
 test_install_arch_bootstraps_nix_and_switches_home_manager() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"
