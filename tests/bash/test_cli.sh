@@ -30,6 +30,8 @@ link_core_dotfiles() {
   : > "$HOME/.pi/agent/mcp.json"
   printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
   chmod +x "$HOME/.local/bin/fff-mcp-agent"
+  mkdir -p "$HOME/.config/dotfiles"
+  printf 'desktop=false\npersonalApps=false\nobsidianSync=false\ngoogleDriveSync=false\nstorageOffsiteBackup=false\n' > "$HOME/.config/dotfiles/profile"
   : > "$TEST_HOME/obsidian-sync.service"
   ln -s "$TEST_HOME/obsidian-sync.service" "$HOME/.config/systemd/user/obsidian-sync.service"
 }

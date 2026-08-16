@@ -31,7 +31,7 @@ function _update_flake_inputs {
 }
 
 ARCH_PACKAGES=(
-  base-devel curl git zsh
+  base-devel curl git zsh fuse3
 )
 
 function install_arch {

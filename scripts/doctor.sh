@@ -121,11 +121,35 @@ _check_managed_commands() {
   fi
 }
 
+_is_obsidian_service_target() {
+  [[ "$1" =~ ^/nix/store/[^/]+-obsidian-sync\.service/obsidian-sync\.service$ ]]
+}
+
 _check_obsidian_service() {
-  is_linux || return 0
-  [[ "$DRY" == true ]] && return 0
-  local target="$HOME/.config/systemd/user/obsidian-sync.service"
+  local platform="${1:-$(detect_platform)}" marker="$HOME/.config/dotfiles/profile"
+  local expected=""
+  if [[ -f "$marker" ]]; then
+    local marker_values marker_count
+    marker_values="$(sed -n 's/^obsidianSync=\(true\|false\)$/\1/p' "$marker")"
+    marker_count="$(grep -Ec '^obsidianSync=(true|false)$' "$marker" || true)"
+    if [[ "$marker_count" -ne 1 ]]; then
+      fail_soft "invalid dotfiles profile marker: expected one obsidianSync=true|false line"
+      errors=$((errors + 1))
+      return 0
+    fi
+    expected="$marker_values"
+  else
+    case "$platform" in
+      nixos|arch) expected=true ;;
+      *) expected=false ;;
+    esac
+  fi
+  [[ "$DRY" == true || "$expected" != true ]] && return 0
+  local target="$HOME/.config/systemd/user/obsidian-sync.service" link_target=""
   if [[ -L "$target" && -e "$target" ]]; then
+    link_target="$(readlink -f "$target" 2>/dev/null || true)"
+  fi
+  if _is_obsidian_service_target "$link_target"; then
     success "obsidian-sync.service installed"
   else
     fail_soft "obsidian-sync.service not installed"
@@ -265,7 +289,7 @@ function doctor {
   _check_writable_file .pi/agent/settings.json
   _check_writable_file .pi/agent/mcp.json
   _check_managed_commands
-  _check_obsidian_service
+  _check_obsidian_service "$platform"
   _check_nix_config "$platform"
 
   echo ""

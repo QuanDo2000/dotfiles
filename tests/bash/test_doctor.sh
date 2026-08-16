@@ -53,13 +53,15 @@ link_valid_core_dotfiles() {
   ln -s "${store_target:-$root/.gitconfig}" "$HOME/.config/git/config"
   ln -s "${store_target:-$root/.config/nvim/init.lua}" "$HOME/.config/nvim/init.lua"
   ln -s "${store_target:-$root/.config/nvim/fff-nvim-backend}" "$HOME/.config/nvim/fff-nvim-backend"
-  ln -s "${store_target:-$root/.config/systemd/user/obsidian-sync.service}" "$HOME/.config/systemd/user/obsidian-sync.service"
+  ln -s /nix/store/test-obsidian-sync.service/obsidian-sync.service "$HOME/.config/systemd/user/obsidian-sync.service"
   ln -s "${store_target:-$root/bin/dotfile}" "$HOME/.local/bin/dotfile"
   : > "$HOME/.codex/config.toml"
   : > "$HOME/.pi/agent/settings.json"
   : > "$HOME/.pi/agent/mcp.json"
   printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
   chmod +x "$HOME/.local/bin/fff-mcp-agent"
+  mkdir -p "$HOME/.config/dotfiles"
+  printf 'desktop=false\npersonalApps=false\nobsidianSync=false\ngoogleDriveSync=false\nstorageOffsiteBackup=false\n' > "$HOME/.config/dotfiles/profile"
 }
 
 test_doctor_recovers_interrupted_release_transaction() {
@@ -326,6 +328,8 @@ test_doctor_accepts_repo_dotfile_command_link() {
   : > "$HOME/.pi/agent/mcp.json"
   printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
   chmod +x "$HOME/.local/bin/fff-mcp-agent"
+  mkdir -p "$HOME/.config/dotfiles"
+  printf 'desktop=false\npersonalApps=false\nobsidianSync=false\ngoogleDriveSync=false\nstorageOffsiteBackup=false\n' > "$HOME/.config/dotfiles/profile"
   with_nix_agent_tools
 
   local output
@@ -380,6 +384,121 @@ test_doctor_accepts_home_manager_store_targets_on_debian() {
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1) || true
   assert_contains "$output" "All checks passed"
+}
+
+test_obsidian_service_target_accepts_exact_store_unit() {
+  local status
+  if _is_obsidian_service_target /nix/store/abc-obsidian-sync.service/obsidian-sync.service; then status=0; else status=$?; fi
+  assert_equals "0" "$status"
+  if _is_obsidian_service_target /nix/store/abc-obsidian-sync.service/other.service; then status=0; else status=$?; fi
+  assert_equals "1" "$status"
+  if _is_obsidian_service_target /tmp/obsidian-sync.service; then status=0; else status=$?; fi
+  assert_equals "1" "$status"
+  if _is_obsidian_service_target /nix/store/abc-obsidian-sync.service/obsidian-sync.service.extra; then status=0; else status=$?; fi
+  assert_equals "1" "$status"
+}
+
+test_doctor_obsidian_uses_profile_marker() {
+  mock_uname Linux
+  local marker="$HOME/.config/dotfiles/profile" target="$HOME/.config/systemd/user/obsidian-sync.service"
+  mkdir -p "$(dirname "$marker")" "$(dirname "$target")"
+  printf 'desktop=false\npersonalApps=false\nobsidianSync=false\ngoogleDriveSync=false\nstorageOffsiteBackup=true\n' > "$marker"
+  ln -s /tmp/not-obsidian.service "$target"
+  DRY=false
+  errors=0
+  _check_obsidian_service arch >/dev/null 2>&1
+  assert_equals "0" "$errors"
+
+  printf 'desktop=false\npersonalApps=false\nobsidianSync=true\ngoogleDriveSync=false\nstorageOffsiteBackup=true\n' > "$marker"
+  errors=0
+  _check_obsidian_service arch >/dev/null 2>&1
+  assert_equals "1" "$errors"
+
+  rm -f "$target"
+  local unit="$TEST_TMPDIR/obsidian-sync.service"
+  : > "$unit"
+  ln -s "$unit" "$target"
+  readlink() {
+    if [[ "${1:-}" == -f && "${2:-}" == "$target" ]]; then
+      printf '/nix/store/test-obsidian-sync.service/obsidian-sync.service\n'
+      return
+    fi
+    command readlink "$@"
+  }
+  errors=0
+  _check_obsidian_service arch >/dev/null 2>&1
+  assert_equals "0" "$errors"
+  unset -f readlink
+}
+
+test_doctor_rejects_invalid_obsidian_profile_marker() {
+  mock_uname Linux
+  local marker="$HOME/.config/dotfiles/profile" output
+  mkdir -p "$(dirname "$marker")"
+  DRY=false
+  local output_file
+  for contents in $'desktop=false\nobsidianSync=maybe\n' $'desktop=false\nobsidianSync=true\nobsidianSync=false\n'; do
+    printf '%s' "$contents" > "$marker"
+    errors=0
+    output_file="$TEST_TMPDIR/invalid-marker.log"
+    _check_obsidian_service arch > "$output_file" 2>&1
+    assert_equals "1" "$errors"
+    assert_contains "$(<"$output_file")" "invalid dotfiles profile marker"
+  done
+}
+
+test_doctor_obsidian_falls_back_to_platform_without_profile_marker() {
+  mock_uname Linux
+  rm -f "$HOME/.config/dotfiles/profile" "$HOME/.config/systemd/user/obsidian-sync.service"
+  DRY=false
+  errors=0
+  _check_obsidian_service debian >/dev/null 2>&1
+  assert_equals "0" "$errors"
+  errors=0
+  _check_obsidian_service arch >/dev/null 2>&1
+  assert_equals "1" "$errors"
+}
+
+test_doctor_skips_absent_obsidian_service_on_debian() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=debian\n' > "$os_release"
+  rm -f "$HOME/.config/systemd/user/obsidian-sync.service"
+  DRY=false
+  errors=0
+
+  local output_file="$TEST_TMPDIR/obsidian-debian.log"
+  _check_obsidian_service debian > "$output_file" 2>&1
+
+  assert_equals "0" "$errors"
+  assert_equals "" "$(<"$output_file")"
+}
+
+test_doctor_profile_marker_is_checked_by_doctor_caller() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release" marker="$HOME/.config/dotfiles/profile"
+  printf 'ID=arch\n' > "$os_release"
+  mkdir -p "$(dirname "$marker")"
+  printf 'desktop=false\npersonalApps=false\nobsidianSync=false\ngoogleDriveSync=true\nstorageOffsiteBackup=true\n' > "$marker"
+  DRY=false
+  local output
+  output=$(OS_RELEASE="$os_release" doctor 2>&1) || true
+  assert_not_contains "$output" 'obsidian-sync.service not installed'
+}
+
+test_doctor_reports_absent_obsidian_service_on_arch() {
+  mock_uname Linux
+  local os_release="$TEST_TMPDIR/os-release"
+  printf 'ID=arch\n' > "$os_release"
+  rm -f "$HOME/.config/systemd/user/obsidian-sync.service"
+  DRY=false
+  errors=0
+
+  local output_file="$TEST_TMPDIR/obsidian-arch.log"
+  _check_obsidian_service arch > "$output_file" 2>&1
+
+  assert_equals "1" "$errors"
+  assert_contains "$(<"$output_file")" "obsidian-sync.service not installed"
 }
 
 test_doctor_checks_arch_server_configuration() {

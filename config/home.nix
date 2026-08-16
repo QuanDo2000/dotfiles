@@ -1,4 +1,4 @@
-{ config, pkgs, lib, osConfig ? null, storageOffsiteBackup ? false, ... }:
+{ config, pkgs, lib, osConfig ? null, desktop ? false, personalApps ? false, obsidianSync ? false, googleDriveSync ? false, storageOffsiteBackup ? false, ... }:
 
 let
   machine = import ./host.nix;
@@ -10,7 +10,7 @@ let
     inherit source;
     force = true;
   };
-  linuxConfig = source: lib.mkIf pkgs.stdenv.hostPlatform.isLinux (forceSource source);
+  linuxConfig = source: lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource source);
   networkServiceHardening = {
     UMask = "0077";
     NoNewPrivileges = true;
@@ -81,7 +81,7 @@ let
   obsidianFiles = lib.genAttrs
     (map (name: "Documents/Sync/.obsidian/${name}") obsidianSettings)
     (path: forceSource (./shared/obsidian + "/${lib.removePrefix "Documents/Sync/.obsidian/" path}"));
-  obsidianSync = pkgs.writeShellScript "obsidian-sync" ''
+  obsidianSyncScript = pkgs.writeShellScript "obsidian-sync" ''
     set -euo pipefail
     export PATH="${lib.makeBinPath [ pkgs.obsidian-headless pkgs.nodejs ]}:$PATH"
 
@@ -102,8 +102,16 @@ let
     exit 0
   '';
   guardedHomeManager = pkgs.writeShellScriptBin "home-manager" ''
-    marker="$HOME/.local/state/dotfiles/storage-offsite-backup-initialized"
-    if [ "''${1:-}" = switch ] && [ -e "$marker" ]; then
+    markers=(
+      "$HOME/.local/state/dotfiles/google-drive-bisync-initialized"
+      "$HOME/.local/state/dotfiles/google-drive-storage-sync-initialized"
+      "$HOME/.local/state/dotfiles/storage-offsite-backup-initialized"
+    )
+    initialized=false
+    for marker in "''${markers[@]}"; do
+      [ -e "$marker" ] && initialized=true
+    done
+    if [ "''${1:-}" = switch ] && [ "$initialized" = true ]; then
       correct_profile=false
       for arg in "$@"; do
         case "$arg" in
@@ -136,13 +144,10 @@ let
     fontconfig
     openssh
   ];
-  linuxDesktopPackages = with pkgs; [
-    ankiWithAddons
-    fuse3
+  desktopPackages = with pkgs; [
     grim
     pinentry-gnome3
     rbw
-    rclone
     slurp
     thunar
     wl-clipboard
@@ -150,12 +155,22 @@ let
     hyprshutdown
     ghostty
     google-chrome
-    obsidian
-    obsidian-headless
     pavucontrol
     playerctl
-    webcord
   ];
+  personalPackages = with pkgs; [ ankiWithAddons obsidian webcord ];
+  obsidianSyncPackages = with pkgs; [ obsidian-headless ];
+  profileFile = {
+    text = lib.concatStringsSep "\n" [
+      "desktop=${lib.boolToString desktop}"
+      "personalApps=${lib.boolToString personalApps}"
+      "obsidianSync=${lib.boolToString obsidianSync}"
+      "googleDriveSync=${lib.boolToString googleDriveSync}"
+      "storageOffsiteBackup=${lib.boolToString storageOffsiteBackup}"
+      ""
+    ];
+    force = true;
+  };
 in
 {
   home.username = machine.username;
@@ -174,10 +189,13 @@ in
   ]
   ++ lib.optionals standaloneLinux standaloneLinuxPackages
   ++ lib.optionals standaloneLinux [ (lib.hiPrio guardedHomeManager) ]
-  ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux linuxDesktopPackages
+  ++ lib.optionals (desktop && pkgs.stdenv.hostPlatform.isLinux) desktopPackages
+  ++ lib.optionals (personalApps && pkgs.stdenv.hostPlatform.isLinux) personalPackages
+  ++ lib.optionals (obsidianSync && pkgs.stdenv.hostPlatform.isLinux) obsidianSyncPackages
   ++ lib.optionals storageOffsiteBackup [ pkgs.restic ];
 
-  home.file = obsidianFiles // {
+  home.file = (lib.optionalAttrs (personalApps && pkgs.stdenv.hostPlatform.isLinux) obsidianFiles) // {
+    ".config/dotfiles/profile" = profileFile;
     "${homeDir}/.config/jj/config.toml".force = true;
     ".ssh/config" = forceSource ./shared/.ssh/config;
     ".codex/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
@@ -220,16 +238,16 @@ in
       executable = true;
       force = true;
     };
-    ".local/bin/bitwarden-picker" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (forceSource ./unix/bin/bitwarden-picker // {
+    ".local/bin/bitwarden-picker" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ./unix/bin/bitwarden-picker // {
       executable = true;
     });
-    ".local/bin/input-method-status" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (forceSource ../scripts/input-method-status.sh // {
+    ".local/bin/input-method-status" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ../scripts/input-method-status.sh // {
       executable = true;
     });
-    ".local/bin/hyprsunset-status" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (forceSource ../scripts/hyprsunset-status.sh // {
+    ".local/bin/hyprsunset-status" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ../scripts/hyprsunset-status.sh // {
       executable = true;
     });
-    ".local/bin/show-keybinds" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (forceSource ../scripts/show-keybinds.sh // {
+    ".local/bin/show-keybinds" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ../scripts/show-keybinds.sh // {
       executable = true;
     });
     ".local/bin/caf" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (forceSource ./mac/bin/caf // {
@@ -249,19 +267,19 @@ in
     '';
   };
 
-  gtk = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  gtk = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
     enable = true;
     gtk3.extraConfig.gtk-tooltip-timeout = 200;
   };
 
-  xdg.configFile."mimeapps.list" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  xdg.configFile."mimeapps.list" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
     force = true;
   };
-  xdg.dataFile."applications/mimeapps.list" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  xdg.dataFile."applications/mimeapps.list" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
     force = true;
   };
 
-  xdg.mimeApps = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  xdg.mimeApps = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
     enable = true;
     defaultApplications = {
       "inode/directory" = [ "thunar.desktop" ];
@@ -280,7 +298,7 @@ in
     };
   };
 
-  xdg.userDirs = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  xdg.userDirs = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
     enable = true;
     setSessionVariables = false;
     documents = "${homeDir}/Documents";
@@ -294,7 +312,7 @@ in
     videos = null;
   };
 
-  programs.fuzzel = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  programs.fuzzel = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
     enable = true;
     settings = {
       main = {
@@ -322,26 +340,31 @@ in
   };
 
   programs.waybar = {
-    enable = pkgs.stdenv.hostPlatform.isLinux;
-    systemd.enable = pkgs.stdenv.hostPlatform.isLinux;
+    enable = desktop && pkgs.stdenv.hostPlatform.isLinux;
+    systemd.enable = desktop && pkgs.stdenv.hostPlatform.isLinux;
   };
 
-  programs.hyprlock.enable = pkgs.stdenv.hostPlatform.isLinux;
-  services.hypridle.enable = pkgs.stdenv.hostPlatform.isLinux;
-  services.hyprpolkitagent.enable = pkgs.stdenv.hostPlatform.isLinux;
-  systemd.user.services.hyprpolkitagent.Unit.ConditionEnvironment = "WAYLAND_DISPLAY";
+  programs.hyprlock.enable = desktop && pkgs.stdenv.hostPlatform.isLinux;
+  services.hypridle.enable = desktop && pkgs.stdenv.hostPlatform.isLinux;
+  services.hyprpolkitagent.enable = desktop && pkgs.stdenv.hostPlatform.isLinux;
+  systemd.user.services.hyprpolkitagent = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
+    Unit.ConditionEnvironment = "WAYLAND_DISPLAY";
+  };
 
-  services.hyprsunset.enable = pkgs.stdenv.hostPlatform.isLinux;
-  systemd.user.services.hyprsunset.Unit.X-Restart-Triggers =
-    lib.mkIf pkgs.stdenv.hostPlatform.isLinux [ "${./unix/config/hypr/hyprsunset.conf}" ];
+  services.hyprsunset.enable = desktop && pkgs.stdenv.hostPlatform.isLinux;
+  systemd.user.services.hyprsunset = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
+    Unit.X-Restart-Triggers = [ "${./unix/config/hypr/hyprsunset.conf}" ];
+  };
 
-  services.wl-clip-persist = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  services.wl-clip-persist = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
     enable = true;
     clipboardType = "regular";
   };
-  systemd.user.services.wl-clip-persist.Unit.ConditionEnvironment = "WAYLAND_DISPLAY";
+  systemd.user.services.wl-clip-persist = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
+    Unit.ConditionEnvironment = "WAYLAND_DISPLAY";
+  };
 
-  services.mako = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  services.mako = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
     enable = true;
     settings = {
       output = "DP-3";
@@ -370,7 +393,7 @@ in
   };
 
   programs.gpg.enable = true;
-  programs.rclone.enable = pkgs.stdenv.hostPlatform.isLinux;
+  programs.rclone.enable = googleDriveSync || storageOffsiteBackup;
 
   programs.neovim = {
     enable = true;
@@ -484,7 +507,7 @@ in
     extraConfig = builtins.readFile ./unix/.tmux.conf;
   };
 
-  systemd.user.services.google-drive-mount = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  systemd.user.services.google-drive-mount = lib.mkIf (googleDriveSync && pkgs.stdenv.hostPlatform.isLinux) {
     Unit = {
       Description = "Google Drive mount";
       After = [ "network-online.target" ];
@@ -507,7 +530,7 @@ in
     Install.WantedBy = [ "default.target" ];
   };
 
-  systemd.user.services.google-drive-bisync = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  systemd.user.services.google-drive-bisync = lib.mkIf (googleDriveSync && pkgs.stdenv.hostPlatform.isLinux) {
     Unit = {
       Description = "Google Drive two-way sync";
       After = [ "network-online.target" ];
@@ -531,7 +554,7 @@ in
     };
   };
 
-  systemd.user.timers.google-drive-bisync = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  systemd.user.timers.google-drive-bisync = lib.mkIf (googleDriveSync && pkgs.stdenv.hostPlatform.isLinux) {
     Unit.Description = "Sync Google Drive every five minutes";
     Timer = {
       OnBootSec = "2m";
@@ -542,7 +565,7 @@ in
     Install.WantedBy = [ "timers.target" ];
   };
 
-  systemd.user.services.google-drive-storage-sync = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  systemd.user.services.google-drive-storage-sync = lib.mkIf (storageOffsiteBackup && pkgs.stdenv.hostPlatform.isLinux) {
     Unit = {
       Description = "Sync matching Google Drive and Storage folders";
       After = [ "network-online.target" ];
@@ -562,7 +585,7 @@ in
     };
   };
 
-  systemd.user.timers.google-drive-storage-sync = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  systemd.user.timers.google-drive-storage-sync = lib.mkIf (storageOffsiteBackup && pkgs.stdenv.hostPlatform.isLinux) {
     Unit.Description = "Sync matching Google Drive and Storage folders daily";
     Timer = {
       OnCalendar = "daily";
@@ -652,7 +675,7 @@ in
     Install.WantedBy = [ "timers.target" ];
   };
 
-  systemd.user.services.obsidian-sync = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  systemd.user.services.obsidian-sync = lib.mkIf (obsidianSync && pkgs.stdenv.hostPlatform.isLinux) {
     Unit = {
       Description = "Obsidian Sync";
       After = [ "network-online.target" ];
@@ -661,7 +684,7 @@ in
 
     Service = networkServiceHardening // {
       Type = "simple";
-      ExecStart = "${obsidianSync}";
+      ExecStart = "${obsidianSyncScript}";
       Restart = "on-failure";
       RestartSec = 10;
     };
@@ -669,13 +692,19 @@ in
     Install.WantedBy = [ "default.target" ];
   };
 
-  home.activation.guardStorageOffsiteProfile = lib.mkIf (pkgs.stdenv.hostPlatform.isLinux && !storageOffsiteBackup)
+  home.activation.guardStorageOffsiteProfile = lib.mkIf (pkgs.stdenv.hostPlatform.isLinux && !googleDriveSync && !storageOffsiteBackup)
     (lib.hm.dag.entryBefore [ "writeBoundary" ] ''
-      marker="$HOME/.local/state/dotfiles/storage-offsite-backup-initialized"
-      if [ -e "$marker" ]; then
-        echo "Refusing generic Home Manager profile: this host is initialized for storage-offsite backups; use ${machine.username}@arch-server." >&2
-        exit 1
-      fi
+      markers=(
+        "$HOME/.local/state/dotfiles/google-drive-bisync-initialized"
+        "$HOME/.local/state/dotfiles/google-drive-storage-sync-initialized"
+        "$HOME/.local/state/dotfiles/storage-offsite-backup-initialized"
+      )
+      for marker in "''${markers[@]}"; do
+        if [ -e "$marker" ]; then
+          echo "Refusing generic Home Manager profile: this host is initialized for Google Drive or storage services; use ${machine.username}@arch-server." >&2
+          exit 1
+        fi
+      done
     '');
 
   home.activation.migrateNvimConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
@@ -794,7 +823,7 @@ in
 
   xdg.configFile."fcitx5" = linuxConfig ./unix/config/fcitx5;
 
-  xdg.configFile."uwsm/env-hyprland" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  xdg.configFile."uwsm/env-hyprland" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {
     text = ''
       export XCURSOR_SIZE=48
       export HYPRCURSOR_SIZE=48
@@ -803,7 +832,7 @@ in
     '';
   };
 
-  xdg.configFile."ghostty/config" = forceSource ./unix/config/ghostty/config;
+  xdg.configFile."ghostty/config" = lib.mkIf (pkgs.stdenv.hostPlatform.isDarwin || (desktop && pkgs.stdenv.hostPlatform.isLinux)) (forceSource ./unix/config/ghostty/config);
 
   xdg.configFile."hypr" = linuxConfig ./unix/config/hypr;
 

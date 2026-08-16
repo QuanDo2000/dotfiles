@@ -70,7 +70,13 @@ in
 
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
-  home-manager.extraSpecialArgs.storageOffsiteBackup = false;
+  home-manager.extraSpecialArgs = {
+    desktop = true;
+    personalApps = true;
+    obsidianSync = true;
+    googleDriveSync = true;
+    storageOffsiteBackup = false;
+  };
   home-manager.users.${machine.username} = import ../home.nix;
 
   # --- Desktop: Hyprland + greetd login ------------------------------------

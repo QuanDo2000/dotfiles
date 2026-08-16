@@ -50,8 +50,9 @@ git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
 ~/dotfiles/dotfile all
 ```
 
-The Linux Home Manager output is `${username}@linux`, where `username` comes
-from `config/host.nix`. `dotfile packages` installs Lix/Nix if missing, uses
+Generic Linux and Debian use `${username}@linux`; Arch uses
+`${username}@arch-server`. `username` comes from `config/host.nix`.
+`dotfile packages` installs Lix/Nix if missing, uses
 an existing `home-manager` when available, and falls back to the pinned
 `~/dotfiles#home-manager` app for bootstrap. Lix installer and package artifacts
 are used only after their tracked SHA-256 matches; review changes from
@@ -134,12 +135,21 @@ downloads or compilation. Failures are reported after the package operation.
 
 Windows installs Neovim and the locked raw plugin set but does not enable or install `fff.nvim`.
 
-Note: Home Manager owns the `obsidian-headless` CLI and `obsidian-sync` user service on Linux. `dotfile obsidian` bootstraps login/vault setup and restarts the managed service; it reuses an existing configured vault under `~/Documents` unless `-f` is passed.
+Note: Home Manager profile ownership is explicit. NixOS enables Linux desktop,
+personal apps, Obsidian Sync, and Google Drive. Arch server enables Obsidian
+Sync, Google Drive, and storage backup, but no desktop or personal apps.
+Generic Linux and macOS profiles keep optional groups disabled. Linux desktop
+configuration is profile-gated, not merely OS-gated.
 
-Note: Home Manager owns tracked Obsidian settings from `config/shared/obsidian`
-under `~/Documents/Sync/.obsidian`. Plugin bundles, themes, workspace state,
-bookmarks, starred files, recent files, and Electron app state stay out of the
-repo.
+`obsidian-headless` and `obsidian-sync` run on NixOS and Arch server. Obsidian GUI
+and tracked GUI settings are personal-only. `dotfile obsidian` bootstraps
+login/vault setup and restarts managed service; it reuses an existing configured
+vault under `~/Documents` unless `-f` is passed.
+
+Home Manager owns tracked Obsidian settings from `config/shared/obsidian` under
+`~/Documents/Sync/.obsidian` on personal NixOS. Plugin bundles, themes,
+workspace state, bookmarks, starred files, recent files, and Electron app state
+stay out of the repo.
 
 ## Provisioning a fresh NixOS machine
 
