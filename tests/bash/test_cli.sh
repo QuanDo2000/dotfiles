@@ -69,6 +69,7 @@ test_help_exits_zero() {
   assert_contains "$output" "Options"
   assert_contains "$output" "update [ai]"
   assert_contains "$output" "Refresh all managed dependency pins"
+  assert_contains "$output" "Install native prerequisites and activate current profile"
   assert_contains "$output" "Update only AI tools and configs"
   assert_contains "$output" "codex"
   assert_contains "$output" "Update pinned Codex release package"
@@ -181,6 +182,7 @@ test_readme_matches_key_help_text() {
   readme_text="$(<"$REPO_DIR/README.md")"
   assert_contains "$readme_text" "### Unix Commands"
   assert_contains "$readme_text" "update [ai]"
+  assert_contains "$readme_text" "Install native prerequisites and activate current profile"
   assert_contains "$readme_text" "Update only AI tools and configs"
   assert_contains "$readme_text" 'AI-only updates use the same isolated validation'
   assert_contains "$readme_text" 'diff review, and approval boundary'

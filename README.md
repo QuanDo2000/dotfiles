@@ -74,7 +74,8 @@ dotfile [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update [ai] Refresh all managed dependency pins, validate, and activate
+  update [ai] Refresh all managed dependency pins and validate
+              Install native prerequisites and activate current profile
               Update only AI tools and configs with `update ai`
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup
@@ -177,10 +178,12 @@ After provisioning, use `dotfile update` to refresh every repository-managed
 dependency: Nix inputs, release archives, npm closures, native FFF assets,
 Windows font pins, vendored skills, and Neovim plugins. It runs full
 checks, shows the resulting uncommitted diff, and requires confirmation before
-activation; non-interactive runs must pass `--force`. Use `dotfile update ai`
-to update only tracked AI configs, Codex and Pi release pins, managed AI
-packages, and Pi extensions. AI-only updates use the same isolated validation,
-diff review, and approval boundary. On NixOS the full update ends with:
+activation; non-interactive runs must pass `--force`. Full updates install
+missing native prerequisites for the detected platform before activating its
+configured profile; installed-state detection does not select dependencies.
+Use `dotfile update ai` to update only tracked AI configs, Codex and Pi release
+pins, managed AI packages, and Pi extensions. AI-only updates use the same
+isolated validation, diff review, and approval boundary. On NixOS the full update ends with:
 
 ```bash
 nix flake update --flake ~/dotfiles

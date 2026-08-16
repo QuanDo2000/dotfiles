@@ -12,7 +12,7 @@ Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The Un
 dotfile                      # Full setup
 dotfile packages             # Install system packages only
 dotfile doctor               # Detect dotfile and Nix issues
-dotfile update               # Refresh all managed dependency pins, validate, then activate
+dotfile update               # Refresh all pins, install native prerequisites, activate profile
 dotfile update ai            # Update only AI tools and configs
 dotfile obsidian             # Bootstrap Obsidian Sync login and vault setup
 dotfile codex                # Update pinned Codex release package

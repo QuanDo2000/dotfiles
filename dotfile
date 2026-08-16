@@ -102,7 +102,8 @@ Usage: $(basename "$0") [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update [ai] Refresh all managed dependency pins, validate, and activate
+  update [ai] Refresh all managed dependency pins and validate
+              Install native prerequisites and activate current profile
               Update only AI tools and configs with 'update ai'
   packages    Install system packages only
   obsidian    Bootstrap Obsidian Sync login and vault setup

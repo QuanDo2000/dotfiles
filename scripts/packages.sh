@@ -13,8 +13,7 @@ DEBIAN_PACKAGES=(
 function install_debian {
   info "Installing packages and programs for Debian..."
   if [[ "$DRY" == "false" ]]; then
-    _run_nix_managed_switch "Failed to install Debian packages" \
-      sudo apt install -y "${DEBIAN_PACKAGES[@]}"
+    _install_native_bootstrap_packages debian
     _home_manager_switch linux
   fi
   success "Finished install for Debian"
@@ -34,11 +33,20 @@ ARCH_PACKAGES=(
   base-devel curl git zsh fuse3
 )
 
+function _install_native_bootstrap_packages {
+  case "$1" in
+    debian) _run_nix_managed_switch "Failed to install Debian packages" \
+      sudo apt install -y "${DEBIAN_PACKAGES[@]}" ;;
+    arch) _run_nix_managed_switch "Failed to install Arch packages" \
+      sudo pacman -S --needed --noconfirm "${ARCH_PACKAGES[@]}" ;;
+    nixos|mac) ;;
+  esac
+}
+
 function install_arch {
   info "Installing packages and programs for Arch Linux..."
   if [[ "$DRY" == "false" ]]; then
-    _run_nix_managed_switch "Failed to install Arch packages" \
-      sudo pacman -S --needed --noconfirm "${ARCH_PACKAGES[@]}"
+    _install_native_bootstrap_packages arch
     _home_manager_switch arch-server
   fi
   success "Finished install for Arch Linux"
@@ -465,6 +473,9 @@ function _update_packages_scope {
   fi
   _approve_dependency_update
   [[ "$DRY" == "true" ]] || _validate_pending_dependency_update "${pending_args[@]}"
+  if [[ "$scope" != ai && "$DRY" == "false" ]]; then
+    _install_native_bootstrap_packages "$platform"
+  fi
   case "$platform" in
     nixos)   DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _nixos_rebuild_switch ;;
     debian)  DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch linux ;;
