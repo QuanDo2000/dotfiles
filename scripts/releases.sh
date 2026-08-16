@@ -583,7 +583,7 @@ function _download_obsidian_headless_package_lock {
       || { rm -rf "$tmp_dir"; fail "Failed to extract Obsidian Headless package metadata"; }
     (
       cd "$tmp_dir" \
-        && nix develop "path:$DOTFILES_DIR" -c npm install --package-lock-only --ignore-scripts --omit=dev >/dev/null
+        && nix develop "path:$DOTFILES_DIR" -c npm install --package-lock-only --ignore-scripts --no-audit --omit=dev >/dev/null
     ) || { rm -rf "$tmp_dir"; fail "Failed to generate Obsidian Headless package lock"; }
     cp "$tmp_dir/package-lock.json" "$lock_file" \
       || { rm -rf "$tmp_dir"; fail "Failed to stage Obsidian Headless package lock"; }

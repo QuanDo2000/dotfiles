@@ -182,8 +182,9 @@ activation; non-interactive runs must pass `--force`. Full updates install
 missing native prerequisites for the detected platform before activating its
 configured profile; installed-state detection does not select dependencies.
 Use `dotfile update ai` to update only tracked AI configs, Codex and Pi release
-pins, managed AI packages, and Pi extensions. AI-only updates use the same
-isolated validation, diff review, and approval boundary. On NixOS the full update ends with:
+pins, managed AI packages, and Pi extensions.
+AI-only updates use the same isolated validation, diff review, and approval
+boundary. On NixOS the full update ends with:
 
 ```bash
 nix flake update --flake ~/dotfiles

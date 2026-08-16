@@ -178,14 +178,14 @@ test_all_does_not_run_obsidian_bootstrap() {
 }
 
 test_readme_matches_key_help_text() {
-  local readme_text
+  local readme_text readme_flat
   readme_text="$(<"$REPO_DIR/README.md")"
+  readme_flat="${readme_text//$'\n'/ }"
   assert_contains "$readme_text" "### Unix Commands"
   assert_contains "$readme_text" "update [ai]"
   assert_contains "$readme_text" "Install native prerequisites and activate current profile"
   assert_contains "$readme_text" "Update only AI tools and configs"
-  assert_contains "$readme_text" 'AI-only updates use the same isolated validation'
-  assert_contains "$readme_text" 'diff review, and approval boundary'
+  assert_contains "$readme_flat" 'AI-only updates use the same isolated validation, diff review, and approval boundary'
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
   assert_contains "$readme_text" "codex       Update pinned Codex release package"
   assert_contains "$readme_text" "lix-installer"

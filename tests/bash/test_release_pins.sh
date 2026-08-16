@@ -956,12 +956,14 @@ test_obsidian_headless_generates_lock_when_archive_omits_it() {
     printf '%s\n' '{"name":"obsidian-headless","version":"1.2.3","dependencies":{"example":"1.0.0"}}'
   }
   nix() {
+    printf '%s\n' "$*" > "$TEST_TMPDIR/npm-lock-command"
     printf '%s\n' '{"lockfileVersion":3,"packages":{}}' > package-lock.json
   }
 
   _download_obsidian_headless_package_lock 1.2.3 "$lock"
 
   assert_equals "3" "$(jq -r .lockfileVersion "$lock")"
+  assert_contains "$(<"$TEST_TMPDIR/npm-lock-command")" "--no-audit"
   unset -f curl tar nix
 }
 

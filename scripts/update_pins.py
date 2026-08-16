@@ -277,7 +277,7 @@ def update_pi_extensions(repo: Path) -> None:
         package["dependencies"][name] = npm_latest(name)
     atomic_json(package_path, package)
     run(
-        "npm", "install", "--package-lock-only", "--ignore-scripts", "--legacy-peer-deps", "--omit=dev",
+        "npm", "install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--legacy-peer-deps", "--omit=dev",
         cwd=package_path.parent,
     )
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
