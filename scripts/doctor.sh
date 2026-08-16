@@ -8,18 +8,27 @@ if ! declare -F host_config_value >/dev/null; then
   source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/host_config.sh"
 fi
 
+_physical_path() {
+  local path="$1" parent
+  parent="$(cd -P "$(dirname "$path")" 2>/dev/null && pwd)" || { printf '%s\n' "$path"; return; }
+  printf '%s/%s\n' "$parent" "$(basename "$path")"
+}
+
 # Helper: check that a file is a symlink pointing into DOTFILES_DIR.
 _check_symlink() {
   local name="$1" platform="${2:-$(detect_platform)}" exact_target="${3:-}"
   local target="$HOME/$name" expected="$DOTFILES_DIR/... or Home Manager store target"
   if [ -L "$target" ]; then
-    local link_target
+    local link_target physical_link_target physical_dotfiles physical_exact=""
     link_target="$(resolve_symlink "$target")"
+    physical_link_target="$(_physical_path "$link_target")"
+    physical_dotfiles="$(cd -P "$DOTFILES_DIR" 2>/dev/null && pwd)" || physical_dotfiles="$DOTFILES_DIR"
     if [[ -n "$exact_target" ]]; then
       expected="$exact_target or Home Manager store target"
+      physical_exact="$(_physical_path "$exact_target")"
     fi
-    if [[ -e "$target" ]] && { { [[ -n "$exact_target" ]] && [[ "$link_target" == "$exact_target" ]]; } \
-      || { [[ -z "$exact_target" ]] && [[ "$link_target" == "$DOTFILES_DIR/"* ]]; } \
+    if [[ -e "$target" ]] && { { [[ -n "$physical_exact" ]] && [[ "$physical_link_target" == "$physical_exact" ]]; } \
+      || { [[ -z "$physical_exact" ]] && [[ "$physical_link_target" == "$physical_dotfiles/"* ]]; } \
       || { is_home_manager_platform "$platform" && [[ "$link_target" == /nix/store/* ]]; }; }; then
       success "$name -> $link_target"
     else

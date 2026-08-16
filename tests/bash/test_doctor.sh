@@ -131,6 +131,23 @@ test_doctor_finds_managed_fff_without_session_path() {
   unset -f command
 }
 
+test_doctor_accepts_equivalent_physical_symlink_paths() {
+  local original_dotfiles="$DOTFILES_DIR" physical="$TEST_TMPDIR/physical" alias="$TEST_TMPDIR/alias"
+  mkdir -p "$physical/repo/config" "$HOME/.config" "$HOME/.local/bin"
+  touch "$physical/repo/config/tool" "$physical/repo/dotfile"
+  ln -s "$physical" "$alias"
+  ln -s "$alias/repo/config/tool" "$HOME/.config/tool"
+  ln -s "$alias/repo/dotfile" "$HOME/.local/bin/dotfile"
+  DOTFILES_DIR="$physical/repo"
+  errors=0
+
+  _check_symlink .config/tool debian
+  _check_symlink .local/bin/dotfile debian "$DOTFILES_DIR/dotfile"
+
+  assert_equals "0" "$errors"
+  DOTFILES_DIR="$original_dotfiles"
+}
+
 test_doctor_rejects_dangling_managed_links() {
   mkdir -p "$DOTFILES_DIR" "$HOME/.config/tmux"
   ln -s "$DOTFILES_DIR/missing" "$HOME/.config/tmux/tmux.conf"
