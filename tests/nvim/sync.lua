@@ -86,6 +86,8 @@ vim.fn.has = function(name)
 end
 
 local sync = dofile(module)
+local linked, link_error = pcall(sync.link_fff, { dir = vim.fn.tempname() })
+assert(not linked and tostring(link_error):find("Nix-managed fff.nvim backend is missing", 1, true), "missing fff backend must fail before sync")
 sync.plugins(true)
 assert(vim.deep_equal(calls, { "install", "restore", "clean" }), "plugin sync must install, restore, then clean")
 assert(vim.fn.readfile(lockfile)[1] == "reviewed", "plugin sync must preserve reviewed lock")

@@ -20,10 +20,10 @@ test_raw_neovim_root_detection() {
 }
 
 test_neovim_explicit_sync_fails_closed() {
-  local module output
-  module="$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua"
+  local module="$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua" output
   assert_file_exists "$module"
-  output="$(NVIM_SYNC_MODULE="$module" nvim --headless -u NONE -l "$REPO_DIR/tests/nvim/sync.lua" 2>&1)"
+  output="$(XDG_CONFIG_HOME="$TEST_TMPDIR/config" NVIM_SYNC_MODULE="$module" \
+    nvim --headless -u NONE -l "$REPO_DIR/tests/nvim/sync.lua" 2>&1)"
   assert_contains "$output" "NVIM_SYNC_OK"
 }
 
@@ -51,38 +51,23 @@ test_neovim_owns_only_used_build_and_mason_tools() {
 }
 
 test_neovim_uses_raw_config() {
-  local config home
-  config="$REPO_DIR/config/shared/config/nvim"
+  local config="$REPO_DIR/config/shared/config/nvim" home init lock name
   home="$(<"$REPO_DIR/config/home.nix")"
+  init="$(<"$config/init.lua")"
+  lock="$(<"$config/lazy-lock.json")"
 
-  assert_contains "$(<"$config/init.lua")" "vim.g.raw_neovim = true"
-  assert_not_contains "$(<"$config/init.lua")" "LazyVim/LazyVim"
-  assert_not_contains "$(<"$config/init.lua")" "markdown-toc"
-  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.autocmds"
-  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.commands"
-  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.highlights"
-  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.man"
-  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.command_history"
-  assert_not_contains "$(<"$config/init.lua")" "Snacks.picker.search_history"
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"LazyVim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"neotest"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"dial.nvim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"flash.nvim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"friendly-snippets"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"mini.ai"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"mini.hipatterns"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"grug-far.nvim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"lazydev.nvim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"mason-lspconfig.nvim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"noice.nvim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"nui.nvim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"nvim-ts-autotag"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"persistence.nvim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"render-markdown.nvim"'
-  assert_not_contains "$(<"$config/init.lua")" 'render-markdown.nvim'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"ts-comments.nvim"'
-  assert_not_contains "$(<"$config/lazy-lock.json")" '"yanky.nvim"'
-  assert_contains "$(<"$config/init.lua")" 'version = "1.*"'
+  assert_contains "$init" "vim.g.raw_neovim = true"
+  assert_contains "$init" 'version = "1.*"'
+  for name in LazyVim neotest dial.nvim flash.nvim friendly-snippets grug-far.nvim lazydev.nvim \
+    mason-lspconfig.nvim mini.ai mini.hipatterns noice.nvim nui.nvim nvim-ts-autotag persistence.nvim \
+    render-markdown.nvim ts-comments.nvim yanky.nvim; do
+    assert_not_contains "$lock" "\"$name\""
+  done
+  for name in LazyVim/LazyVim markdown-toc render-markdown.nvim Snacks.picker.autocmds \
+    Snacks.picker.commands Snacks.picker.highlights Snacks.picker.man \
+    Snacks.picker.command_history Snacks.picker.search_history; do
+    assert_not_contains "$init" "$name"
+  done
   assert_not_contains "$home" "seedLazyVimConfig"
   if [ -e "$config/lazyvim.json" ]; then
     printf "  legacy lazyvim.json still exists\n" >> "$ERROR_FILE"
@@ -236,27 +221,37 @@ _raw_neovim_cache_read() {
   cp -R "$cache/." "$target/"
 }
 
-test_raw_neovim_cache_round_trip_copies_plugin_tree() {
-  local source="$TEST_TMPDIR/source-lazy" cache="$TEST_TMPDIR/cache/plugins" target="$TEST_TMPDIR/target-lazy"
-  mkdir -p "$source/fff.nvim/lua" "$source/other.nvim"
-  printf 'plugin-state\n' > "$source/fff.nvim/lua/init.lua"
-  printf 'other-state\n' > "$source/other.nvim/state"
-  _raw_neovim_cache_write "$source" "$cache" "$TEST_TMPDIR/cache/complete"
-  _raw_neovim_cache_read "$cache" "$TEST_TMPDIR/cache/complete" "$target"
-  assert_file_exists "$target/fff.nvim/lua/init.lua"
-  assert_equals 'plugin-state' "$(<"$target/fff.nvim/lua/init.lua")"
-  assert_file_exists "$target/other.nvim/state"
-  assert_file_exists "$TEST_TMPDIR/cache/complete"
+_raw_neovim_cache_seed() {
+  local root="$1" key="$2" target="$3" current="$1/$2" old_marker
+  [[ "${DOTFILE_NEOVIM_TEST_FRESH:-false}" != true ]] || return 1
+  _raw_neovim_cache_read "$current/plugins" "$current/complete" "$target" && return
+  for old_marker in "$root"/*/complete; do
+    [[ "$old_marker" == "$current/complete" ]] && continue
+    _raw_neovim_cache_read "${old_marker%/complete}/plugins" "$old_marker" "$target" && return
+  done
+  return 1
+}
+
+test_raw_neovim_cache_reuses_previous_lock() {
+  local root="$TEST_TMPDIR/cache" target="$TEST_TMPDIR/target"
+  mkdir -p "$root/old/plugins/sample.nvim"
+  printf 'cached\n' > "$root/old/plugins/sample.nvim/state"
+  touch "$root/old/complete"
+
+  assert_exit_code 0 _raw_neovim_cache_seed "$root" new "$target"
+  assert_equals cached "$(<"$target/sample.nvim/state")"
+  DOTFILE_NEOVIM_TEST_FRESH=true assert_exit_code 1 _raw_neovim_cache_seed "$root" new "$target"
 }
 
 test_raw_neovim_headless_config() {
   is_windows_bash && return 0
-  local data source_lazy source_backend output missing_output status lock_hash cache_root cached_plugins marker lazy_dir lazy_package
+  local data source_lazy source_backend output status lock_hash cache_base cache_root cached_plugins marker lazy_dir lazy_package
   data="$(mktemp -d)"
   source_lazy="${LAZY_NVIM_PATH:-$ORIG_HOME/.local/share/nvim/lazy/lazy.nvim}"
   source_backend="${FFF_NVIM_BACKEND_PATH:-$ORIG_HOME/.config/nvim/fff-nvim-backend}"
   lock_hash="$(sha256sum "$REPO_DIR/config/shared/config/nvim/lazy-lock.json" | awk '{print $1}')"
-  cache_root="${XDG_CACHE_HOME:-$ORIG_HOME/.cache}/dotfile/nvim/test-plugins/$lock_hash"
+  cache_base="${XDG_CACHE_HOME:-$ORIG_HOME/.cache}/dotfile/nvim/test-plugins"
+  cache_root="$cache_base/$lock_hash"
   cached_plugins="$cache_root/plugins"
   marker="$cache_root/complete"
   lazy_dir="$data/data/nvim/lazy"
@@ -265,9 +260,7 @@ test_raw_neovim_headless_config() {
   cp -R "$REPO_DIR/config/shared/config/nvim" "$data/config/nvim"
   ln -s "$source_backend" "$data/config/nvim/fff-nvim-backend"
 
-  if [[ "${DOTFILE_NEOVIM_TEST_FRESH:-false}" != true ]] && _raw_neovim_cache_read "$cached_plugins" "$marker" "$lazy_dir"; then
-    :
-  fi
+  _raw_neovim_cache_seed "$cache_base" "$lock_hash" "$lazy_dir" || true
   ln -s "$source_lazy" "$lazy_package"
   set +e
   output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
@@ -287,25 +280,7 @@ test_raw_neovim_headless_config() {
   assert_contains "$output" "RAW_CONFIG_OK"
   assert_contains "$output" "FFF_REQUIRE_OK"
   assert_not_contains "$output" "Nix-managed fff.nvim backend is missing"
-
-  rm -f "$data/config/nvim/fff-nvim-backend"
-  missing_output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
-    FFF_FRECENCY_DB="$data/fff-frecency" FFF_HISTORY_DB="$data/fff-history" \
-    nvim --headless -c "lua require('config.sync').plugins(false); print('MISSING_BACKEND_ACCEPTED')" +qa 2>&1)"
-  assert_not_contains "$missing_output" "MISSING_BACKEND_ACCEPTED"
-  assert_contains "$missing_output" "Nix-managed fff.nvim backend is missing"
   rm -rf "$data"
-}
-
-test_raw_neovim_cache_is_lock_keyed_and_bypassable() {
-  local test_text
-  test_text="$(<"$REPO_DIR/tests/bash/test_neovim.sh")"
-  assert_contains "$test_text" 'DOTFILE_NEOVIM_TEST_FRESH'
-  assert_contains "$test_text" 'test-plugins/$lock_hash'
-  assert_contains "$test_text" 'cached_plugins="$cache_root/plugins"'
-  assert_contains "$test_text" 'marker="$cache_root/complete"'
-  assert_contains "$test_text" '_raw_neovim_cache_write "$lazy_dir" "$cached_plugins" "$marker"'
-  assert_contains "$test_text" 'ln -s "$source_lazy" "$lazy_package"'
 }
 
 test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {
