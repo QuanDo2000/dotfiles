@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "caveman": {
     "repository": "https://github.com/JuliusBrussee/caveman",
-    "commit": "12aa8cc0e980b6d3310a5be4f477c434da51f4b0",
+    "commit": "766dce6b1394ebb56a3090748d5a0240a5aefb36",
     "path": "skills/caveman",
     "excludedPaths": [
       "caveman/README.md"
     ],
-    "observedArchiveSha256": "f9403888ed68efd3ff949f4497ebf792d90a8fec1e44199ce3fd728dfd96e600",
+    "observedArchiveSha256": "0d3828d3d8fe6b99af5775d10372aaad57915c68954e25673abc036df2cbbcd0",
     "license": "licenses/caveman-MIT.txt"
   },
   "superpowers": {
