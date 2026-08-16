@@ -27,6 +27,7 @@ function New-PiExtensionTestFixture($Root, [switch]$WrongLockHash) {
     $scripts = Join-Path $Root 'scripts'
     New-Item -ItemType Directory -Force -Path $source, $packages, $scripts | Out-Null
     Copy-Item -LiteralPath (Join-Path $script:RepoDir 'scripts\patch_pi_mcp_background.py') -Destination $scripts
+    Copy-Item -LiteralPath (Join-Path $script:RepoDir 'scripts\patch_pi_hermes_background_flush.py') -Destination $scripts
     '{"name":"fixture","private":true,"version":"1.0.0","dependencies":{"example-extension":"1.2.3"}}' |
         Set-Content -LiteralPath (Join-Path $source 'package.json') -Encoding ascii
     '{"name":"fixture","lockfileVersion":3,"packages":{"":{"dependencies":{"example-extension":"1.2.3"}},"node_modules/example-extension":{"version":"1.2.3","resolved":"https://registry.npmjs.org/example-extension/-/example-extension-1.2.3.tgz","integrity":"sha512-test"}}}' |
@@ -44,6 +45,84 @@ function New-PiExtensionTestFixture($Root, [switch]$WrongLockHash) {
             }
         }
     } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $packages 'pi-extensions-release.json') -Encoding ascii
+}
+
+function Write-PiHermesUnpatchedFixture($Root) {
+    $handlers = Join-Path $Root 'src\handlers'
+    New-Item -ItemType Directory -Force -Path $handlers | Out-Null
+    @'
+import { execChildPrompt, resolveChildPiModel } from "./pi-child-process.js";
+
+  async function flush(
+    ctx: Pick<ExtensionContext, "sessionManager" | "model" | "modelRegistry" | "cwd">,
+    signal?: AbortSignal,
+    timeoutMs = 30000,
+  ): Promise<void> {
+    if (userTurnCount < config.flushMinTurns) return;
+    if (usesDirectTransport(config)) {
+      try {
+        const directResult = await runDirect();
+        if (directResult.ok) return;
+      } catch {}
+    }
+    try {
+      await execChildPrompt(pi, flushMessage, config, {
+        cwd: ctx.cwd,
+        model: resolveChildPiModel(ctx.model),
+        signal,
+        timeoutMs,
+      });
+    } catch {}
+  }
+
+  pi.on("session_shutdown", async (_event, ctx) => {
+    if (!config.flushOnShutdown) return;
+    await flush(ctx, undefined, 10000);
+  });
+'@ | Set-Content -LiteralPath (Join-Path $handlers 'session-flush.ts') -Encoding ascii
+    @'
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import * as fs from "node:fs/promises";
+
+export async function execChildPrompt(
+  pi: Pick<ExtensionAPI, "exec">,
+'@ | Set-Content -LiteralPath (Join-Path $handlers 'pi-child-process.ts') -Encoding ascii
+    @'
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+
+const [timeoutValue, cancellationPath, command, ...args] = process.argv.slice(2);
+const timeoutMs = Number(timeoutValue);
+
+if (!cancellationPath || !command || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+  process.stderr.write("pi-hermes-memory watchdog: invalid invocation\n");
+  process.exit(2);
+}
+
+child.once("error", (error) => {
+  clearTimeout(timeout);
+  if (cancellationPoll) clearInterval(cancellationPoll);
+  if (forceTimer) clearTimeout(forceTimer);
+  process.stderr.write(`pi-hermes-memory watchdog: ${error.message}\n`);
+  process.exitCode = timedOut ? 124 : cancelled ? 143 : 127;
+});
+
+child.once("close", (code, signal) => {
+  clearTimeout(timeout);
+  if (cancellationPoll) clearInterval(cancellationPoll);
+  if (forceTimer) clearTimeout(forceTimer);
+  if (timedOut) {
+    process.exitCode = 124;
+  } else if (cancelled) {
+    process.exitCode = 143;
+  } else if (typeof code === "number") {
+    process.exitCode = code;
+  } else {
+    process.exitCode = signal === "SIGTERM" ? 143 : 1;
+  }
+});
+'@ | Set-Content -LiteralPath (Join-Path $handlers 'child-process-watchdog.mjs') -Encoding ascii
+    '{"name":"pi-hermes-memory","version":"0.9.5"}' | Set-Content -LiteralPath (Join-Path $Root 'package.json') -Encoding ascii
 }
 
 function test_pi_extension_sources_are_local_and_match_locked_release {
@@ -121,6 +200,23 @@ function test_installpiextensions_rejects_lock_hash_mismatch_before_npm {
     Assert-False $script:NpmCalled 'npm should not run before lock validation'
 }
 
+function test_piextensionsrelease_validates_hermes_background_flush_patch {
+    $definition = (Get-Command Test-PiExtensionsRelease).Definition
+
+    Assert-Contains $definition 'execDetachedChildPrompt'
+    Assert-Contains $definition '"--cleanup-dir"'
+}
+
+function test_installpiextensions_applies_hermes_background_flush_patch_after_npm {
+    $definition = (Get-Command InstallPiExtensions).Definition
+    $npmIndex = $definition.IndexOf('npm ci --prefix')
+    $patchIndex = $definition.IndexOf('patch_pi_hermes_background_flush.py')
+    $publishIndex = $definition.IndexOf('Move-Item -LiteralPath $staging -Destination $release')
+
+    Assert-True ($npmIndex -ge 0 -and $npmIndex -lt $patchIndex) 'Hermes patch should run after npm materializes sources'
+    Assert-True ($patchIndex -lt $publishIndex) 'Hermes patch should run before immutable release publication'
+}
+
 function test_installpiextensions_hashes_staged_lock_while_read_locked {
     $definition = (Get-Command InstallPiExtensions).Definition
     $openIndex = $definition.IndexOf("Open(`$stagedLock")
@@ -186,7 +282,9 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         $prefix = $args[[Array]::IndexOf($args, '--prefix') + 1]
         $packageDir = Join-Path $prefix 'node_modules\example-extension'
         $mcpDir = Join-Path $prefix 'node_modules\pi-mcp-extension\src'
+        $hermesDir = Join-Path $prefix 'node_modules\pi-hermes-memory'
         New-Item -ItemType Directory -Force -Path $packageDir, $mcpDir, (Join-Path $prefix 'node_modules\better-sqlite3') | Out-Null
+        Write-PiHermesUnpatchedFixture $hermesDir
         '{"name":"example-extension","version":"1.2.3"}' | Set-Content -LiteralPath (Join-Path $packageDir 'package.json') -Encoding ascii
         '{"name":"better-sqlite3","version":"12.11.1"}' | Set-Content -LiteralPath (Join-Path $prefix 'node_modules\better-sqlite3\package.json') -Encoding ascii
         @'
@@ -218,6 +316,8 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
     Assert-Contains $script:NpmArgs '--legacy-peer-deps'
     $stagedMcp = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-mcp-extension\src\index.ts"
     Assert-Contains (Get-Content -Raw $stagedMcp) 'void Promise.allSettled('
+    $stagedHermes = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-hermes-memory\src\handlers\session-flush.ts"
+    Assert-Contains (Get-Content -Raw $stagedHermes) 'execDetachedChildPrompt'
     $pins = Get-Content -Raw $pinsPath | ConvertFrom-Json
     $release = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$($pins.releaseId)"
     Assert-True (Test-PiExtensionsRelease $release $pins) 'immutable extension release should validate'

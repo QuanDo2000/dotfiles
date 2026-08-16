@@ -18,13 +18,14 @@ buildNpmPackage {
   version = builtins.substring 0 12 pins.releaseId;
   src = source;
 
-  npmDepsHash = "sha256-lHHvg71kvr22tbii3ctwcN4SUAHhb0vQe90/neGTwoc=";
+  npmDepsHash = "sha256-n8HPrMHKuzx8ac3tUXubMbSyI7VfVK380/qMar3mj2I=";
   npmFlags = [ "--omit=dev" "--ignore-scripts" "--legacy-peer-deps" ];
   dontNpmBuild = true;
   nativeBuildInputs = [ python3 ];
 
   preInstall = ''
     python3 ${../scripts/patch_pi_mcp_background.py} node_modules/pi-mcp-extension/src/index.ts
+    python3 ${../scripts/patch_pi_hermes_background_flush.py} node_modules/pi-hermes-memory
   '';
 
   installPhase = ''

@@ -569,6 +569,18 @@ function Test-PiExtensionsRelease($ReleaseDir, $Pins) {
         try { $installed = Get-Content -Raw -LiteralPath $installedManifest | ConvertFrom-Json } catch { return $false }
         if ([string]$installed.version -ne [string]$dependency.Value) { return $false }
     }
+    $hermesHandlers = Join-Path $nodeModules 'pi-hermes-memory\src\handlers'
+    $hermesSessionFlush = Join-Path $hermesHandlers 'session-flush.ts'
+    $hermesChildProcess = Join-Path $hermesHandlers 'pi-child-process.ts'
+    $hermesWatchdog = Join-Path $hermesHandlers 'child-process-watchdog.mjs'
+    if (-not (Test-Path -LiteralPath $hermesSessionFlush -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $hermesChildProcess -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $hermesWatchdog -PathType Leaf)) { return $false }
+    try {
+        if ((Get-Content -Raw -LiteralPath $hermesSessionFlush) -notlike '*execDetachedChildPrompt*') { return $false }
+        if ((Get-Content -Raw -LiteralPath $hermesChildProcess) -notlike '*"--cleanup-dir"*') { return $false }
+        if ((Get-Content -Raw -LiteralPath $hermesWatchdog) -notlike '*cleanupPromptDirectory*') { return $false }
+    } catch { return $false }
     $betterManifest = Join-Path $nodeModules 'better-sqlite3\package.json'
     $betterBinary = Join-Path $nodeModules 'better-sqlite3\build\Release\better_sqlite3.node'
     if (-not (Test-Path -LiteralPath $betterManifest -PathType Leaf) -or -not (Test-Path -LiteralPath $betterBinary -PathType Leaf)) { return $false }
@@ -620,6 +632,9 @@ function InstallPiExtensions {
                 $patch = Join-Path $script:DotfilesDir 'scripts\patch_pi_mcp_background.py'
                 $mcpIndex = Join-Path $staging 'node_modules\pi-mcp-extension\src\index.ts'
                 Invoke-NativeChecked "Pi MCP background startup repair failed" { py -3.14 $patch $mcpIndex }
+                $hermesPatch = Join-Path $script:DotfilesDir 'scripts\patch_pi_hermes_background_flush.py'
+                $hermesRoot = Join-Path $staging 'node_modules\pi-hermes-memory'
+                Invoke-NativeChecked "Pi Hermes background shutdown flush repair failed" { py -3.14 $hermesPatch $hermesRoot }
             } finally { $lockStream.Dispose() }
 
             $uri = "https://github.com/WiseLibs/better-sqlite3/releases/download/v$($pins.betterSqlite3.version)/$($asset.file)"

@@ -1,7 +1,7 @@
 {
   "name": "dotfiles-pi-extensions",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "dependencies": {
     "pi-mcp-extension": "1.5.0",
     "pi-hermes-memory": "0.9.5",
