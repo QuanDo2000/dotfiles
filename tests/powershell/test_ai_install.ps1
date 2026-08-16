@@ -1111,9 +1111,14 @@ function test_getpinnedpiversion_runs_in_windows_powershell {
     $escapedScript = $script:DotfileScript.Replace("'", "''")
     $probe = ". '$escapedScript' -NoMain; if ((Get-PinnedPiVersion) -notmatch '^\d+\.\d+\.\d+') { exit 1 }"
 
-    & $windowsPowerShell.Source -NoProfile -NonInteractive -Command $probe
-
-    Assert-Equals 0 $LASTEXITCODE
+    $oldDotfilesDir = $env:DOTFILES_DIR
+    try {
+        $env:DOTFILES_DIR = $script:RepoDir
+        & $windowsPowerShell.Source -NoProfile -NonInteractive -Command $probe
+        Assert-Equals 0 $LASTEXITCODE
+    } finally {
+        if ($null -eq $oldDotfilesDir) { Remove-Item Env:DOTFILES_DIR -ErrorAction SilentlyContinue } else { $env:DOTFILES_DIR = $oldDotfilesDir }
+    }
 }
 
 function test_installpi_source_checksum_fails_before_install {
