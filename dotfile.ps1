@@ -381,8 +381,8 @@ function Get-CodexPathValue($PathValue, $BinDir, $ManagedRoot) {
         $entry = $_.TrimEnd([char[]](92, 47))
         return $entry -ine $BinDir.TrimEnd([char[]](92, 47)) -and
             $entry -ine $legacyBin.TrimEnd([char[]](92, 47)) -and
-            -not $entry.StartsWith($managedRootNormalized + '\', [StringComparison]::OrdinalIgnoreCase) -and
-            -not $entry.StartsWith("$managedRootNormalized/", [StringComparison]::OrdinalIgnoreCase)
+            -not $entry.StartsWith($managedRootNormalized + [char]92, [StringComparison]::OrdinalIgnoreCase) -and
+            -not $entry.StartsWith($managedRootNormalized + [char]47, [StringComparison]::OrdinalIgnoreCase)
     })
     return (@($BinDir) + $entries) -join ";"
 }
@@ -929,8 +929,8 @@ function Get-CodebaseMemoryPathValue($PathValue, $ReleaseDir, $ReleasesRoot, $Le
         $entry = $_.TrimEnd([char[]](92, 47))
         return $entry -ine $releaseNormalized -and
             $entry -ine $legacyNormalized -and
-            -not $entry.StartsWith($releasesNormalized + '\', [StringComparison]::OrdinalIgnoreCase) -and
-            -not $entry.StartsWith("$releasesNormalized/", [StringComparison]::OrdinalIgnoreCase)
+            -not $entry.StartsWith($releasesNormalized + [char]92, [StringComparison]::OrdinalIgnoreCase) -and
+            -not $entry.StartsWith($releasesNormalized + [char]47, [StringComparison]::OrdinalIgnoreCase)
     })
     return (@($ReleaseDir) + $entries) -join ";"
 }
