@@ -1,32 +1,32 @@
 {
-  "version": "0.10.4",
-  "commit": "a166255d8f84ea86648efbab30cccfe09ba4f5c6",
+  "version": "0.10.5",
+  "commit": "459ebcdbdba094843fe5339a1a7f7dae4ced2d82",
   "backend": {
     "x86_64-linux": {
       "file": "x86_64-unknown-linux-gnu.so",
-      "sha256": "dfdb60e7fd49931c9dd969ab324fd05e7430d881798c8f6b6e384fc8be9091ac",
-      "hash": "sha256-39tg5/1Jkxyd2WmrMk/QXnQw2IF5jI9rbjhPyL6Qkaw="
+      "sha256": "8f4e732e3b0674fa9fa70b2f0d52358caf0eef55f80fb7ad1dd6bf01ee3c75c2",
+      "hash": "sha256-j05zLjsGdPqfpwsvDVI1jK8O71X4D7etHda/Ae48dcI="
     },
     "aarch64-darwin": {
       "file": "aarch64-apple-darwin.dylib",
-      "sha256": "2be660e96ee57c8244bdc1ff95010cf6b83a5fa1e3ef3cd73cd77d4fa30acfe8",
-      "hash": "sha256-K+Zg6W7lfIJEvcH/lQEM9rg6X6Hj7zzXPNd9T6MKz+g="
+      "sha256": "649fbc0a3afde0c883831fe6c5a275c4a66641346a1dc1af0882809edbabbcfd",
+      "hash": "sha256-ZJ+8Cjr94MiDgx/mxaJ1xKZmQTRqHcGvCIKAnturvP0="
     }
   },
   "mcp": {
     "x86_64-linux": {
       "file": "fff-mcp-x86_64-unknown-linux-musl",
-      "sha256": "68384121a9173b214190c594ea938cb5a1c52ca3069a3f3b1a0eecc28fd8ea82",
-      "hash": "sha256-aDhBIakXOyFBkMWU6pOMtaHFLKMGmj87Gg7swo/Y6oI="
+      "sha256": "6ab4f411eeee83e7e3900450b23bb50172e4f93d24dc720265126f0c3a1b1f23",
+      "hash": "sha256-arT0Ee7ug+fjkARQsju1AXLk+T0k3HICZRJvDDobHyM="
     },
     "aarch64-darwin": {
       "file": "fff-mcp-aarch64-apple-darwin",
-      "sha256": "f55ce2945cd30fd252a4b1e7d8674ff7ce41b104cc009a8d3d52d08bfccca2c0",
-      "hash": "sha256-9VzilFzTD9JSpLHn2GdP985BsQTMAJqNPVLQi/zMosA="
+      "sha256": "2f1a75c2401e5df7f5a10827f9ce9fe8401f290ff99c3f3f1423c7d7b156d849",
+      "hash": "sha256-Lxp1wkAeXff1oQgn+c6f6EAfKQ/5nD8/FCPH17FW2Ek="
     },
     "windows-x64": {
       "file": "fff-mcp-x86_64-pc-windows-msvc.exe",
-      "sha256": "2ff065dc7636c3d50d93a6ea55209760ed382bb6c096c01a3ba7357d6fa6b59e"
+      "sha256": "3fa325ab186e331d4e0e04c38272931b5877f18016e6eb847cdb80dc9a5465c4"
     }
   }
 }

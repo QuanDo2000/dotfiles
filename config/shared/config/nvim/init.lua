@@ -243,7 +243,7 @@ local plugins = {
   {
     "dmtrKovalenko/fff.nvim",
     enabled = vim.fn.has("win32") ~= 1,
-    version = "v0.10.4",
+    version = "v0.10.5",
     build = function(plugin) require("config.sync").link_fff(plugin) end,
     opts = {
       frecency = { db_path = vim.env.FFF_FRECENCY_DB or vim.fn.expand("~/.local/state/fff/frecency") },
