@@ -305,7 +305,7 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         }
       }),
     );
-'@ | Set-Content -LiteralPath (Join-Path $mcpDir 'index.ts') -Encoding ascii
+'@ | Set-Content -LiteralPath (Join-Path $mcpDir 'index.ts') -Encoding utf8
         $global:LASTEXITCODE = 0
     }
     Set-CommandMock 'py' {
