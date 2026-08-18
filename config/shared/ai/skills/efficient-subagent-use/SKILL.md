@@ -1,7 +1,7 @@
 ---
 name: "efficient-subagent-use"
 description: "Decide when and how to delegate for higher parallel performance without wasting tokens; use for non-trivial tasks with potentially independent work lanes"
-version: 4
+version: 5
 created: "2026-08-07"
 updated: "2026-08-18"
 ---
@@ -16,9 +16,10 @@ This skill owns delegation decisions, lane sizing, and cost control; harness-spe
 3. Check active and completed runs for the same lane and unchanged target revision. Reuse its artifact or resume its retained child; relaunch only when the target or required evidence changes.
 4. Parallelize read-only recon, research, review, and validation. Keep one writer per worktree unless writers have intentionally isolated worktrees.
 5. Launch asynchronously when supported. Continue useful parent work; wait only when same-turn results are required.
-6. Give each child a narrow compact contract: goal, only necessary files/evidence, success criteria, hard constraints, validation, output shape, and stop rule. Prefer fresh context unless conversation history is essential.
-7. For read-only scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`, and request only findings, exact paths, confidence or coverage, and residual risks. Do not paste an acceptance schema. Keep default checked or review-required acceptance for mutation workers; the parent runs validation.
-8. Synthesize results once, resolve disagreements from primary evidence, perform final verification in the parent, and stop spawning when enough evidence exists.
+6. Pass only governing matched skills through the child `skill` field; do not enable global skill inheritance. Builtin Pi roles do not inherit the discovered skill catalog.
+7. Give each child a narrow compact contract: goal, only necessary files/evidence, success criteria, hard constraints, validation, output shape, and stop rule. Prefer fresh context unless conversation history is essential.
+8. For read-only scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`, and request only findings, exact paths, confidence or coverage, and residual risks. Do not paste an acceptance schema. Keep default checked or review-required acceptance for mutation workers; the parent runs validation.
+9. Synthesize results once, resolve disagreements from primary evidence, perform final verification in the parent, and stop spawning when enough evidence exists.
 
 ## Pitfalls
 - Do not delegate tiny lookups, tightly serial steps, duplicate parent work, or clone prompts that produce redundant answers.

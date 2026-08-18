@@ -10,6 +10,8 @@ Use subagents proactively when work has multiple independent, substantial lanes 
 
 Treat reviewers as static: never ask them to run shell commands, tests, lint, typecheck, builds, or mutations. Parent runs validation commands; when delegation is necessary, use a separate mutation-capable worker limited to exact named commands and no edits.
 
+When a matched reusable skill governs delegated work, pass only that skill explicitly to the child. In Pi, use the child's `skill` field; builtin roles do not inherit the discovered skill catalog. Do not enable global skill inheritance.
+
 Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow children with only the context they need, the cheapest capable model, and explicit stop criteria. In Pi, never pass more than eight children to one workflow or four concurrent async workflows. Tracked runtime limits enforce eight children per workflow and four active async workflows per session. Parent owns synthesis and final verification.
 
 ## Code Search
