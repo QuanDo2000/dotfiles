@@ -7,7 +7,7 @@ description: Review a PR, commit, or working-tree diff with scoped independent r
 
 ## Workflow
 
-1. Resolve review target: PR diff, commit range, staged diff, or working tree. Capture diff once; do not make every reviewer rediscover scope.
+1. Resolve review target: PR diff, commit range, staged diff, or working tree. Record its identity and each review lane. Capture diff once; do not make every reviewer rediscover scope. Before a follow-up wave, reuse its artifact or resume its retained reviewer when lane and target identity are unchanged; relaunch only after the target or required evidence changes.
 2. Keep small diffs with one reviewer. For substantial diffs, split disjoint file groups by feature/locality and give each reviewer only assigned paths plus needed surrounding context.
 3. Use configured reviewer model and thinking defaults for routine reviews. Override reviewer thinking to `xhigh` only for security-critical changes, concurrency or data-loss risks, architecture decisions, complex cross-platform releases, or unresolved reviewer disagreement.
 4. Require findings only: severity `P0`–`P3`, confidence, exact `path:line`, failure mode, and smallest fix. No praise, style-only noise, or speculative findings.

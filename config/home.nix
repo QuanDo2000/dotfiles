@@ -204,6 +204,7 @@ in
     ".hermes/skills/productivity/ponytail/SKILL.md" = forceSource ./shared/ai/skills/ponytail/SKILL.md;
     ".agents/skills/caveman/SKILL.md" = forceSource ./shared/ai/skills/caveman/SKILL.md;
     ".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;
+    ".agents/skills/efficient-subagent-use" = forceSource ./shared/ai/skills/efficient-subagent-use;
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
     ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;
     ".agents/skills/verification-before-completion" = forceSource ./shared/ai/skills/verification-before-completion;

@@ -316,14 +316,14 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_equals "0" "$(jq '[to_entries[] | select(.key != "schemaVersion") | select((.value.commit | test("^[0-9a-f]{40}$") | not) or (.value.observedArchiveSha256 | test("^[0-9a-f]{64}$") | not))] | length' "$pins")"
-  for skill in caveman systematic-debugging test-driven-development verification-before-completion diff-review-qa ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
+  for skill in caveman systematic-debugging test-driven-development verification-before-completion diff-review-qa efficient-subagent-use ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
   assert_contains "$HOME_CONFIG" '".agents/skills/caveman/SKILL.md" = forceSource ./shared/ai/skills/caveman/SKILL.md;'
   assert_not_contains "$HOME_CONFIG" '.agents/skills/caveman/README.md'
   assert_equals '["caveman/README.md"]' "$(jq -c '.caveman.excludedPaths' "$pins")"
   assert_equals "5" "$(jq '.superpowers.excludedPaths | length' "$pins")"
-  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
+  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa efficient-subagent-use ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
     assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
   done
   assert_not_contains "$HOME_CONFIG" 'ponytailSrc = pkgs.fetchFromGitHub'
@@ -347,8 +347,9 @@ test_codex_seeds_have_no_remote_ponytail_marketplace() {
 
 
 test_all_ai_agents_delegate_efficiently() {
-  local agents review_skill soul
+  local agents delegation_skill review_skill soul
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+  delegation_skill="$(<"$REPO_DIR/config/shared/ai/skills/efficient-subagent-use/SKILL.md")"
   review_skill="$(<"$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md")"
   soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
 
@@ -362,8 +363,11 @@ test_all_ai_agents_delegate_efficiently() {
     assert_contains "$guidance" 'Parent owns synthesis and final verification.'
   done
 
+  assert_contains "$agents" 'Before launching, check active and completed runs for the same lane and unchanged target revision.'
+  assert_contains "$delegation_skill" 'This skill owns delegation decisions, lane sizing, and cost control; harness-specific skills own execution APIs and mechanics.'
   assert_file_exists "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md"
   assert_contains "$review_skill" 'Override reviewer thinking to `xhigh` only for security-critical changes, concurrency or data-loss risks, architecture decisions, complex cross-platform releases, or unresolved reviewer disagreement.'
+  assert_contains "$review_skill" 'Before a follow-up wave, reuse its artifact or resume its retained reviewer when lane and target identity are unchanged; relaunch only after the target or required evidence changes.'
   assert_contains "$HOME_CONFIG" '".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;'
 }
 
