@@ -207,7 +207,26 @@ test_code_search_stack_uses_current_full_feature_packages() {
 }
 
 test_pi_web_access_is_pinned() {
+  local config="$REPO_DIR/config/shared/ai/pi/web-search.json"
+
   assert_equals "true" "$(jq -r '.dependencies["pi-web-access"] | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")' "$REPO_DIR/config/shared/ai/pi/extensions/package.json")"
+  assert_file_exists "$config"
+  if [[ -f "$config" ]]; then
+    assert_equals "none" "$(jq -r '.workflow' "$config")"
+  fi
+  assert_contains "$HOME_CONFIG" 'web-search.json:../web-search.json'
+}
+
+test_pi_model_cycling_shortcuts_are_disabled() {
+  local keybindings="$REPO_DIR/config/shared/ai/pi/keybindings.json"
+
+  assert_file_exists "$keybindings"
+  if [[ -f "$keybindings" ]]; then
+    assert_exit_code 0 jq -e '
+      .["app.model.cycleForward"] == [] and
+      .["app.model.cycleBackward"] == []
+    ' "$keybindings"
+  fi
 }
 
 test_pi_lsp_uses_pinned_package_and_nix_servers() {
@@ -228,7 +247,7 @@ test_pi_lsp_uses_pinned_package_and_nix_servers() {
   for package in vtsls nil bash-language-server shellcheck; do
     assert_contains "$HOME_CONFIG" "$package"
   done
-  assert_contains "$HOME_CONFIG" 'settings.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json'
+  assert_contains "$HOME_CONFIG" 'settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json'
 }
 
 test_pi_subagents_configures_native_seven_child_limits() {

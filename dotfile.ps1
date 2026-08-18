@@ -827,13 +827,19 @@ function SyncPiConfigs {
     $baseDir = Join-Path $env:LOCALAPPDATA "dotfiles\pi"
     New-Item -ItemType Directory -Force -Path $targetDir, $baseDir | Out-Null
 
-    foreach ($name in @("settings.json", "mcp.json", "subagent-config.json")) {
+    foreach ($name in @("settings.json", "keybindings.json", "web-search.json", "mcp.json", "subagent-config.json")) {
         $source = if ($name -eq "mcp.json") {
             Join-Path $script:DotfilesDir "config\windows\ai\pi\mcp.json"
         } else {
             Join-Path $seedDir $name
         }
-        $relative = if ($name -eq "subagent-config.json") { "extensions\subagent\config.json" } else { $name }
+        $relative = if ($name -eq "subagent-config.json") {
+            "extensions\subagent\config.json"
+        } elseif ($name -eq "web-search.json") {
+            "..\web-search.json"
+        } else {
+            $name
+        }
         $target = Join-Path $targetDir $relative
         $base = Join-Path $baseDir $name
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null

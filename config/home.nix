@@ -766,7 +766,7 @@ in
   '';
 
   home.activation.seedPiConfigs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    for spec in settings.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json; do
+    for spec in settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json; do
       name="''${spec%%:*}"
       relative="''${spec#*:}"
       if [ "$relative" = "$spec" ]; then

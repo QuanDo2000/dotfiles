@@ -1194,6 +1194,8 @@ function test_syncpiconfigs_creates_writable_seed_files {
     $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir | Out-Null
     '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
+    '{"app.model.cycleForward":[],"app.model.cycleBackward":[]}' | Set-Content (Join-Path $seedDir 'keybindings.json')
+    '{"workflow":"none"}' | Set-Content (Join-Path $seedDir 'web-search.json')
     '{"mcpServers":{"unixOnly":{"command":"unix"}}}' | Set-Content (Join-Path $seedDir 'mcp.json')
     '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
     '{"mcpServers":{"windowsOnly":{"command":"windows"}}}' | Set-Content (Join-Path $windowsSeedDir 'mcp.json')
@@ -1206,18 +1208,28 @@ function test_syncpiconfigs_creates_writable_seed_files {
     SyncPiConfigs
 
     $settings = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
+    $keybindings = Join-Path $env:USERPROFILE '.pi\agent\keybindings.json'
+    $webSearch = Join-Path $env:USERPROFILE '.pi\web-search.json'
     $mcp = Join-Path $env:USERPROFILE '.pi\agent\mcp.json'
     $subagent = Join-Path $env:USERPROFILE '.pi\agent\extensions\subagent\config.json'
     $lsp = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     $baseDir = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
     Assert-FileExists $settings
+    Assert-FileExists $keybindings
+    Assert-FileExists $webSearch
     Assert-FileExists $mcp
     Assert-FileExists $subagent
     Assert-FileExists $lsp
     Assert-FileExists (Join-Path $baseDir 'settings.json')
+    Assert-FileExists (Join-Path $baseDir 'keybindings.json')
+    Assert-FileExists (Join-Path $baseDir 'web-search.json')
     Assert-FileExists (Join-Path $baseDir 'mcp.json')
     Assert-FileExists (Join-Path $baseDir 'subagent-config.json')
+    $keys = Get-Content -Raw $keybindings | ConvertFrom-Json
+    Assert-Equals 0 @($keys.'app.model.cycleForward').Count
+    Assert-Equals 0 @($keys.'app.model.cycleBackward').Count
+    Assert-Equals 'none' (Get-Content -Raw $webSearch | ConvertFrom-Json).workflow
     Assert-Contains (Get-Content -Raw $mcp) '"windowsOnly"'
     Assert-False ((Get-Content -Raw $mcp) -like '*unixOnly*') 'Windows should deploy Windows MCP seed'
     Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
@@ -1249,6 +1261,8 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
   }
 }
 '@ | Set-Content (Join-Path $seedDir 'settings.json')
+    '{"app.model.cycleForward":[],"app.model.cycleBackward":[]}' | Set-Content (Join-Path $seedDir 'keybindings.json')
+    '{"workflow":"none"}' | Set-Content (Join-Path $seedDir 'web-search.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
     '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $windowsSeedDir 'mcp.json')
