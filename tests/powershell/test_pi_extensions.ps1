@@ -200,6 +200,12 @@ function test_installpiextensions_rejects_lock_hash_mismatch_before_npm {
     Assert-False $script:NpmCalled 'npm should not run before lock validation'
 }
 
+function test_piextensionsrelease_validates_mcp_subagent_startup_patch {
+    $definition = (Get-Command Test-PiExtensionsRelease).Definition
+
+    Assert-Contains $definition 'if (process.env.PI_SUBAGENT_DEPTH) await eagerStartup;'
+}
+
 function test_piextensionsrelease_validates_hermes_background_flush_patch {
     $definition = (Get-Command Test-PiExtensionsRelease).Definition
 
@@ -290,6 +296,15 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         @'
     // Start all eager servers concurrently
     await Promise.allSettled(
+      eagerServers.map(async ([name]) => {
+        try {
+          await manager.startServer(name, ctx.cwd);
+        } catch (err) {
+          const msg = err instanceof McpError ? err.userMessage : String(err);
+          ctx.ui.notify(`pi-mcp: Failed to start ${name} — ${msg}`, "error");
+        }
+      }),
+    );
 '@ | Set-Content -LiteralPath (Join-Path $mcpDir 'index.ts') -Encoding ascii
         $global:LASTEXITCODE = 0
     }
@@ -315,7 +330,7 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
     Assert-Contains $script:NpmArgs '--ignore-scripts'
     Assert-Contains $script:NpmArgs '--legacy-peer-deps'
     $stagedMcp = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-mcp-extension\src\index.ts"
-    Assert-Contains (Get-Content -Raw $stagedMcp) 'void Promise.allSettled('
+    Assert-Contains (Get-Content -Raw $stagedMcp) 'if (process.env.PI_SUBAGENT_DEPTH) await eagerStartup;'
     $stagedHermes = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-hermes-memory\src\handlers\session-flush.ts"
     Assert-Contains (Get-Content -Raw $stagedHermes) 'execDetachedChildPrompt'
     $pins = Get-Content -Raw $pinsPath | ConvertFrom-Json

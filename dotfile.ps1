@@ -569,6 +569,11 @@ function Test-PiExtensionsRelease($ReleaseDir, $Pins) {
         try { $installed = Get-Content -Raw -LiteralPath $installedManifest | ConvertFrom-Json } catch { return $false }
         if ([string]$installed.version -ne [string]$dependency.Value) { return $false }
     }
+    $mcpIndex = Join-Path $nodeModules 'pi-mcp-extension\src\index.ts'
+    if (-not (Test-Path -LiteralPath $mcpIndex -PathType Leaf)) { return $false }
+    try {
+        if ((Get-Content -Raw -LiteralPath $mcpIndex) -notlike '*if (process.env.PI_SUBAGENT_DEPTH) await eagerStartup;*') { return $false }
+    } catch { return $false }
     $hermesHandlers = Join-Path $nodeModules 'pi-hermes-memory\src\handlers'
     $hermesSessionFlush = Join-Path $hermesHandlers 'session-flush.ts'
     $hermesChildProcess = Join-Path $hermesHandlers 'pi-child-process.ts'

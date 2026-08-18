@@ -250,6 +250,39 @@ test_pi_lsp_uses_pinned_package_and_nix_servers() {
   assert_contains "$HOME_CONFIG" 'settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json'
 }
 
+test_pi_subagent_search_tools_are_read_only() {
+  local settings
+  settings="$REPO_DIR/config/shared/ai/pi/settings.json"
+
+  assert_file_exists "$settings"
+  if [[ -f "$settings" ]]; then
+    assert_exit_code 0 jq -e '
+      def search_tools: [
+        "mcp_fff_find_files",
+        "mcp_fff_grep",
+        "mcp_fff_multi_grep",
+        "mcp_codebaseMemory_search_graph",
+        "mcp_codebaseMemory_trace_path",
+        "mcp_codebaseMemory_get_code_snippet",
+        "mcp_codebaseMemory_get_architecture",
+        "mcp_codebaseMemory_search_code",
+        "mcp_codebaseMemory_list_projects",
+        "mcp_codebaseMemory_index_status",
+        "mcp_codebaseMemory_check_index_coverage",
+        "mcp_codebaseMemory_detect_changes"
+      ];
+      .subagents.agentOverrides as $roles |
+      search_tools as $search_tools |
+      ($roles.reviewer.tools - $search_tools | sort) == ["find", "grep", "ls", "read"] and
+      ($roles.scout.tools - $search_tools | sort) == ["bash", "find", "grep", "ls", "read", "write"] and
+      ($search_tools - $roles.reviewer.tools | length) == 0 and
+      ($search_tools - $roles.scout.tools | length) == 0 and
+      $roles.reviewer.completionGuard == false and
+      ([$roles.reviewer.tools[], $roles.scout.tools[]] | map(select(test("index_repository|delete_project|manage_adr|ingest_traces"))) | length) == 0
+    ' "$settings"
+  fi
+}
+
 test_pi_subagent_model_scope_is_strict() {
   local settings
   settings="$REPO_DIR/config/shared/ai/pi/settings.json"
@@ -306,6 +339,8 @@ test_code_search_stack_enables_auto_index_and_agent_workflows() {
   assert_contains "$codex" '[mcp_servers.fff.tools.grep]'
   assert_contains "$codex" '[mcp_servers.fff.tools.multi_grep]'
   assert_contains "$codex" '[mcp_servers.codebase-memory-mcp.tools.detect_changes]'
+  assert_contains "$agents" 'Use codebase-memory first when those tools are available'
+  assert_contains "$agents" 'Strict-tool subagents without them use their provided `read`, `grep`, `find`, and `ls` tools.'
   assert_contains "$agents" 'get_architecture'
   assert_contains "$agents" 'detect_changes'
   assert_contains "$agents" 'multi_grep'

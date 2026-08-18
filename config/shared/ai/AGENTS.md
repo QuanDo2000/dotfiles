@@ -16,7 +16,7 @@ Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow chi
 
 ## Code Search
 
-Use codebase-memory first: index once, then prefer `get_architecture`, `search_graph`, `trace_path`, and `get_code_snippet`; run `detect_changes` before finalizing code edits. Use FFF (`find_files`/`grep`/`multi_grep`, or Pi's `mcp_fff_find_files`/`mcp_fff_grep`/`mcp_fff_multi_grep`) for raw filename/text lookup and fallback instead of shell grep, glob, or find.
+Use codebase-memory first when those tools are available: index once, then prefer `get_architecture`, `search_graph`, `trace_path`, and `get_code_snippet`; run `detect_changes` before finalizing code edits. Use FFF (`find_files`/`grep`/`multi_grep`, or Pi's `mcp_fff_find_files`/`mcp_fff_grep`/`mcp_fff_multi_grep`) for raw filename/text lookup and fallback instead of shell grep, glob, or find. Strict-tool subagents without them use their provided `read`, `grep`, `find`, and `ls` tools.
 
 ## Unknown Framework Boundaries
 

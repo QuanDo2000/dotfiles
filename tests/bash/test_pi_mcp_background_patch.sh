@@ -27,14 +27,15 @@ write_unpatched_fixture() {
 EOF
 }
 
-test_pi_mcp_patch_starts_eager_servers_without_blocking() {
+test_pi_mcp_patch_waits_only_in_subagents() {
   local target="$TEST_TMPDIR/index.ts"
   write_unpatched_fixture "$target"
 
   python3 "$REPO_DIR/scripts/patch_pi_mcp_background.py" "$target" 2>>"$ERROR_FILE"
 
-  assert_contains "$(<"$target")" '// Start all eager servers concurrently without blocking session startup'
-  assert_contains "$(<"$target")" 'void Promise.allSettled('
+  assert_contains "$(<"$target")" '// Child sessions wait so strict tool allowlists see every eager MCP tool.'
+  assert_contains "$(<"$target")" 'const eagerStartup = Promise.allSettled('
+  assert_contains "$(<"$target")" 'if (process.env.PI_SUBAGENT_DEPTH) await eagerStartup;'
   assert_not_contains "$(<"$target")" 'await Promise.allSettled('
 }
 

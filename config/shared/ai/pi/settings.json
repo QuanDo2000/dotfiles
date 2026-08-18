@@ -23,7 +23,27 @@
       },
       "scout": {
         "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "medium"
+        "thinking": "medium",
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "bash",
+          "write",
+          "mcp_fff_find_files",
+          "mcp_fff_grep",
+          "mcp_fff_multi_grep",
+          "mcp_codebaseMemory_search_graph",
+          "mcp_codebaseMemory_trace_path",
+          "mcp_codebaseMemory_get_code_snippet",
+          "mcp_codebaseMemory_get_architecture",
+          "mcp_codebaseMemory_search_code",
+          "mcp_codebaseMemory_list_projects",
+          "mcp_codebaseMemory_index_status",
+          "mcp_codebaseMemory_check_index_coverage",
+          "mcp_codebaseMemory_detect_changes"
+        ]
       },
       "worker": {
         "model": "openai-codex/gpt-5.6-luna",
@@ -35,18 +55,37 @@
       },
       "reviewer": {
         "model": "openai-codex/gpt-5.6-sol",
-        "thinking": "high"
+        "thinking": "high",
+        "completionGuard": false,
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "mcp_fff_find_files",
+          "mcp_fff_grep",
+          "mcp_fff_multi_grep",
+          "mcp_codebaseMemory_search_graph",
+          "mcp_codebaseMemory_trace_path",
+          "mcp_codebaseMemory_get_code_snippet",
+          "mcp_codebaseMemory_get_architecture",
+          "mcp_codebaseMemory_search_code",
+          "mcp_codebaseMemory_list_projects",
+          "mcp_codebaseMemory_index_status",
+          "mcp_codebaseMemory_check_index_coverage",
+          "mcp_codebaseMemory_detect_changes"
+        ]
       }
     }
   },
   "defaultProjectTrust": "ask",
   "enableInstallTelemetry": false,
   "packages": [
-    "./locked-extensions/releases/3a28b416ef1431cac81b0e8816c5f17973f8853877c6bcf3b001fffb0864ce67/node_modules/pi-mcp-extension",
-    "./locked-extensions/releases/3a28b416ef1431cac81b0e8816c5f17973f8853877c6bcf3b001fffb0864ce67/node_modules/pi-hermes-memory",
-    "./locked-extensions/releases/3a28b416ef1431cac81b0e8816c5f17973f8853877c6bcf3b001fffb0864ce67/node_modules/@narumitw/pi-lsp",
-    "./locked-extensions/releases/3a28b416ef1431cac81b0e8816c5f17973f8853877c6bcf3b001fffb0864ce67/node_modules/pi-web-access",
-    "./locked-extensions/releases/3a28b416ef1431cac81b0e8816c5f17973f8853877c6bcf3b001fffb0864ce67/node_modules/pi-subagents"
+    "./locked-extensions/releases/ace01d7b14149ae13458b39d632fefce00ea43d2f67eea30e084d643af859db7/node_modules/pi-mcp-extension",
+    "./locked-extensions/releases/ace01d7b14149ae13458b39d632fefce00ea43d2f67eea30e084d643af859db7/node_modules/pi-hermes-memory",
+    "./locked-extensions/releases/ace01d7b14149ae13458b39d632fefce00ea43d2f67eea30e084d643af859db7/node_modules/@narumitw/pi-lsp",
+    "./locked-extensions/releases/ace01d7b14149ae13458b39d632fefce00ea43d2f67eea30e084d643af859db7/node_modules/pi-web-access",
+    "./locked-extensions/releases/ace01d7b14149ae13458b39d632fefce00ea43d2f67eea30e084d643af859db7/node_modules/pi-subagents"
   ],
   "theme": "dark",
   "terminal": {
