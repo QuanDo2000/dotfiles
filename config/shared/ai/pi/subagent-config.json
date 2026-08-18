@@ -2,10 +2,7 @@
   "asyncByDefault": true,
   "toolDescriptionMode": "compact",
   "artifactDir": "session",
-  "globalConcurrencyLimit": 7,
-  "parallel": {
-    "maxTasks": 7,
-    "concurrency": 7
-  },
+  "maxSubagentSpawnsPerRun": 8,
+  "maxActiveAsyncRunsPerSession": 4,
   "maxSubagentSpawnsPerSession": 32
 }

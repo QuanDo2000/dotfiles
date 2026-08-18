@@ -250,21 +250,24 @@ test_pi_lsp_uses_pinned_package_and_nix_servers() {
   assert_contains "$HOME_CONFIG" 'settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json'
 }
 
-test_pi_subagents_configures_native_seven_child_limits() {
+test_pi_subagents_configures_workflow_guardrails() {
   local config
   config="$REPO_DIR/config/shared/ai/pi/subagent-config.json"
 
   assert_file_exists "$config"
   if [[ -f "$config" ]]; then
     assert_exit_code 0 jq -e '
-      .globalConcurrencyLimit == 7 and
-      .parallel.maxTasks == 7 and
-      .parallel.concurrency == 7
+      .maxSubagentSpawnsPerRun == 8 and
+      .maxActiveAsyncRunsPerSession == 4 and
+      .maxSubagentSpawnsPerSession == 32 and
+      has("globalConcurrencyLimit") == false and
+      has("parallel") == false
     ' "$config"
   fi
   assert_contains "$HOME_CONFIG" 'if [ "$name" = "subagent-config.json" ]; then'
   assert_contains "$HOME_CONFIG" 'base_tmp="$(mktemp "$base.tmp.XXXXXX")"'
-  assert_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'never pass more than seven children to one workflow or overlap workflows'
+  assert_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'Tracked runtime limits enforce eight children per workflow and four active async workflows per session.'
+  assert_not_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'native limits are not session-global'
 }
 
 test_code_search_stack_enables_auto_index_and_agent_workflows() {
