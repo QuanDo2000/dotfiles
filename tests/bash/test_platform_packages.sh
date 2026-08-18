@@ -250,6 +250,22 @@ test_pi_lsp_uses_pinned_package_and_nix_servers() {
   assert_contains "$HOME_CONFIG" 'settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json'
 }
 
+test_pi_subagent_model_scope_is_strict() {
+  local settings
+  settings="$REPO_DIR/config/shared/ai/pi/settings.json"
+
+  assert_file_exists "$settings"
+  if [[ -f "$settings" ]]; then
+    assert_exit_code 0 jq -e '
+      .subagents.modelScope.enforce == true and
+      .subagents.modelScope.strict == true and
+      .subagents.modelScope.allow == ["openai-codex/*"] and
+      (.subagents.defaultModel | startswith("openai-codex/")) and
+      ([.subagents.agentOverrides[].model | startswith("openai-codex/")] | all)
+    ' "$settings"
+  fi
+}
+
 test_pi_subagents_configures_workflow_guardrails() {
   local config
   config="$REPO_DIR/config/shared/ai/pi/subagent-config.json"
