@@ -365,9 +365,11 @@ test_all_ai_agents_delegate_efficiently() {
 
   assert_contains "$agents" 'Before launching, check active and completed runs for the same lane and unchanged target revision.'
   assert_contains "$delegation_skill" 'This skill owns delegation decisions, lane sizing, and cost control; harness-specific skills own execution APIs and mechanics.'
+  assert_contains "$delegation_skill" 'For read-only scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`, and request only findings, exact paths, confidence or coverage, and residual risks.'
   assert_file_exists "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md"
   assert_contains "$review_skill" 'Override reviewer thinking to `xhigh` only for security-critical changes, concurrency or data-loss risks, architecture decisions, complex cross-platform releases, or unresolved reviewer disagreement.'
   assert_contains "$review_skill" 'Before a follow-up wave, reuse its artifact or resume its retained reviewer when lane and target identity are unchanged; relaunch only after the target or required evidence changes.'
+  assert_contains "$review_skill" 'Do not request an `acceptance-report` schema from read-only reviewers.'
   assert_contains "$HOME_CONFIG" '".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;'
 }
 
