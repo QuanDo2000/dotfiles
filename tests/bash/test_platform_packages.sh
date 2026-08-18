@@ -347,8 +347,9 @@ test_codex_seeds_have_no_remote_ponytail_marketplace() {
 
 
 test_all_ai_agents_delegate_efficiently() {
-  local agents soul
+  local agents review_skill soul
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+  review_skill="$(<"$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md")"
   soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
 
   for guidance in "$agents" "$soul"; do
@@ -362,6 +363,7 @@ test_all_ai_agents_delegate_efficiently() {
   done
 
   assert_file_exists "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md"
+  assert_contains "$review_skill" 'Override reviewer thinking to `xhigh` only for security-critical changes, concurrency or data-loss risks, architecture decisions, complex cross-platform releases, or unresolved reviewer disagreement.'
   assert_contains "$HOME_CONFIG" '".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;'
 }
 

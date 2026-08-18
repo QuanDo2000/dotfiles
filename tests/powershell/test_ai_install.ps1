@@ -1169,7 +1169,7 @@ function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
     Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.agentOverrides.researcher.model
     Assert-Equals 'high' $settings.subagents.agentOverrides.researcher.thinking
     Assert-Equals 'openai-codex/gpt-5.6-sol' $settings.subagents.agentOverrides.reviewer.model
-    Assert-Equals 'xhigh' $settings.subagents.agentOverrides.reviewer.thinking
+    Assert-Equals 'high' $settings.subagents.agentOverrides.reviewer.thinking
 }
 
 function test_pi_lsp_package_is_pinned {

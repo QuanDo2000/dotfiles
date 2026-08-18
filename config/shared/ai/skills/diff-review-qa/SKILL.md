@@ -9,10 +9,11 @@ description: Review a PR, commit, or working-tree diff with scoped independent r
 
 1. Resolve review target: PR diff, commit range, staged diff, or working tree. Capture diff once; do not make every reviewer rediscover scope.
 2. Keep small diffs with one reviewer. For substantial diffs, split disjoint file groups by feature/locality and give each reviewer only assigned paths plus needed surrounding context.
-3. Require findings only: severity `P0`–`P3`, confidence, exact `path:line`, failure mode, and smallest fix. No praise, style-only noise, or speculative findings.
-4. Parent checks each finding against source and rejects duplicates or unsupported claims before any fix.
-5. One writer applies accepted fixes. Parent runs repository's named validation commands and inspects output.
-6. Independent reviewer checks final diff and validation evidence. Parent reports unresolved risks; no clean verdict without fresh evidence.
+3. Use configured reviewer model and thinking defaults for routine reviews. Override reviewer thinking to `xhigh` only for security-critical changes, concurrency or data-loss risks, architecture decisions, complex cross-platform releases, or unresolved reviewer disagreement.
+4. Require findings only: severity `P0`–`P3`, confidence, exact `path:line`, failure mode, and smallest fix. No praise, style-only noise, or speculative findings.
+5. Parent checks each finding against source and rejects duplicates or unsupported claims before any fix.
+6. One writer applies accepted fixes. Parent runs repository's named validation commands and inspects output.
+7. Independent reviewer checks final diff and validation evidence. Parent reports unresolved risks; no clean verdict without fresh evidence.
 
 ## Boundaries
 
