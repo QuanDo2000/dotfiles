@@ -422,6 +422,8 @@ test_all_ai_agents_delegate_efficiently() {
   assert_contains "$delegation_skill" 'Pass only governing matched skills through the child `skill` field; do not enable global skill inheritance.'
   assert_contains "$debugging_skill" 'Use the `test-driven-development` skill for writing proper failing tests'
   assert_not_contains "$debugging_skill" 'superpowers:test-driven-development'
+  assert_contains "$debugging_skill" 'Use the `verification-before-completion` skill before claiming success'
+  assert_not_contains "$debugging_skill" 'superpowers:verification-before-completion'
   assert_contains "$delegation_skill" 'For read-only scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`, and request only findings, exact paths, confidence or coverage, and residual risks.'
   assert_file_exists "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md"
   assert_contains "$review_skill" 'Override reviewer thinking to `xhigh` only for security-critical changes, concurrency or data-loss risks, architecture decisions, complex cross-platform releases, or unresolved reviewer disagreement.'
