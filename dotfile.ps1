@@ -1301,10 +1301,20 @@ function SyncAiInstructions {
     if ($script:Dry) { return }
 
     $source = Join-Path $script:DotfilesDir 'config\shared\ai\AGENTS.md'
+    $sourceSha256 = Get-FileSha256 $source
     foreach ($target in @(
             (Join-Path $env:USERPROFILE '.codex\AGENTS.md'),
             (Join-Path $env:USERPROFILE '.pi\agent\AGENTS.md')
         )) {
+        $targetItem = Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+        if ($targetItem -and -not $targetItem.PSIsContainer -and
+            -not ($targetItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
+            $sourceSha256 -eq (Get-FileSha256 $target)) {
+            continue
+        }
+        if ($targetItem -and ($targetItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            Remove-Item -LiteralPath $target -Force
+        }
         New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
         Copy-Item -LiteralPath $source -Destination $target -Force
     }

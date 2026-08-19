@@ -384,19 +384,75 @@ function test_installfffmcp_stops_running_server_before_update {
     Assert-Equals 'new' (Get-Content -Raw (Join-Path $binDir 'fff-mcp.exe'))
 }
 
-function test_syncaiinstructions_copies_shared_file_for_codex_and_pi {
+function Initialize-TestAiInstructions($Content = 'shared instructions') {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $source = Join-Path $script:DotfilesDir 'config\shared\ai\AGENTS.md'
     New-Item -ItemType Directory -Force -Path (Split-Path $source -Parent) | Out-Null
-    'shared instructions' | Set-Content $source
+    $Content | Set-Content $source
+    return $source
+}
+
+function Get-TestAiInstructionTargets {
+    return @(
+        (Join-Path $env:USERPROFILE '.codex\AGENTS.md'),
+        (Join-Path $env:USERPROFILE '.pi\agent\AGENTS.md')
+    )
+}
+
+function test_syncaiinstructions_skips_unchanged_regular_files_for_codex_and_pi {
+    $source = Initialize-TestAiInstructions
+    foreach ($target in Get-TestAiInstructionTargets) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+        Copy-Item -LiteralPath $source -Destination $target
+    }
+    $script:AiInstructionCopies = 0
+    Set-CommandMock 'Copy-Item' { $script:AiInstructionCopies++ }
 
     SyncAiInstructions
 
-    foreach ($target in '.codex\AGENTS.md', '.pi\agent\AGENTS.md') {
-        $path = Join-Path $env:USERPROFILE $target
-        Assert-FileExists $path
-        Assert-Contains (Get-Content -Raw $path) 'shared instructions'
+    Assert-Equals 0 $script:AiInstructionCopies
+}
+
+function test_syncaiinstructions_replaces_changed_files_for_codex_and_pi {
+    Initialize-TestAiInstructions | Out-Null
+    foreach ($target in Get-TestAiInstructionTargets) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+        'old instructions' | Set-Content $target
     }
+
+    SyncAiInstructions
+
+    foreach ($target in Get-TestAiInstructionTargets) {
+        Assert-Equals 'shared instructions' ((Get-Content -Raw $target).Trim())
+    }
+}
+
+function test_syncaiinstructions_creates_missing_files_for_codex_and_pi {
+    Initialize-TestAiInstructions | Out-Null
+
+    SyncAiInstructions
+
+    foreach ($target in Get-TestAiInstructionTargets) {
+        Assert-FileExists $target
+        Assert-Equals 'shared instructions' ((Get-Content -Raw $target).Trim())
+    }
+}
+
+function test_syncaiinstructions_does_not_skip_linked_destinations_for_codex_and_pi {
+    Initialize-TestAiInstructions | Out-Null
+    $external = Join-Path $script:_TestTmp.FullName 'linked-AGENTS.md'
+    'shared instructions' | Set-Content $external
+    foreach ($target in Get-TestAiInstructionTargets) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
+        New-Item -ItemType SymbolicLink -Path $target -Target $external | Out-Null
+    }
+    SyncAiInstructions
+
+    foreach ($target in Get-TestAiInstructionTargets) {
+        Assert-False ([bool](Get-Item -LiteralPath $target -Force).LinkType) 'linked destination should become a regular file'
+        Assert-Equals 'shared instructions' ((Get-Content -Raw $target).Trim())
+    }
+    Assert-Equals 'shared instructions' ((Get-Content -Raw $external).Trim())
 }
 
 function test_install_skill_directory_rejects_linked_source_root {
