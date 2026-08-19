@@ -1228,6 +1228,28 @@ function Install-SkillDirectory($Source, $Destination) {
     } | Select-Object -First 1
     if ($sourceReparsePoint) { throw "Vendored skill contains a reparse point: $($sourceReparsePoint.FullName)" }
 
+    if (Test-Path -LiteralPath $Destination -PathType Container) {
+        try {
+            $targetItems = @((Get-Item -LiteralPath $Destination -Force)) + @(Get-ChildItem -LiteralPath $Destination -Recurse -Force)
+            $targetReparsePoint = $targetItems | Where-Object {
+                $_.Attributes -band [IO.FileAttributes]::ReparsePoint
+            } | Select-Object -First 1
+            $current = -not $targetReparsePoint -and $targetItems.Count -eq $sourceItems.Count
+            foreach ($sourceItem in $sourceItems | Select-Object -Skip 1) {
+                if (-not $current) { break }
+                $relative = $sourceItem.FullName.Substring($sourceItems[0].FullName.Length + 1)
+                $targetItem = Get-Item -LiteralPath (Join-Path $Destination $relative) -Force -ErrorAction Stop
+                $current = $sourceItem.PSIsContainer -eq $targetItem.PSIsContainer
+                if ($current -and -not $sourceItem.PSIsContainer) {
+                    $current = $sourceItem.Length -eq $targetItem.Length -and
+                        (Get-FileHash -LiteralPath $sourceItem.FullName -Algorithm SHA256).Hash -eq
+                        (Get-FileHash -LiteralPath $targetItem.FullName -Algorithm SHA256).Hash
+                }
+            }
+            if ($current) { return }
+        } catch { }
+    }
+
     $parent = Split-Path $Destination -Parent
     $name = Split-Path $Destination -Leaf
     $staging = Join-Path $parent ".$name.staging.$([Guid]::NewGuid().ToString('N'))"

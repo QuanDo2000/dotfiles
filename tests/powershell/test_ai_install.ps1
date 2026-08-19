@@ -419,6 +419,27 @@ function test_install_skill_directory_rejects_linked_skill_file {
     Assert-Contains (Get-Content -Raw (Join-Path $target 'SKILL.md')) 'old'
 }
 
+function test_install_skill_directory_skips_current_copy {
+    $source = Join-Path $script:_TestTmp.FullName 'source-skill'
+    $target = Join-Path $script:_TestTmp.FullName 'target-skill'
+    New-Item -ItemType Directory -Force -Path (Join-Path $source 'references'), (Join-Path $target 'references') | Out-Null
+    'same' | Set-Content (Join-Path $source 'SKILL.md')
+    'same' | Set-Content (Join-Path $target 'SKILL.md')
+    'same reference' | Set-Content (Join-Path $source 'references\details.md')
+    'same reference' | Set-Content (Join-Path $target 'references\details.md')
+    $script:SkillCopies = 0
+    Set-CommandMock 'Copy-Item' { $script:SkillCopies++ }
+
+    try {
+        Install-SkillDirectory $source $target
+    } finally {
+        Clear-CommandMock 'Copy-Item'
+    }
+
+    Assert-Equals 0 $script:SkillCopies
+    Assert-Contains (Get-Content -Raw (Join-Path $target 'SKILL.md')) 'same'
+}
+
 function test_install_skill_directory_preserves_current_copy_when_staging_fails {
     $source = Join-Path $script:_TestTmp.FullName 'source-skill'
     $target = Join-Path $script:_TestTmp.FullName 'target-skill'
