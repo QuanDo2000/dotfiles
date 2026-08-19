@@ -216,13 +216,14 @@ function _pi_archive_url {
 }
 
 function _prefetch_pi_src_hash {
-  local version output hash
+  local version output hash store_path
   version="$1"
   output="$(nix store prefetch-file --json --hash-type sha256 "$(_pi_archive_url "$version")")" \
     || fail "Failed to prefetch Pi archive"
   hash="$(jq -r '.hash // empty' <<< "$output")"
-  [[ -n "$hash" ]] || fail "Failed to parse Pi archive hash"
-  printf '%s\n' "$hash"
+  store_path="$(jq -r '.storePath // empty' <<< "$output")"
+  [[ -n "$hash" && -f "$store_path" ]] || fail "Failed to parse Pi archive prefetch"
+  printf '%s\t%s\n' "$hash" "$store_path"
 }
 
 function _download_pi_package_lock {
@@ -230,9 +231,11 @@ function _download_pi_package_lock {
   version="$1"
   lock_file="$2"
   tmp_dir="$(mktemp -d)" || fail "Failed to create temp dir"
-  tarball="$tmp_dir/pi.tgz"
-  curl -fsSL "$(_pi_archive_url "$version")" -o "$tarball" \
-    || { rm -rf "$tmp_dir"; fail "Failed to download Pi archive"; }
+  tarball="${3:-$tmp_dir/pi.tgz}"
+  if [[ -z "${3:-}" ]]; then
+    curl -fsSL "$(_pi_archive_url "$version")" -o "$tarball" \
+      || { rm -rf "$tmp_dir"; fail "Failed to download Pi archive"; }
+  fi
   tar -xOzf "$tarball" package/npm-shrinkwrap.json > "$lock_file" \
     || { rm -rf "$tmp_dir"; fail "Failed to extract Pi package lock"; }
   rm -rf "$tmp_dir"
@@ -522,7 +525,7 @@ function _update_pi_release_package {
   [[ -f "$lock_file" ]] || fail "Missing Pi package lock: $lock_file"
   (
     local transaction_dir="$DOTFILES_DIR/packages/.pi-update.transaction"
-    local stage_dir="" version current_version tmp_package tmp_lock src_hash deps_hash
+    local stage_dir="" version current_version tmp_package tmp_lock prefetched src_hash archive deps_hash
     trap '[[ -z "$stage_dir" ]] || rm -rf "$stage_dir"; _release_release_transaction "$transaction_dir"' EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
@@ -545,8 +548,9 @@ function _update_pi_release_package {
       && cp -p "$lock_file" "$tmp_lock" \
       || fail "Failed to stage Pi package files"
 
-    src_hash="$(_prefetch_pi_src_hash "$version")"
-    _download_pi_package_lock "$version" "$tmp_lock"
+    prefetched="$(_prefetch_pi_src_hash "$version")"
+    IFS=$'\t' read -r src_hash archive <<< "$prefetched"
+    _download_pi_package_lock "$version" "$tmp_lock" "$archive"
     deps_hash="$(_prefetch_pi_npm_deps_hash "$tmp_lock")"
     _write_pi_package "$version" "$src_hash" "$deps_hash" "$tmp_package"
     _validate_release_files "Pi" "$tmp_package" "$tmp_lock" "$version" "$src_hash" "$deps_hash"
@@ -559,14 +563,15 @@ function _obsidian_headless_archive_url {
 }
 
 function _prefetch_obsidian_headless_src_hash {
-  local version url output hash
+  local version url output hash store_path
   version="$1"
   url="$(_obsidian_headless_archive_url "$version")"
   output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
     || fail "Failed to prefetch Obsidian Headless archive"
   hash="$(jq -r '.hash // empty' <<< "$output")"
-  [[ -n "$hash" ]] || fail "Failed to parse Obsidian Headless archive hash"
-  printf '%s\n' "$hash"
+  store_path="$(jq -r '.storePath // empty' <<< "$output")"
+  [[ -n "$hash" && -f "$store_path" ]] || fail "Failed to parse Obsidian Headless archive prefetch"
+  printf '%s\t%s\n' "$hash" "$store_path"
 }
 
 function _download_obsidian_headless_package_lock {
@@ -575,9 +580,11 @@ function _download_obsidian_headless_package_lock {
   lock_file="${2:-$DOTFILES_DIR/packages/obsidian-headless-package-lock.json}"
   url="$(_obsidian_headless_archive_url "$version")"
   tmp_dir="$(mktemp -d)" || fail "Failed to create temp dir"
-  tarball="$tmp_dir/obsidian-headless.tgz"
-  curl -fsSL "$url" -o "$tarball" \
-    || { rm -rf "$tmp_dir"; fail "Failed to download Obsidian Headless archive"; }
+  tarball="${3:-$tmp_dir/obsidian-headless.tgz}"
+  if [[ -z "${3:-}" ]]; then
+    curl -fsSL "$url" -o "$tarball" \
+      || { rm -rf "$tmp_dir"; fail "Failed to download Obsidian Headless archive"; }
+  fi
   if ! tar -xOzf "$tarball" package/package-lock.json > "$lock_file" 2>/dev/null; then
     tar -xOzf "$tarball" package/package.json > "$tmp_dir/package.json" \
       || { rm -rf "$tmp_dir"; fail "Failed to extract Obsidian Headless package metadata"; }
@@ -635,7 +642,7 @@ function _update_obsidian_headless_package {
   [[ -f "$lock_file" ]] || fail "Missing Obsidian Headless package lock: $lock_file"
   (
     local transaction_dir="$DOTFILES_DIR/packages/.obsidian-update.transaction"
-    local stage_dir="" version current_version tmp_package tmp_lock src_hash deps_hash
+    local stage_dir="" version current_version tmp_package tmp_lock prefetched src_hash archive deps_hash
     trap '[[ -z "$stage_dir" ]] || rm -rf "$stage_dir"; _release_release_transaction "$transaction_dir"' EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
@@ -658,11 +665,12 @@ function _update_obsidian_headless_package {
       && cp -p "$lock_file" "$tmp_lock" \
       || fail "Failed to stage Obsidian Headless package files"
 
-    if ! src_hash="$(_prefetch_obsidian_headless_src_hash "$version")"; then
-      printf '%s\n' "$src_hash"
+    if ! prefetched="$(_prefetch_obsidian_headless_src_hash "$version")"; then
+      printf '%s\n' "$prefetched"
       return 1
     fi
-    _download_obsidian_headless_package_lock "$version" "$tmp_lock"
+    IFS=$'\t' read -r src_hash archive <<< "$prefetched"
+    _download_obsidian_headless_package_lock "$version" "$tmp_lock" "$archive"
     if ! deps_hash="$(_prefetch_obsidian_headless_npm_deps_hash "$tmp_lock")"; then
       printf '%s\n' "$deps_hash"
       return 1

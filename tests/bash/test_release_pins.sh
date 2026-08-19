@@ -827,11 +827,13 @@ test_update_pi_release_package_pins_latest_release() {
 EOF
   printf '{"old":true}\n' > "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
   chmod 644 "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
+  local prefetched_archive="$TEST_TMPDIR/pi-agent-0.80.7.tgz"
+  printf 'prefetched tarball\n' > "$prefetched_archive"
 
   curl() {
     case "$*" in
       *pi-coding-agent/latest*) printf '{"version":"0.80.7"}' ;;
-      *pi-coding-agent-0.80.7.tgz*) printf 'tarball\n' > "$4" ;;
+      *pi-coding-agent-0.80.7.tgz*) echo "Pi archive downloaded twice" >> "$ERROR_FILE"; return 1 ;;
       *pi-agent-core/0.80.7*) printf '{"dist":{"integrity":"sha512-core"}}' ;;
       *pi-ai/0.80.7*) printf '{"dist":{"integrity":"sha512-ai"}}' ;;
       *pi-tui/0.80.7*) printf '{"dist":{"integrity":"sha512-tui"}}' ;;
@@ -839,13 +841,14 @@ EOF
     esac
   }
   tar() {
+    assert_contains "$*" "$prefetched_archive"
     cat <<'EOF'
 {"packages":{"node_modules/@earendil-works/pi-agent-core":{"version":"0.80.7","resolved":"core"},"node_modules/@earendil-works/pi-ai":{"version":"0.80.7","resolved":"ai"},"node_modules/@earendil-works/pi-tui":{"version":"0.80.7","resolved":"tui"}}}
 EOF
   }
   nix() {
     case "$*" in
-      *prefetch-file*pi-coding-agent-0.80.7.tgz*) printf '{"hash":"sha256-new-src"}\n' ;;
+      *prefetch-file*pi-coding-agent-0.80.7.tgz*) printf '{"hash":"sha256-new-src","storePath":"%s"}\n' "$prefetched_archive" ;;
       *prefetch-npm-deps*) printf 'sha256-new-deps\n' ;;
       *) echo "unexpected nix: $*" >> "$ERROR_FILE"; return 1 ;;
     esac
@@ -905,23 +908,26 @@ buildNpmPackage rec {
 }
 EOF
   printf '{"old":true}\n' > "$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
+  local prefetched_archive="$TEST_TMPDIR/obsidian-headless-0.0.13.tgz"
+  printf 'prefetched tarball\n' > "$prefetched_archive"
 
   curl() {
     case "$*" in
       *registry.npmjs.org/obsidian-headless/latest*) printf '{"version":"0.0.13"}' ;;
-      *obsidian-headless-0.0.13.tgz*) printf '{"new":true}\n' > "$4" ;;
+      *obsidian-headless-0.0.13.tgz*) echo "Obsidian archive downloaded twice" >> "$ERROR_FILE"; return 1 ;;
       *) echo "unexpected curl: $*" >> "$ERROR_FILE"; return 1 ;;
     esac
   }
   nix() {
     case "$*" in
-      *prefetch-file*obsidian-headless-0.0.13.tgz*) printf '{ "hash": "sha256-new-src" }\n' ;;
+      *prefetch-file*obsidian-headless-0.0.13.tgz*) printf '{ "hash": "sha256-new-src", "storePath": "%s" }\n' "$prefetched_archive" ;;
       *prefetch-npm-deps*) printf 'sha256-new-deps\n' ;;
       *) echo "unexpected nix: $*" >> "$ERROR_FILE"; return 1 ;;
     esac
   }
   nix-instantiate() { return 0; }
   tar() {
+    assert_contains "$*" "$prefetched_archive"
     assert_contains "$*" "package/package-lock.json"
     printf '{"new":true}\n'
   }
@@ -960,22 +966,25 @@ buildNpmPackage rec {
 }
 EOF
   printf '{"old":true}\n' > "$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
+  local prefetched_archive="$TEST_TMPDIR/obsidian-headless-failure-0.0.13.tgz"
+  printf 'prefetched tarball\n' > "$prefetched_archive"
 
   curl() {
     case "$*" in
       *registry.npmjs.org/obsidian-headless/latest*) printf '{"version":"0.0.13"}' ;;
-      *obsidian-headless-0.0.13.tgz*) printf '{"new":true}\n' > "$4" ;;
+      *obsidian-headless-0.0.13.tgz*) echo "Obsidian archive downloaded twice" >> "$ERROR_FILE"; return 1 ;;
       *) echo "unexpected curl: $*" >> "$ERROR_FILE"; return 1 ;;
     esac
   }
   nix() {
     case "$*" in
-      *prefetch-file*obsidian-headless-0.0.13.tgz*) printf '{ "hash": "sha256-new-src" }\n' ;;
+      *prefetch-file*obsidian-headless-0.0.13.tgz*) printf '{ "hash": "sha256-new-src", "storePath": "%s" }\n' "$prefetched_archive" ;;
       *prefetch-npm-deps*) return 1 ;;
       *) echo "unexpected nix: $*" >> "$ERROR_FILE"; return 1 ;;
     esac
   }
   tar() {
+    assert_contains "$*" "$prefetched_archive"
     printf '{"new":true}\n'
   }
 
