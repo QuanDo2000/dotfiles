@@ -767,6 +767,12 @@ in
   '';
 
   home.activation.seedPiConfigs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    managed_file_current() {
+      [ -f "$2" ] && [ ! -L "$2" ] &&
+        [ "$("${pkgs.coreutils}/bin/stat" -c %a "$2")" = 600 ] &&
+        "${pkgs.coreutils}/bin/cmp" -s "$1" "$2"
+    }
+
     for spec in settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json; do
       name="''${spec%%:*}"
       relative="''${spec#*:}"
@@ -781,15 +787,19 @@ in
 
       mkdir -p "$(dirname "$target")"
       if [ "$name" = "subagent-config.json" ]; then
-        tmp="$(mktemp "$target.tmp.XXXXXX")"
-        cp "$source" "$tmp"
-        chmod 600 "$tmp"
-        mv "$tmp" "$target"
-        mkdir -p "$(dirname "$base")"
-        base_tmp="$(mktemp "$base.tmp.XXXXXX")"
-        cp "$source" "$base_tmp"
-        chmod 600 "$base_tmp"
-        mv "$base_tmp" "$base"
+        if ! managed_file_current "$source" "$target"; then
+          tmp="$(mktemp "$target.tmp.XXXXXX")"
+          cp "$source" "$tmp"
+          chmod 600 "$tmp"
+          mv "$tmp" "$target"
+        fi
+        if ! managed_file_current "$source" "$base"; then
+          mkdir -p "$(dirname "$base")"
+          base_tmp="$(mktemp "$base.tmp.XXXXXX")"
+          cp "$source" "$base_tmp"
+          chmod 600 "$base_tmp"
+          mv "$base_tmp" "$base"
+        fi
         continue
       fi
       if [ -f "$target" ] && [ ! -L "$target" ]; then
@@ -808,12 +818,20 @@ in
   '';
 
   home.activation.seedLazyLock = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    managed_file_current() {
+      [ -f "$2" ] && [ ! -L "$2" ] &&
+        [ "$("${pkgs.coreutils}/bin/stat" -c %a "$2")" = 600 ] &&
+        "${pkgs.coreutils}/bin/cmp" -s "$1" "$2"
+    }
+
     target="$HOME/.config/nvim/lazy-lock.json"
-    mkdir -p "$(dirname "$target")"
-    tmp="$(mktemp "$target.tmp.XXXXXX")"
-    cp "${./shared/config/nvim/lazy-lock.json}" "$tmp"
-    chmod 600 "$tmp"
-    mv "$tmp" "$target"
+    if ! managed_file_current "${./shared/config/nvim/lazy-lock.json}" "$target"; then
+      mkdir -p "$(dirname "$target")"
+      tmp="$(mktemp "$target.tmp.XXXXXX")"
+      cp "${./shared/config/nvim/lazy-lock.json}" "$tmp"
+      chmod 600 "$tmp"
+      mv "$tmp" "$target"
+    fi
   '';
 
   xdg.configFile."nvim/fff-nvim-backend".source = fffNvimBinary;

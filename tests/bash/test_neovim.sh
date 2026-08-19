@@ -94,6 +94,7 @@ test_neovim_uses_reviewed_plugin_lock() {
   updater="$(<"$REPO_DIR/scripts/update_pins.py")"
 
   assert_contains "$config" "home.activation.seedLazyLock"
+  assert_contains "$config" 'if ! managed_file_current "${./shared/config/nvim/lazy-lock.json}" "$target"; then'
   assert_contains "$lazy" 'lazy-lock.json'
   assert_contains "$lazy" 'git", "-C", lazypath, "checkout", "--force", commit'
   assert_not_contains "$lazy" '"--branch=stable"'

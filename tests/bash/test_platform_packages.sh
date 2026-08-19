@@ -314,6 +314,8 @@ test_pi_subagents_configures_workflow_guardrails() {
     ' "$config"
   fi
   assert_contains "$HOME_CONFIG" 'if [ "$name" = "subagent-config.json" ]; then'
+  assert_contains "$HOME_CONFIG" 'if ! managed_file_current "$source" "$target"; then'
+  assert_contains "$HOME_CONFIG" 'if ! managed_file_current "$source" "$base"; then'
   assert_contains "$HOME_CONFIG" 'base_tmp="$(mktemp "$base.tmp.XXXXXX")"'
   assert_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'Tracked runtime limits enforce eight children per workflow and four active async workflows per session.'
   assert_not_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'native limits are not session-global'
