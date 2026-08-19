@@ -526,6 +526,14 @@ function _update_pi_release_package {
   (
     local transaction_dir="$DOTFILES_DIR/packages/.pi-update.transaction"
     local stage_dir="" version current_version tmp_package tmp_lock prefetched src_hash archive deps_hash
+    if ! _release_transaction_pending "$transaction_dir"; then
+      version="$(_latest_npm_package_version @earendil-works/pi-coding-agent)"
+      current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
+      if [[ "$current_version" == "$version" ]]; then
+        info "Pi package already at $version"
+        return
+      fi
+    fi
     trap '[[ -z "$stage_dir" ]] || rm -rf "$stage_dir"; _release_release_transaction "$transaction_dir"' EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
@@ -643,6 +651,14 @@ function _update_obsidian_headless_package {
   (
     local transaction_dir="$DOTFILES_DIR/packages/.obsidian-update.transaction"
     local stage_dir="" version current_version tmp_package tmp_lock prefetched src_hash archive deps_hash
+    if ! _release_transaction_pending "$transaction_dir"; then
+      version="$(_latest_npm_package_version obsidian-headless)"
+      current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
+      if [[ "$current_version" == "$version" ]]; then
+        info "Obsidian Headless package already at $version"
+        return
+      fi
+    fi
     trap '[[ -z "$stage_dir" ]] || rm -rf "$stage_dir"; _release_release_transaction "$transaction_dir"' EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM

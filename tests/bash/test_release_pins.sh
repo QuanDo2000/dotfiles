@@ -815,6 +815,52 @@ test_release_file_pair_rolls_back_when_second_replace_fails() {
   unset -f mv
 }
 
+test_update_pi_release_package_skips_transaction_when_current() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages"
+  cat > "$DOTFILES_DIR/packages/pi-agent.nix" <<'EOF'
+{
+  version = "1.2.3";
+  hash = "sha256-current";
+  npmDepsHash = "sha256-current";
+}
+EOF
+  printf '{"lockfileVersion":3}\n' > "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
+  local calls="$TEST_TMPDIR/pi-current-calls"
+  _latest_npm_package_version() { printf 'latest\n' >> "$calls"; printf '1.2.3\n'; }
+  _acquire_release_transaction() { printf 'acquire\n' >> "$calls"; return 99; }
+
+  local output exit_code=0
+  output=$(_update_pi_release_package 2>&1) || exit_code=$?
+
+  assert_equals "0" "$exit_code"
+  assert_contains "$output" "Pi package already at 1.2.3"
+  assert_equals "latest" "$(<"$calls")"
+  unset -f _latest_npm_package_version _acquire_release_transaction
+}
+
+test_update_pi_release_package_recovers_pending_transaction_before_version_check() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages/.pi-update.transaction"
+  cat > "$DOTFILES_DIR/packages/pi-agent.nix" <<'EOF'
+{
+  version = "1.2.3";
+  hash = "sha256-current";
+  npmDepsHash = "sha256-current";
+}
+EOF
+  printf '{"lockfileVersion":3}\n' > "$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
+  local calls="$TEST_TMPDIR/pi-pending-calls"
+  _acquire_release_transaction() { printf 'acquire\n' >> "$calls"; rm -rf "$1"; }
+  _latest_npm_package_version() { printf 'latest\n' >> "$calls"; printf '1.2.3\n'; }
+  _release_release_transaction() { :; }
+
+  _update_pi_release_package >/dev/null 2>&1
+
+  assert_equals $'acquire\nlatest' "$(<"$calls")"
+  unset -f _acquire_release_transaction _latest_npm_package_version _release_release_transaction
+}
+
 test_update_pi_release_package_pins_latest_release() {
   DRY=false
   mkdir -p "$DOTFILES_DIR/packages"
@@ -884,6 +930,30 @@ test_update_pi_release_package_dry_run_skips_network() {
   assert_contains "$output" "Would update Pi package from the latest npm release"
 
   unset -f curl
+}
+
+test_update_obsidian_headless_package_skips_transaction_when_current() {
+  DRY=false
+  mkdir -p "$DOTFILES_DIR/packages"
+  cat > "$DOTFILES_DIR/packages/obsidian-headless.nix" <<'EOF'
+{
+  version = "1.2.3";
+  hash = "sha256-current";
+  npmDepsHash = "sha256-current";
+}
+EOF
+  printf '{"lockfileVersion":3}\n' > "$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
+  local calls="$TEST_TMPDIR/obsidian-current-calls"
+  _latest_npm_package_version() { printf 'latest\n' >> "$calls"; printf '1.2.3\n'; }
+  _acquire_release_transaction() { printf 'acquire\n' >> "$calls"; return 99; }
+
+  local output exit_code=0
+  output=$(_update_obsidian_headless_package 2>&1) || exit_code=$?
+
+  assert_equals "0" "$exit_code"
+  assert_contains "$output" "Obsidian Headless package already at 1.2.3"
+  assert_equals "latest" "$(<"$calls")"
+  unset -f _latest_npm_package_version _acquire_release_transaction
 }
 
 test_update_obsidian_headless_package_pins_latest_release() {
