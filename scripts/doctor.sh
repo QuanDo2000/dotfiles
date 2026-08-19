@@ -103,9 +103,13 @@ _check_neovim_runtime() {
 }
 
 _check_managed_commands() {
-  local command_name
+  local command_name command_path nvm_dir="${NVM_DIR:-$HOME/.nvm}"
   for command_name in nvim codex pi codebase-memory-mcp; do
-    if command -v "$command_name" >/dev/null 2>&1; then
+    command_path="$(command -v "$command_name" 2>/dev/null || true)"
+    if [[ "$command_name" == pi && "$command_path" == "$nvm_dir"/versions/node/* ]]; then
+      fail_soft "pi is shadowed by NVM at $command_path; uninstall the npm-global Pi and restart the shell"
+      errors=$((errors + 1))
+    elif [[ -n "$command_path" ]]; then
       success "$command_name available"
     else
       fail_soft "$command_name not found"

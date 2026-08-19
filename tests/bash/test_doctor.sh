@@ -251,6 +251,31 @@ test_doctor_reports_neovim_plugin_commit_drift() {
   assert_contains "$output" "sample.nvim commit differs"
 }
 
+test_doctor_rejects_nvm_shadowed_pi() {
+  export NVM_DIR="$HOME/.nvm"
+  command() {
+    if [[ "${1:-}" == "-v" ]]; then
+      if [[ "${2:-}" == pi ]]; then
+        printf '%s\n' "$HOME/.nvm/versions/node/v26.5.1/bin/pi"
+      else
+        printf '/usr/bin/%s\n' "$2"
+      fi
+      return 0
+    fi
+    builtin command "$@"
+  }
+  mkdir -p "$HOME/.local/bin"
+  : > "$HOME/.local/bin/fff-mcp-agent"
+  chmod +x "$HOME/.local/bin/fff-mcp-agent"
+  errors=0
+  local output_file="$TEST_TMPDIR/nvm-pi-doctor.log" output
+  _check_managed_commands > "$output_file" 2>&1
+  output="$(<"$output_file")"
+
+  assert_equals "1" "$errors"
+  assert_contains "$output" "pi is shadowed by NVM"
+}
+
 test_doctor_checks_managed_runtime_health() {
   local doctor_text
   doctor_text="$(<"$REPO_DIR/scripts/doctor.sh")"
