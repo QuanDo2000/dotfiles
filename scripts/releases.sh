@@ -78,6 +78,12 @@ function _update_lix_installer_pins {
     rm -rf "$tmp_dir"
     fail "Invalid Lix installer checksum"
   fi
+  if [[ "$linux_hash" == "$(_lix_installer_sha256 x86_64-linux)" \
+    && "$darwin_hash" == "$(_lix_installer_sha256 aarch64-darwin)" ]]; then
+    rm -rf "$tmp_dir"
+    info "Lix installer checksums already current"
+    return
+  fi
   if ! _write_lix_installer_pins "$linux_hash" "$darwin_hash"; then
     rm -rf "$tmp_dir"
     fail "Failed to update Lix installer checksums"

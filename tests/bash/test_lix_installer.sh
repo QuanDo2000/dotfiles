@@ -142,6 +142,26 @@ test_update_lix_installer_pins_cleans_downloads_when_write_fails() {
   [[ ! -e "$refresh_dir" ]] || assert_equals "cleaned refresh directory" "left refresh directory"
 }
 
+test_update_lix_installer_pins_skips_unchanged_write() {
+  local write_marker="$TEST_TMPDIR/write-called" status=0
+  curl() { printf 'artifact' > "${!#}"; }
+  _file_sha256() {
+    case "$1" in
+      *x86_64-linux) _lix_installer_sha256 x86_64-linux ;;
+      *aarch64-darwin) _lix_installer_sha256 aarch64-darwin ;;
+    esac
+  }
+  _write_lix_installer_pins() {
+    touch "$write_marker"
+    return 1
+  }
+
+  _update_lix_installer_pins >/dev/null 2>&1 || status=$?
+
+  assert_equals "0" "$status"
+  [[ ! -e "$write_marker" ]] || assert_equals "write skipped" "write called"
+}
+
 test_update_lix_installer_pins_replaces_both_hashes_atomically() {
   local target_dir="$DOTFILES_DIR/scripts" packages_file="$DOTFILES_DIR/scripts/packages.sh" permissions
   mkdir -p "$target_dir"
