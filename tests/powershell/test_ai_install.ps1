@@ -1590,6 +1590,45 @@ function test_syncpiconfigs_reports_operation_rollback_and_temp_cleanup_failures
     Assert-Equals 99 (Get-Content -Raw -LiteralPath $backups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
 }
 
+function test_syncpiconfigs_continues_rollback_after_one_backup_restoration_fails {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
+            throw 'simulated base replacement failure'
+        }
+        if ($LiteralPath -like "$($paths.Base).backup.*" -and $Destination -eq $paths.Base) {
+            throw 'simulated base backup restoration failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'simulated base replacement failure'
+    Assert-Contains $failure 'simulated base backup restoration failure'
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-False (Test-Path -LiteralPath $paths.Base) 'failed restoration should leave base absent'
+    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
+    $baseBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force)
+    Assert-Equals 0 $targetBackups.Count
+    Assert-Equals 1 $baseBackups.Count
+    Assert-Equals 88 (Get-Content -Raw -LiteralPath $baseBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
+    foreach ($destination in $paths.Target, $paths.Base) {
+        $parent = Split-Path $destination -Parent
+        $leaf = Split-Path $destination -Leaf
+        Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
+    }
+}
+
 function test_syncpiconfigs_rollback_does_not_delete_uninstalled_destination {
     $paths = Initialize-TestPiConfigSeeds
     Set-CommandMock 'Move-Item' {
