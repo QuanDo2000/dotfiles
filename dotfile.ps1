@@ -1329,8 +1329,24 @@ function Sync-NeovimPlugins {
     if (-not $nvim) { throw "nvim executable not found" }
     $previousSync = $env:DOTFILE_NVIM_SYNC
     try {
+        $env:DOTFILE_NVIM_SYNC = '0'
+        $probe = (& $nvim --headless "+lua if require('config.sync').runtime_complete() then print('RAW_NEOVIM_SYNC_CURRENT') end" "+qa" 2>&1) -join "`n"
+        $probeExitCode = $LASTEXITCODE
+    } finally {
+        if ($null -eq $previousSync) {
+            Remove-Item Env:DOTFILE_NVIM_SYNC -ErrorAction SilentlyContinue
+        } else {
+            $env:DOTFILE_NVIM_SYNC = $previousSync
+        }
+    }
+    if ($probeExitCode -eq 0 -and $probe.Contains('RAW_NEOVIM_SYNC_CURRENT')) {
+        Info "Neovim plugins and tools already current"
+        return
+    }
+
+    try {
         $env:DOTFILE_NVIM_SYNC = '1'
-        $output = (& $nvim --headless "+lua require('config.sync').plugins(false); require('config.sync').tools(); print('RAW_NEOVIM_SYNC_OK')" "+qa" 2>&1) -join "`n"
+        $output = (& $nvim --headless "+lua local sync = require('config.sync'); sync.plugins(false); sync.tools(); sync.parsers(); print('RAW_NEOVIM_SYNC_OK')" "+qa" 2>&1) -join "`n"
         $exitCode = $LASTEXITCODE
     } finally {
         if ($null -eq $previousSync) {

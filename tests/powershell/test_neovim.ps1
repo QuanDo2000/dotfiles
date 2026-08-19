@@ -37,9 +37,39 @@ function test_neovim_plugin_sync_verifies_installed_directories {
 
     Assert-Equals '1' $script:SeenNvimSync
     Assert-Equals 'previous' $env:DOTFILE_NVIM_SYNC
-    Assert-Contains (Get-Content -Raw $script:DotfileScript) "require('config.sync').plugins(false)"
-    Assert-Contains (Get-Content -Raw $script:DotfileScript) "require('config.sync').tools()"
+    Assert-Contains (Get-Content -Raw $script:DotfileScript) 'sync.plugins(false)'
+    Assert-Contains (Get-Content -Raw $script:DotfileScript) 'sync.tools()'
+    Assert-Contains (Get-Content -Raw $script:DotfileScript) 'sync.parsers()'
     Assert-False ($installedOutput -like '*Neovim plugin sync did not install*') 'installed directories should satisfy plugin sync verification'
+    Remove-Item Env:DOTFILE_NVIM_SYNC
+}
+
+function test_neovim_plugin_sync_skips_full_restore_when_runtime_is_current {
+    $script:Dry = $false
+    $originalGetNeovim = (Get-Command Get-NeovimCommand).ScriptBlock
+    $script:NvimCalls = @()
+    $script:ProbeSync = $null
+    $env:DOTFILE_NVIM_SYNC = '1'
+    Set-FunctionMock 'Get-NeovimCommand' { 'nvim' }
+    Set-CommandMock 'nvim' {
+        $script:NvimCalls += ,($args -join ' ')
+        $script:ProbeSync = $env:DOTFILE_NVIM_SYNC
+        $global:LASTEXITCODE = 0
+        'RAW_NEOVIM_SYNC_CURRENT'
+    }
+
+    try {
+        Sync-NeovimPlugins
+    } finally {
+        Clear-CommandMock 'nvim'
+        Set-FunctionMock 'Get-NeovimCommand' $originalGetNeovim
+    }
+
+    Assert-Equals 1 $script:NvimCalls.Count
+    Assert-Equals '0' $script:ProbeSync
+    Assert-Equals '1' $env:DOTFILE_NVIM_SYNC
+    Assert-Contains $script:NvimCalls[0] 'runtime_complete()'
+    Assert-False ($script:NvimCalls[0].Contains("plugins(false)")) 'current runtime must skip full plugin restore'
     Remove-Item Env:DOTFILE_NVIM_SYNC
 }
 

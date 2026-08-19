@@ -370,12 +370,7 @@ local plugins = {
   {
     "nvim-treesitter/nvim-treesitter",
     lazy = vim.env.DOTFILE_NVIM_SYNC == "1",
-    build = function()
-      require("nvim-treesitter").install({
-        "bash", "diff", "git_config", "git_rebase", "gitattributes", "gitcommit", "gitignore", "json", "json5",
-        "lua", "markdown", "markdown_inline", "nix", "query", "toml", "vim", "vimdoc", "yaml",
-      }):wait(300000)
-    end,
+    build = function() require("config.sync").parsers(false) end,
     config = function()
       vim.api.nvim_create_autocmd("FileType", {
         callback = function(args)

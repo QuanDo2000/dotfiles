@@ -11,6 +11,11 @@ local tools = {
   "yaml-language-server",
 }
 
+local parsers = {
+  "bash", "diff", "git_config", "git_rebase", "gitattributes", "gitcommit", "gitignore", "json", "json5",
+  "lua", "markdown", "markdown_inline", "nix", "query", "toml", "vim", "vimdoc", "yaml",
+}
+
 local function restore_lock(path, contents)
   local temporary = path .. ".tmp." .. vim.fn.getpid()
   vim.fn.delete(temporary)
@@ -79,18 +84,19 @@ function M.plugins(clean)
   end
 end
 
-function M.tools()
+local function tools_installed()
   require("lazy").load({ plugins = { "mason.nvim" }, wait = true })
   local registry = require("mason-registry")
-  local function verified()
-    for _, name in ipairs(tools) do
-      local ok, package = pcall(registry.get_package, name)
-      if not ok or not package:is_installed() then return false end
-    end
-    return true
+  for _, name in ipairs(tools) do
+    local ok, package = pcall(registry.get_package, name)
+    if not ok or not package:is_installed() then return false end
   end
-  if verified() then return end
+  return true
+end
 
+function M.tools()
+  if tools_installed() then return end
+  local registry = require("mason-registry")
   local done, failure = false, nil
   registry.refresh(function(success)
     if success == false then
@@ -123,7 +129,92 @@ function M.tools()
 
   if not vim.wait(300000, function() return done end, 100) then error("Mason tool installation timed out") end
   if failure then error(failure) end
-  if not verified() then error("Required Mason tools are missing after sync") end
+  if not tools_installed() then error("Required Mason tools are missing after sync") end
+end
+
+local function installed_parsers()
+  local installed = {}
+  for _, name in ipairs(require("nvim-treesitter").get_installed("parsers")) do installed[name] = true end
+  return installed
+end
+
+local function parsers_current(load_plugin)
+  if load_plugin ~= false then require("lazy").load({ plugins = { "nvim-treesitter" }, wait = true }) end
+  local installed = installed_parsers()
+  local configs = require("nvim-treesitter.parsers")
+  local info_dir = require("nvim-treesitter.config").get_install_dir("parser-info")
+  for _, name in ipairs(parsers) do
+    local expected = configs[name] and configs[name].install_info and configs[name].install_info.revision
+    local actual = vim.fn.readfile(info_dir .. "/" .. name .. ".revision")[1]
+    if not installed[name] or not expected or actual ~= expected then return false end
+  end
+  return true
+end
+
+function M.parsers(load_plugin)
+  if load_plugin ~= false then require("lazy").load({ plugins = { "nvim-treesitter" }, wait = true }) end
+  local treesitter = require("nvim-treesitter")
+  local installed, missing = installed_parsers(), {}
+  for _, name in ipairs(parsers) do
+    if not installed[name] then missing[#missing + 1] = name end
+  end
+  if #missing > 0 then treesitter.install(missing):wait(300000) end
+  treesitter.update(parsers):wait(300000)
+  if not parsers_current(false) then error("Required Treesitter parsers are missing or stale after sync") end
+end
+
+local function git_result(arguments)
+  return vim.system(arguments, { text = true }):wait()
+end
+
+local function plugin_current(plugin, commit)
+  local uv = vim.uv or vim.loop
+  if not plugin or plugin.enabled == false or not uv.fs_stat(plugin.dir) then return false end
+  local head = git_result({ "git", "-C", plugin.dir, "rev-parse", "HEAD" })
+  if head.code ~= 0 or vim.trim(head.stdout or "") ~= commit then return false end
+  local status = git_result({ "git", "-C", plugin.dir, "status", "--porcelain", "--untracked-files=all" })
+  if status.code ~= 0 then return false end
+  for line in (status.stdout or ""):gmatch("[^\r\n]+") do
+    if line ~= "?? doc/tags" then return false end
+  end
+  return true
+end
+
+function M.runtime_complete()
+  local ok, complete = pcall(function()
+    local config = require("lazy.core.config")
+    local lock = vim.json.decode(table.concat(vim.fn.readfile(config.options.lockfile), "\n"))
+    local windows, managed = vim.fn.has("win32") == 1, {}
+    for name, entry in pairs(lock) do
+      local platform_disabled = (name == "lazy.nvim" and not windows) or (name == "fff.nvim" and windows)
+      if not platform_disabled then
+        local plugin = config.plugins[name]
+        if not plugin_current(plugin, entry.commit) then return false end
+        managed[vim.fs.basename(plugin.dir)] = true
+      end
+    end
+    for name, plugin in pairs(config.plugins) do
+      local platform_disabled = (name == "lazy.nvim" and not windows) or (name == "fff.nvim" and windows)
+      if plugin.enabled ~= false and not platform_disabled and not lock[name] then return false end
+    end
+    if not windows then
+      for name in vim.fs.dir(config.options.root) do
+        if not managed[name] then return false end
+      end
+    end
+    if not tools_installed() or not parsers_current() then return false end
+
+    if not windows then
+      local uv = vim.uv or vim.loop
+      local fff = config.plugins["fff.nvim"]
+      local source = vim.fn.stdpath("config") .. "/fff-nvim-backend"
+      local target = fff and (fff.dir .. "/target/release/libfff_nvim." .. (vim.fn.has("mac") == 1 and "dylib" or "so"))
+      if not target or not uv.fs_stat(source) or uv.fs_realpath(source) ~= uv.fs_realpath(target) then return false end
+      require("fff")
+    end
+    return true
+  end)
+  return ok and complete == true
 end
 
 return M

@@ -138,6 +138,25 @@ test_update_packages_syncs_neovim() {
   assert_equals $'neovim-sync\npublished' "$(<"$calls")"
 }
 
+test_sync_neovim_skips_full_restore_when_runtime_is_current() {
+  local calls="$TEST_TMPDIR/nvim.log"
+  DRY=false
+  DOTFILE_NVIM_SYNC=1
+  nvim() {
+    printf '%s:%s\n' "${DOTFILE_NVIM_SYNC:-unset}" "$*" >> "$calls"
+    printf 'RAW_NEOVIM_SYNC_CURRENT\n'
+  }
+
+  _sync_neovim
+
+  assert_equals "1" "$(wc -l < "$calls" | tr -d ' ')"
+  assert_contains "$(<"$calls")" "0:"
+  assert_contains "$(<"$calls")" "runtime_complete()"
+  assert_equals "1" "$DOTFILE_NVIM_SYNC"
+  assert_not_contains "$(<"$calls")" "plugins(true)"
+  unset -f nvim
+}
+
 test_sync_neovim_restores_all_plugins_cleans_and_verifies_tools() {
   local calls="$TEST_TMPDIR/nvim.log" source="$HOME/.config/nvim/fff-nvim-backend"
   DRY=false
@@ -152,8 +171,9 @@ test_sync_neovim_restores_all_plugins_cleans_and_verifies_tools() {
 
   _sync_neovim
 
-  assert_contains "$(<"$calls")" "require('config.sync').plugins(true)"
-  assert_contains "$(<"$calls")" "require('config.sync').tools()"
+  assert_contains "$(<"$calls")" "sync.plugins(true)"
+  assert_contains "$(<"$calls")" "sync.tools()"
+  assert_contains "$(<"$calls")" "sync.parsers()"
   assert_not_contains "$(<"$calls")" 'restore fff.nvim'
   unset -f nvim nix
 }

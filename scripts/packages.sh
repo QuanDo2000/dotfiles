@@ -430,7 +430,13 @@ function _sync_neovim {
   local output plugin="$HOME/.local/share/nvim/lazy/fff.nvim"
   local backend="$HOME/.config/nvim/fff-nvim-backend"
 
-  if ! output="$(nvim --headless "+lua require('config.sync').plugins(true); require('config.sync').tools(); print('RAW_NEOVIM_SYNC_OK')" +qa 2>&1)"; then
+  if output="$(DOTFILE_NVIM_SYNC=0 nvim --headless "+lua if require('config.sync').runtime_complete() then print('RAW_NEOVIM_SYNC_CURRENT') end" +qa 2>&1)" \
+    && [[ "$output" == *RAW_NEOVIM_SYNC_CURRENT* ]]; then
+    info "Neovim plugins and tools already current"
+    return
+  fi
+
+  if ! output="$(DOTFILE_NVIM_SYNC=1 nvim --headless "+lua local sync = require('config.sync'); sync.plugins(true); sync.tools(); sync.parsers(); print('RAW_NEOVIM_SYNC_OK')" +qa 2>&1)"; then
     NEOVIM_SYNC_ERROR="Neovim plugin or tool sync failed:\n$output"
     return 1
   fi
