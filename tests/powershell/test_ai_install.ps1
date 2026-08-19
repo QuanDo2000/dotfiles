@@ -1679,6 +1679,48 @@ function test_syncpiconfigs_reports_operation_and_temp_cleanup_failure_after_suc
     Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force).Count
 }
 
+function test_syncpiconfigs_continues_temp_cleanup_after_one_deletion_fails {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
+            throw 'simulated replacement failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+    $script:FailedPiConfigTemp = $null
+    Set-CommandMock 'Remove-Item' {
+        param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Target).tmp.*") {
+            $script:FailedPiConfigTemp = $LiteralPath
+            throw "simulated temp deletion failure: $LiteralPath"
+        }
+        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    } finally {
+        Clear-CommandMock 'Remove-Item'
+    }
+
+    Assert-Contains $failure 'Pi subagent config cleanup failed after'
+    Assert-Contains $failure 'simulated replacement failure'
+    Assert-Contains $failure 'simulated temp deletion failure'
+    Assert-Contains $failure $script:FailedPiConfigTemp
+    $targetTemps = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.tmp.*' -Force)
+    $baseTemps = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.tmp.*' -Force)
+    Assert-Equals 1 $targetTemps.Count
+    Assert-Equals $script:FailedPiConfigTemp $targetTemps[0].FullName
+    Assert-Equals 0 $baseTemps.Count
+}
+
 function test_syncpiconfigs_reports_backup_cleanup_failure_and_keeps_recovery_backup {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
