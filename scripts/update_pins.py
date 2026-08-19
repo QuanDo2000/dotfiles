@@ -498,18 +498,24 @@ def update_skills(repo: Path) -> None:
     skills = repo / "config/shared/ai/skills"
     metadata_path = skills / "sources.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    updates = []
+    for name, source in metadata.items():
+        if name == "schemaVersion":
+            continue
+        repository = source["repository"].removeprefix("https://github.com/").removesuffix(".git")
+        commit = git_head(repository)
+        if commit != source["commit"]:
+            updates.append((name, source, repository, commit))
+    if not updates:
+        print("vendored agent skills already current")
+        return
+
     staged_parent = Path(tempfile.mkdtemp(prefix="dotfiles-skills-", dir=skills.parent))
     staged = staged_parent / "skills"
     shutil.copytree(skills, staged)
     changed = []
     try:
-        for name, source in metadata.items():
-            if name == "schemaVersion":
-                continue
-            repository = source["repository"].removeprefix("https://github.com/").removesuffix(".git")
-            commit = git_head(repository)
-            if commit == source["commit"]:
-                continue
+        for name, source, repository, commit in updates:
             archive_url = f"https://github.com/{repository}/archive/{commit}.tar.gz"
             with tempfile.TemporaryDirectory(prefix=f"dotfiles-skill-{name}-") as temporary:
                 root = Path(temporary)
@@ -532,9 +538,6 @@ def update_skills(repo: Path) -> None:
                 source["commit"] = commit
                 source["observedArchiveSha256"] = sha256(archive)
                 changed.append(name)
-        if not changed:
-            print("vendored agent skills already current")
-            return
         atomic_json(staged / "sources.json", metadata)
         backup = skills.with_name(f"skills.backup.{os.getpid()}")
         os.replace(skills, backup)

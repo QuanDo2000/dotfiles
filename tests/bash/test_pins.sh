@@ -154,6 +154,33 @@ assert set(updated["betterSqlite3"]["assets"]) == {
 PY
 }
 
+test_skill_pin_update_skips_staging_when_commits_are_current() {
+  PYTHONPATH="$REPO_DIR/scripts" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
+import json
+import os
+from pathlib import Path
+import update_pins
+
+repo = Path(os.environ["TEST_TMPDIR"]) / "skills-repo"
+skills = repo / "config/shared/ai/skills"
+skills.mkdir(parents=True)
+metadata = {
+    "schemaVersion": 1,
+    "example": {
+        "repository": "https://github.com/example/example",
+        "commit": "a" * 40,
+        "path": "skills/example",
+        "license": "example.LICENSE",
+    },
+}
+(skills / "sources.json").write_text(json.dumps(metadata) + "\n")
+update_pins.git_head = lambda _: "a" * 40
+update_pins.shutil.copytree = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("current skills should not be staged"))
+
+update_pins.update_skills(repo)
+PY
+}
+
 test_pin_updater_removes_excluded_skill_paths() {
   PYTHONPATH="$REPO_DIR/scripts" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
 import os
