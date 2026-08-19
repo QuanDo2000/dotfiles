@@ -1441,6 +1441,116 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
 }
 
+function Assert-NoPiConfigStagingFiles($Destination) {
+    $parent = Split-Path $Destination -Parent
+    $leaf = Split-Path $Destination -Leaf
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.backup.*" -Force -ErrorAction SilentlyContinue).Count
+}
+
+function test_syncpiconfigs_staging_failure_preserves_regular_subagent_target {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    $script:PiConfigFailureInjected = $false
+    Set-CommandMock 'Copy-Item' {
+        param($LiteralPath, $Destination, [switch]$Force)
+        if ($LiteralPath -eq $paths.Source -and $Destination -like "$($paths.Target).tmp.*") {
+            $script:PiConfigFailureInjected = $true
+            'partial' | Set-Content -LiteralPath $Destination
+            throw 'simulated staging failure'
+        }
+        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+    }
+
+    Assert-Throws { SyncPiConfigs }
+
+    Assert-True $script:PiConfigFailureInjected 'target staging failure should be injected'
+    Assert-False ([bool](Get-Item -LiteralPath $paths.Target -Force).LinkType) 'regular target should remain regular'
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-NoPiConfigStagingFiles $paths.Target
+}
+
+function test_syncpiconfigs_staging_failure_preserves_linked_subagent_base {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    $external = Join-Path $script:_TestTmp.FullName 'external-base.json'
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $external
+    New-Item -ItemType SymbolicLink -Path $paths.Base -Target $external | Out-Null
+    $script:PiConfigFailureInjected = $false
+    Set-CommandMock 'Copy-Item' {
+        param($LiteralPath, $Destination, [switch]$Force)
+        if ($LiteralPath -eq $paths.Source -and $Destination -like "$($paths.Base).tmp.*") {
+            $script:PiConfigFailureInjected = $true
+            'partial' | Set-Content -LiteralPath $Destination
+            throw 'simulated staging failure'
+        }
+        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+    }
+
+    Assert-Throws { SyncPiConfigs }
+
+    Assert-True $script:PiConfigFailureInjected 'base staging failure should be injected'
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-True ([bool](Get-Item -LiteralPath $paths.Base -Force).LinkType) 'linked base should remain linked'
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $external | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-NoPiConfigStagingFiles $paths.Target
+    Assert-NoPiConfigStagingFiles $paths.Base
+}
+
+function test_syncpiconfigs_replacement_failure_preserves_regular_subagent_target {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    $script:PiConfigFailureInjected = $false
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
+            $script:PiConfigFailureInjected = $true
+            'partial' | Set-Content -LiteralPath $Destination
+            throw 'simulated replacement failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+
+    Assert-Throws { SyncPiConfigs }
+
+    Assert-True $script:PiConfigFailureInjected 'target replacement failure should be injected'
+    Assert-False ([bool](Get-Item -LiteralPath $paths.Target -Force).LinkType) 'regular target should remain regular'
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-NoPiConfigStagingFiles $paths.Target
+    Assert-NoPiConfigStagingFiles $paths.Base
+}
+
+function test_syncpiconfigs_replacement_failure_preserves_linked_subagent_base {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    $external = Join-Path $script:_TestTmp.FullName 'external-base.json'
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $external
+    New-Item -ItemType SymbolicLink -Path $paths.Base -Target $external | Out-Null
+    $script:PiConfigFailureInjected = $false
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
+            $script:PiConfigFailureInjected = $true
+            'partial' | Set-Content -LiteralPath $Destination
+            throw 'simulated replacement failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+
+    Assert-Throws { SyncPiConfigs }
+
+    Assert-True $script:PiConfigFailureInjected 'base replacement failure should be injected'
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-True ([bool](Get-Item -LiteralPath $paths.Base -Force).LinkType) 'linked base should remain linked'
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $external | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-NoPiConfigStagingFiles $paths.Target
+    Assert-NoPiConfigStagingFiles $paths.Base
+}
+
 function test_syncpiconfigs_skips_unchanged_regular_subagent_destinations {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null

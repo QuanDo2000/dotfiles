@@ -852,17 +852,85 @@ function SyncPiConfigs {
         $base = Join-Path $baseDir $name
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
         if ($name -eq "subagent-config.json") {
-            foreach ($destination in $target, $base) {
-                $destinationItem = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
-                if ($destinationItem -and -not $destinationItem.PSIsContainer -and
-                    -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
-                    (Get-FileSha256 $source) -eq (Get-FileSha256 $destination)) {
-                    continue
+            $changes = @()
+            $operationError = $null
+            $rollbackError = $null
+            $cleanupError = $null
+            $committed = $false
+            try {
+                foreach ($destination in $target, $base) {
+                    $destinationItem = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+                    if ($destinationItem -and -not $destinationItem.PSIsContainer -and
+                        -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
+                        (Get-FileSha256 $source) -eq (Get-FileSha256 $destination)) {
+                        continue
+                    }
+                    $change = @{
+                        Destination = $destination
+                        Temp = "$destination.tmp.$([Guid]::NewGuid().ToString('N'))"
+                        Backup = "$destination.backup.$([Guid]::NewGuid().ToString('N'))"
+                        Original = $destinationItem
+                        BackedUp = $false
+                        Installed = $false
+                    }
+                    $changes += $change
+                    Copy-Item -LiteralPath $source -Destination $change.Temp -ErrorAction Stop
                 }
-                $temp = "$destination.tmp.$([Guid]::NewGuid().ToString('N'))"
-                Copy-Item -LiteralPath $source -Destination $temp
-                Move-Item -LiteralPath $temp -Destination $destination -Force
+
+                foreach ($change in $changes) {
+                    if ($change.Original) {
+                        Move-Item -LiteralPath $change.Destination -Destination $change.Backup -ErrorAction Stop
+                        $change.BackedUp = $true
+                    }
+                    Move-Item -LiteralPath $change.Temp -Destination $change.Destination -ErrorAction Stop
+                    $change.Installed = $true
+                }
+                $committed = $true
+            } catch {
+                $operationError = $_
+                for ($index = $changes.Count - 1; $index -ge 0; $index--) {
+                    $change = $changes[$index]
+                    try {
+                        $partial = Get-Item -LiteralPath $change.Destination -Force -ErrorAction SilentlyContinue
+                        if ($change.BackedUp) {
+                            if ($partial) { Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop }
+                            Move-Item -LiteralPath $change.Backup -Destination $change.Destination -ErrorAction Stop
+                            $change.BackedUp = $false
+                        } elseif (-not $change.Original -and $partial) {
+                            Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop
+                        }
+                    } catch {
+                        if (-not $rollbackError) { $rollbackError = $_ }
+                    }
+                }
+            } finally {
+                foreach ($change in $changes) {
+                    try {
+                        $staged = Get-Item -LiteralPath $change.Temp -Force -ErrorAction SilentlyContinue
+                        if ($staged) { Remove-Item -LiteralPath $change.Temp -Force -ErrorAction Stop }
+                    } catch {
+                        if (-not $cleanupError) { $cleanupError = $_ }
+                    }
+                    if ($committed -and $change.BackedUp) {
+                        try {
+                            Remove-Item -LiteralPath $change.Backup -Force -ErrorAction Stop
+                            $change.BackedUp = $false
+                        } catch {
+                            if (-not $cleanupError) { $cleanupError = $_ }
+                        }
+                    }
+                }
             }
+            if ($rollbackError) {
+                throw "Pi subagent config rollback failed after '$($operationError.Exception.Message)': $($rollbackError.Exception.Message)"
+            }
+            if ($cleanupError) {
+                if ($operationError) {
+                    throw "Pi subagent config cleanup failed after '$($operationError.Exception.Message)': $($cleanupError.Exception.Message)"
+                }
+                throw $cleanupError
+            }
+            if ($operationError) { throw $operationError }
             continue
         }
         if (-not (Test-Path -LiteralPath $target)) {
