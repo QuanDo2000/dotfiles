@@ -393,3 +393,22 @@ test_start_service_skips_when_home_manager_unit_missing() {
   assert_contains "$output" "is not installed yet"
   assert_contains "$output" "dotfile update"
 }
+
+test_start_service_skips_active_service_for_existing_vault() {
+  mock_cmd systemctl 'case "$*" in
+    "--user show-environment"|"--user cat obsidian-sync.service"|"--user is-active --quiet obsidian-sync.service") exit 0 ;;
+    "--user restart obsidian-sync.service")
+      echo "unexpected restart" >&2
+      exit 99
+      ;;
+    *) exit 0 ;;
+  esac'
+
+  local output exit_code=0
+  output=$(_obsidian_start_service true 2>&1) || exit_code=$?
+
+  if [ "$exit_code" -ne 0 ]; then
+    echo "  FAILED: existing vault should keep active sync service ($output)" >> "$ERROR_FILE"
+  fi
+  assert_contains "$output" "already active"
+}

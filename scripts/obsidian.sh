@@ -124,6 +124,7 @@ function _obsidian_existing_vault_path {
 }
 
 function _obsidian_start_service {
+  local skip_if_active="${1:-false}"
   info "Starting Home Manager-managed $OBSIDIAN_SERVICE_NAME..."
   if [[ "$DRY" == "true" ]]; then
     info "Would run: systemctl --user restart $OBSIDIAN_SERVICE_NAME"
@@ -132,6 +133,11 @@ function _obsidian_start_service {
   if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
     if ! systemctl --user cat "$OBSIDIAN_SERVICE_NAME" >/dev/null 2>&1; then
       info "$OBSIDIAN_SERVICE_NAME is not installed yet; run 'dotfile update' to activate the Home Manager service"
+      return
+    fi
+    if [[ "$skip_if_active" == "true" ]] \
+      && systemctl --user is-active --quiet "$OBSIDIAN_SERVICE_NAME"; then
+      info "$OBSIDIAN_SERVICE_NAME is already active"
       return
     fi
     systemctl --user restart "$OBSIDIAN_SERVICE_NAME" \
@@ -149,7 +155,7 @@ function setup_obsidian {
   local existing_vault_path
   if [[ "$DRY" != "true" && "$FORCE" != "true" ]] && existing_vault_path="$(_obsidian_existing_vault_path)"; then
     info "Vault at $existing_vault_path is already configured; skipping Obsidian Sync setup"
-    _obsidian_start_service
+    _obsidian_start_service true
     success "$OBSIDIAN_SERVICE_NAME is managed by Home Manager"
     return
   fi
