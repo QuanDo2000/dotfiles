@@ -363,6 +363,27 @@ test_dependency_refresh_runs_selected_updater_in_isolated_worktree() {
   DOTFILES_DIR="$old_dotfiles"
 }
 
+test_dependency_refresh_skips_validation_when_pins_do_not_change() {
+  local repo old_dotfiles="$DOTFILES_DIR" calls="$TEST_TMPDIR/no-change-validation.log"
+  repo="$TEST_TMPDIR/no-change-refresh"
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'unchanged\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  DOTFILES_DIR="$repo"
+  : > "$calls"
+  _test_no_change_refresh() { :; }
+  _validate_dependency_update() { printf 'validate\n' >> "$calls"; }
+
+  _refresh_dependency_set _test_no_change_refresh
+
+  assert_equals "" "$(<"$calls")"
+  unset -f _test_no_change_refresh _validate_dependency_update
+  DOTFILES_DIR="$old_dotfiles"
+}
+
 test_dependency_refresh_preserves_concurrent_changes() {
   local repo
   repo="$TEST_TMPDIR/repo"

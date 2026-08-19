@@ -862,7 +862,7 @@ function _refresh_dependency_set {
   result="$(mktemp)" || return 1
 
   (
-    local worktree="" patch="" base_fingerprint="" fingerprint="" base expected actual
+    local worktree="" patch="" base_fingerprint="" fingerprint="" base expected actual update_status
     _cleanup_dependency_refresh() {
       [[ -z "$worktree" ]] || git -C "$source_dir" worktree remove --force "$worktree" >/dev/null 2>&1 || true
       rm -f "$patch" "$base_fingerprint" "$fingerprint"
@@ -882,7 +882,8 @@ function _refresh_dependency_set {
       cd "$worktree" || exit 1
       _dependency_update_fingerprint > "$base_fingerprint" || exit 1
       "$updater" || exit 1
-      _validate_dependency_update || exit 1
+      update_status="$(git status --porcelain)" || exit 1
+      [[ -z "$update_status" ]] || _validate_dependency_update || exit 1
       _dependency_update_fingerprint > "$fingerprint" || exit 1
       git add -A || exit 1
       git diff --cached --binary HEAD -- > "$patch" || exit 1

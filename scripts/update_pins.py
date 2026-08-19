@@ -273,13 +273,15 @@ def update_pi_extensions(repo: Path) -> None:
     lock_path = package_path.with_name("package-lock.json")
     release_path = repo / "packages/pi-extensions-release.json"
     package = json.loads(package_path.read_text(encoding="utf-8"))
-    for name in list(package["dependencies"]):
-        package["dependencies"][name] = npm_latest(name)
-    atomic_json(package_path, package)
-    run(
-        "npm", "install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--legacy-peer-deps", "--omit=dev",
-        cwd=package_path.parent,
-    )
+    latest_dependencies = {name: npm_latest(name) for name in package["dependencies"]}
+    if package["dependencies"] != latest_dependencies:
+        package["dependencies"] = latest_dependencies
+        atomic_json(package_path, package)
+        run(
+            "npm", "install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--legacy-peer-deps", "--omit=dev",
+            cwd=package_path.parent,
+        )
+
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
     invalid = [
         name for name, value in lock["packages"].items()
@@ -296,14 +298,31 @@ def update_pi_extensions(repo: Path) -> None:
     node_version, abi = locked_node(repo)
     better_version = lock["packages"]["node_modules/better-sqlite3"]["version"]
     old = json.loads(release_path.read_text(encoding="utf-8"))
-    assets = old["betterSqlite3"]["assets"]
-    if old["betterSqlite3"]["version"] != better_version or old["node"]["abi"] != abi:
-        names = {
-            "x86_64-linux": f"better-sqlite3-v{better_version}-node-v{abi}-linux-x64.tar.gz",
-            "aarch64-darwin": f"better-sqlite3-v{better_version}-node-v{abi}-darwin-arm64.tar.gz",
-            "windows-x64": f"better-sqlite3-v{better_version}-node-v{abi}-win32-x64.tar.gz",
-            "windows-arm64": f"better-sqlite3-v{better_version}-node-v{abi}-win32-arm64.tar.gz",
-        }
+    names = {
+        "x86_64-linux": f"better-sqlite3-v{better_version}-node-v{abi}-linux-x64.tar.gz",
+        "aarch64-darwin": f"better-sqlite3-v{better_version}-node-v{abi}-darwin-arm64.tar.gz",
+        "windows-x64": f"better-sqlite3-v{better_version}-node-v{abi}-win32-x64.tar.gz",
+        "windows-arm64": f"better-sqlite3-v{better_version}-node-v{abi}-win32-arm64.tar.gz",
+    }
+    better = old.get("betterSqlite3", {})
+    assets = better.get("assets", {})
+    native_current = (
+        better.get("version") == better_version
+        and isinstance(assets, dict)
+        and set(assets) == set(names)
+        and all(
+            isinstance(assets[platform], dict)
+            and assets[platform].get("file") == name
+            and re.fullmatch(r"[0-9a-f]{64}", str(assets[platform].get("sha256", "")))
+            and str(assets[platform].get("hash", "")).startswith("sha256-")
+            for platform, name in names.items()
+        )
+    )
+    if old["releaseId"] == release_id and old["node"] == {"version": node_version, "abi": abi} and native_current:
+        print(f"Pi extensions already current (Node {node_version}, ABI {abi})")
+        return
+
+    if not native_current or old["node"]["abi"] != abi:
         release = fetch_json(f"https://api.github.com/repos/WiseLibs/better-sqlite3/releases/tags/v{better_version}")
         assets = {}
         with tempfile.TemporaryDirectory(prefix="dotfiles-better-sqlite3-") as temporary:
@@ -320,17 +339,18 @@ def update_pi_extensions(repo: Path) -> None:
     }
     atomic_json(release_path, updated)
 
-    prefetch = run("nix", "run", f"path:{repo}#prefetch-npm-deps", "--", str(lock_path))
-    matches = re.findall(r"sha256-[A-Za-z0-9+/=]+", prefetch)
-    if not matches:
-        die("prefetch-npm-deps returned no hash")
-    package_nix = repo / "packages/pi-extensions.nix"
-    replace_pattern(package_nix, r'npmDepsHash = "sha256-[^"]+";', f'npmDepsHash = "{matches[-1]}";')
-
-    settings = repo / "config/shared/ai/pi/settings.json"
-    replace_all(settings, old["releaseId"], release_id)
-    workflow = repo / ".github/workflows/test.yml"
-    replace_once(workflow, f'node-version: {old["node"]["version"]}', f"node-version: {node_version}")
+    if old["releaseId"] != release_id:
+        prefetch = run("nix", "run", f"path:{repo}#prefetch-npm-deps", "--", str(lock_path))
+        matches = re.findall(r"sha256-[A-Za-z0-9+/=]+", prefetch)
+        if not matches:
+            die("prefetch-npm-deps returned no hash")
+        package_nix = repo / "packages/pi-extensions.nix"
+        replace_pattern(package_nix, r'npmDepsHash = "sha256-[^"]+";', f'npmDepsHash = "{matches[-1]}";')
+        settings = repo / "config/shared/ai/pi/settings.json"
+        replace_all(settings, old["releaseId"], release_id)
+    if old["node"]["version"] != node_version:
+        workflow = repo / ".github/workflows/test.yml"
+        replace_once(workflow, f'node-version: {old["node"]["version"]}', f"node-version: {node_version}")
     print(f"updated Pi extensions to {release_id[:12]} (Node {node_version}, ABI {abi})")
 
 

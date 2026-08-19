@@ -34,11 +34,29 @@ ARCH_PACKAGES=(
 )
 
 function _install_native_bootstrap_packages {
+  local package status installed=true
   case "$1" in
-    debian) _run_nix_managed_switch "Failed to install Debian packages" \
-      sudo apt install -y "${DEBIAN_PACKAGES[@]}" ;;
-    arch) _run_nix_managed_switch "Failed to install Arch packages" \
-      sudo pacman -S --needed --noconfirm "${ARCH_PACKAGES[@]}" ;;
+    debian)
+      for package in "${DEBIAN_PACKAGES[@]}"; do
+        status="$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null)" || { installed=false; break; }
+        [[ "$status" == "install ok installed" ]] || { installed=false; break; }
+      done
+      if [[ "$installed" == true ]]; then
+        info "Debian bootstrap packages already installed"
+      else
+        _run_nix_managed_switch "Failed to install Debian packages" \
+          sudo apt install -y "${DEBIAN_PACKAGES[@]}"
+      fi
+      ;;
+    arch)
+      if command -v pacman >/dev/null 2>&1 \
+        && pacman -Q "${ARCH_PACKAGES[@]}" >/dev/null 2>&1; then
+        info "Arch bootstrap packages already installed"
+      else
+        _run_nix_managed_switch "Failed to install Arch packages" \
+          sudo pacman -S --needed --noconfirm "${ARCH_PACKAGES[@]}"
+      fi
+      ;;
     nixos|mac) ;;
   esac
 }

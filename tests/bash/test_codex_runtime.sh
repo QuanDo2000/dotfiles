@@ -21,7 +21,10 @@ test_update_packages_refreshes_and_validates_all_pins_before_activation() {
   local calls="$TEST_TMPDIR/calls.log"
   printf 'ID=arch\n' > "$osrel"
 
-  _update_flake_inputs() { printf 'flake\n' >> "$calls"; }
+  _update_flake_inputs() {
+    printf 'flake\n' >> "$calls"
+    printf 'updated\n' > "$DOTFILES_DIR/flake.lock"
+  }
   _update_all_dependency_pins() { printf 'pins\n' >> "$calls"; }
   _validate_dependency_update() { printf 'validate\n' >> "$calls"; }
   _approve_dependency_update() { printf 'approve\n' >> "$calls"; }
@@ -60,6 +63,7 @@ test_update_ai_updates_only_ai_tools_and_configs() {
   }
   _update_codex_release_package() {
     printf 'codex-update\n' >> "$calls"
+    printf 'updated\n' > "$DOTFILES_DIR/codex-release.json"
   }
   _update_pi_release_package() {
     printf 'pi-update\n' >> "$calls"
@@ -104,7 +108,10 @@ test_update_ai_validation_failure_stops_activation() {
   mock_uname Linux
   local osrel="$TEST_TMPDIR/os-release" calls="$TEST_TMPDIR/ai-validation.log" status=0
   printf 'ID=arch\n' > "$osrel"
-  _update_codex_release_package() { printf 'codex-update\n' >> "$calls"; }
+  _update_codex_release_package() {
+    printf 'codex-update\n' >> "$calls"
+    printf 'updated\n' > "$DOTFILES_DIR/codex-release.json"
+  }
   _update_pi_release_package() { printf 'pi-update\n' >> "$calls"; }
   _validate_dependency_update() { printf 'validate\n' >> "$calls"; return 1; }
   _home_manager_switch() { printf 'activate\n' >> "$calls"; }

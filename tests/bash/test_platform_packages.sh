@@ -449,6 +449,33 @@ test_agents_recommend_promoting_reusable_hermes_skills() {
 }
 
 
+test_arch_bootstrap_skips_pacman_when_packages_are_installed() {
+  DRY=false
+  local calls="$TEST_TMPDIR/arch-bootstrap.log"
+  pacman() {
+    [[ "${1:-}" == "-Q" ]] && return 0
+    printf 'pacman %s\n' "$*" >> "$calls"
+  }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
+
+  _install_native_bootstrap_packages arch
+
+  assert_equals "" "$(cat "$calls" 2>/dev/null || true)"
+  unset -f pacman sudo
+}
+
+test_debian_bootstrap_skips_apt_when_packages_are_installed() {
+  DRY=false
+  local calls="$TEST_TMPDIR/debian-bootstrap.log"
+  dpkg-query() { printf 'install ok installed'; }
+  sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
+
+  _install_native_bootstrap_packages debian
+
+  assert_equals "" "$(cat "$calls" 2>/dev/null || true)"
+  unset -f dpkg-query sudo
+}
+
 test_install_arch_bootstraps_nix_and_switches_home_manager() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"
@@ -460,6 +487,7 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
     fi
     builtin command "$@"
   }
+  pacman() { return 1; }
   sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
   _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
   _load_nix_profile() { :; }
@@ -473,7 +501,7 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@arch-server"
   assert_not_contains "$output" "@linux@linux"
 
-  unset -f command sudo _install_lix _load_nix_profile
+  unset -f command pacman sudo _install_lix _load_nix_profile
 }
 
 
@@ -522,6 +550,7 @@ test_install_debian_bootstraps_nix_and_switches_home_manager() {
     fi
     builtin command "$@"
   }
+  dpkg-query() { return 1; }
   sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
   _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
   _load_nix_profile() { :; }
@@ -536,7 +565,7 @@ test_install_debian_bootstraps_nix_and_switches_home_manager() {
   assert_not_contains "$output" "@linux@linux"
   assert_not_contains "$output" "neovim"
 
-  unset -f command sudo _install_lix _load_nix_profile
+  unset -f command dpkg-query sudo _install_lix _load_nix_profile
 }
 
 

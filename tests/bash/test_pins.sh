@@ -90,6 +90,63 @@ assert "Unknown pin target" not in stderr.getvalue()
 PY
 }
 
+test_pi_extension_pin_update_prechecks_closure() {
+  PYTHONPATH="$REPO_DIR/scripts" TEST_REPO_DIR="$REPO_DIR" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
+import hashlib
+import json
+import os
+import shutil
+from pathlib import Path
+import update_pins
+
+source = Path(os.environ["TEST_REPO_DIR"])
+repo = Path(os.environ["TEST_TMPDIR"]) / "pi-extensions"
+extensions = repo / "config/shared/ai/pi/extensions"
+extensions.mkdir(parents=True)
+(repo / "packages").mkdir()
+for relative in (
+    "config/shared/ai/pi/extensions/package.json",
+    "config/shared/ai/pi/extensions/package-lock.json",
+    "packages/pi-extensions-release.json",
+):
+    destination = repo / relative
+    shutil.copy2(source / relative, destination)
+
+package = json.loads((extensions / "package.json").read_text())
+release_path = repo / "packages/pi-extensions-release.json"
+release = json.loads(release_path.read_text())
+lock_path = extensions / "package-lock.json"
+release["releaseId"] = hashlib.sha256(lock_path.read_bytes()).hexdigest()
+release_path.write_text(json.dumps(release) + "\n")
+
+update_pins.npm_latest = lambda name: package["dependencies"][name]
+update_pins.locked_node = lambda _: (release["node"]["version"], release["node"]["abi"])
+update_pins.run = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError(f"unexpected command: {args}"))
+update_pins.verify_asset = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("unexpected asset download"))
+
+update_pins.update_pi_extensions(repo)
+assert json.loads(release_path.read_text()) == release
+
+release["betterSqlite3"]["assets"] = {}
+release_path.write_text(json.dumps(release) + "\n")
+downloads = []
+def verify_asset(_, name, destination):
+    downloads.append(name)
+    destination.touch()
+    return "a" * 64
+update_pins.verify_asset = verify_asset
+update_pins.fetch_json = lambda _: {}
+update_pins.nix_hash = lambda _: "sha256-test"
+
+update_pins.update_pi_extensions(repo)
+updated = json.loads(release_path.read_text())
+assert len(downloads) == 4
+assert set(updated["betterSqlite3"]["assets"]) == {
+    "x86_64-linux", "aarch64-darwin", "windows-x64", "windows-arm64",
+}
+PY
+}
+
 test_pin_updater_removes_excluded_skill_paths() {
   PYTHONPATH="$REPO_DIR/scripts" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
 import os
