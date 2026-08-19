@@ -1277,6 +1277,28 @@ function test_windows_pi_lsp_config_uses_only_supported_servers {
     Assert-False ($config.servers.PSObject.Properties.Name -contains 'nil') 'Windows LSP config should not advertise unavailable nil'
 }
 
+function Initialize-TestPiConfigSeeds {
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+    $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
+    $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
+    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir | Out-Null
+    foreach ($name in 'settings.json', 'keybindings.json', 'web-search.json') {
+        '{}' | Set-Content -LiteralPath (Join-Path $seedDir $name)
+    }
+    '{"globalConcurrencyLimit":7}' | Set-Content -LiteralPath (Join-Path $seedDir 'subagent-config.json')
+    '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'mcp.json')
+    '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
+    foreach ($name in 'caveman-default.js', 'ponytail-default.js', 'codex-status.js', 'windows-exit.js') {
+        'extension' | Set-Content -LiteralPath (Join-Path $seedDir $name)
+    }
+
+    return [pscustomobject]@{
+        Source = Join-Path $seedDir 'subagent-config.json'
+        Target = Join-Path $env:USERPROFILE '.pi\agent\extensions\subagent\config.json'
+        Base = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\subagent-config.json'
+    }
+}
+
 function test_syncpiconfigs_creates_writable_seed_files {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
@@ -1327,6 +1349,65 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
     Assert-FileExists (Join-Path $extensionDir 'windows-exit.js')
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
+}
+
+function test_syncpiconfigs_skips_unchanged_regular_subagent_destinations {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    Copy-Item -LiteralPath $paths.Source -Destination $paths.Target
+    Copy-Item -LiteralPath $paths.Source -Destination $paths.Base
+    $script:PiConfigMoves = @()
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force)
+        $script:PiConfigMoves += $Destination
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+    }
+
+    SyncPiConfigs
+
+    Assert-False ($script:PiConfigMoves -contains $paths.Target) 'unchanged regular target should not be replaced'
+    Assert-False ($script:PiConfigMoves -contains $paths.Base) 'unchanged regular base should not be replaced'
+}
+
+function test_syncpiconfigs_replaces_changed_regular_subagent_destinations {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
+
+    SyncPiConfigs
+
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+}
+
+function test_syncpiconfigs_creates_missing_subagent_destinations {
+    $paths = Initialize-TestPiConfigSeeds
+
+    SyncPiConfigs
+
+    Assert-FileExists $paths.Target
+    Assert-FileExists $paths.Base
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+}
+
+function test_syncpiconfigs_replaces_linked_subagent_destinations {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    $externalTarget = Join-Path $script:_TestTmp.FullName 'external-target.json'
+    $externalBase = Join-Path $script:_TestTmp.FullName 'external-base.json'
+    Copy-Item -LiteralPath $paths.Source -Destination $externalTarget
+    Copy-Item -LiteralPath $paths.Source -Destination $externalBase
+    New-Item -ItemType SymbolicLink -Path $paths.Target -Target $externalTarget | Out-Null
+    New-Item -ItemType SymbolicLink -Path $paths.Base -Target $externalBase | Out-Null
+
+    SyncPiConfigs
+
+    Assert-False ([bool](Get-Item -LiteralPath $paths.Target -Force).LinkType) 'linked target should become a regular file'
+    Assert-False ([bool](Get-Item -LiteralPath $paths.Base -Force).LinkType) 'linked base should become a regular file'
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
 }
 
 function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {

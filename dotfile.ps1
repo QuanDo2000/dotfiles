@@ -853,6 +853,12 @@ function SyncPiConfigs {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
         if ($name -eq "subagent-config.json") {
             foreach ($destination in $target, $base) {
+                $destinationItem = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+                if ($destinationItem -and -not $destinationItem.PSIsContainer -and
+                    -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
+                    (Get-FileSha256 $source) -eq (Get-FileSha256 $destination)) {
+                    continue
+                }
                 $temp = "$destination.tmp.$([Guid]::NewGuid().ToString('N'))"
                 Copy-Item -LiteralPath $source -Destination $temp
                 Move-Item -LiteralPath $temp -Destination $destination -Force
