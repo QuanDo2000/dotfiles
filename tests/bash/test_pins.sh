@@ -120,12 +120,18 @@ release["releaseId"] = hashlib.sha256(lock_path.read_bytes()).hexdigest()
 release_path.write_text(json.dumps(release) + "\n")
 
 update_pins.npm_latest = lambda name: package["dependencies"][name]
-update_pins.locked_node = lambda _: (release["node"]["version"], release["node"]["abi"])
+version_checks = []
+def locked_node_version(path):
+    version_checks.append(path)
+    return release["node"]["version"]
+update_pins.locked_node_version = locked_node_version
+update_pins.locked_node = lambda _: (_ for _ in ()).throw(AssertionError("unchanged Node version should not build Node"))
 update_pins.run = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError(f"unexpected command: {args}"))
 update_pins.verify_asset = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("unexpected asset download"))
 
 update_pins.update_pi_extensions(repo)
 assert json.loads(release_path.read_text()) == release
+assert version_checks == [repo]
 
 release["betterSqlite3"]["assets"] = {}
 release_path.write_text(json.dumps(release) + "\n")
@@ -140,6 +146,7 @@ update_pins.nix_hash = lambda _: "sha256-test"
 
 update_pins.update_pi_extensions(repo)
 updated = json.loads(release_path.read_text())
+assert version_checks == [repo, repo]
 assert len(downloads) == 4
 assert set(updated["betterSqlite3"]["assets"]) == {
     "x86_64-linux", "aarch64-darwin", "windows-x64", "windows-arm64",

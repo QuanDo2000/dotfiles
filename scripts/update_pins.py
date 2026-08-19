@@ -268,6 +268,17 @@ def npm_latest(package: str) -> str:
     return version
 
 
+def locked_node_version(repo: Path) -> str:
+    expression = (
+        f'let f = builtins.getFlake "path:{repo}"; '
+        "in (import f.inputs.nixpkgs { system = builtins.currentSystem; }).nodejs.version"
+    )
+    version = run("nix", "eval", "--raw", "--impure", "--expr", expression)
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        die("failed to resolve locked Node version")
+    return version
+
+
 def update_pi_extensions(repo: Path) -> None:
     package_path = repo / "config/shared/ai/pi/extensions/package.json"
     lock_path = package_path.with_name("package-lock.json")
@@ -295,9 +306,17 @@ def update_pi_extensions(repo: Path) -> None:
         die(f"unsafe Pi extension lock entries: invalid={invalid}, scripts={install_scripts}")
 
     release_id = sha256(lock_path)
-    node_version, abi = locked_node(repo)
     better_version = lock["packages"]["node_modules/better-sqlite3"]["version"]
     old = json.loads(release_path.read_text(encoding="utf-8"))
+    old_node = old.get("node", {})
+    node_version = locked_node_version(repo)
+    if old_node.get("version") == node_version and str(old_node.get("abi", "")).isdigit():
+        abi = str(old_node["abi"])
+    else:
+        resolved_version, abi = locked_node(repo)
+        if resolved_version != node_version:
+            die("locked Node version changed during resolution")
+        node_version = resolved_version
     names = {
         "x86_64-linux": f"better-sqlite3-v{better_version}-node-v{abi}-linux-x64.tar.gz",
         "aarch64-darwin": f"better-sqlite3-v{better_version}-node-v{abi}-darwin-arm64.tar.gz",
