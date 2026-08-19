@@ -246,12 +246,10 @@ _check_nix_config() {
     return 0
   fi
 
-  local username host_name
-  username="$(host_config_value username 2>/dev/null || true)"
-  host_name="$(host_config_value hostName 2>/dev/null || true)"
-
   case "$platform" in
     nixos)
+      local host_name
+      host_name="$(host_config_value hostName 2>/dev/null || true)"
       if [[ -z "$host_name" ]]; then
         fail_soft "NixOS hostName failed to evaluate"
         errors=$((errors + 1))
@@ -263,6 +261,8 @@ _check_nix_config() {
       _check_nix_eval "nix-darwin configuration mac" "$DOTFILES_DIR#darwinConfigurations.mac.config.system.build.toplevel.drvPath"
       ;;
     arch | debian)
+      local username
+      username="$(host_config_value username 2>/dev/null || true)"
       if [[ -z "$username" ]]; then
         fail_soft "Home Manager username failed to evaluate"
         errors=$((errors + 1))

@@ -648,6 +648,57 @@ test_doctor_retries_nix_eval_with_temp_cache_after_fetcher_cache_failure() {
   assert_contains "$(tail -n 1 "$calls")" "dotfile-nix-cache."
 }
 
+test_host_config_reads_canonical_literal_before_nix() {
+  mkdir -p "$DOTFILES_DIR/config"
+  printf '{ username = "quando"; hostName = "nixos"; }\n' > "$DOTFILES_DIR/config/host.nix"
+  local nix_called="$TEST_TMPDIR/nix-called"
+  nix() {
+    touch "$nix_called"
+    printf 'wrong\n'
+  }
+
+  assert_equals "quando" "$(host_config_value username)"
+  [[ ! -e "$nix_called" ]] || assert_equals "nix skipped" "nix called"
+  unset -f nix
+}
+
+test_host_config_falls_back_to_nix_for_computed_values() {
+  mkdir -p "$DOTFILES_DIR/config"
+  printf 'let user = "quando"; in { username = user; }\n' > "$DOTFILES_DIR/config/host.nix"
+  nix() { printf 'computed\n'; }
+
+  assert_equals "computed" "$(host_config_value username)"
+  unset -f nix
+}
+
+test_check_nix_config_reads_only_platform_host_key() {
+  mkdir -p "$DOTFILES_DIR"
+  touch "$DOTFILES_DIR/flake.nix"
+  local calls="$TEST_TMPDIR/host-config-calls"
+  nix() { :; }
+  host_config_value() {
+    printf '%s\n' "$1" >> "$calls"
+    case "$1" in
+      username) printf 'quando\n' ;;
+      hostName) printf 'nixos\n' ;;
+    esac
+  }
+  _check_nix_eval() { :; }
+
+  errors=0
+  _check_nix_config nixos
+  assert_equals "hostName" "$(<"$calls")"
+
+  : > "$calls"
+  _check_nix_config arch
+  assert_equals "username" "$(<"$calls")"
+
+  : > "$calls"
+  _check_nix_config mac
+  assert_equals "" "$(<"$calls")"
+  unset -f nix host_config_value _check_nix_eval
+}
+
 test_doctor_reads_host_config_when_nix_file_eval_is_unavailable() {
   mock_uname Linux
   local os_release="$TEST_TMPDIR/os-release"
