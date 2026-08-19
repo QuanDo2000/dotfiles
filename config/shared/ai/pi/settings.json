@@ -90,7 +90,7 @@
   "theme": "dark",
   "terminal": {
     "showTerminalProgress": true,
-    "clearOnShrink": true
+    "clearOnShrink": false
   },
   "steeringMode": "all",
   "followUpMode": "all",
