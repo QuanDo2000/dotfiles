@@ -896,7 +896,7 @@ function SyncPiConfigs {
                             if ($partial) { Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop }
                             Move-Item -LiteralPath $change.Backup -Destination $change.Destination -ErrorAction Stop
                             $change.BackedUp = $false
-                        } elseif (-not $change.Original -and $partial) {
+                        } elseif (-not $change.Original -and $change.Installed -and $partial) {
                             Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop
                         }
                     } catch {
@@ -922,13 +922,15 @@ function SyncPiConfigs {
                 }
             }
             if ($rollbackError) {
-                throw "Pi subagent config rollback failed after '$($operationError.Exception.Message)': $($rollbackError.Exception.Message)"
+                $message = "Pi subagent config rollback failed after '$($operationError.Exception.Message)': $($rollbackError.Exception.Message)"
+                if ($cleanupError) { $message += "; cleanup also failed: $($cleanupError.Exception.Message)" }
+                throw $message
             }
             if ($cleanupError) {
                 if ($operationError) {
                     throw "Pi subagent config cleanup failed after '$($operationError.Exception.Message)': $($cleanupError.Exception.Message)"
                 }
-                throw $cleanupError
+                throw "Pi subagent config cleanup failed: $($cleanupError.Exception.Message)"
             }
             if ($operationError) { throw $operationError }
             continue
