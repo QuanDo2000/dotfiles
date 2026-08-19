@@ -154,7 +154,7 @@ function test_update_packages_dry_run_does_not_call_winget {
     Assert-False $script:Called 'winget should not be invoked in dry run'
 }
 
-function test_installpackages_uses_supported_export_options_and_upgrades_only_managed_packages {
+function test_installpackages_skips_upgrades_outside_update {
     $script:Dry = $false
     $script:WingetCalls = @()
     Set-CommandMock 'winget' {
@@ -169,10 +169,28 @@ function test_installpackages_uses_supported_export_options_and_upgrades_only_ma
 
     InstallPackages 6>&1 | Out-Null
 
+    Assert-Equals 1 $script:WingetCalls.Count
+    Assert-True ($script:WingetCalls[0] -like 'export *') 'package install should inventory managed packages'
+    Assert-False ($script:WingetCalls[0] -like '*--ignore-unavailable*') 'winget export must use supported options'
+}
+
+function test_installpackages_update_upgrades_only_managed_packages {
+    $script:Dry = $false
+    $script:WingetCalls = @()
+    Set-CommandMock 'winget' {
+        $script:WingetCalls += ,($args -join ' ')
+        if ($args[0] -eq 'export') {
+            $outputIndex = [Array]::IndexOf($args, '--output')
+            '{"Sources":[{"Packages":[' + ((Get-WingetPackages | ForEach-Object { '{"PackageIdentifier":"' + $_ + '"}' }) -join ',') + ']}]}' |
+                Set-Content -LiteralPath $args[$outputIndex + 1]
+        }
+        $global:LASTEXITCODE = 0
+    }
+
+    InstallPackages -Update 6>&1 | Out-Null
+
     $managed = @(Get-WingetPackages)
     Assert-Equals ($managed.Count + 1) $script:WingetCalls.Count
-    Assert-Equals 1 @($script:WingetCalls | Where-Object { $_ -like 'export *' }).Count
-    Assert-False ($script:WingetCalls[0] -like '*--ignore-unavailable*') 'winget export must use supported options'
     Assert-False (($script:WingetCalls -join "`n") -like '*upgrade --all*') 'unmanaged packages should not be upgraded'
     foreach ($package in $managed) {
         Assert-True ($script:WingetCalls -contains "upgrade --id $package --exact --disable-interactivity --accept-package-agreements --accept-source-agreements") "missing managed upgrade for $package"
@@ -217,7 +235,7 @@ function test_installpackages_propagates_winget_upgrade_failure {
     Set-FunctionMock 'Get-InstalledWingetPackages' { return @(Get-WingetPackages) }
     Set-CommandMock 'winget' { $global:LASTEXITCODE = if ($args[0] -eq 'upgrade') { 1 } else { 0 } }
 
-    Assert-Throws { InstallPackages 6>&1 | Out-Null } 'InstallPackages should propagate Winget upgrade failures'
+    Assert-Throws { InstallPackages -Update 6>&1 | Out-Null } 'InstallPackages should propagate Winget upgrade failures'
 }
 
 function test_installpackages_installs_missing_winget_packages_individually {

@@ -1040,6 +1040,18 @@ function test_installpilanguageservers_installs_pinned_npm_servers {
     Assert-Contains $install 'bash-language-server@5.6.0'
 }
 
+function test_installpilanguageservers_update_skips_current_pinned_servers {
+    $script:NpmCalls = @()
+    Set-CommandMock 'vtsls' { '0.3.0'; $global:LASTEXITCODE = 0 }
+    Set-CommandMock 'bash-language-server' { '5.6.0'; $global:LASTEXITCODE = 0 }
+    Set-CommandMock 'shellcheck' { $global:LASTEXITCODE = 0 }
+    Set-CommandMock 'npm' { $script:NpmCalls += ,($args -join ' '); $global:LASTEXITCODE = 0 }
+
+    InstallPiLanguageServers -Update
+
+    Assert-Equals 0 $script:NpmCalls.Count 'update should not reinstall current pinned language servers'
+}
+
 function Write-TestPatchedPiSession($Path) {
     "this._autoCompactionAbortController = undefined;`nawait this.waitForIdle();" | Set-Content -LiteralPath $Path
 }

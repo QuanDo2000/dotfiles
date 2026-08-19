@@ -210,6 +210,7 @@ function Expand-WindowsTarArchive($Archive, $Destination) {
 }
 
 function InstallPackages {
+    param([switch]$Update)
     Info "Installing packages..."
     if ($script:Dry) { return }
 
@@ -226,9 +227,11 @@ function InstallPackages {
         Success "All winget packages already installed"
     }
 
-    Info "Upgrading managed winget packages..."
-    foreach ($pkg in $wingetPkgs) {
-        Invoke-Winget "winget upgrade $pkg failed" @('upgrade', '--id', $pkg, '--exact')
+    if ($Update) {
+        Info "Upgrading managed winget packages..."
+        foreach ($pkg in $wingetPkgs) {
+            Invoke-Winget "winget upgrade $pkg failed" @('upgrade', '--id', $pkg, '--exact')
+        }
     }
 
     AddToUserPath (Join-Path $env:ProgramFiles 'LLVM\bin')
@@ -268,7 +271,7 @@ function InstallFiraCodeNerdFont {
         }
         if (-not $complete) { break }
     }
-    if ($complete -and -not $script:Force -and -not $Update) {
+    if ($complete -and -not $script:Force) {
         $registry = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
         Grant-FontReadAccess $fontDir
         foreach ($family in $families) {
@@ -789,7 +792,7 @@ function InstallPiLanguageServers {
         'vtsls' = '0.3.0'
         'bash-language-server' = '5.6.0'
     }
-    $needsInstall = [bool]$Update
+    $needsInstall = $false
     foreach ($name in $servers.Keys) {
         if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
             $needsInstall = $true
@@ -1388,7 +1391,7 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
     if ($aiOnly) {
         InstallAi -Update
     } else {
-        InstallPackages
+        InstallPackages -Update
         InstallExtras -Update
         InstallAi -Update
         SetupSymlinks

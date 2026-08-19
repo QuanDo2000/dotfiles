@@ -100,7 +100,7 @@ function test_installfiracodenerdfont_skips_download_when_complete_pinned_set_is
     Assert-Equals 'installed' ([IO.File]::ReadAllText((Join-Path $fontDir 'FiraCodeNerdFont-Regular-9.9.9.ttf'))) 'complete pinned font set should remain untouched'
 }
 
-function test_installfiracodenerdfont_update_bypasses_fast_path {
+function test_installfiracodenerdfont_update_skips_complete_pinned_set {
     $script:Dry = $false
     $script:UpdateFontDownloadCalled = $false
     $script:FiraCodeNerdFontVersion = '9.9.9'
@@ -113,10 +113,13 @@ function test_installfiracodenerdfont_update_bypasses_fast_path {
             [IO.File]::WriteAllText((Join-Path $fontDir "$family-$style-9.9.9.ttf"), 'old font')
         }
     }
-    Set-CommandMock 'Invoke-WebRequest' { $script:UpdateFontDownloadCalled = $true; throw 'update download reached' }
+    Set-CommandMock 'Invoke-WebRequest' { $script:UpdateFontDownloadCalled = $true }
+    Set-CommandMock 'New-ItemProperty' {}
+    Set-CommandMock 'icacls' { $global:LASTEXITCODE = 0 }
 
-    Assert-Throws { InstallFiraCodeNerdFont -Update 6>&1 | Out-Null } 'update should bypass font fast path'
-    Assert-True $script:UpdateFontDownloadCalled 'update should attempt font download'
+    InstallFiraCodeNerdFont -Update 6>&1 | Out-Null
+
+    Assert-False $script:UpdateFontDownloadCalled 'update should not download complete pinned font set'
 }
 
 function test_installextras_forwards_update_to_font_installer {
