@@ -1312,11 +1312,14 @@ function SyncAiInstructions {
             $sourceSha256 -eq (Get-FileSha256 $target)) {
             continue
         }
-        if ($targetItem -and ($targetItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
-            Remove-Item -LiteralPath $target -Force
-        }
         New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-        Copy-Item -LiteralPath $source -Destination $target -Force
+        $temporary = "$target.tmp.$([Guid]::NewGuid().ToString('N'))"
+        try {
+            Copy-Item -LiteralPath $source -Destination $temporary -Force -ErrorAction Stop
+            Move-Item -LiteralPath $temporary -Destination $target -Force -ErrorAction Stop
+        } finally {
+            Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 

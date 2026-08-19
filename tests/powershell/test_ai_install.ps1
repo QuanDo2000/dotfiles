@@ -455,6 +455,40 @@ function test_syncaiinstructions_does_not_skip_linked_destinations_for_codex_and
     Assert-Equals 'shared instructions' ((Get-Content -Raw $external).Trim())
 }
 
+function Assert-AiInstructionCopyFailurePreservesTarget($Target) {
+    Initialize-TestAiInstructions | Out-Null
+    $external = Join-Path $script:_TestTmp.FullName "linked-AGENTS-$([Guid]::NewGuid().ToString('N')).md"
+    'old instructions' | Set-Content $external
+    New-Item -ItemType Directory -Force -Path (Split-Path $Target -Parent) | Out-Null
+    New-Item -ItemType SymbolicLink -Path $Target -Target $external | Out-Null
+    $script:AiInstructionStaged = $false
+    Set-CommandMock 'Copy-Item' {
+        param($LiteralPath, $Destination, [switch]$Force)
+        if ($Destination -like "$Target.tmp.*") {
+            $script:AiInstructionStaged = $true
+            'partial instructions' | Set-Content $Destination
+            throw 'simulated copy failure'
+        }
+        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+    }
+
+    Assert-Throws { SyncAiInstructions } 'staging copy failure should be reported'
+
+    Assert-True $script:AiInstructionStaged 'copy should stage beside destination'
+    Assert-True ([bool](Get-Item -LiteralPath $Target -Force).LinkType) 'linked destination should be preserved'
+    Assert-Equals 'old instructions' ((Get-Content -Raw $Target).Trim())
+    Assert-Equals 'old instructions' ((Get-Content -Raw $external).Trim())
+    Assert-Equals 0 @((Get-ChildItem -LiteralPath (Split-Path $Target -Parent) -Filter 'AGENTS.md.tmp.*' -Force)).Count
+}
+
+function test_syncaiinstructions_cleans_temp_and_preserves_codex_link_when_copy_fails {
+    Assert-AiInstructionCopyFailurePreservesTarget (Join-Path $env:USERPROFILE '.codex\AGENTS.md')
+}
+
+function test_syncaiinstructions_cleans_temp_and_preserves_pi_link_when_copy_fails {
+    Assert-AiInstructionCopyFailurePreservesTarget (Join-Path $env:USERPROFILE '.pi\agent\AGENTS.md')
+}
+
 function test_install_skill_directory_rejects_linked_source_root {
     $realSource = Join-Path $script:_TestTmp.FullName 'real-source-skill'
     $linkedSource = Join-Path $script:_TestTmp.FullName 'linked-source-skill'
