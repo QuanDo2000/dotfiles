@@ -924,6 +924,44 @@ function _finish_dependency_update {
   rm -f "$marker" "$marker.tmp"
 }
 
+function _publish_dependency_update {
+  [[ "$DRY" == "true" ]] && return
+  local scope="${1:-full}" status branch remote merge upstream ahead behind subject
+  status="$(git -C "$DOTFILES_DIR" status --porcelain)" \
+    || fail "Failed to inspect dependency repository"
+  [[ -n "$status" ]] || return
+  _validate_pending_dependency_update "$scope"
+  branch="$(git -C "$DOTFILES_DIR" symbolic-ref --quiet --short HEAD)" \
+    || fail "Dependency update requires a branch"
+  remote="$(git -C "$DOTFILES_DIR" config --get "branch.$branch.remote")" \
+    || fail "Dependency update branch has no upstream remote"
+  merge="$(git -C "$DOTFILES_DIR" config --get "branch.$branch.merge")" \
+    || fail "Dependency update branch has no upstream branch"
+  upstream="${remote}/${merge#refs/heads/}"
+  git -C "$DOTFILES_DIR" fetch "$remote" \
+    || fail "Failed to fetch dependency update remote"
+  ahead="$(git -C "$DOTFILES_DIR" rev-list --count "$upstream..HEAD")" \
+    || fail "Failed to compare dependency update branch"
+  [[ "$ahead" == 0 ]] \
+    || fail "Dependency update branch has unpublished commits; push them before updating"
+
+  subject="chore: update dependencies"
+  [[ "$scope" != ai ]] || subject="chore: update AI dependencies"
+  git -C "$DOTFILES_DIR" add -A \
+    && git -C "$DOTFILES_DIR" commit -m "$subject" \
+    || fail "Failed to commit dependency update"
+  git -C "$DOTFILES_DIR" fetch "$remote" \
+    || fail "Failed to refresh dependency update remote"
+  behind="$(git -C "$DOTFILES_DIR" rev-list --count "HEAD..$upstream")" \
+    || fail "Failed to compare dependency update branch"
+  if (( behind > 0 )); then
+    git -C "$DOTFILES_DIR" rebase "$upstream" \
+      || fail "Dependency update rebase needs manual conflict resolution"
+  fi
+  git -C "$DOTFILES_DIR" push "$remote" "HEAD:${merge#refs/heads/}" \
+    || fail "Failed to push dependency update"
+}
+
 function _require_clean_dependency_tree {
   [[ "$DRY" == "true" ]] && return
   _dependency_git_repository || fail "Dependency update requires a Git repository"

@@ -130,11 +130,12 @@ test_update_packages_syncs_neovim() {
   _cleanup_codex_runtime_after_update() { :; }
   _update_pi_extensions() { :; }
   _sync_neovim() { printf 'neovim-sync\n' >> "$calls"; }
+  _publish_dependency_update() { printf 'published\n' >> "$calls"; }
   _finish_dependency_update() { :; }
 
   update_packages >/dev/null
 
-  assert_equals "neovim-sync" "$(<"$calls")"
+  assert_equals $'neovim-sync\npublished' "$(<"$calls")"
 }
 
 test_sync_neovim_restores_all_plugins_cleans_and_verifies_tools() {

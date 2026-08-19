@@ -178,9 +178,12 @@ After provisioning, use `dotfile update` to refresh every repository-managed
 dependency: Nix inputs, release archives, npm closures, native FFF assets,
 Windows font pins, vendored skills, and Neovim plugins. It runs full
 checks, shows the resulting uncommitted diff, and requires confirmation before
-activation; non-interactive runs must pass `--force`. Full updates install
-missing native prerequisites for the detected platform before activating its
-configured profile; installed-state detection does not select dependencies.
+activation; non-interactive runs must pass `--force`. After successful activation,
+it commits the reviewed changes, fetches and rebases if the upstream advanced,
+and pushes the current branch. Existing unpublished commits stop publication.
+Full updates install missing native prerequisites for the detected platform
+before activating its configured profile; installed-state detection does not
+select dependencies.
 Use `dotfile update ai` to update only tracked AI configs, Codex and Pi release
 pins, managed AI packages, and Pi extensions.
 AI-only updates use the same isolated validation, diff review, and approval
@@ -190,9 +193,6 @@ boundary. On NixOS the full update ends with:
 nix flake update --flake ~/dotfiles
 sudo nixos-rebuild switch --flake ~/dotfiles#${hostName}
 ```
-
-Commit all generated pin and lock changes after successful activation and CI
-to preserve the reviewed dependency set.
 
 On macOS it uses existing `darwin-rebuild` when available:
 

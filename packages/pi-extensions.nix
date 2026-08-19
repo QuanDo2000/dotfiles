@@ -18,7 +18,7 @@ buildNpmPackage {
   version = builtins.substring 0 12 pins.releaseId;
   src = source;
 
-  npmDepsHash = "sha256-eSKpdUy6TvtdUh3yfmeG7LdgXXw54OrauijgUVnNrZ0=";
+  npmDepsHash = "sha256-q3vnVk1xeuzat+eYk8CP0GgNyEACWdprrZnmLpQFXQw=";
   npmFlags = [ "--omit=dev" "--ignore-scripts" "--legacy-peer-deps" ];
   dontNpmBuild = true;
   nativeBuildInputs = [ python3 ];

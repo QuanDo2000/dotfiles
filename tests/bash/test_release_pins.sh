@@ -26,6 +26,40 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
   unset -f _run_python_pin_batch
 }
 
+test_dependency_publish_rebases_and_pushes_update() {
+  local remote="$TEST_TMPDIR/remote.git" repo="$TEST_TMPDIR/repo" other="$TEST_TMPDIR/other"
+  git init -q --bare "$remote"
+  git clone -q "$remote" "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  git -C "$repo" config commit.gpgsign false
+  printf 'initial\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  git -C "$repo" branch -M main
+  git -C "$repo" push -qu origin main
+  git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+
+  git clone -q "$remote" "$other"
+  git -C "$other" config user.email test@example.com
+  git -C "$other" config user.name Test
+  printf 'upstream\n' > "$other/upstream"
+  git -C "$other" add upstream
+  git -C "$other" commit -qm upstream
+  git -C "$other" push -q origin main
+
+  printf 'updated\n' > "$repo/managed"
+  DOTFILES_DIR="$repo"
+  DRY=false
+  _dependency_update_fingerprint > "$(_dependency_update_marker full)"
+  _publish_dependency_update full
+
+  assert_equals "" "$(git -C "$repo" status --short)"
+  assert_equals "chore: update dependencies" "$(git -C "$repo" log -1 --format=%s)"
+  assert_equals "$(git -C "$repo" rev-parse HEAD)" "$(git --git-dir="$remote" rev-parse main)"
+  assert_equals "upstream" "$(<"$repo/upstream")"
+}
+
 test_codebase_memory_verification_uses_cosign_without_nested_nix() {
   local source="$REPO_DIR/scripts/update_pins.py"
   local source_text

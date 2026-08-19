@@ -486,10 +486,11 @@ function _update_packages_scope {
   _update_pi_extensions
   local neovim_sync_error=
   [[ "$scope" == ai ]] || _sync_neovim || neovim_sync_error="$NEOVIM_SYNC_ERROR"
+  [ -z "$neovim_sync_error" ] || fail "$neovim_sync_error"
+  _publish_dependency_update "$scope"
   _finish_dependency_update "${pending_args[@]}"
   [[ "$DRY" == "true" ]] || _end_dependency_update \
     || fail "Failed to release dependency update lock"
-  [ -z "$neovim_sync_error" ] || fail "$neovim_sync_error"
   success "Finished $suffix"
 }
 

@@ -30,13 +30,15 @@ test_update_packages_refreshes_and_validates_all_pins_before_activation() {
   _cleanup_codex_runtime_after_update() { printf 'cleanup\n' >> "$calls"; }
   _update_pi_extensions() { printf 'extensions\n' >> "$calls"; }
   _sync_neovim() { printf 'fff\n' >> "$calls"; }
+  _publish_dependency_update() { printf 'publish:%s\n' "$1" >> "$calls"; }
 
   OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
 
-  assert_equals "$(printf 'flake\npins\nvalidate\napprove\nnative:arch\nactivate:arch-server:path:%s\ncleanup\nextensions\nfff' "$DOTFILES_DIR")" "$(<"$calls")"
+  assert_equals "$(printf 'flake\npins\nvalidate\napprove\nnative:arch\nactivate:arch-server:path:%s\ncleanup\nextensions\nfff\npublish:full' "$DOTFILES_DIR")" "$(<"$calls")"
 
   unset -f _update_flake_inputs _update_all_dependency_pins _validate_dependency_update _approve_dependency_update \
-    _install_native_bootstrap_packages _home_manager_switch _cleanup_codex_runtime_after_update _update_pi_extensions _sync_neovim
+    _install_native_bootstrap_packages _home_manager_switch _cleanup_codex_runtime_after_update _update_pi_extensions \
+    _sync_neovim _publish_dependency_update
 }
 
 test_update_ai_updates_only_ai_tools_and_configs() {
@@ -83,13 +85,17 @@ test_update_ai_updates_only_ai_tools_and_configs() {
   _sync_neovim() {
     printf 'fff.nvim\n' >> "$calls"
   }
+  _publish_dependency_update() {
+    printf 'publish:%s\n' "$1" >> "$calls"
+  }
 
   OS_RELEASE="$osrel" update_ai >/dev/null 2>&1
 
-  assert_equals $'codex-update\npi-update\nvalidate\napprove\nhome-manager-switch\ncodex-runtime-cleanup\npi update --extensions' "$(<"$calls")"
+  assert_equals $'codex-update\npi-update\nvalidate\napprove\nhome-manager-switch\ncodex-runtime-cleanup\npi update --extensions\npublish:ai' "$(<"$calls")"
 
   unset -f command _update_codex_release_package _update_pi_release_package _validate_dependency_update \
-    _approve_dependency_update _install_native_bootstrap_packages home-manager _cleanup_codex_runtime_after_update pi _sync_neovim
+    _approve_dependency_update _install_native_bootstrap_packages home-manager _cleanup_codex_runtime_after_update pi \
+    _sync_neovim _publish_dependency_update
 }
 
 test_update_ai_validation_failure_stops_activation() {
