@@ -28,7 +28,9 @@ function _obsidian_login {
     info "Would run: ob login (interactive)"
     return
   fi
-  if ob sync-list-remote >/dev/null 2>&1; then
+  local remote_vaults
+  if remote_vaults="$(ob sync-list-remote 2>/dev/null)"; then
+    OBSIDIAN_REMOTE_VAULTS="$remote_vaults"
     info "Already logged in; skipping ob login"
     return
   fi
@@ -45,7 +47,11 @@ function _obsidian_pick_vault {
     return
   fi
   user "Remote vaults available on your account:" >&2
-  ob sync-list-remote >&2 || fail "Failed to list remote vaults"
+  if [[ -n "${OBSIDIAN_REMOTE_VAULTS+x}" ]]; then
+    printf '%s\n' "$OBSIDIAN_REMOTE_VAULTS" >&2
+  else
+    ob sync-list-remote >&2 || fail "Failed to list remote vaults"
+  fi
   printf '\n' >&2
   local vault_name=""
   while [[ -z "$vault_name" ]]; do
@@ -149,6 +155,7 @@ function _obsidian_start_service {
 
 function setup_obsidian {
   info "Setting up Obsidian headless sync..."
+  unset OBSIDIAN_REMOTE_VAULTS
   _obsidian_check_prereqs
   _obsidian_check_cli
 

@@ -146,6 +146,26 @@ test_login_dry_run_does_not_call_ob() {
   assert_contains "$output" "Would run: ob login"
 }
 
+test_logged_in_vault_list_is_reused_for_selection() {
+  export OBSIDIAN_TEST_CALLS="$TEST_TMPDIR/remote-list-calls"
+  mock_cmd ob 'case "$1" in
+    sync-list-remote)
+      printf "call\n" >> "$OBSIDIAN_TEST_CALLS"
+      printf "Team Notes\n"
+      ;;
+    login) echo "unexpected ob login call" >&2; exit 99 ;;
+    *) exit 0 ;;
+  esac'
+
+  _obsidian_login >/dev/null
+  local vault listing="$TEST_TMPDIR/vault-listing"
+  vault=$(_obsidian_pick_vault <<< "Team Notes" 2> "$listing")
+
+  assert_equals "Team Notes" "$vault"
+  assert_equals "1" "$(wc -l < "$OBSIDIAN_TEST_CALLS" | tr -d ' ')"
+  assert_contains "$(<"$listing")" "Team Notes"
+}
+
 # ---------------------------------------------------------------------------
 # _obsidian_pick_vault
 # ---------------------------------------------------------------------------
