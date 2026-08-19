@@ -876,13 +876,31 @@ function SyncPiConfigs {
         }
     }
 
-    $lspSource = Join-Path $script:DotfilesDir 'config\windows\ai\pi\pi-lsp.json'
-    Copy-Item -LiteralPath $lspSource -Destination (Join-Path $targetDir 'pi-lsp.json') -Force
-
     $extensionDir = Join-Path $targetDir "extensions"
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
+    $directCopies = @(
+        @{
+            Source = Join-Path $script:DotfilesDir 'config\windows\ai\pi\pi-lsp.json'
+            Destination = Join-Path $targetDir 'pi-lsp.json'
+        }
+    )
     foreach ($name in @("caveman-default.js", "ponytail-default.js", "codex-status.js", "windows-exit.js")) {
-        Copy-Item -LiteralPath (Join-Path $seedDir $name) -Destination (Join-Path $extensionDir $name) -Force
+        $directCopies += @{
+            Source = Join-Path $seedDir $name
+            Destination = Join-Path $extensionDir $name
+        }
+    }
+    foreach ($copy in $directCopies) {
+        $destinationItem = Get-Item -LiteralPath $copy.Destination -Force -ErrorAction SilentlyContinue
+        if ($destinationItem -and -not $destinationItem.PSIsContainer -and
+            -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
+            (Get-FileSha256 $copy.Source) -eq (Get-FileSha256 $copy.Destination)) {
+            continue
+        }
+        if ($destinationItem -and ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            Remove-Item -LiteralPath $copy.Destination -Force
+        }
+        Copy-Item -LiteralPath $copy.Source -Destination $copy.Destination -Force
     }
     Success "Finished syncing Pi configuration"
 }

@@ -1329,6 +1329,55 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
 }
 
+function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
+    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
+    $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
+    $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
+    $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
+    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $extensionDir | Out-Null
+
+    foreach ($name in 'settings.json', 'keybindings.json', 'web-search.json', 'subagent-config.json') {
+        '{}' | Set-Content -LiteralPath (Join-Path $seedDir $name)
+    }
+    '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'mcp.json')
+    'same lsp' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
+    'same lsp' | Set-Content -LiteralPath (Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json')
+    'same extension' | Set-Content -LiteralPath (Join-Path $seedDir 'caveman-default.js')
+    'same extension' | Set-Content -LiteralPath (Join-Path $extensionDir 'caveman-default.js')
+    'new extension' | Set-Content -LiteralPath (Join-Path $seedDir 'ponytail-default.js')
+    'old extension' | Set-Content -LiteralPath (Join-Path $extensionDir 'ponytail-default.js')
+    'missing extension' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
+    'linked replacement' | Set-Content -LiteralPath (Join-Path $seedDir 'windows-exit.js')
+    $external = Join-Path $script:_TestTmp.FullName 'external-windows-exit.js'
+    'external' | Set-Content -LiteralPath $external
+    New-Item -ItemType SymbolicLink -Path (Join-Path $extensionDir 'windows-exit.js') -Target $external | Out-Null
+
+    $script:PiConfigCopies = @()
+    Set-CommandMock 'Copy-Item' {
+        param($LiteralPath, $Destination, [switch]$Force)
+        $script:PiConfigCopies += $Destination
+        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+    }
+
+    SyncPiConfigs
+
+    $lsp = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
+    $unchangedExtension = Join-Path $extensionDir 'caveman-default.js'
+    $changedExtension = Join-Path $extensionDir 'ponytail-default.js'
+    $missingExtension = Join-Path $extensionDir 'codex-status.js'
+    $linkedExtension = Join-Path $extensionDir 'windows-exit.js'
+    Assert-False ($script:PiConfigCopies -contains $lsp) 'unchanged regular LSP config should not be replaced'
+    Assert-False ($script:PiConfigCopies -contains $unchangedExtension) 'unchanged regular extension should not be replaced'
+    Assert-True ($script:PiConfigCopies -contains $changedExtension) 'changed extension should be replaced'
+    Assert-True ($script:PiConfigCopies -contains $missingExtension) 'missing extension should be copied'
+    Assert-True ($script:PiConfigCopies -contains $linkedExtension) 'linked extension should be repaired'
+    Assert-Equals 'new extension' ((Get-Content -Raw -LiteralPath $changedExtension).Trim())
+    Assert-Equals 'missing extension' ((Get-Content -Raw -LiteralPath $missingExtension).Trim())
+    Assert-False ([bool](Get-Item -LiteralPath $linkedExtension -Force).LinkType) 'linked extension should become a regular file'
+    Assert-Equals 'linked replacement' ((Get-Content -Raw -LiteralPath $linkedExtension).Trim())
+    Assert-Equals 'external' ((Get-Content -Raw -LiteralPath $external).Trim())
+}
+
 function test_syncpiconfigs_replaces_stale_live_subagents {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
