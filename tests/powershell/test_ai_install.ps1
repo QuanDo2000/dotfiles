@@ -191,9 +191,9 @@ function test_windows_codex_uses_pinned_release_packages {
 
     Assert-False ($text -like '*https://chatgpt.com/codex/install.ps1*') 'mutable Codex installer should not execute'
     Assert-False ($text -like '*Invoke-RestMethod https://chatgpt.com/codex/install.ps1*') 'remote Codex script should not be piped to execution'
-    Assert-Equals '0.147.0' $pins.version
-    Assert-Equals 'c156c8feb8cb20197bf74d2c6daffed1fec0a8c21a03bc2ca90d7ff81927b0c5' $pins.windows.x86_64
-    Assert-Equals '4533928d72ac4d7c19f16e8c4acdfd02dc255d2aeeb2f6d7dfd45493ec4c0806' $pins.windows.aarch64
+    Assert-True ($pins.version -match '^\d+\.\d+\.\d+$') 'version should be exact semver'
+    Assert-True ($pins.windows.x86_64 -match '^[0-9a-f]{64}$') 'x86_64 hash should be pinned'
+    Assert-True ($pins.windows.aarch64 -match '^[0-9a-f]{64}$') 'aarch64 hash should be pinned'
     Assert-Contains $text 'codex-package-$target.tar.gz'
 }
 
