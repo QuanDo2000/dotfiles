@@ -896,9 +896,9 @@ function SyncPiConfigs {
                         $partial = Get-Item -LiteralPath $change.Destination -Force -ErrorAction SilentlyContinue
                         if ($change.BackedUp) {
                             if ($partial) {
-                                if ($change.Installed -and ($partial.PSIsContainer -or
+                                if ($partial.PSIsContainer -or
                                     ($partial.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
-                                    (Get-FileSha256 $change.Destination) -ne $change.InstalledHash)) {
+                                    (Get-FileSha256 $change.Destination) -ne $change.InstalledHash) {
                                     throw "Pi subagent config rollback refused to replace concurrently modified destination '$($change.Destination)'; recovery backup: '$($change.Backup)'"
                                 }
                                 Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop

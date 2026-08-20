@@ -1508,7 +1508,6 @@ function test_syncpiconfigs_replacement_failure_preserves_regular_subagent_targe
         param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
         if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
             $script:PiConfigFailureInjected = $true
-            'partial' | Set-Content -LiteralPath $Destination
             throw 'simulated replacement failure'
         }
         Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
@@ -1535,7 +1534,6 @@ function test_syncpiconfigs_replacement_failure_preserves_linked_subagent_base {
         param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
         if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
             $script:PiConfigFailureInjected = $true
-            'partial' | Set-Content -LiteralPath $Destination
             throw 'simulated replacement failure'
         }
         Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
@@ -1558,7 +1556,6 @@ function test_syncpiconfigs_reports_operation_rollback_and_temp_cleanup_failures
     Set-CommandMock 'Move-Item' {
         param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
         if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
-            'partial' | Set-Content -LiteralPath $Destination
             throw 'simulated replacement failure'
         }
         if ($LiteralPath -like "$($paths.Target).backup.*" -and $Destination -eq $paths.Target) {
@@ -1716,6 +1713,39 @@ function test_syncpiconfigs_reports_later_rollback_failure_after_first_restorati
         $leaf = Split-Path $destination -Leaf
         Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
     }
+}
+
+function test_syncpiconfigs_rollback_preserves_concurrent_destination_after_failed_install {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
+            'concurrent target content' | Set-Content -LiteralPath $paths.Target
+            throw 'simulated target replacement failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'simulated target replacement failure'
+    Assert-Contains $failure 'concurrently modified destination'
+    Assert-Contains $failure $paths.Target
+    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $paths.Target).Trim())
+    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
+    Assert-Equals 1 $targetBackups.Count
+    Assert-Contains $failure $targetBackups[0].FullName
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force).Count
 }
 
 function test_syncpiconfigs_rollback_preserves_concurrently_replaced_installed_destination {
