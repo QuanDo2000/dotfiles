@@ -1389,6 +1389,43 @@ function Initialize-TestPiConfigSeeds {
     }
 }
 
+function test_syncpiconfigs_rejects_directory_seed_baseline_without_partial_copy {
+    Initialize-TestPiConfigSeeds | Out-Null
+    $target = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
+    $base = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\settings.json'
+    New-Item -ItemType Directory -Force -Path $base | Out-Null
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'Pi config destination is a directory'
+    Assert-Contains $failure $base
+    Assert-False (Test-Path -LiteralPath $target) 'directory baseline should fail before target copy'
+    Assert-False (Test-Path -LiteralPath (Join-Path $base 'settings.json')) 'source should not be copied inside baseline directory'
+}
+
+function test_syncpiconfigs_rejects_directory_direct_copy_destination {
+    Initialize-TestPiConfigSeeds | Out-Null
+    $destination = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
+    New-Item -ItemType Directory -Force -Path $destination | Out-Null
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'Pi config destination is a directory'
+    Assert-Contains $failure $destination
+    Assert-True (Test-Path -LiteralPath $destination -PathType Container) 'directory collision should remain'
+    Assert-False (Test-Path -LiteralPath (Join-Path $destination 'pi-lsp.json')) 'source should not be copied inside destination directory'
+}
+
 function test_syncpiconfigs_creates_writable_seed_files {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'

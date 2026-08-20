@@ -851,6 +851,12 @@ function SyncPiConfigs {
         $target = Join-Path $targetDir $relative
         $base = Join-Path $baseDir $name
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
+        foreach ($destination in $target, $base) {
+            $destinationItem = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+            if ($destinationItem -and $destinationItem.PSIsContainer) {
+                throw "Pi config destination is a directory: $destination"
+            }
+        }
         if ($name -eq "subagent-config.json") {
             $changes = @()
             $sourceHash = Get-FileSha256 $source
@@ -988,6 +994,9 @@ function SyncPiConfigs {
     }
     foreach ($copy in $directCopies) {
         $destinationItem = Get-Item -LiteralPath $copy.Destination -Force -ErrorAction SilentlyContinue
+        if ($destinationItem -and $destinationItem.PSIsContainer) {
+            throw "Pi config destination is a directory: $($copy.Destination)"
+        }
         if ($destinationItem -and -not $destinationItem.PSIsContainer -and
             -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
             (Get-FileSha256 $copy.Source) -eq (Get-FileSha256 $copy.Destination)) {
