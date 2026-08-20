@@ -1485,6 +1485,38 @@ function Assert-NoPiConfigStagingFiles($Destination) {
     Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.backup.*" -Force -ErrorAction SilentlyContinue).Count
 }
 
+function test_syncpiconfigs_rejects_overlapping_sync {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    $script:NestedPiConfigSyncAttempted = $false
+    $script:NestedPiConfigSyncFailure = $null
+    Set-CommandMock 'Copy-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if (-not $script:NestedPiConfigSyncAttempted -and $LiteralPath -eq $paths.Source -and $Destination -like '*.tmp.*') {
+            $script:NestedPiConfigSyncAttempted = $true
+            try {
+                SyncPiConfigs
+            } catch {
+                $script:NestedPiConfigSyncFailure = $_.Exception.Message
+            }
+        }
+        if ($null -eq $ErrorAction) {
+            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+        } else {
+            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+        }
+    }
+
+    SyncPiConfigs
+
+    $lockPath = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\sync.lock'
+    Assert-True $script:NestedPiConfigSyncAttempted 'nested sync should be attempted'
+    Assert-Contains $script:NestedPiConfigSyncFailure 'Pi config sync lock unavailable'
+    Assert-Contains $script:NestedPiConfigSyncFailure $lockPath
+}
+
 function test_syncpiconfigs_rejects_source_change_between_staged_copies {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null

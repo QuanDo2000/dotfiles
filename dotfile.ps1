@@ -834,7 +834,14 @@ function SyncPiConfigs {
     $targetDir = Join-Path $env:USERPROFILE ".pi\agent"
     $baseDir = Join-Path $env:LOCALAPPDATA "dotfiles\pi"
     New-Item -ItemType Directory -Force -Path $targetDir, $baseDir | Out-Null
+    $syncLockPath = Join-Path $baseDir 'sync.lock'
+    try {
+        $syncLock = [IO.File]::Open($syncLockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    } catch {
+        throw "Pi config sync lock unavailable '$syncLockPath': $($_.Exception.Message)"
+    }
 
+    try {
     foreach ($name in @("settings.json", "keybindings.json", "web-search.json", "mcp.json", "subagent-config.json")) {
         $source = if ($name -eq "mcp.json") {
             Join-Path $script:DotfilesDir "config\windows\ai\pi\mcp.json"
@@ -1006,6 +1013,9 @@ function SyncPiConfigs {
             Remove-Item -LiteralPath $copy.Destination -Force
         }
         Copy-Item -LiteralPath $copy.Source -Destination $copy.Destination -Force
+    }
+    } finally {
+        $syncLock.Dispose()
     }
     Success "Finished syncing Pi configuration"
 }
