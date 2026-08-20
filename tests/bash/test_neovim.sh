@@ -328,7 +328,7 @@ test_raw_neovim_headless_config() {
   _raw_neovim_cache_seed "$cache_base" "$lock_hash" "$lazy_dir" || true
   ln -s "$source_lazy" "$lazy_package"
   set +e
-  output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
+  output="$(DOTFILE_NVIM_SYNC=1 XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
     FFF_FRECENCY_DB="$data/fff-frecency" FFF_HISTORY_DB="$data/fff-history" \
     nvim --headless \
       -c "lua require('config.sync').plugins(true); print('RAW_PLUGIN_SYNC_OK')" \
