@@ -1969,6 +1969,44 @@ function test_syncpiconfigs_rollback_preserves_concurrently_replaced_installed_d
     }
 }
 
+function test_syncpiconfigs_reports_quarantined_content_when_restore_fails {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    $script:FailedRollbackPath = $null
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
+            'concurrent target content' | Set-Content -LiteralPath $paths.Target
+            throw 'simulated target replacement failure'
+        }
+        if ($LiteralPath -like "$($paths.Target).rollback.*" -and $Destination -eq $paths.Target) {
+            $script:FailedRollbackPath = $LiteralPath
+            throw 'simulated concurrent content restoration failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'simulated target replacement failure'
+    Assert-Contains $failure 'simulated concurrent content restoration failure'
+    Assert-Contains $failure $script:FailedRollbackPath
+    Assert-False (Test-Path -LiteralPath $paths.Target) 'failed concurrent-content restoration should leave target absent'
+    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $script:FailedRollbackPath).Trim())
+    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
+    Assert-Equals 1 $targetBackups.Count
+    Assert-Contains $failure $targetBackups[0].FullName
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+}
+
 function test_syncpiconfigs_rollback_preserves_destination_created_after_quarantine {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
