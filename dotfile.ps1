@@ -883,6 +883,7 @@ function SyncPiConfigs {
                         Destination = $destination
                         Temp = "$destination.tmp.$([Guid]::NewGuid().ToString('N'))"
                         Backup = "$destination.backup.$([Guid]::NewGuid().ToString('N'))"
+                        Rollback = "$destination.rollback.$([Guid]::NewGuid().ToString('N'))"
                         Original = $destinationItem
                         InstalledHash = $null
                         BackedUp = $false
@@ -911,24 +912,35 @@ function SyncPiConfigs {
                     $change = $changes[$index]
                     try {
                         $partial = Get-Item -LiteralPath $change.Destination -Force -ErrorAction SilentlyContinue
-                        if ($change.BackedUp) {
-                            if ($partial) {
-                                if ($partial.PSIsContainer -or
-                                    ($partial.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
-                                    (Get-FileSha256 $change.Destination) -ne $change.InstalledHash) {
-                                    throw "Pi subagent config rollback refused to replace concurrently modified destination '$($change.Destination)'; recovery backup: '$($change.Backup)'"
+                        $removeCurrent = $partial -and ($change.BackedUp -or (-not $change.Original -and $change.Installed))
+                        if ($removeCurrent) {
+                            Move-Item -LiteralPath $change.Destination -Destination $change.Rollback -ErrorAction Stop
+                            $candidate = Get-Item -LiteralPath $change.Rollback -Force -ErrorAction Stop
+                            $matchesInstalled = -not $candidate.PSIsContainer -and
+                                -not ($candidate.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
+                                (Get-FileSha256 $change.Rollback) -eq $change.InstalledHash
+                            if (-not $matchesInstalled) {
+                                $recovery = if ($change.BackedUp) { "recovery backup: '$($change.Backup)'" } else { 'no recovery backup exists' }
+                                $replacement = Get-Item -LiteralPath $change.Destination -Force -ErrorAction SilentlyContinue
+                                if ($replacement) {
+                                    throw "Pi subagent config rollback found concurrently created destination '$($change.Destination)'; concurrent content quarantined at '$($change.Rollback)'; $recovery"
                                 }
-                                Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop
+                                try {
+                                    Move-Item -LiteralPath $change.Rollback -Destination $change.Destination -ErrorAction Stop
+                                } catch {
+                                    throw "Pi subagent config rollback could not restore concurrently modified destination '$($change.Destination)'; concurrent content quarantined at '$($change.Rollback)': $($_.Exception.Message); $recovery"
+                                }
+                                throw "Pi subagent config rollback refused to replace concurrently modified destination '$($change.Destination)'; $recovery"
+                            }
+                            Remove-Item -LiteralPath $change.Rollback -Force -ErrorAction Stop
+                        }
+                        if ($change.BackedUp) {
+                            $replacement = Get-Item -LiteralPath $change.Destination -Force -ErrorAction SilentlyContinue
+                            if ($replacement) {
+                                throw "Pi subagent config rollback refused to replace concurrently created destination '$($change.Destination)'; recovery backup: '$($change.Backup)'"
                             }
                             Move-Item -LiteralPath $change.Backup -Destination $change.Destination -ErrorAction Stop
                             $change.BackedUp = $false
-                        } elseif (-not $change.Original -and $change.Installed -and $partial) {
-                            if ($partial.PSIsContainer -or
-                                ($partial.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
-                                (Get-FileSha256 $change.Destination) -ne $change.InstalledHash) {
-                                throw "Pi subagent config rollback refused to remove concurrently modified destination '$($change.Destination)'; no recovery backup exists"
-                            }
-                            Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop
                         }
                     } catch {
                         $detail = "destination '$($change.Destination)': $($_.Exception.Message)"

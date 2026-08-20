@@ -1893,6 +1893,47 @@ function test_syncpiconfigs_rollback_preserves_concurrently_replaced_installed_d
     }
 }
 
+function test_syncpiconfigs_rollback_preserves_destination_created_after_quarantine {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
+            throw 'simulated base replacement failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+    $script:ConcurrentPiConfigCreated = $false
+    Set-CommandMock 'Get-FileHash' {
+        param($LiteralPath, $Algorithm)
+        if (-not $script:ConcurrentPiConfigCreated -and $LiteralPath -like "$($paths.Target).rollback.*") {
+            $script:ConcurrentPiConfigCreated = $true
+            'concurrent target content' | Set-Content -LiteralPath $paths.Target
+        }
+        Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath $LiteralPath -Algorithm $Algorithm
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-True $script:ConcurrentPiConfigCreated 'concurrent destination should be created during rollback validation'
+    Assert-Contains $failure 'simulated base replacement failure'
+    Assert-Contains $failure 'concurrently created destination'
+    Assert-Contains $failure $paths.Target
+    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $paths.Target).Trim())
+    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
+    Assert-Equals 1 $targetBackups.Count
+    Assert-Contains $failure $targetBackups[0].FullName
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
+}
+
 function test_syncpiconfigs_rollback_preserves_concurrently_replaced_new_destination {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Base -Parent) | Out-Null
