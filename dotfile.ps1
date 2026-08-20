@@ -870,11 +870,13 @@ function SyncPiConfigs {
                         Temp = "$destination.tmp.$([Guid]::NewGuid().ToString('N'))"
                         Backup = "$destination.backup.$([Guid]::NewGuid().ToString('N'))"
                         Original = $destinationItem
+                        InstalledHash = $null
                         BackedUp = $false
                         Installed = $false
                     }
                     $changes += $change
                     Copy-Item -LiteralPath $source -Destination $change.Temp -ErrorAction Stop
+                    $change.InstalledHash = Get-FileSha256 $change.Temp
                 }
 
                 foreach ($change in $changes) {
@@ -893,7 +895,14 @@ function SyncPiConfigs {
                     try {
                         $partial = Get-Item -LiteralPath $change.Destination -Force -ErrorAction SilentlyContinue
                         if ($change.BackedUp) {
-                            if ($partial) { Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop }
+                            if ($partial) {
+                                if ($change.Installed -and ($partial.PSIsContainer -or
+                                    ($partial.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+                                    (Get-FileSha256 $change.Destination) -ne $change.InstalledHash)) {
+                                    throw "Pi subagent config rollback refused to replace concurrently modified destination '$($change.Destination)'; recovery backup: '$($change.Backup)'"
+                                }
+                                Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop
+                            }
                             Move-Item -LiteralPath $change.Backup -Destination $change.Destination -ErrorAction Stop
                             $change.BackedUp = $false
                         } elseif (-not $change.Original -and $change.Installed -and $partial) {
