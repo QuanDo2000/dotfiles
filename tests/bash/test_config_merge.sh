@@ -2,6 +2,30 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
+test_json_atomic_write_rejects_changed_destination() {
+  local tmp
+  tmp="$(mktemp -d)"
+  PYTHONPATH="$REPO_DIR/scripts/seed_merge" python3 - "$tmp/live.json" <<'PY'
+import json
+import sys
+
+from common import write_json
+
+path = sys.argv[1]
+with open(path, "w", encoding="utf-8") as file:
+    json.dump({"value": 2}, file)
+try:
+    write_json(path, {"value": 3}, prefix=".json-test-", expected={"value": 1})
+except RuntimeError as error:
+    assert "changed during merge" in str(error)
+else:
+    raise AssertionError("changed destination was overwritten")
+with open(path, encoding="utf-8") as file:
+    assert json.load(file) == {"value": 2}
+PY
+  rm -rf "$tmp"
+}
+
 test_codex_seed_merge_writes_atomically() {
   local script
   script="$(<"$REPO_DIR/scripts/seed_merge/codex.py")"

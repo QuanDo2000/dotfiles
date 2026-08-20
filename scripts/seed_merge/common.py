@@ -4,6 +4,9 @@ import stat
 import tempfile
 
 
+_UNSET = object()
+
+
 def load_json(path):
     with open(path, encoding="utf-8") as file:
         value = json.load(file)
@@ -12,7 +15,7 @@ def load_json(path):
     return value
 
 
-def write_json(path, value, *, prefix, preserve_mode=False):
+def write_json(path, value, *, prefix, preserve_mode=False, expected=_UNSET):
     directory = os.path.dirname(path) or "."
     os.makedirs(directory, exist_ok=True)
     mode = stat.S_IMODE(os.stat(path).st_mode) if preserve_mode and os.path.exists(path) else None
@@ -23,6 +26,13 @@ def write_json(path, value, *, prefix, preserve_mode=False):
             file.write("\n")
         if mode is not None:
             os.chmod(temporary, mode)
+        if expected is not _UNSET:
+            try:
+                current = load_json(path)
+            except (OSError, ValueError):
+                current = None
+            if current != expected:
+                raise RuntimeError(f"{path} changed during merge")
         os.replace(temporary, path)
     except Exception:
         try:
