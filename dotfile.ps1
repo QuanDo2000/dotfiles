@@ -853,6 +853,7 @@ function SyncPiConfigs {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
         if ($name -eq "subagent-config.json") {
             $changes = @()
+            $sourceHash = Get-FileSha256 $source
             $operationError = $null
             $rollbackErrors = @()
             $cleanupErrors = @()
@@ -862,7 +863,7 @@ function SyncPiConfigs {
                     $destinationItem = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
                     if ($destinationItem -and -not $destinationItem.PSIsContainer -and
                         -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
-                        (Get-FileSha256 $source) -eq (Get-FileSha256 $destination)) {
+                        $sourceHash -eq (Get-FileSha256 $destination)) {
                         continue
                     }
                     $change = @{
@@ -877,6 +878,9 @@ function SyncPiConfigs {
                     $changes += $change
                     Copy-Item -LiteralPath $source -Destination $change.Temp -ErrorAction Stop
                     $change.InstalledHash = Get-FileSha256 $change.Temp
+                    if ($change.InstalledHash -ne $sourceHash) {
+                        throw "Pi subagent config source changed during sync: $source"
+                    }
                 }
 
                 foreach ($change in $changes) {

@@ -1448,6 +1448,43 @@ function Assert-NoPiConfigStagingFiles($Destination) {
     Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.backup.*" -Force -ErrorAction SilentlyContinue).Count
 }
 
+function test_syncpiconfigs_rejects_source_change_between_staged_copies {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    $script:PiConfigSourceCopies = 0
+    Set-CommandMock 'Copy-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($null -eq $ErrorAction) {
+            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+        } else {
+            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+        }
+        if ($LiteralPath -eq $paths.Source -and $Destination -like '*.tmp.*') {
+            $script:PiConfigSourceCopies++
+            if ($script:PiConfigSourceCopies -eq 1) {
+                '{"globalConcurrencyLimit":8}' | Set-Content -LiteralPath $paths.Source
+            }
+        }
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'Pi subagent config source changed during sync'
+    Assert-Contains $failure $paths.Source
+    Assert-Equals 2 $script:PiConfigSourceCopies
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-NoPiConfigStagingFiles $paths.Target
+    Assert-NoPiConfigStagingFiles $paths.Base
+}
+
 function test_syncpiconfigs_staging_failure_preserves_regular_subagent_target {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
