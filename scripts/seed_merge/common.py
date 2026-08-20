@@ -7,6 +7,16 @@ import tempfile
 _UNSET = object()
 
 
+def same_json(left, right):
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return left.keys() == right.keys() and all(same_json(left[key], right[key]) for key in left)
+    if isinstance(left, list):
+        return len(left) == len(right) and all(same_json(a, b) for a, b in zip(left, right))
+    return left == right
+
+
 def load_json(path):
     with open(path, encoding="utf-8") as file:
         value = json.load(file)
@@ -31,7 +41,7 @@ def write_json(path, value, *, prefix, preserve_mode=False, expected=_UNSET):
                 current = load_json(path)
             except (OSError, ValueError):
                 current = None
-            if current != expected:
+            if not same_json(current, expected):
                 raise RuntimeError(f"{path} changed during merge")
         os.replace(temporary, path)
     except Exception:

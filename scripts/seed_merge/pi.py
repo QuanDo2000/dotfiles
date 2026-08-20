@@ -2,7 +2,7 @@
 import copy
 import sys
 
-from common import load_json, write_json
+from common import load_json, same_json, write_json
 
 live_path, seed_path, apply_path, base_path = sys.argv[1:]
 
@@ -20,7 +20,7 @@ missing = object()
 def normalize(config, keep_runtime=False):
     runtime = {}
     for key, value in REDUNDANT_DEFAULTS.items():
-        if config.get(key) == value:
+        if same_json(config.get(key), value):
             del config[key]
     for key in RUNTIME_KEYS:
         if keep_runtime and key in config:
@@ -38,9 +38,9 @@ def merge_missing(target, source):
 
 
 def resolve(live, seed, base):
-    if seed == base:
+    if same_json(seed, base):
         return live
-    if live == base:
+    if same_json(live, base):
         return seed
     if isinstance(live, dict) and isinstance(seed, dict) and isinstance(base, dict):
         merged = {}
@@ -85,11 +85,11 @@ live_resolved = copy.deepcopy(resolved)
 live_resolved.update(runtime)
 
 baseline = resolved if apply_path else seed
-if live_resolved != live_original:
+if not same_json(live_resolved, live_original):
     write_json(live_path, live_resolved, prefix=".json-live-", preserve_mode=True, expected=live_original)
-if apply_path and resolved != seed_original:
+if apply_path and not same_json(resolved, seed_original):
     write_json(apply_path, resolved, prefix=".json-seed-", preserve_mode=True, expected=seed_original)
-if baseline != base_original:
+if not same_json(baseline, base_original):
     write_json(base_path, baseline, prefix=".json-base-", preserve_mode=True, expected=base_original)
 
 if apply_path:

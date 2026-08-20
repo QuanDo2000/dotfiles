@@ -2,6 +2,27 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
+test_pi_seed_merge_distinguishes_booleans_from_numbers() {
+  local tmp script
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/pi.py"
+  printf '%s\n' '{"value":1}' >"$tmp/live.json"
+  printf '%s\n' '{"value":true}' >"$tmp/seed.json"
+  printf '%s\n' '{"value":1}' >"$tmp/base.json"
+
+  python3 "$script" "$tmp/live.json" "$tmp/seed.json" "$tmp/seed.json" "$tmp/base.json" >/dev/null
+  python3 - "$tmp/live.json" "$tmp/seed.json" "$tmp/base.json" <<'PY'
+import json
+import sys
+
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8") as file:
+        value = json.load(file)["value"]
+    assert value is True, f"{path} did not preserve boolean type: {value!r}"
+PY
+  rm -rf "$tmp"
+}
+
 test_pi_seed_merge_rejects_corrupt_baseline_without_writes() {
   local tmp script before_live before_seed before_base
   tmp="$(mktemp -d)"
