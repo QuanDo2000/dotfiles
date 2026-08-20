@@ -885,6 +885,8 @@ function SyncPiConfigs {
                         Backup = "$destination.backup.$([Guid]::NewGuid().ToString('N'))"
                         Rollback = "$destination.rollback.$([Guid]::NewGuid().ToString('N'))"
                         Original = $destinationItem
+                        OriginalHash = if ($destinationItem) { Get-FileSha256 $destination } else { $null }
+                        OriginalReparse = [bool]($destinationItem -and ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint))
                         InstalledHash = $null
                         BackedUp = $false
                         Installed = $false
@@ -901,6 +903,12 @@ function SyncPiConfigs {
                     if ($change.Original) {
                         Move-Item -LiteralPath $change.Destination -Destination $change.Backup -ErrorAction Stop
                         $change.BackedUp = $true
+                        $backupItem = Get-Item -LiteralPath $change.Backup -Force -ErrorAction Stop
+                        $backupReparse = [bool]($backupItem.Attributes -band [IO.FileAttributes]::ReparsePoint)
+                        if ($backupItem.PSIsContainer -or $backupReparse -ne $change.OriginalReparse -or
+                            (Get-FileSha256 $change.Backup) -ne $change.OriginalHash) {
+                            throw "Pi subagent config destination changed during sync: $($change.Destination)"
+                        }
                     }
                     Move-Item -LiteralPath $change.Temp -Destination $change.Destination -ErrorAction Stop
                     $change.Installed = $true

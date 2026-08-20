@@ -1517,6 +1517,40 @@ function test_syncpiconfigs_rejects_overlapping_sync {
     Assert-Contains $script:NestedPiConfigSyncFailure $lockPath
 }
 
+function test_syncpiconfigs_rejects_destination_change_before_commit {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    $script:PiConfigDestinationChanged = $false
+    Set-CommandMock 'Copy-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($null -eq $ErrorAction) {
+            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+        } else {
+            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+        }
+        if (-not $script:PiConfigDestinationChanged -and $LiteralPath -eq $paths.Source -and $Destination -like "$($paths.Target).tmp.*") {
+            $script:PiConfigDestinationChanged = $true
+            'concurrent target content' | Set-Content -LiteralPath $paths.Target
+        }
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'Pi subagent config destination changed during sync'
+    Assert-Contains $failure $paths.Target
+    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $paths.Target).Trim())
+    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-NoPiConfigStagingFiles $paths.Target
+    Assert-NoPiConfigStagingFiles $paths.Base
+}
+
 function test_syncpiconfigs_rejects_source_change_between_staged_copies {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
