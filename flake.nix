@@ -50,6 +50,7 @@
           pi-agent
           python3
           shellcheck
+          tree-sitter
           tmux
         ];
       };

@@ -27,6 +27,10 @@ test_neovim_explicit_sync_fails_closed() {
   assert_contains "$output" "NVIM_SYNC_OK"
 }
 
+test_neovim_dev_shell_provisions_parser_builder() {
+  assert_contains "$(<"$REPO_DIR/flake.nix")" "tree-sitter"
+}
+
 test_neovim_provisions_nix_linter() {
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "statix"
 }
