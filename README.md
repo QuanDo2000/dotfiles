@@ -147,6 +147,12 @@ Sync, Google Drive, and storage backup, but no desktop or personal apps.
 Generic Linux and macOS profiles keep optional groups disabled. Linux desktop
 configuration is profile-gated, not merely OS-gated.
 
+Arch server setup and full updates install the tracked service-state backup from
+`config/arch-server/service-state-backup/` into `/usr/local/sbin` and
+`/etc/systemd/system`, validate its live preflight, and enable its daily timer.
+Generic Linux, NixOS, macOS, and AI-only updates do not install these root-owned
+units.
+
 `obsidian-headless` and `obsidian-sync` run on NixOS and Arch server. Obsidian GUI
 and tracked GUI settings are personal-only. `dotfile obsidian` bootstraps
 login/vault setup and restarts managed service; it reuses an existing configured

@@ -93,12 +93,22 @@ function _install_native_bootstrap_packages {
   esac
 }
 
+function _install_arch_service_state_backup {
+  local installer="$DOTFILES_DIR/config/arch-server/service-state-backup/install.sh"
+  if [[ "$DRY" == "true" ]]; then
+    info "Would install Arch server service-state backup units"
+    return
+  fi
+  sudo bash "$installer" || fail "Failed to install Arch server service-state backup units"
+}
+
 function install_arch {
   info "Installing packages and programs for Arch Linux..."
   if [[ "$DRY" == "false" ]]; then
     _install_native_bootstrap_packages arch
-    _home_manager_switch arch-server
   fi
+  _home_manager_switch arch-server
+  _install_arch_service_state_backup
   success "Finished install for Arch Linux"
 }
 
@@ -538,6 +548,9 @@ function _update_packages_scope {
     arch)    DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch arch-server ;;
     mac)     DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _darwin_rebuild_switch ;;
   esac
+  if [[ "$platform" == arch && "$scope" != ai ]]; then
+    _install_arch_service_state_backup
+  fi
   _cleanup_codex_runtime_after_update "$codex_version_before"
   _update_pi_extensions
   local neovim_sync_error=

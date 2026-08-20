@@ -1,0 +1,20 @@
+[Unit]
+Description=Create consistent homelab service-state archives
+After=docker.service local-fs.target
+Requires=docker.service
+RequiresMountsFor=/mnt/storage
+ConditionPathIsMountPoint=/mnt/storage
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-service-state-backup
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=2h
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/mnt/storage/Storage/Documents/HomelabBackups/service-state /run/lock

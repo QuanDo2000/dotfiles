@@ -30,6 +30,7 @@ test_update_packages_refreshes_and_validates_all_pins_before_activation() {
   _approve_dependency_update() { printf 'approve\n' >> "$calls"; }
   _install_native_bootstrap_packages() { printf 'native:%s\n' "$1" >> "$calls"; }
   _home_manager_switch() { printf 'activate:%s:%s\n' "$1" "${DOTFILE_FLAKE_REF:-}" >> "$calls"; }
+  _install_arch_service_state_backup() { printf 'service-state\n' >> "$calls"; }
   _cleanup_codex_runtime_after_update() { printf 'cleanup\n' >> "$calls"; }
   _update_pi_extensions() { printf 'extensions\n' >> "$calls"; }
   _sync_neovim() { printf 'fff\n' >> "$calls"; }
@@ -37,10 +38,10 @@ test_update_packages_refreshes_and_validates_all_pins_before_activation() {
 
   OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
 
-  assert_equals "$(printf 'flake\npins\nvalidate\napprove\nnative:arch\nactivate:arch-server:path:%s\ncleanup\nextensions\nfff\npublish:full' "$DOTFILES_DIR")" "$(<"$calls")"
+  assert_equals "$(printf 'flake\npins\nvalidate\napprove\nnative:arch\nactivate:arch-server:path:%s\nservice-state\ncleanup\nextensions\nfff\npublish:full' "$DOTFILES_DIR")" "$(<"$calls")"
 
   unset -f _update_flake_inputs _update_all_dependency_pins _validate_dependency_update _approve_dependency_update \
-    _install_native_bootstrap_packages _home_manager_switch _cleanup_codex_runtime_after_update _update_pi_extensions \
+    _install_native_bootstrap_packages _home_manager_switch _install_arch_service_state_backup _cleanup_codex_runtime_after_update _update_pi_extensions \
     _sync_neovim _publish_dependency_update
 }
 
@@ -262,6 +263,7 @@ _mock_codex_update_runtime() {
   _update_all_dependency_pins() { :; }
   _validate_dependency_update() { :; }
   _install_native_bootstrap_packages() { :; }
+  _install_arch_service_state_backup() { :; }
   _update_pi_extensions() { :; }
   _sync_neovim() { :; }
 }

@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+DEST_ROOT=/mnt/storage/Storage/Documents/HomelabBackups/service-state
+BACKUP_USER=quando
+LOCK_FILE=/run/lock/homelab-service-state-backup.lock
+STAGING=
+PROMOTED=false
+
+declare -A COMPOSE_RUNNING=()
+declare -a STOPPED_COMPOSE=()
+declare -a STOPPED_NATIVE=()
+
+log() { printf '[%s] %s\n' "$(date --iso-8601=seconds)" "$*"; }
+
+require_root() {
+  if (( EUID != 0 )); then
+    echo "homelab-service-state-backup: must run as root" >&2
+    exit 1
+  fi
+}
+
+require_path() {
+  [[ -e $1 ]] || { echo "required path missing: $1" >&2; exit 1; }
+}
+
+restart_compose() {
+  local compose=$1
+  local names=${COMPOSE_RUNNING[$compose]:-}
+  [[ -n $names ]] || return 0
+  local -a services
+  read -r -a services <<<"$names"
+  log "Restarting Docker services from $compose: ${services[*]}"
+  docker compose -f "$compose" start "${services[@]}"
+  unset 'COMPOSE_RUNNING[$compose]'
+}
+
+restart_native() {
+  local service=$1
+  log "Restarting $service"
+  systemctl start "$service"
+  systemctl is-active --quiet "$service"
+}
+
+cleanup() {
+  local rc=$?
+  local cleanup_failed=0
+  trap - EXIT
+  set +e
+
+  local i compose service
+  for ((i=${#STOPPED_COMPOSE[@]}-1; i>=0; i--)); do
+    compose=${STOPPED_COMPOSE[$i]}
+    if [[ -n ${COMPOSE_RUNNING[$compose]:-} ]]; then
+      restart_compose "$compose" || cleanup_failed=1
+    fi
+  done
+  for ((i=${#STOPPED_NATIVE[@]}-1; i>=0; i--)); do
+    service=${STOPPED_NATIVE[$i]}
+    restart_native "$service" || cleanup_failed=1
+  done
+
+  if [[ -n $STAGING && $PROMOTED == false ]]; then
+    rm -rf -- "$STAGING"
+  fi
+  if (( cleanup_failed )); then
+    echo "backup cleanup failed to restart one or more services" >&2
+    rc=1
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+stop_compose() {
+  local compose=$1
+  local -a running=()
+  mapfile -t running < <(docker compose -f "$compose" ps --services --filter status=running)
+  if ((${#running[@]} == 0)); then
+    log "No running services in $compose"
+    return 0
+  fi
+
+  COMPOSE_RUNNING["$compose"]="${running[*]}"
+  STOPPED_COMPOSE+=("$compose")
+  log "Stopping Docker services from $compose: ${running[*]}"
+  docker compose -f "$compose" stop "${running[@]}"
+}
+
+stop_native() {
+  local service=$1
+  if systemctl is-active --quiet "$service"; then
+    STOPPED_NATIVE+=("$service")
+    log "Stopping $service"
+    systemctl stop "$service"
+  else
+    log "$service was already inactive"
+  fi
+}
+
+archive() {
+  local name=$1
+  shift
+  local output="$STAGING/$name.tar"
+  log "Creating $name.tar"
+  tar --create --file="$output" --numeric-owner --acls --xattrs --sort=name "$@"
+  tar --list --file="$output" >/dev/null
+}
+
+backup_compose_project() {
+  local name=$1 compose=$2
+  shift 2
+  stop_compose "$compose"
+  archive "$name" "$@"
+  restart_compose "$compose"
+}
+
+backup_native_service() {
+  local name=$1 service=$2
+  shift 2
+  stop_native "$service"
+  archive "$name" "$@"
+  if [[ ${STOPPED_NATIVE[-1]:-} == "$service" ]]; then
+    restart_native "$service"
+    unset 'STOPPED_NATIVE[-1]'
+  fi
+}
+
+preflight() {
+  local command
+  for command in docker systemctl tar sha256sum flock stat; do
+    command -v "$command" >/dev/null || { echo "required command missing: $command" >&2; exit 1; }
+  done
+  require_path /mnt/storage
+  mountpoint -q /mnt/storage || { echo "/mnt/storage is not a mount point" >&2; exit 1; }
+  require_path /home/quando/services/servarr/compose.yml
+  require_path /home/quando/services/qbittorrent/compose.yml
+  require_path /home/quando/services/forgejo/compose.yml
+  require_path /etc/homeserver/docker-compose.yml
+  require_path /var/lib/homeserver
+  require_path /etc/navidrome
+  require_path /var/lib/navidrome
+  require_path /etc/jellyfin
+  require_path /var/lib/jellyfin
+  getent passwd "$BACKUP_USER" >/dev/null || { echo "backup user missing: $BACKUP_USER" >&2; exit 1; }
+
+  docker compose -f /home/quando/services/servarr/compose.yml config --quiet
+  docker compose -f /home/quando/services/qbittorrent/compose.yml config --quiet
+  docker compose -f /home/quando/services/forgejo/compose.yml config --quiet
+  docker compose -f /etc/homeserver/docker-compose.yml config --quiet
+}
+
+require_root
+exec 9>"$LOCK_FILE"
+flock --nonblock 9 || { echo "another service-state backup is running" >&2; exit 1; }
+preflight
+
+if [[ ${1:-} == --check ]]; then
+  echo "service-state backup preflight passed"
+  exit 0
+fi
+
+install -d -m 0700 -o "$BACKUP_USER" -g "$BACKUP_USER" "$DEST_ROOT"
+STAGING=$(mktemp -d "$DEST_ROOT/.next.XXXXXXXX")
+log "Staging backup in $STAGING"
+
+# Forgejo queue state is flushed before its stopped-state archive.
+docker exec --user git forgejo /usr/local/bin/gitea manager flush-queues
+backup_compose_project forgejo /home/quando/services/forgejo/compose.yml \
+  -C / home/quando/services/forgejo
+
+backup_compose_project servarr /home/quando/services/servarr/compose.yml \
+  -C / home/quando/services/servarr
+
+backup_compose_project qbittorrent /home/quando/services/qbittorrent/compose.yml \
+  -C / home/quando/services/qbittorrent home/quando/.config/protonvpn/proton.conf
+
+backup_compose_project homeserver /etc/homeserver/docker-compose.yml \
+  -C / etc/homeserver var/lib/homeserver
+
+backup_native_service jellyfin jellyfin.service \
+  -C / etc/jellyfin var/lib/jellyfin
+
+backup_native_service navidrome navidrome.service \
+  --exclude=var/lib/navidrome/cache \
+  -C / etc/navidrome var/lib/navidrome
+
+{
+  printf 'created_utc=%s\n' "$(date --utc --iso-8601=seconds)"
+  printf 'hostname=%s\n' "$(uname -n)"
+  printf 'kernel=%s\n' "$(uname -r)"
+  printf '\ncontainer_images:\n'
+  docker inspect --format '{{.Name}} {{.Config.Image}} {{.Image}}' \
+    forgejo prowlarr radarr lidarr sonarr protonvpn qbittorrent homeserver
+  printf '\nnative_packages:\n'
+  pacman -Q jellyfin-server navidrome
+} >"$STAGING/metadata.txt"
+
+(
+  cd "$STAGING"
+  sha256sum -- *.tar metadata.txt >SHA256SUMS
+  sha256sum --check SHA256SUMS
+)
+
+backup_uid=$(id -u "$BACKUP_USER")
+backup_gid=$(id -g "$BACKUP_USER")
+chown -R "$backup_uid:$backup_gid" "$STAGING"
+chmod 0700 "$STAGING"
+chmod 0600 "$STAGING"/*
+
+previous="$DEST_ROOT/.previous"
+rm -rf -- "$previous"
+if [[ -d $DEST_ROOT/current ]]; then
+  mv -- "$DEST_ROOT/current" "$previous"
+fi
+mv -- "$STAGING" "$DEST_ROOT/current"
+PROMOTED=true
+STAGING=
+rm -rf -- "$previous"
+
+log "Backup promoted to $DEST_ROOT/current"
+du -sh "$DEST_ROOT/current"
