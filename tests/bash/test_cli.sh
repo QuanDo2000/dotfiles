@@ -71,6 +71,8 @@ test_help_exits_zero() {
   assert_contains "$output" "Refresh all managed dependency pins"
   assert_contains "$output" "Install native prerequisites and activate current profile"
   assert_contains "$output" "Update only AI tools and configs"
+  assert_contains "$output" "upgrade"
+  assert_contains "$output" "Upgrade native system packages"
   assert_contains "$output" "codex"
   assert_contains "$output" "Update pinned Codex release package"
   assert_contains "$output" "lix-installer"
@@ -83,6 +85,20 @@ test_help_exits_zero() {
   assert_contains "$output" "Run full repository checks"
   assert_contains "$output" "Bootstrap Obsidian Sync login and vault setup"
   assert_not_contains "$output" "obsidian-config"
+}
+
+test_upgrade_command_dispatches_arch_dry_run() {
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=arch\n' > "$osrel"
+
+  local output status=0
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry upgrade 2>&1) || status=$?
+
+  assert_equals 0 "$status"
+  assert_contains "$output" "sudo pacman -Syu"
+  unset -f uname 2>/dev/null || true
+  unset __MOCK_UNAME
 }
 
 test_dotfiles_dir_override_controls_unix_entrypoint() {
@@ -185,6 +201,7 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "update [ai]"
   assert_contains "$readme_text" "Install native prerequisites and activate current profile"
   assert_contains "$readme_text" "Update only AI tools and configs"
+  assert_contains "$readme_text" "upgrade     Upgrade native system packages"
   assert_contains "$readme_flat" 'AI-only updates use the same isolated validation, diff review, and approval boundary'
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
   assert_contains "$readme_text" "codex       Update pinned Codex release package"
@@ -455,7 +472,7 @@ test_explicit_all_rejects_extra_arguments() {
 
 test_leaf_commands_reject_extra_arguments() {
   local command output exit_code
-  for command in all packages obsidian codex obsidian-headless check; do
+  for command in all packages upgrade obsidian codex obsidian-headless check; do
     output=$(bash "$DOTFILE_CMD" --dry "$command" extra 2>&1) || exit_code=$?
     assert_equals "1" "$exit_code"
     assert_contains "$output" "Unexpected $command argument: extra"

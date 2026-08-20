@@ -54,6 +54,55 @@ test_install_packages_fails_unsupported_os() {
   fi
 }
 
+test_upgrade_system_packages_arch_dry_run() {
+  source_scripts packages.sh
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=arch\n' > "$osrel"
+
+  local output
+  output=$(DRY=true OS_RELEASE="$osrel" upgrade_system_packages 2>&1)
+
+  assert_contains "$output" "sudo pacman -Syu"
+}
+
+test_upgrade_system_packages_debian_dry_run() {
+  source_scripts packages.sh
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=debian\n' > "$osrel"
+
+  local output
+  output=$(DRY=true OS_RELEASE="$osrel" upgrade_system_packages 2>&1)
+
+  assert_contains "$output" "sudo apt-get update"
+  assert_contains "$output" "sudo apt-get upgrade -y"
+}
+
+test_upgrade_system_packages_mac_dry_run() {
+  source_scripts packages.sh
+  mock_uname Darwin
+
+  local output
+  output=$(DRY=true upgrade_system_packages 2>&1)
+
+  assert_contains "$output" "brew update"
+  assert_contains "$output" "brew upgrade --greedy"
+}
+
+test_upgrade_system_packages_nixos_uses_managed_update() {
+  source_scripts packages.sh
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+
+  local output status=0
+  output=$(DRY=true OS_RELEASE="$osrel" upgrade_system_packages 2>&1) || status=$?
+
+  assert_equals 1 "$status"
+  assert_contains "$output" "dotfile update"
+}
+
 test_detect_platform_nixos() {
   source_scripts packages.sh
   mock_uname Linux

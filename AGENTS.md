@@ -11,6 +11,7 @@ Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The Un
 ```bash
 dotfile                      # Full setup
 dotfile packages             # Install system packages only
+dotfile upgrade              # Upgrade native system packages
 dotfile doctor               # Detect dotfile and Nix issues
 dotfile update               # Refresh all pins, install native prerequisites, activate profile
 dotfile update ai            # Update only AI tools and configs

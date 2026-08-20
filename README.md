@@ -78,6 +78,7 @@ Commands:
               Install native prerequisites and activate current profile
               Update only AI tools and configs with `update ai`
   packages    Install system packages only
+  upgrade     Upgrade native system packages
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package
   lix-installer
@@ -94,6 +95,10 @@ Options:
   -q, --quiet Only show errors
   -h, --help  Show this help message
 ```
+
+`dotfile upgrade` runs `sudo pacman -Syu` on Arch, `sudo apt-get update` plus
+`sudo apt-get upgrade -y` on Debian, or `brew update` plus `brew upgrade --greedy` on
+macOS. NixOS remains declarative; use `dotfile update` there.
 
 ### Windows Commands
 

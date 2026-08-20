@@ -33,6 +33,38 @@ ARCH_PACKAGES=(
   base-devel curl git zsh fuse3
 )
 
+function _run_system_package_command {
+  if [[ "$DRY" == "true" ]]; then
+    info "Would run: $*"
+  else
+    "$@" || fail "System package upgrade failed: $*"
+  fi
+}
+
+function upgrade_system_packages {
+  info "Upgrading native system packages..."
+  case "$(detect_platform)" in
+    arch)
+      _run_system_package_command sudo pacman -Syu
+      ;;
+    debian)
+      _run_system_package_command sudo apt-get update
+      _run_system_package_command sudo apt-get upgrade -y
+      ;;
+    mac)
+      _run_system_package_command brew update
+      _run_system_package_command brew upgrade --greedy
+      ;;
+    nixos)
+      fail "NixOS packages are managed declaratively; use dotfile update"
+      ;;
+    unknown)
+      fail "Unsupported system: $(uname) (could not detect Linux distro)"
+      ;;
+  esac
+  success "Finished upgrading native system packages"
+}
+
 function _install_native_bootstrap_packages {
   local package status installed=true
   case "$1" in
