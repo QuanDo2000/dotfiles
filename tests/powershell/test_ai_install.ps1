@@ -1831,6 +1831,43 @@ function test_syncpiconfigs_continues_backup_cleanup_after_one_deletion_fails {
     Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force).Count
 }
 
+function test_syncpiconfigs_retains_only_later_backup_when_second_deletion_fails {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
+    $script:FailedPiConfigBackup = $null
+    Set-CommandMock 'Remove-Item' {
+        param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Base).backup.*") {
+            $script:FailedPiConfigBackup = $LiteralPath
+            throw "simulated base backup deletion failure: $LiteralPath"
+        }
+        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    } finally {
+        Clear-CommandMock 'Remove-Item'
+    }
+
+    Assert-Contains $failure 'Pi subagent config cleanup failed'
+    Assert-Contains $failure 'simulated base backup deletion failure'
+    Assert-Contains $failure $script:FailedPiConfigBackup
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
+    $baseBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force)
+    Assert-Equals 0 $targetBackups.Count
+    Assert-Equals 1 $baseBackups.Count
+    Assert-Equals $script:FailedPiConfigBackup $baseBackups[0].FullName
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $baseBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
+}
+
 function test_syncpiconfigs_skips_unchanged_regular_subagent_destinations {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
