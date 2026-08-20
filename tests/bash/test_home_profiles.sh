@@ -99,7 +99,7 @@ test_nixos_and_darwin_packages_and_services_are_composed_by_role() {
 test_profile_files_and_markers_are_composed_by_role() {
   local generic_files arch_files nixos_files darwin_files generic_marker arch_marker nixos_marker darwin_marker
   generic_files=$(_profile_files linux); arch_files=$(_profile_files arch-server); nixos_files=$(_nixos_json home.file | jq -r 'keys[]' | sort); darwin_files=$(_darwin_json home.file | jq -r 'keys[]' | sort)
-  _test_absent "$generic_files" 'Documents/Sync/.obsidian/app.json' '.config/ghostty/config'; _test_absent "$arch_files" 'Documents/Sync/.obsidian/app.json' '.config/ghostty/config'; assert_line_present "$nixos_files" 'Documents/Sync/.obsidian/app.json'; assert_line_present "$nixos_files" '.config/dotfiles/profile'; assert_line_present "$darwin_files" '.config/dotfiles/profile'
+  _test_absent "$generic_files" 'Documents/Sync/.obsidian/app.json' '.config/ghostty/config'; _test_absent "$arch_files" 'Documents/Sync/.obsidian/app.json' '.config/ghostty/config'; assert_line_present "$nixos_files" 'Documents/Sync/.obsidian/app.json'; assert_line_present "$nixos_files" '.config/dotfiles/profile'; _test_absent "$darwin_files" 'Documents/Sync/.obsidian/app.json'; assert_line_present "$darwin_files" '.config/dotfiles/profile'
   local marker_expr
   marker_expr=$(_profile_expr linux).config.home.file.\".config/dotfiles/profile\".text; generic_marker=$(nix eval --raw "path:$REPO_DIR#$marker_expr")
   marker_expr=$(_profile_expr arch-server).config.home.file.\".config/dotfiles/profile\".text; arch_marker=$(nix eval --raw "path:$REPO_DIR#$marker_expr")
