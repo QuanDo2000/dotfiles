@@ -60,8 +60,9 @@ alias gstp='git stash pop'
 # tmux autostart: on an interactive shell not already inside tmux, attach to
 # (or create) the "main" session. Replaces the omz tmux plugin. Not exec'd, so
 # exiting tmux drops back to this shell (old ZSH_TMUX_AUTOQUIT=false). Guards
-# avoid nested tmux and embedded shells (VS Code, Emacs, Vim).
-if [[ -t 0 && -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" \
+# avoid nested tmux and embedded shells (VS Code, Emacs, Vim). NO_TMUX is an
+# explicit client opt-out for small terminals such as Termux.
+if [[ -t 0 && -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" && -z "$NO_TMUX" \
       && "$TERM_PROGRAM" != "vscode" && -z "$INSIDE_EMACS" && -z "$VIMRUNTIME" ]] \
    && command -v tmux >/dev/null 2>&1; then
   export ZSH_TMUX_STARTED=1

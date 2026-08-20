@@ -60,6 +60,13 @@ test_zsh_vi_insert_mode_can_delete_pasted_text() {
   assert_contains "$config" "bindkey -M viins '^H' backward-delete-char"
 }
 
+test_tmux_autostart_has_explicit_opt_out() {
+  local config
+  config="$(<"$REPO_DIR/config/unix/.zshrc.base")"
+
+  assert_contains "$config" '-z "$NO_TMUX"'
+}
+
 test_help_exits_zero() {
   local output status=0
   output=$(bash "$DOTFILE_CMD" -h 2>&1) || status=$?
