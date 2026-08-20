@@ -1629,6 +1629,50 @@ function test_syncpiconfigs_continues_rollback_after_one_backup_restoration_fail
     }
 }
 
+function test_syncpiconfigs_reports_later_rollback_failure_after_first_restoration_succeeds {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    $script:FailedPiConfigBackup = $null
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
+            throw 'simulated base replacement failure'
+        }
+        if ($LiteralPath -like "$($paths.Target).backup.*" -and $Destination -eq $paths.Target) {
+            $script:FailedPiConfigBackup = $LiteralPath
+            throw "simulated target backup restoration failure: $LiteralPath"
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'Pi subagent config rollback failed after'
+    Assert-Contains $failure 'simulated base replacement failure'
+    Assert-Contains $failure 'simulated target backup restoration failure'
+    Assert-Contains $failure $script:FailedPiConfigBackup
+    Assert-False (Test-Path -LiteralPath $paths.Target) 'failed later restoration should leave target absent'
+    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
+    $baseBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force)
+    Assert-Equals 1 $targetBackups.Count
+    Assert-Equals $script:FailedPiConfigBackup $targetBackups[0].FullName
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 0 $baseBackups.Count
+    foreach ($destination in $paths.Target, $paths.Base) {
+        $parent = Split-Path $destination -Parent
+        $leaf = Split-Path $destination -Leaf
+        Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
+    }
+}
+
 function test_syncpiconfigs_rollback_does_not_delete_uninstalled_destination {
     $paths = Initialize-TestPiConfigSeeds
     Set-CommandMock 'Move-Item' {
