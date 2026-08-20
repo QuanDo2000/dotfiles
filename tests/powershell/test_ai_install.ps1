@@ -1590,6 +1590,51 @@ function test_syncpiconfigs_reports_operation_rollback_and_temp_cleanup_failures
     Assert-Equals 99 (Get-Content -Raw -LiteralPath $backups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
 }
 
+function test_syncpiconfigs_reports_all_rollback_failures_and_recovery_paths {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    $script:FailedTargetBackup = $null
+    $script:FailedBaseBackup = $null
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
+            throw 'simulated base replacement failure'
+        }
+        if ($LiteralPath -like "$($paths.Base).backup.*" -and $Destination -eq $paths.Base) {
+            $script:FailedBaseBackup = $LiteralPath
+            throw 'simulated base backup restoration failure'
+        }
+        if ($LiteralPath -like "$($paths.Target).backup.*" -and $Destination -eq $paths.Target) {
+            $script:FailedTargetBackup = $LiteralPath
+            throw 'simulated target backup restoration failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'simulated base replacement failure'
+    Assert-Contains $failure 'simulated base backup restoration failure'
+    Assert-Contains $failure 'simulated target backup restoration failure'
+    Assert-Contains $failure $script:FailedBaseBackup
+    Assert-Contains $failure $script:FailedTargetBackup
+    Assert-False (Test-Path -LiteralPath $paths.Target) 'failed target restoration should leave target absent'
+    Assert-False (Test-Path -LiteralPath $paths.Base) 'failed base restoration should leave base absent'
+    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
+    $baseBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force)
+    Assert-Equals 1 $targetBackups.Count
+    Assert-Equals 1 $baseBackups.Count
+    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 88 (Get-Content -Raw -LiteralPath $baseBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
+}
+
 function test_syncpiconfigs_continues_rollback_after_one_backup_restoration_fails {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
@@ -1851,9 +1896,18 @@ function test_syncpiconfigs_reports_backup_cleanup_failure_and_keeps_recovery_ba
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
     '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
     '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
+    $script:FailedTargetBackup = $null
+    $script:FailedBaseBackup = $null
     Set-CommandMock 'Remove-Item' {
         param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
-        if ($LiteralPath -like '*.backup.*') { throw 'simulated backup deletion failure' }
+        if ($LiteralPath -like "$($paths.Target).backup.*") {
+            $script:FailedTargetBackup = $LiteralPath
+            throw 'simulated target backup deletion failure'
+        }
+        if ($LiteralPath -like "$($paths.Base).backup.*") {
+            $script:FailedBaseBackup = $LiteralPath
+            throw 'simulated base backup deletion failure'
+        }
         Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
     }
 
@@ -1867,7 +1921,10 @@ function test_syncpiconfigs_reports_backup_cleanup_failure_and_keeps_recovery_ba
     }
 
     Assert-Contains $failure 'Pi subagent config cleanup failed'
-    Assert-Contains $failure 'simulated backup deletion failure'
+    Assert-Contains $failure 'simulated target backup deletion failure'
+    Assert-Contains $failure 'simulated base backup deletion failure'
+    Assert-Contains $failure $script:FailedTargetBackup
+    Assert-Contains $failure $script:FailedBaseBackup
     Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
     Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
     foreach ($destination in $paths.Target, $paths.Base) {

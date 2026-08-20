@@ -854,8 +854,8 @@ function SyncPiConfigs {
         if ($name -eq "subagent-config.json") {
             $changes = @()
             $operationError = $null
-            $rollbackError = $null
-            $cleanupError = $null
+            $rollbackErrors = @()
+            $cleanupErrors = @()
             $committed = $false
             try {
                 foreach ($destination in $target, $base) {
@@ -909,7 +909,9 @@ function SyncPiConfigs {
                             Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop
                         }
                     } catch {
-                        if (-not $rollbackError) { $rollbackError = $_ }
+                        $detail = "destination '$($change.Destination)': $($_.Exception.Message)"
+                        if ($change.BackedUp) { $detail += "; recovery backup: '$($change.Backup)'" }
+                        $rollbackErrors += $detail
                     }
                 }
             } finally {
@@ -918,28 +920,28 @@ function SyncPiConfigs {
                         $staged = Get-Item -LiteralPath $change.Temp -Force -ErrorAction SilentlyContinue
                         if ($staged) { Remove-Item -LiteralPath $change.Temp -Force -ErrorAction Stop }
                     } catch {
-                        if (-not $cleanupError) { $cleanupError = $_ }
+                        $cleanupErrors += "temporary file '$($change.Temp)': $($_.Exception.Message)"
                     }
                     if ($committed -and $change.BackedUp) {
                         try {
                             Remove-Item -LiteralPath $change.Backup -Force -ErrorAction Stop
                             $change.BackedUp = $false
                         } catch {
-                            if (-not $cleanupError) { $cleanupError = $_ }
+                            $cleanupErrors += "recovery backup '$($change.Backup)': $($_.Exception.Message)"
                         }
                     }
                 }
             }
-            if ($rollbackError) {
-                $message = "Pi subagent config rollback failed after '$($operationError.Exception.Message)': $($rollbackError.Exception.Message)"
-                if ($cleanupError) { $message += "; cleanup also failed: $($cleanupError.Exception.Message)" }
+            if ($rollbackErrors.Count -gt 0) {
+                $message = "Pi subagent config rollback failed after '$($operationError.Exception.Message)': $($rollbackErrors -join '; ')"
+                if ($cleanupErrors.Count -gt 0) { $message += "; cleanup also failed: $($cleanupErrors -join '; ')" }
                 throw $message
             }
-            if ($cleanupError) {
+            if ($cleanupErrors.Count -gt 0) {
                 if ($operationError) {
-                    throw "Pi subagent config cleanup failed after '$($operationError.Exception.Message)': $($cleanupError.Exception.Message)"
+                    throw "Pi subagent config cleanup failed after '$($operationError.Exception.Message)': $($cleanupErrors -join '; ')"
                 }
-                throw "Pi subagent config cleanup failed: $($cleanupError.Exception.Message)"
+                throw "Pi subagent config cleanup failed: $($cleanupErrors -join '; ')"
             }
             if ($operationError) { throw $operationError }
             continue
