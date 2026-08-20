@@ -906,6 +906,11 @@ function SyncPiConfigs {
                             Move-Item -LiteralPath $change.Backup -Destination $change.Destination -ErrorAction Stop
                             $change.BackedUp = $false
                         } elseif (-not $change.Original -and $change.Installed -and $partial) {
+                            if ($partial.PSIsContainer -or
+                                ($partial.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+                                (Get-FileSha256 $change.Destination) -ne $change.InstalledHash) {
+                                throw "Pi subagent config rollback refused to remove concurrently modified destination '$($change.Destination)'; no recovery backup exists"
+                            }
                             Remove-Item -LiteralPath $change.Destination -Force -ErrorAction Stop
                         }
                     } catch {

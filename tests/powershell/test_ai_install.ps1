@@ -1757,6 +1757,41 @@ function test_syncpiconfigs_rollback_preserves_concurrently_replaced_installed_d
     }
 }
 
+function test_syncpiconfigs_rollback_preserves_concurrently_replaced_new_destination {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Base -Parent) | Out-Null
+    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
+            'concurrent target content' | Set-Content -LiteralPath $paths.Target
+            throw 'simulated base replacement failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'simulated base replacement failure'
+    Assert-Contains $failure 'concurrently modified destination'
+    Assert-Contains $failure $paths.Target
+    Assert-Contains $failure 'no recovery backup exists'
+    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $paths.Target).Trim())
+    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force).Count
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force).Count
+    foreach ($destination in $paths.Target, $paths.Base) {
+        $parent = Split-Path $destination -Parent
+        $leaf = Split-Path $destination -Leaf
+        Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
+    }
+}
+
 function test_syncpiconfigs_rollback_does_not_delete_uninstalled_destination {
     $paths = Initialize-TestPiConfigSeeds
     Set-CommandMock 'Move-Item' {
