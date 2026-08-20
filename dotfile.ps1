@@ -826,6 +826,66 @@ function InstallPiLanguageServers {
     Success "Finished installing Pi language servers"
 }
 
+function Copy-FileWithRollback($Source, $Destination, $Label) {
+    $destinationItem = Get-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
+    if ($destinationItem -and $destinationItem.PSIsContainer) {
+        throw "Pi config destination is a directory: $Destination"
+    }
+    if ($destinationItem -and -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
+        (Get-FileSha256 $Source) -eq (Get-FileSha256 $Destination)) {
+        return
+    }
+
+    $temporary = "$Destination.tmp.$([Guid]::NewGuid().ToString('N'))"
+    $backup = "$Destination.backup.$([Guid]::NewGuid().ToString('N'))"
+    $backedUp = $false
+    Copy-Item -LiteralPath $Source -Destination $temporary -ErrorAction Stop
+    try {
+        $destinationItem = Get-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
+        if ($destinationItem) {
+            if ($destinationItem.PSIsContainer) { throw "Pi config destination is a directory: $Destination" }
+            Move-Item -LiteralPath $Destination -Destination $backup -ErrorAction Stop
+            $backedUp = $true
+        }
+        Move-Item -LiteralPath $temporary -Destination $Destination -ErrorAction Stop
+    } catch {
+        $operationError = $_
+        $recoveryError = $null
+        if ($backedUp) {
+            $replacement = Get-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
+            if ($replacement) {
+                $recoveryError = "destination '$Destination' exists; recovery backup: '$backup'"
+            } else {
+                try {
+                    Move-Item -LiteralPath $backup -Destination $Destination -ErrorAction Stop
+                    $backedUp = $false
+                } catch {
+                    $recoveryError = "recovery backup '$backup': $($_.Exception.Message)"
+                }
+            }
+        }
+        try {
+            if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force -ErrorAction Stop }
+        } catch {
+            if ($recoveryError) {
+                $recoveryError += "; temporary file '$temporary': $($_.Exception.Message)"
+            } else {
+                $recoveryError = "temporary file '$temporary': $($_.Exception.Message)"
+            }
+        }
+        if ($recoveryError) { throw "$Label failed after '$($operationError.Exception.Message)': $recoveryError" }
+        throw $operationError
+    }
+
+    if ($backedUp) {
+        try {
+            Remove-Item -LiteralPath $backup -Force -ErrorAction Stop
+        } catch {
+            throw "$Label cleanup failed; recovery backup '$backup': $($_.Exception.Message)"
+        }
+    }
+}
+
 function SyncPiConfigs {
     Info "Syncing Pi configuration..."
     if ($script:Dry) { return }
@@ -989,8 +1049,8 @@ function SyncPiConfigs {
             continue
         }
         if (-not (Test-Path -LiteralPath $target)) {
-            Copy-Item -LiteralPath $source -Destination $target
-            Copy-Item -LiteralPath $source -Destination $base
+            Copy-FileWithRollback $source $target "Pi $name target copy"
+            Copy-FileWithRollback $source $base "Pi $name baseline copy"
             continue
         }
 
@@ -1029,10 +1089,7 @@ function SyncPiConfigs {
             (Get-FileSha256 $copy.Source) -eq (Get-FileSha256 $copy.Destination)) {
             continue
         }
-        if ($destinationItem -and ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
-            Remove-Item -LiteralPath $copy.Destination -Force
-        }
-        Copy-Item -LiteralPath $copy.Source -Destination $copy.Destination -Force
+        Copy-FileWithRollback $copy.Source $copy.Destination 'Pi direct config copy'
     }
     } finally {
         $syncLock.Dispose()

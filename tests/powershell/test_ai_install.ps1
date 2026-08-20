@@ -1389,6 +1389,48 @@ function Initialize-TestPiConfigSeeds {
     }
 }
 
+function test_syncpiconfigs_replaces_linked_seed_baseline_without_touching_external_file {
+    Initialize-TestPiConfigSeeds | Out-Null
+    $base = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\settings.json'
+    $external = Join-Path $script:_TestTmp.FullName 'external-settings.json'
+    New-Item -ItemType Directory -Force -Path (Split-Path $base -Parent) | Out-Null
+    '{"external":true}' | Set-Content -LiteralPath $external
+    New-Item -ItemType SymbolicLink -Path $base -Target $external | Out-Null
+
+    SyncPiConfigs
+
+    Assert-False ([bool](Get-Item -LiteralPath $base -Force).LinkType) 'linked baseline should become regular file'
+    Assert-Equals '{}' ((Get-Content -Raw -LiteralPath $base).Trim())
+    Assert-Equals '{"external":true}' ((Get-Content -Raw -LiteralPath $external).Trim())
+}
+
+function test_syncpiconfigs_restores_direct_copy_when_staged_replacement_fails {
+    Initialize-TestPiConfigSeeds | Out-Null
+    $destination = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
+    New-Item -ItemType Directory -Force -Path (Split-Path $destination -Parent) | Out-Null
+    'old lsp' | Set-Content -LiteralPath $destination
+    $script:DirectCopyDestination = $destination
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        if ($LiteralPath -like "$($script:DirectCopyDestination).tmp.*" -and $Destination -eq $script:DirectCopyDestination) {
+            throw 'simulated direct replacement failure'
+        }
+        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+    }
+
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
+
+    Assert-Contains $failure 'simulated direct replacement failure'
+    Assert-Equals 'old lsp' ((Get-Content -Raw -LiteralPath $destination).Trim())
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $destination -Parent) -Filter 'pi-lsp.json.tmp.*' -Force).Count
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $destination -Parent) -Filter 'pi-lsp.json.backup.*' -Force).Count
+}
+
 function test_syncpiconfigs_rejects_directory_seed_baseline_without_partial_copy {
     Initialize-TestPiConfigSeeds | Out-Null
     $target = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
@@ -2350,11 +2392,11 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     $changedExtension = Join-Path $extensionDir 'ponytail-default.js'
     $missingExtension = Join-Path $extensionDir 'codex-status.js'
     $linkedExtension = Join-Path $extensionDir 'windows-exit.js'
-    Assert-False ($script:PiConfigCopies -contains $lsp) 'unchanged regular LSP config should not be replaced'
-    Assert-False ($script:PiConfigCopies -contains $unchangedExtension) 'unchanged regular extension should not be replaced'
-    Assert-True ($script:PiConfigCopies -contains $changedExtension) 'changed extension should be replaced'
-    Assert-True ($script:PiConfigCopies -contains $missingExtension) 'missing extension should be copied'
-    Assert-True ($script:PiConfigCopies -contains $linkedExtension) 'linked extension should be repaired'
+    Assert-Equals 0 @($script:PiConfigCopies | Where-Object { $_ -like "$lsp.tmp.*" }).Count
+    Assert-Equals 0 @($script:PiConfigCopies | Where-Object { $_ -like "$unchangedExtension.tmp.*" }).Count
+    Assert-Equals 1 @($script:PiConfigCopies | Where-Object { $_ -like "$changedExtension.tmp.*" }).Count
+    Assert-Equals 1 @($script:PiConfigCopies | Where-Object { $_ -like "$missingExtension.tmp.*" }).Count
+    Assert-Equals 1 @($script:PiConfigCopies | Where-Object { $_ -like "$linkedExtension.tmp.*" }).Count
     Assert-Equals 'new extension' ((Get-Content -Raw -LiteralPath $changedExtension).Trim())
     Assert-Equals 'missing extension' ((Get-Content -Raw -LiteralPath $missingExtension).Trim())
     Assert-False ([bool](Get-Item -LiteralPath $linkedExtension -Force).LinkType) 'linked extension should become a regular file'
