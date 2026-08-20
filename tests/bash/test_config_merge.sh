@@ -2,6 +2,39 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
+test_pi_seed_merge_rejects_corrupt_baseline_without_writes() {
+  local tmp script before_live before_seed before_base
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/pi.py"
+  printf '%s\n' '{"kept":true,"runtimeOnly":true}' >"$tmp/live.json"
+  printf '%s\n' '{"kept":true}' >"$tmp/seed.json"
+  printf '%s\n' '{invalid' >"$tmp/base.json"
+  before_live="$(<"$tmp/live.json")"
+  before_seed="$(<"$tmp/seed.json")"
+  before_base="$(<"$tmp/base.json")"
+
+  if python3 "$script" "$tmp/live.json" "$tmp/seed.json" "$tmp/seed.json" "$tmp/base.json" >/dev/null 2>&1; then
+    printf 'corrupt Pi baseline should fail closed\n' >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  assert_equals "$before_live" "$(<"$tmp/live.json")"
+  assert_equals "$before_seed" "$(<"$tmp/seed.json")"
+  assert_equals "$before_base" "$(<"$tmp/base.json")"
+  rm -rf "$tmp"
+}
+
+test_pi_seed_merge_writes_live_before_writable_seed() {
+  python3 - "$REPO_DIR/scripts/seed_merge/pi.py" <<'PY'
+import sys
+
+script = open(sys.argv[1], encoding="utf-8").read()
+live = script.index("write_json(live_path")
+seed = script.index("write_json(apply_path")
+assert live < seed, "live CAS must succeed before writable seed commit"
+PY
+}
+
 test_json_atomic_write_rejects_changed_destination() {
   local tmp
   tmp="$(mktemp -d)"

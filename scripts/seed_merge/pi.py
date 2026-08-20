@@ -63,7 +63,7 @@ try:
     base_original = copy.deepcopy(base)
     normalize(base)
     base_exists = True
-except (OSError, ValueError):
+except FileNotFoundError:
     base = {}
     base_original = None
     base_exists = False
@@ -85,10 +85,10 @@ live_resolved = copy.deepcopy(resolved)
 live_resolved.update(runtime)
 
 baseline = resolved if apply_path else seed
-if apply_path and resolved != seed_original:
-    write_json(apply_path, resolved, prefix=".json-seed-", preserve_mode=True, expected=seed_original)
 if live_resolved != live_original:
     write_json(live_path, live_resolved, prefix=".json-live-", preserve_mode=True, expected=live_original)
+if apply_path and resolved != seed_original:
+    write_json(apply_path, resolved, prefix=".json-seed-", preserve_mode=True, expected=seed_original)
 if baseline != base_original:
     write_json(base_path, baseline, prefix=".json-base-", preserve_mode=True, expected=base_original)
 
