@@ -1337,17 +1337,19 @@ function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
     Assert-Equals 1 @($settings.subagents.modelScope.allow).Count
     Assert-Equals 'openai-codex/*' @($settings.subagents.modelScope.allow)[0]
 
-    Assert-False ($settings.subagents.agentOverrides.PSObject.Properties.Name -contains 'advisor') 'advisor aliases oracle and should not have a dead override'
     Assert-Equals 'openai-codex/gpt-5.6-sol' $settings.subagents.agentOverrides.oracle.model
     Assert-Equals 'xhigh' $settings.subagents.agentOverrides.oracle.thinking
-    foreach ($agent in 'delegate', 'scout', 'worker') {
+    foreach ($agent in 'advisor', 'context-builder', 'delegate', 'planner') {
+        Assert-True $settings.subagents.agentOverrides.PSObject.Properties[$agent].Value.disabled "$agent should be disabled"
+    }
+    foreach ($agent in 'scout', 'worker') {
         $override = $settings.subagents.agentOverrides.PSObject.Properties[$agent].Value
         Assert-Equals 'openai-codex/gpt-5.6-luna' $override.model
         Assert-Equals 'medium' $override.thinking
     }
     Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.agentOverrides.researcher.model
     Assert-Equals 'high' $settings.subagents.agentOverrides.researcher.thinking
-    Assert-Equals 'openai-codex/gpt-5.6-sol' $settings.subagents.agentOverrides.reviewer.model
+    Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.agentOverrides.reviewer.model
     Assert-Equals 'high' $settings.subagents.agentOverrides.reviewer.thinking
 }
 
