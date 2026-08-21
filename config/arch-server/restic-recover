@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+PATH="$HOME/.nix-profile/bin:/run/current-system/sw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
+export RESTIC_REPOSITORY='rclone:gdrive:ServerBackup/restic'
+export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-$HOME/.config/restic/storage-backup-password}"
+export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-$HOME/.cache/restic}"
+
+readonly TAG='storage-offsite'
+readonly RECOVERY_ROOT="${RESTIC_RECOVERY_ROOT:-$HOME/Documents/Restic Recovery}"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  restic-recover snapshots
+  restic-recover find PATTERN...
+  restic-recover restore SNAPSHOT ABSOLUTE_PATH
+  restic-recover mount
+
+SNAPSHOT is "latest" or a snapshot ID. Restores always go to a new private
+staging directory; this command never restores over live data.
+EOF
+}
+
+allowed_path() {
+  local path="$1"
+  [[ "$path" != *$'\n'* ]] || return 1
+  [[ "$(realpath -m -- "$path")" == "$path" ]] || return 1
+  case "$path" in
+    /mnt/storage/Storage/Documents|/mnt/storage/Storage/Documents/*|/mnt/storage/Storage/Book|/mnt/storage/Storage/Book/*|/mnt/storage/Storage/Music|/mnt/storage/Storage/Music/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+valid_snapshot() {
+  [[ "$1" == latest || "$1" =~ ^[[:xdigit:]]{8,64}$ ]]
+}
+
+literal_pattern() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\[/\\[}"
+  value="${value//\*/\\*}"
+  value="${value//\?/\\?}"
+  printf '%s' "$value"
+}
+
+require_access() {
+  [[ -r "$RESTIC_PASSWORD_FILE" ]] || { printf 'Password file is unavailable: %s\n' "$RESTIC_PASSWORD_FILE" >&2; exit 1; }
+  [[ -r "$HOME/.config/rclone/rclone.conf" ]] || { printf 'rclone configuration is unavailable.\n' >&2; exit 1; }
+}
+
+self_test() {
+  allowed_path '/mnt/storage/Storage/Documents/example file.txt'
+  allowed_path '/mnt/storage/Storage/Book'
+  allowed_path '/mnt/storage/Storage/Music/Artist/Album'
+  if allowed_path '/mnt/storage/Storage/Quan/private'; then return 1; fi
+  if allowed_path '/mnt/storage/Storage/Documents/../Quan/private'; then return 1; fi
+  if allowed_path '/home/quando/Documents/live.txt'; then return 1; fi
+  valid_snapshot latest
+  valid_snapshot 350df80d
+  if valid_snapshot newest; then return 1; fi
+  [[ "$(literal_pattern '/path/[album] file*?.flac')" == '/path/\[album] file\*\?.flac' ]]
+  printf 'restic-recover self-test: ok\n'
+}
+
+[[ "${1:-}" != --self-test ]] || { self_test; exit 0; }
+require_access
+
+case "${1:-}" in
+  snapshots)
+    [[ $# == 1 ]] || { usage >&2; exit 2; }
+    exec restic snapshots --tag "$TAG"
+    ;;
+  find)
+    (( $# >= 2 )) || { usage >&2; exit 2; }
+    shift
+    exec restic find --tag "$TAG" --ignore-case "$@"
+    ;;
+  restore)
+    [[ $# == 3 ]] || { usage >&2; exit 2; }
+    snapshot="$2"
+    path="$3"
+    valid_snapshot "$snapshot" || { printf 'Invalid snapshot: %s\n' "$snapshot" >&2; exit 2; }
+    allowed_path "$path" || { printf 'Path is outside the backed-up roots or is not canonical: %s\n' "$path" >&2; exit 2; }
+    pattern="$(literal_pattern "$path")"
+    install -d -m 700 "$RECOVERY_ROOT"
+    target="$(mktemp -d "$RECOVERY_ROOT/restore-$(date +%Y%m%d-%H%M%S)-XXXXXX")"
+    printf 'Dry run for %s:%s\n' "$snapshot" "$path"
+    restic restore "$snapshot" --tag "$TAG" --include "$pattern" --target "$target" --overwrite never --dry-run --verbose=2
+    printf 'Restoring and verifying into private staging directory...\n'
+    restic restore "$snapshot" --tag "$TAG" --include "$pattern" --target "$target" --overwrite never --verify
+    printf 'Staged restore: %s\n' "$target"
+    ;;
+  mount)
+    [[ $# == 1 ]] || { usage >&2; exit 2; }
+    install -d -m 700 "$RECOVERY_ROOT"
+    mountpoint="$(mktemp -d "$RECOVERY_ROOT/mount-XXXXXX")"
+    cleanup() {
+      mountpoint -q "$mountpoint" && fusermount3 -u "$mountpoint" || true
+      rmdir "$mountpoint" 2>/dev/null || true
+    }
+    trap cleanup EXIT INT TERM
+    printf 'Read-only backup browser: %s\nPress Ctrl-C when finished.\n' "$mountpoint"
+    restic mount --tag "$TAG" "$mountpoint"
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

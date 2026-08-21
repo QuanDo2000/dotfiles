@@ -251,6 +251,9 @@ in
     ".local/bin/show-keybinds" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ../scripts/show-keybinds.sh // {
       executable = true;
     });
+    ".local/bin/restic-recover" = lib.mkIf storageOffsiteBackup (forceSource ./arch-server/restic-recover // {
+      executable = true;
+    });
     ".local/bin/caf" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (forceSource ./mac/bin/caf // {
       executable = true;
     });
@@ -770,7 +773,7 @@ in
     managed_file_current() {
       [ -f "$2" ] && [ ! -L "$2" ] &&
         [ "$("${pkgs.coreutils}/bin/stat" -c %a "$2")" = 600 ] &&
-        "${pkgs.coreutils}/bin/cmp" -s "$1" "$2"
+        "${pkgs.diffutils}/bin/cmp" -s "$1" "$2"
     }
 
     for spec in settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json; do
@@ -821,7 +824,7 @@ in
     managed_file_current() {
       [ -f "$2" ] && [ ! -L "$2" ] &&
         [ "$("${pkgs.coreutils}/bin/stat" -c %a "$2")" = 600 ] &&
-        "${pkgs.coreutils}/bin/cmp" -s "$1" "$2"
+        "${pkgs.diffutils}/bin/cmp" -s "$1" "$2"
     }
 
     target="$HOME/.config/nvim/lazy-lock.json"

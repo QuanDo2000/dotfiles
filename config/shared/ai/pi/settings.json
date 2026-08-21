@@ -18,8 +18,16 @@
         "thinking": "xhigh"
       },
       "delegate": {
-        "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "medium"
+        "disabled": true
+      },
+      "advisor": {
+        "disabled": true
+      },
+      "planner": {
+        "disabled": true
+      },
+      "context-builder": {
+        "disabled": true
       },
       "scout": {
         "model": "openai-codex/gpt-5.6-luna",
@@ -54,7 +62,7 @@
         "thinking": "high"
       },
       "reviewer": {
-        "model": "openai-codex/gpt-5.6-sol",
+        "model": "openai-codex/gpt-5.6-terra",
         "thinking": "high",
         "completionGuard": false,
         "tools": [

@@ -8,11 +8,11 @@ Ponytail and Caveman are active at `full` at every main-agent and subagent start
 
 Use subagents proactively when work has multiple independent, substantial lanes or one bounded lane can run while the parent continues useful work. Run independent read, research, review, and validation lanes in parallel and asynchronously when supported; keep one writer per worktree. Before launching, check active and completed runs for the same lane and unchanged target revision. Reuse its artifact or resume its retained child; relaunch only when the target or required evidence changes.
 
-Treat reviewers as static: never ask them to run shell commands, tests, lint, typecheck, builds, or mutations. Parent runs validation commands; when delegation is necessary, use a separate mutation-capable worker limited to exact named commands and no edits.
+Treat reviewers as static: never ask them to run shell commands, tests, lint, typecheck, builds, or mutations. Parent runs validation commands; when delegation is necessary, use a separate mutation-capable worker limited to exact named commands and no edits. Use one reviewer by default; add a second only for a distinct high-risk angle, never a generic duplicate pass.
 
 When a matched reusable skill governs delegated work, pass only that skill explicitly to the child. In Pi, use the child's `skill` field; builtin roles do not inherit the discovered skill catalog. Do not enable global skill inheritance.
 
-Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow children with only the context they need, the cheapest capable model, and explicit stop criteria. In Pi, never pass more than eight children to one workflow or four concurrent async workflows. Tracked runtime limits enforce eight children per workflow and four active async workflows per session. Parent owns synthesis and final verification.
+Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow children with only the context they need, the cheapest capable model, and explicit stop criteria. In Pi, never pass more than eight children to one workflow or two concurrent async workflows. Tracked runtime limits enforce eight children per workflow and two active async workflows per session. Parent owns synthesis and final verification.
 
 ## Code Search
 

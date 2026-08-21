@@ -290,11 +290,15 @@ test_pi_subagent_model_scope_is_strict() {
   assert_file_exists "$settings"
   if [[ -f "$settings" ]]; then
     assert_exit_code 0 jq -e '
+      .subagents.agentOverrides as $roles |
       .subagents.modelScope.enforce == true and
       .subagents.modelScope.strict == true and
       .subagents.modelScope.allow == ["openai-codex/*"] and
       (.subagents.defaultModel | startswith("openai-codex/")) and
-      ([.subagents.agentOverrides[].model | startswith("openai-codex/")] | all)
+      ([$roles[] | select(has("model")) | .model | startswith("openai-codex/")] | all) and
+      $roles.oracle.model == "openai-codex/gpt-5.6-sol" and
+      $roles.reviewer.model == "openai-codex/gpt-5.6-terra" and
+      (["advisor", "context-builder", "delegate", "planner"] | all(. as $name | $roles[$name].disabled == true))
     ' "$settings"
   fi
 }
@@ -307,8 +311,8 @@ test_pi_subagents_configures_workflow_guardrails() {
   if [[ -f "$config" ]]; then
     assert_exit_code 0 jq -e '
       .maxSubagentSpawnsPerRun == 8 and
-      .maxActiveAsyncRunsPerSession == 4 and
-      .maxSubagentSpawnsPerSession == 32 and
+      .maxActiveAsyncRunsPerSession == 2 and
+      .maxSubagentSpawnsPerSession == 16 and
       has("globalConcurrencyLimit") == false and
       has("parallel") == false
     ' "$config"
@@ -317,7 +321,9 @@ test_pi_subagents_configures_workflow_guardrails() {
   assert_contains "$HOME_CONFIG" 'if ! managed_file_current "$source" "$target"; then'
   assert_contains "$HOME_CONFIG" 'if ! managed_file_current "$source" "$base"; then'
   assert_contains "$HOME_CONFIG" 'base_tmp="$(mktemp "$base.tmp.XXXXXX")"'
-  assert_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'Tracked runtime limits enforce eight children per workflow and four active async workflows per session.'
+  assert_contains "$HOME_CONFIG" '"${pkgs.diffutils}/bin/cmp"'
+  assert_not_contains "$HOME_CONFIG" '"${pkgs.coreutils}/bin/cmp"'
+  assert_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'Tracked runtime limits enforce eight children per workflow and two active async workflows per session.'
   assert_not_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'native limits are not session-global'
 }
 
@@ -803,8 +809,12 @@ test_google_drive_storage_sync() {
 }
 
 test_storage_offsite_backup() {
+  local exit_code=0
+  bash "$REPO_DIR/config/arch-server/restic-recover" --self-test >/dev/null 2>&1 || exit_code=$?
+  assert_equals "0" "$exit_code"
   assert_contains "$HOME_CONFIG" "storageOffsiteBackup ? false"
   assert_contains "$HOME_CONFIG" 'lib.optionals storageOffsiteBackup [ pkgs.restic ]'
+  assert_contains "$HOME_CONFIG" '".local/bin/restic-recover" = lib.mkIf storageOffsiteBackup'
   assert_contains "$HOME_CONFIG" "systemd.user.services.storage-offsite-backup"
   assert_contains "$HOME_CONFIG" "systemd.user.timers.storage-offsite-backup"
   assert_contains "$HOME_CONFIG" 'RESTIC_REPOSITORY=rclone:gdrive:ServerBackup/restic'

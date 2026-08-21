@@ -1,36 +1,45 @@
 ---
 name: "efficient-subagent-use"
-description: "Decide when and how to delegate for higher parallel performance without wasting tokens; use for non-trivial tasks with potentially independent work lanes"
-version: 5
+description: "Delegate independent substantial lanes without duplicate work, polling, or unnecessary context"
+version: 6
 created: "2026-08-07"
-updated: "2026-08-18"
+updated: "2026-08-21"
 ---
-## When to Use
-Use before delegating non-trivial research, coding, review, or validation. Skip it for tiny requests or work that is inherently serial. The goal is lower wall-clock time without increasing token use unnecessarily.
+
+# Efficient Subagent Use
 
 This skill owns delegation decisions, lane sizing, and cost control; harness-specific skills own execution APIs and mechanics.
 
-## Procedure
-1. Delegate only when there are at least two independent substantial lanes, or one bounded lane can run while the parent continues useful work. If startup/context overhead is comparable to doing the task directly, do it directly.
-2. Before launching, list available agents. Choose the cheapest capable role/model and normally 1–3 children; use more only when distinct risk or breadth justifies each lane.
-3. Check active and completed runs for the same lane and unchanged target revision. Reuse its artifact or resume its retained child; relaunch only when the target or required evidence changes.
-4. Parallelize read-only recon, research, review, and validation. Keep one writer per worktree unless writers have intentionally isolated worktrees.
-5. Launch asynchronously when supported. Continue useful parent work; wait only when same-turn results are required.
-6. Pass only governing matched skills through the child `skill` field; do not enable global skill inheritance. Builtin Pi roles do not inherit the discovered skill catalog.
-7. Give each child a narrow compact contract: goal, only necessary files/evidence, success criteria, hard constraints, validation, output shape, and stop rule. Prefer fresh context unless conversation history is essential.
-8. For read-only scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`, and request only findings, exact paths, confidence or coverage, and residual risks. Do not paste an acceptance schema. Keep default checked or review-required acceptance for mutation workers; the parent runs validation.
-9. Synthesize results once, resolve disagreements from primary evidence, perform final verification in the parent, and stop spawning when enough evidence exists.
+## Gate
 
-## Pitfalls
-- Do not delegate tiny lookups, tightly serial steps, duplicate parent work, or clone prompts that produce redundant answers.
-- Do not fork full parent context by default; copied history wastes tokens and biases independent review.
-- Do not run parallel writers in one worktree.
-- Do not keep children searching after the success criteria are met or launch reviewers merely for ceremony.
-- Async does not mean unattended completion: the parent still owns synthesis, decisions, and verification.
+Delegate only when either:
+
+- two or more independent substantial lanes can run in parallel; or
+- one bounded lane can run while the parent continues useful work.
+
+Otherwise work directly. Startup, schemas, duplicated discovery, and synthesis are real costs.
+
+## Procedure
+
+1. Reuse known configured roles. List agents only when capability or model availability is unknown.
+2. Check active/completed runs for the same lane and target revision. Reuse the artifact or retained child; relaunch only when target/evidence changed.
+3. Use 1–3 narrow children, normally one fan-out wave. A second wave needs a concrete changed target or unresolved evidence gap.
+4. Parallelize read-only discovery/review. Keep one writer per worktree.
+5. Use one reviewer by default; add a second only for a distinct high-risk angle.
+6. Launch asynchronously only when the parent can continue useful work or yield for completion. Do not launch async and immediately wait.
+7. Pass only governing matched skills through the child `skill` field; do not enable global skill inheritance. Builtin Pi roles do not inherit the discovered skill catalog.
+8. Give each child only: goal, necessary paths/evidence, constraints, output shape, success criteria, and stop rule. Do not paste full history or broad repository context.
+9. For read-only scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`, and request only findings, exact paths, confidence or coverage, and residual risks. Do not request validation commands from static reviewers.
+10. Parent verifies primary evidence once, resolves disagreement, and stops spawning when the decision is supported.
+
+## Cost stops
+
+- Never delegate tiny lookups, serial steps, duplicate parent work, or ceremonial review.
+- Never make every reviewer rediscover the same diff; capture scope once.
+- Never run parallel writers in one worktree.
+- Never keep a child searching after its stop criterion.
+- For substantial fleets, inspect `/subagent-cost`; reduce fanout/context before lowering model quality.
 
 ## Verification
-1. Every child has a distinct lane and necessary output.
-2. No two writers share a worktree.
-3. Parent continues useful work while async children run or returns control rather than polling.
-4. Final answer uses child evidence without duplicating their full prose.
-5. For substantial fleets, inspect `/subagent-cost` and reduce fanout/context if cost outweighs saved time.
+
+Distinct lanes; no duplicate writer; no polling loop; parent performed final verification; synthesis contains conclusions, not copied child prose.
