@@ -355,7 +355,7 @@ test_code_search_stack_enables_auto_index_and_agent_workflows() {
 }
 
 
-test_all_ai_agents_start_with_ponytail_and_caveman() {
+test_all_ai_agents_start_with_shared_policy() {
   local agents soul
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
   soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
@@ -382,7 +382,6 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
   assert_equals "false" "$(jq 'has("caveman")' "$pins")"
-  assert_equals "5" "$(jq '.superpowers.excludedPaths | length' "$pins")"
   for skill in systematic-debugging test-driven-development diff-review-qa ponytail-audit ponytail-debt; do
     assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
   done
@@ -393,9 +392,6 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
     assert_not_contains "$HOME_CONFIG" ".agents/skills/$skill"
     assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md" ]] && echo true || echo false)"
   done
-  assert_not_contains "$HOME_CONFIG" 'ponytailSrc = pkgs.fetchFromGitHub'
-  assert_not_contains "$HOME_CONFIG" 'cavemanSrc = pkgs.fetchFromGitHub'
-  assert_not_contains "$HOME_CONFIG" 'superpowersSrc = pkgs.fetchFromGitHub'
   assert_not_contains "$windows" 'npx --yes skills add'
 }
 

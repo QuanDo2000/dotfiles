@@ -140,7 +140,7 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
         $source = if ($entry -is [string]) { $entry } else { $entry.source }
         Assert-True $source.StartsWith("./locked-extensions/releases/$($pins.releaseId)/node_modules/") 'Pi extension should use locked local release'
     }
-    Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@dietrichgebert/ponytail') 'Ponytail should use local default extension'
+    Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@dietrichgebert/ponytail') 'Retired Ponytail package should remain absent'
     Assert-Equals 0 @($settings.packages | Where-Object {
         $source = if ($_ -is [string]) { $_ } else { $_.source }
         $source -like '*@dietrichgebert/ponytail*'
