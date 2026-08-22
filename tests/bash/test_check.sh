@@ -82,7 +82,7 @@ test_bash_runner_fails_setup_and_teardown_errors() {
 
 test_bash_runner_uses_repo_working_directory() {
   local output status=0
-  output="$(cd / && bash "$REPO_DIR/tests/bash/runner.sh" test_caveman_default.sh 2>&1)" || status=$?
+  output="$(cd / && bash "$REPO_DIR/tests/bash/runner.sh" test_codex_status.sh 2>&1)" || status=$?
   assert_equals 0 "$status"
   assert_contains "$output" '0 failed'
 }

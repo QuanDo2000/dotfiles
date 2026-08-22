@@ -360,12 +360,15 @@ test_all_ai_agents_start_with_ponytail_and_caveman() {
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
   soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
 
-  assert_contains "$agents" 'Ponytail and Caveman are active at `full`'
-  assert_contains "$agents" 'main-agent and subagent startup'
-  assert_contains "$soul" 'Ponytail and Caveman are active at `full`'
-  assert_contains "$soul" 'main-agent and subagent startup'
+  assert_contains "$agents" 'Apply these fixed rules at every main-agent and subagent startup.'
+  assert_contains "$agents" '**Minimal implementation:**'
+  assert_contains "$agents" '**Terse communication:**'
+  assert_contains "$soul" 'Apply these fixed rules at every main-agent and subagent startup.'
+  assert_contains "$soul" '**Minimal implementation:**'
+  assert_contains "$soul" '**Terse communication:**'
   assert_contains "$HOME_CONFIG" '".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;'
-  assert_contains "$HOME_CONFIG" '".hermes/skills/productivity/ponytail/SKILL.md"'
+  assert_not_contains "$HOME_CONFIG" 'ponytail-default.js'
+  assert_not_contains "$HOME_CONFIG" 'caveman-default.js'
 }
 
 
@@ -375,16 +378,17 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_equals "0" "$(jq '[to_entries[] | select(.key != "schemaVersion") | select((.value.commit | test("^[0-9a-f]{40}$") | not) or (.value.observedArchiveSha256 | test("^[0-9a-f]{64}$") | not))] | length' "$pins")"
-  for skill in caveman systematic-debugging test-driven-development verification-before-completion diff-review-qa efficient-subagent-use ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
+  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa efficient-subagent-use ponytail-audit ponytail-debt ponytail-gain ponytail-review; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
-  assert_contains "$HOME_CONFIG" '".agents/skills/caveman/SKILL.md" = forceSource ./shared/ai/skills/caveman/SKILL.md;'
-  assert_not_contains "$HOME_CONFIG" '.agents/skills/caveman/README.md'
-  assert_equals '["caveman/README.md"]' "$(jq -c '.caveman.excludedPaths' "$pins")"
+  assert_equals "false" "$(jq 'has("caveman")' "$pins")"
   assert_equals "5" "$(jq '.superpowers.excludedPaths | length' "$pins")"
-  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa efficient-subagent-use ponytail ponytail-audit ponytail-debt ponytail-gain ponytail-help ponytail-review; do
+  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa efficient-subagent-use ponytail-audit ponytail-debt ponytail-gain ponytail-review; do
     assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
   done
+  assert_not_contains "$HOME_CONFIG" '.agents/skills/caveman'
+  assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail"'
+  assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail-help'
   assert_not_contains "$HOME_CONFIG" 'ponytailSrc = pkgs.fetchFromGitHub'
   assert_not_contains "$HOME_CONFIG" 'cavemanSrc = pkgs.fetchFromGitHub'
   assert_not_contains "$HOME_CONFIG" 'superpowersSrc = pkgs.fetchFromGitHub'

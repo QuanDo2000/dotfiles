@@ -1073,7 +1073,7 @@ function SyncPiConfigs {
             Destination = Join-Path $targetDir 'pi-lsp.json'
         }
     )
-    foreach ($name in @("caveman-default.js", "ponytail-default.js", "codex-status.js", "windows-exit.js")) {
+    foreach ($name in @("codex-status.js", "windows-exit.js")) {
         $directCopies += @{
             Source = Join-Path $seedDir $name
             Destination = Join-Path $extensionDir $name
@@ -1090,6 +1090,9 @@ function SyncPiConfigs {
             continue
         }
         Copy-FileWithRollback $copy.Source $copy.Destination 'Pi direct config copy'
+    }
+    foreach ($name in @("caveman-default.js", "ponytail-default.js")) {
+        Remove-Item -LiteralPath (Join-Path $extensionDir $name) -Force -ErrorAction SilentlyContinue
     }
     } finally {
         $syncLock.Dispose()
@@ -1579,9 +1582,13 @@ function InstallAiSkills {
 
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('caveman', 'systematic-debugging', 'test-driven-development', 'verification-before-completion', 'diff-review-qa', 'efficient-subagent-use', 'ponytail', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-help', 'ponytail-review')
+    $skills = @('systematic-debugging', 'test-driven-development', 'verification-before-completion', 'diff-review-qa', 'efficient-subagent-use', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-review')
     foreach ($skill in $skills) {
         Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill)
+        Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    foreach ($skill in @('caveman', 'ponytail', 'ponytail-help')) {
+        Remove-Item -LiteralPath (Join-Path $targetRoot $skill) -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
     }
 }

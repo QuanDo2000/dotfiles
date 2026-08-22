@@ -1,15 +1,5 @@
 {
   "schemaVersion": 1,
-  "caveman": {
-    "repository": "https://github.com/JuliusBrussee/caveman",
-    "commit": "702da5ce4c5ed08efa716927772b2216f246357f",
-    "path": "skills/caveman",
-    "excludedPaths": [
-      "caveman/README.md"
-    ],
-    "observedArchiveSha256": "726d3b5e4ef40f0f28568795450158f53381234447f1d03b4742113b7b7ec649",
-    "license": "licenses/caveman-MIT.txt"
-  },
   "superpowers": {
     "repository": "https://github.com/obra/superpowers",
     "commit": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
@@ -32,11 +22,9 @@
     "repository": "https://github.com/DietrichGebert/ponytail",
     "commit": "2ed6c52c9d7e5e56942508591085fd45dea277d3",
     "paths": [
-      "skills/ponytail",
       "skills/ponytail-audit",
       "skills/ponytail-debt",
       "skills/ponytail-gain",
-      "skills/ponytail-help",
       "skills/ponytail-review"
     ],
     "observedArchiveSha256": "9e288f0a1378cc1b02847f9452ae2e8fb35fdc995689f4f9ae5330680ba7bbec",

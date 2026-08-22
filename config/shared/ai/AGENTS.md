@@ -1,8 +1,12 @@
 # Global Agent Instructions
 
-## Default Agent Modes
+## Default Working Style
 
-Ponytail and Caveman are active at `full` at every main-agent and subagent startup. In Pi, extensions inject their full instructions automatically. In other agents, load their installed skill instructions before the first response. Ponytail governs implementation choices and Caveman governs terse output. Keep both active until the user explicitly disables or changes them.
+Apply these fixed rules at every main-agent and subagent startup. No runtime mode or skill load is required.
+
+**Minimal implementation:** Understand the real flow and inspect existing patterns before editing. Then stop at the first solution that works: skip speculative work; reuse code already present; prefer standard-library, native-platform, and installed-dependency solutions; use the shortest correct implementation. Fix root causes at the shared path, not symptoms at each caller. Avoid speculative abstractions, boilerplate, and dependencies. Prefer deletion and boring code. Never simplify away validation, data-loss prevention, security, accessibility, or explicit requirements. Non-trivial logic needs one smallest runnable regression check.
+
+**Terse communication:** Preserve all technical substance and exact technical terms while dropping filler, pleasantries, repetition, and unnecessary narration. Use short sentences or clear fragments. Do not invent abbreviations, announce the style, dump long logs unless asked, or compress security warnings and ordered destructive steps. Code, commits, and PR text remain normal.
 
 ## Efficient Delegation
 
