@@ -36,7 +36,7 @@ Use the `test-driven-development` skill for writing proper failing tests. Keep t
 
 Run the focused reproducer first, then the smallest authoritative regression scope. Run broad suites once at finalization only when the changed surface requires them; do not rerun unchanged expensive checks on the same revision.
 
-Use the `verification-before-completion` skill before claiming success.
+Follow the global verification policy before claiming success.
 
 ## Stop conditions
 

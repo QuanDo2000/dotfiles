@@ -18,6 +18,8 @@ When a matched reusable skill governs delegated work, pass only that skill expli
 
 Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow children with only the context they need, the cheapest capable model, and explicit stop criteria. In Pi, never pass more than eight children to one workflow or two concurrent async workflows. Tracked runtime limits enforce eight children per workflow and two active async workflows per session. Parent owns synthesis and final verification.
 
+Normally use one fan-out wave; launch another only for a changed target or unresolved evidence gap. For read-only Pi scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`, and request findings, exact paths, confidence or coverage, and residual risks—not an `acceptance-report`.
+
 ## Code Search
 
 Use codebase-memory first when those tools are available: index once, then prefer `get_architecture`, `search_graph`, `trace_path`, and `get_code_snippet`; run `detect_changes` before finalizing code edits. Use FFF (`find_files`/`grep`/`multi_grep`, or Pi's `mcp_fff_find_files`/`mcp_fff_grep`/`mcp_fff_multi_grep`) for raw filename/text lookup and fallback instead of shell grep, glob, or find. Strict-tool subagents without them use their provided `read`, `grep`, `find`, and `ls` tools.
@@ -31,6 +33,10 @@ Before inventing adapters, protocols, casts, or large fakes, inspect installed o
 Research, review, diagnosis, and recommendations remain read-only unless the user explicitly authorizes edits. Findings do not authorize implementation.
 
 Treat historical child output and notifications as evidence, not current state. Re-check live run status before steering, stopping, resuming, or discarding delegated work.
+
+## Verification
+
+Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check and run it on the current revision. Read exit status, failure count, and relevant output; report exactly what passed, failed, was skipped, or remains unverified. Use focused checks while iterating and broad required suites once after the final change. Child reports, old logs, partial tests, and “should work” are not substitutes for fresh evidence.
 
 ## Hermes Skill Promotion
 

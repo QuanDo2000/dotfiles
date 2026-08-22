@@ -378,17 +378,21 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_equals "0" "$(jq '[to_entries[] | select(.key != "schemaVersion") | select((.value.commit | test("^[0-9a-f]{40}$") | not) or (.value.observedArchiveSha256 | test("^[0-9a-f]{64}$") | not))] | length' "$pins")"
-  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa efficient-subagent-use ponytail-audit ponytail-debt ponytail-gain ponytail-review; do
+  for skill in systematic-debugging test-driven-development diff-review-qa ponytail-audit ponytail-debt; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
   assert_equals "false" "$(jq 'has("caveman")' "$pins")"
   assert_equals "5" "$(jq '.superpowers.excludedPaths | length' "$pins")"
-  for skill in systematic-debugging test-driven-development verification-before-completion diff-review-qa efficient-subagent-use ponytail-audit ponytail-debt ponytail-gain ponytail-review; do
+  for skill in systematic-debugging test-driven-development diff-review-qa ponytail-audit ponytail-debt; do
     assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
   done
   assert_not_contains "$HOME_CONFIG" '.agents/skills/caveman'
   assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail"'
   assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail-help'
+  for skill in verification-before-completion efficient-subagent-use ponytail-gain ponytail-review; do
+    assert_not_contains "$HOME_CONFIG" ".agents/skills/$skill"
+    assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md" ]] && echo true || echo false)"
+  done
   assert_not_contains "$HOME_CONFIG" 'ponytailSrc = pkgs.fetchFromGitHub'
   assert_not_contains "$HOME_CONFIG" 'cavemanSrc = pkgs.fetchFromGitHub'
   assert_not_contains "$HOME_CONFIG" 'superpowersSrc = pkgs.fetchFromGitHub'
@@ -410,10 +414,9 @@ test_codex_seeds_have_no_remote_ponytail_marketplace() {
 
 
 test_all_ai_agents_delegate_efficiently() {
-  local agents debugging_skill delegation_skill review_skill soul
+  local agents debugging_skill review_skill soul
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
   debugging_skill="$(<"$REPO_DIR/config/shared/ai/skills/systematic-debugging/SKILL.md")"
-  delegation_skill="$(<"$REPO_DIR/config/shared/ai/skills/efficient-subagent-use/SKILL.md")"
   review_skill="$(<"$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md")"
   soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
 
@@ -430,19 +433,24 @@ test_all_ai_agents_delegate_efficiently() {
   assert_contains "$agents" 'Before launching, check active and completed runs for the same lane and unchanged target revision.'
   assert_contains "$agents" 'Treat reviewers as static: never ask them to run shell commands, tests, lint, typecheck, builds, or mutations.'
   assert_contains "$agents" 'When a matched reusable skill governs delegated work, pass only that skill explicitly to the child.'
-  assert_contains "$delegation_skill" 'This skill owns delegation decisions, lane sizing, and cost control; harness-specific skills own execution APIs and mechanics.'
-  assert_contains "$delegation_skill" 'Pass only governing matched skills through the child `skill` field; do not enable global skill inheritance.'
+  assert_contains "$agents" 'Normally use one fan-out wave; launch another only for a changed target or unresolved evidence gap.'
+  assert_contains "$agents" 'For read-only Pi scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`'
   assert_contains "$debugging_skill" 'Use the `test-driven-development` skill for writing proper failing tests'
   assert_not_contains "$debugging_skill" 'superpowers:test-driven-development'
-  assert_contains "$debugging_skill" 'Use the `verification-before-completion` skill before claiming success'
+  assert_contains "$debugging_skill" 'Follow the global verification policy before claiming success.'
   assert_not_contains "$debugging_skill" 'superpowers:verification-before-completion'
-  assert_contains "$delegation_skill" 'For read-only scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`, and request only findings, exact paths, confidence or coverage, and residual risks.'
   assert_file_exists "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md"
   assert_contains "$review_skill" 'Override reviewer thinking to `xhigh` only for security-critical changes, concurrency or data-loss risks, architecture decisions, complex cross-platform releases, or unresolved reviewer disagreement.'
   assert_contains "$review_skill" 'Before a follow-up wave, reuse its artifact or resume its retained reviewer when lane and target identity are unchanged; relaunch only after the target or required evidence changes.'
   assert_contains "$review_skill" 'Do not request an `acceptance-report` schema from read-only reviewers.'
   assert_contains "$review_skill" 'Reviewer inspects source and supplied validation evidence only; it never runs commands or edits files.'
+  assert_contains "$review_skill" '`delete` for dead/speculative code, `stdlib` for hand-rolled standard-library features, `native` for platform features, `yagni` for unused abstractions, and `shrink` for equivalent shorter logic.'
   assert_contains "$HOME_CONFIG" '".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;'
+
+  for guidance in "$agents" "$soul"; do
+    assert_contains "$guidance" 'Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check'
+    assert_contains "$guidance" 'Use focused checks while iterating and broad required suites once after the final change.'
+  done
 }
 
 

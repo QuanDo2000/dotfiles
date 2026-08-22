@@ -1,6 +1,6 @@
 ---
 name: diff-review-qa
-description: Review a PR, commit, or working-tree diff with scoped independent reviewers and evidence-based closeout. Use for explicit code review, PR review, pre-commit QA, or final QA requests.
+description: Review a PR, commit, or working-tree diff for correctness and unnecessary complexity with scoped independent reviewers and evidence-based closeout. Use for explicit code review, simplification review, PR review, pre-commit QA, or final QA requests.
 ---
 
 # Diff Review QA
@@ -12,8 +12,9 @@ description: Review a PR, commit, or working-tree diff with scoped independent r
 3. Use configured reviewer model and thinking defaults for routine reviews. Override reviewer thinking to `xhigh` only for security-critical changes, concurrency or data-loss risks, architecture decisions, complex cross-platform releases, or unresolved reviewer disagreement.
 4. Require findings only: severity `P0`–`P3`, confidence, exact `path:line`, failure mode, and smallest fix. No praise, style-only noise, or speculative findings. For read-only launches, use `agentContract: { version: 1 }` and omit `acceptance`. Do not request an `acceptance-report` schema from read-only reviewers.
 5. Parent checks each finding against source and rejects duplicates or unsupported claims before any fix.
-6. Reviewer inspects source and supplied validation evidence only; it never runs commands or edits files. One writer applies accepted fixes. Parent runs repository's named validation commands and inspects output. If parent cannot run them, use a separate mutation-capable worker limited to exact named commands and no edits.
-7. Independent reviewer checks final diff and validation evidence. Parent reports unresolved risks; no clean verdict without fresh evidence.
+6. Include evidence-backed complexity findings when relevant: `delete` for dead/speculative code, `stdlib` for hand-rolled standard-library features, `native` for platform features, `yagni` for unused abstractions, and `shrink` for equivalent shorter logic. Give the exact replacement and never flag required validation, security, accessibility, or a minimal regression check as bloat.
+7. Reviewer inspects source and supplied validation evidence only; it never runs commands or edits files. One writer applies accepted fixes. Parent runs repository's named validation commands and inspects output. If parent cannot run them, use a separate mutation-capable worker limited to exact named commands and no edits.
+8. Independent reviewer checks final diff and validation evidence. Parent reports unresolved risks; no clean verdict without fresh evidence.
 
 ## Boundaries
 

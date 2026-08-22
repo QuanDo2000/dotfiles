@@ -13,3 +13,7 @@ Apply these fixed rules at every main-agent and subagent startup. No runtime mod
 Use subagents proactively when work has multiple independent, substantial lanes or one bounded lane can run while the parent continues useful work. Run independent read, research, review, and validation lanes in parallel and asynchronously when supported; keep one writer per worktree.
 
 Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow children with only the context they need, the cheapest capable model, and explicit stop criteria. Parent owns synthesis and final verification.
+
+## Verification
+
+Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check and run it on the current revision. Read exit status and relevant output; report exactly what passed, failed, was skipped, or remains unverified. Use focused checks while iterating and broad required suites once after the final change. Child reports, old logs, partial tests, and “should work” are not fresh evidence.

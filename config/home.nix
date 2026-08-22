@@ -202,14 +202,10 @@ in
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;
     ".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;
-    ".agents/skills/efficient-subagent-use" = forceSource ./shared/ai/skills/efficient-subagent-use;
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
     ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;
-    ".agents/skills/verification-before-completion" = forceSource ./shared/ai/skills/verification-before-completion;
     ".agents/skills/ponytail-audit" = forceSource ./shared/ai/skills/ponytail-audit;
     ".agents/skills/ponytail-debt" = forceSource ./shared/ai/skills/ponytail-debt;
-    ".agents/skills/ponytail-gain" = forceSource ./shared/ai/skills/ponytail-gain;
-    ".agents/skills/ponytail-review" = forceSource ./shared/ai/skills/ponytail-review;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".pi/agent/extensions/gpg-signing-display" = forceSource ./shared/ai/pi/gpg-signing-display;
     ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource piExtensions;

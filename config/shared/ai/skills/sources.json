@@ -5,8 +5,7 @@
     "commit": "b36e0829c6d0140e93cfef2ca599b1b07d4a7797",
     "paths": [
       "skills/systematic-debugging",
-      "skills/test-driven-development",
-      "skills/verification-before-completion"
+      "skills/test-driven-development"
     ],
     "excludedPaths": [
       "systematic-debugging/CREATION-LOG.md",
@@ -23,9 +22,7 @@
     "commit": "2ed6c52c9d7e5e56942508591085fd45dea277d3",
     "paths": [
       "skills/ponytail-audit",
-      "skills/ponytail-debt",
-      "skills/ponytail-gain",
-      "skills/ponytail-review"
+      "skills/ponytail-debt"
     ],
     "observedArchiveSha256": "9e288f0a1378cc1b02847f9452ae2e8fb35fdc995689f4f9ae5330680ba7bbec",
     "license": "licenses/ponytail-MIT.txt"

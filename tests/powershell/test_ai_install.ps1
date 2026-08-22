@@ -553,7 +553,7 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'test-driven-development', 'verification-before-completion', 'diff-review-qa', 'efficient-subagent-use', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-review')
+    $skills = @('systematic-debugging', 'test-driven-development', 'diff-review-qa', 'ponytail-audit', 'ponytail-debt')
     foreach ($skill in $skills) {
         $source = Join-Path $sourceRoot $skill
         $target = Join-Path $targetRoot $skill
@@ -565,7 +565,7 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     foreach ($skill in $skills) {
         New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") | Out-Null
     }
-    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help') {
+    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-gain', 'ponytail-review') {
         New-Item -ItemType Directory -Force -Path (Join-Path $targetRoot $skill) | Out-Null
     }
     Set-CommandMock 'npx' { throw 'npx must not install shared skills' }
@@ -581,8 +581,8 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     foreach ($skill in $skills) {
         Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Stale Pi copy remains for $skill"
     }
-    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help') {
-        Assert-False (Test-Path (Join-Path $targetRoot $skill)) "Obsolete mode skill remains for $skill"
+    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-gain', 'ponytail-review') {
+        Assert-False (Test-Path (Join-Path $targetRoot $skill)) "Retired skill remains for $skill"
     }
 }
 

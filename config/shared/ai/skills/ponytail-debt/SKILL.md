@@ -40,5 +40,4 @@ End with `<N> markers, <M> with no trigger.` Nothing found: `No ponytail: debt. 
 ## Boundaries
 
 Reads and reports only, changes nothing. To persist it, ask and it writes the
-ledger to a file (e.g. `PONYTAIL-DEBT.md`). One-shot. "stop ponytail-debt" or
-"normal mode" to revert.
+ledger to a file (e.g. `PONYTAIL-DEBT.md`). One-shot.

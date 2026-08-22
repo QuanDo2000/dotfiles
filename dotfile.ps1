@@ -1582,12 +1582,12 @@ function InstallAiSkills {
 
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'test-driven-development', 'verification-before-completion', 'diff-review-qa', 'efficient-subagent-use', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-review')
+    $skills = @('systematic-debugging', 'test-driven-development', 'diff-review-qa', 'ponytail-audit', 'ponytail-debt')
     foreach ($skill in $skills) {
         Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill)
         Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
     }
-    foreach ($skill in @('caveman', 'ponytail', 'ponytail-help')) {
+    foreach ($skill in @('caveman', 'ponytail', 'ponytail-help', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-gain', 'ponytail-review')) {
         Remove-Item -LiteralPath (Join-Path $targetRoot $skill) -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
     }
