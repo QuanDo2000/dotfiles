@@ -1043,10 +1043,11 @@ function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
 }
 
 function test_pi_lsp_package_is_pinned {
-    $path = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package.json'
-    $extensions = Get-Content -Raw $path | ConvertFrom-Json
+    $packagePath = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package.json'
+    $extensions = Get-Content -Raw $packagePath | ConvertFrom-Json
+    $version = $extensions.dependencies.'@narumitw/pi-lsp'
 
-    Assert-Equals '0.49.4' $extensions.dependencies.'@narumitw/pi-lsp'
+    Assert-True ($version -match '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') 'Pi LSP should use an exact semver pin'
 }
 
 function test_windows_pi_lsp_config_uses_only_supported_servers {
