@@ -1072,13 +1072,11 @@ function SyncPiConfigs {
             Source = Join-Path $script:DotfilesDir 'config\windows\ai\pi\pi-lsp.json'
             Destination = Join-Path $targetDir 'pi-lsp.json'
         }
-    )
-    foreach ($name in @("codex-status.js", "windows-exit.js")) {
-        $directCopies += @{
-            Source = Join-Path $seedDir $name
-            Destination = Join-Path $extensionDir $name
+        @{
+            Source = Join-Path $seedDir 'codex-status.js'
+            Destination = Join-Path $extensionDir 'codex-status.js'
         }
-    }
+    )
     foreach ($copy in $directCopies) {
         $destinationItem = Get-Item -LiteralPath $copy.Destination -Force -ErrorAction SilentlyContinue
         if ($destinationItem -and $destinationItem.PSIsContainer) {
@@ -1091,7 +1089,7 @@ function SyncPiConfigs {
         }
         Copy-FileWithRollback $copy.Source $copy.Destination 'Pi direct config copy'
     }
-    foreach ($name in @("caveman-default.js", "ponytail-default.js")) {
+    foreach ($name in @("caveman-default.js", "ponytail-default.js", "windows-exit.js")) {
         Remove-Item -LiteralPath (Join-Path $extensionDir $name) -Force -ErrorAction SilentlyContinue
     }
     } finally {
@@ -1582,12 +1580,12 @@ function InstallAiSkills {
 
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'test-driven-development', 'diff-review-qa', 'ponytail-audit', 'ponytail-debt')
+    $skills = @('systematic-debugging', 'test-driven-development', 'diff-review-qa')
     foreach ($skill in $skills) {
         Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill)
         Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
     }
-    foreach ($skill in @('caveman', 'ponytail', 'ponytail-help', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-gain', 'ponytail-review')) {
+    foreach ($skill in @('caveman', 'ponytail', 'ponytail-help', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-review')) {
         Remove-Item -LiteralPath (Join-Path $targetRoot $skill) -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
     }

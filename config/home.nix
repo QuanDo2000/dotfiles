@@ -204,8 +204,6 @@ in
     ".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
     ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;
-    ".agents/skills/ponytail-audit" = forceSource ./shared/ai/skills/ponytail-audit;
-    ".agents/skills/ponytail-debt" = forceSource ./shared/ai/skills/ponytail-debt;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".pi/agent/extensions/gpg-signing-display" = forceSource ./shared/ai/pi/gpg-signing-display;
     ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource piExtensions;
@@ -539,7 +537,7 @@ in
       Type = "oneshot";
       UMask = "0077";
       ExecStartPre = "${pkgs.coreutils}/bin/install -d -m 700 ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
-      # ponytail: one lock serializes jobs that touch the same Drive tree.
+      # debt: one lock serializes jobs that touch the same Drive tree; split only when independent trees need concurrent sync.
       ExecStart = "${pkgs.util-linux}/bin/flock --no-fork --wait 1800 %t/google-drive-sync.lock ${pkgs.rclone}/bin/rclone bisync ${homeDir}/Documents/Drive gdrive:Drive --check-access --check-filename .rclone-bisync-check --create-empty-src-dirs --resilient --recover --max-lock 2m --conflict-resolve newer --max-delete 25 --backup-dir1 ${homeDir}/Documents/.Drive-backup --backup-dir2 gdrive:.Drive-backup --verbose";
       ExecStopPost = "${pkgs.coreutils}/bin/chmod -R u=rwX,go= ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
       KillSignal = "SIGINT";
@@ -615,7 +613,7 @@ in
         "RESTIC_PASSWORD_FILE=${homeDir}/.config/restic/storage-backup-password"
         "RESTIC_CACHE_DIR=${homeDir}/.cache/restic"
       ];
-      # ponytail: one lock serializes backup and maintenance; split only if throughput requires it.
+      # debt: one lock serializes backup and maintenance; split only if maintenance blocks required backup throughput.
       ExecStart = "${pkgs.util-linux}/bin/flock --no-fork %t/storage-offsite-backup.lock ${pkgs.restic}/bin/restic backup --tag storage-offsite --exclude-caches --iexclude-file=${homeDir}/.config/restic/storage-offsite-excludes /mnt/storage/Storage/Documents /mnt/storage/Storage/Book /mnt/storage/Storage/Music";
       TimeoutStartSec = "infinity";
     };

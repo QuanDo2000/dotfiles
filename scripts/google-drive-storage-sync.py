@@ -79,7 +79,7 @@ def matching_hashes(remote_root, storage_root, paths):
 def make_plan(remote_dirs, remote_files, storage_dirs, storage_files, same_hashes=frozenset()):
     common_dirs = remote_dirs & storage_dirs
 
-    # ponytail: fixed policy filter; add configuration only when another policy exists.
+    # debt: fixed policy filter; add configuration only when another policy exists.
     def allowed(path):
         name = posixpath.basename(path)
         return not (

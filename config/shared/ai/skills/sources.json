@@ -16,15 +16,5 @@
     ],
     "observedArchiveSha256": "7c3ae7db406f8d92cf55329aa9e9a41e53f6cef00bdb68e1325713be97ef5d7c",
     "license": "licenses/superpowers-MIT.txt"
-  },
-  "ponytail": {
-    "repository": "https://github.com/DietrichGebert/ponytail",
-    "commit": "2ed6c52c9d7e5e56942508591085fd45dea277d3",
-    "paths": [
-      "skills/ponytail-audit",
-      "skills/ponytail-debt"
-    ],
-    "observedArchiveSha256": "9e288f0a1378cc1b02847f9452ae2e8fb35fdc995689f4f9ae5330680ba7bbec",
-    "license": "licenses/ponytail-MIT.txt"
   }
 }

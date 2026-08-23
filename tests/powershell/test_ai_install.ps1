@@ -553,7 +553,7 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'test-driven-development', 'diff-review-qa', 'ponytail-audit', 'ponytail-debt')
+    $skills = @('systematic-debugging', 'test-driven-development', 'diff-review-qa')
     foreach ($skill in $skills) {
         $source = Join-Path $sourceRoot $skill
         $target = Join-Path $targetRoot $skill
@@ -565,8 +565,9 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     foreach ($skill in $skills) {
         New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") | Out-Null
     }
-    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-gain', 'ponytail-review') {
+    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-review') {
         New-Item -ItemType Directory -Force -Path (Join-Path $targetRoot $skill) | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") | Out-Null
     }
     Set-CommandMock 'npx' { throw 'npx must not install shared skills' }
 
@@ -581,8 +582,9 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     foreach ($skill in $skills) {
         Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Stale Pi copy remains for $skill"
     }
-    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-gain', 'ponytail-review') {
+    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-review') {
         Assert-False (Test-Path (Join-Path $targetRoot $skill)) "Retired skill remains for $skill"
+        Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Retired Pi skill remains for $skill"
     }
 }
 
@@ -1386,9 +1388,7 @@ function Initialize-TestPiConfigSeeds {
     '{"globalConcurrencyLimit":7}' | Set-Content -LiteralPath (Join-Path $seedDir 'subagent-config.json')
     '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'mcp.json')
     '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
-    foreach ($name in 'codex-status.js', 'windows-exit.js') {
-        'extension' | Set-Content -LiteralPath (Join-Path $seedDir $name)
-    }
+    'extension' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
 
     return [pscustomobject]@{
         Source = Join-Path $seedDir 'subagent-config.json'
@@ -1489,10 +1489,10 @@ function test_syncpiconfigs_creates_writable_seed_files {
     '{"mcpServers":{"windowsOnly":{"command":"windows"}}}' | Set-Content (Join-Path $windowsSeedDir 'mcp.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
-    'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
     'stale' | Set-Content (Join-Path $extensionDir 'caveman-default.js')
+    'stale' | Set-Content (Join-Path $extensionDir 'windows-exit.js')
     'stale' | Set-Content (Join-Path $extensionDir 'ponytail-default.js')
 
     SyncPiConfigs
@@ -1524,7 +1524,7 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-False ((Get-Content -Raw $mcp) -like '*unixOnly*') 'Windows should deploy Windows MCP seed'
     Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
-    Assert-FileExists (Join-Path $extensionDir 'windows-exit.js')
+    Assert-False (Test-Path (Join-Path $extensionDir 'windows-exit.js')) 'Retired exit alias remains'
     Assert-False (Test-Path (Join-Path $extensionDir 'caveman-default.js')) 'Obsolete Caveman hook remains'
     Assert-False (Test-Path (Join-Path $extensionDir 'ponytail-default.js')) 'Obsolete Ponytail hook remains'
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
@@ -2416,12 +2416,10 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'mcp.json')
     'same lsp' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
     'same lsp' | Set-Content -LiteralPath (Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json')
-    'new extension' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
-    'old extension' | Set-Content -LiteralPath (Join-Path $extensionDir 'codex-status.js')
-    'linked replacement' | Set-Content -LiteralPath (Join-Path $seedDir 'windows-exit.js')
-    $external = Join-Path $script:_TestTmp.FullName 'external-windows-exit.js'
+    'linked replacement' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
+    $external = Join-Path $script:_TestTmp.FullName 'external-codex-status.js'
     'external' | Set-Content -LiteralPath $external
-    New-Item -ItemType SymbolicLink -Path (Join-Path $extensionDir 'windows-exit.js') -Target $external | Out-Null
+    New-Item -ItemType SymbolicLink -Path (Join-Path $extensionDir 'codex-status.js') -Target $external | Out-Null
 
     $script:PiConfigCopies = @()
     Set-CommandMock 'Copy-Item' {
@@ -2433,12 +2431,9 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     SyncPiConfigs
 
     $lsp = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
-    $changedExtension = Join-Path $extensionDir 'codex-status.js'
-    $linkedExtension = Join-Path $extensionDir 'windows-exit.js'
+    $linkedExtension = Join-Path $extensionDir 'codex-status.js'
     Assert-Equals 0 @($script:PiConfigCopies | Where-Object { $_ -like "$lsp.tmp.*" }).Count
-    Assert-Equals 1 @($script:PiConfigCopies | Where-Object { $_ -like "$changedExtension.tmp.*" }).Count
     Assert-Equals 1 @($script:PiConfigCopies | Where-Object { $_ -like "$linkedExtension.tmp.*" }).Count
-    Assert-Equals 'new extension' ((Get-Content -Raw -LiteralPath $changedExtension).Trim())
     Assert-False ([bool](Get-Item -LiteralPath $linkedExtension -Force).LinkType) 'linked extension should become a regular file'
     Assert-Equals 'linked replacement' ((Get-Content -Raw -LiteralPath $linkedExtension).Trim())
     Assert-Equals 'external' ((Get-Content -Raw -LiteralPath $external).Trim())
@@ -2474,7 +2469,6 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
     '{"servers":{"nil":{"command":["nil"]}}}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
     '{"globalConcurrencyLimit":99}' | Set-Content (Join-Path $subagentDir 'config.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
-    'extension' | Set-Content (Join-Path $seedDir 'windows-exit.js')
     @'
 {
   "theme": "light",

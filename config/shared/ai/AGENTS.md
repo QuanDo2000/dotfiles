@@ -8,6 +8,12 @@ Apply these fixed rules at every main-agent and subagent startup. No runtime mod
 
 **Terse communication:** Preserve all technical substance and exact technical terms while dropping filler, pleasantries, repetition, and unnecessary narration. Use short sentences or clear fragments. Do not invent abbreviations, announce the style, dump long logs unless asked, or compress security warnings and ordered destructive steps. Code, commits, and PR text remain normal.
 
+## Complexity and Debt Audits
+
+For explicit whole-repository complexity or dependency audits, scan the whole tree and rank evidence-backed findings as `delete`, `stdlib`, `native`, `yagni`, or `shrink`. Give the exact replacement and path, preserve required validation and safety, estimate net lines and dependencies removed, and do not edit without authorization. Keep correctness, security, and performance findings in normal review rather than labeling them as bloat.
+
+For debt-ledger requests, search `debt:` comments and report each path, line, deliberate limitation, ceiling, and upgrade trigger. Group by file, tag markers without one as `no-trigger`, and make no changes unless asked.
+
 ## Efficient Delegation
 
 Use subagents proactively when work has multiple independent, substantial lanes or one bounded lane can run while the parent continues useful work. Run independent read, research, review, and validation lanes in parallel and asynchronously when supported; keep one writer per worktree. Before launching, check active and completed runs for the same lane and unchanged target revision. Reuse its artifact or resume its retained child; relaunch only when the target or required evidence changes.

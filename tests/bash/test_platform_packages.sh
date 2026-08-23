@@ -372,27 +372,51 @@ test_all_ai_agents_start_with_shared_policy() {
 }
 
 
+test_pi_uses_upstream_quit_command() {
+  local package windows
+  package="$(<"$REPO_DIR/packages/pi-agent.nix")"
+  windows="$(<"$REPO_DIR/dotfile.ps1")"
+
+  assert_not_contains "$package" "dist/core/slash-commands.js"
+  assert_not_contains "$package" "dist/modes/interactive/interactive-mode.js"
+  assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/pi/windows-exit.js" ]] && echo true || echo false)"
+  assert_contains "$windows" '@("caveman-default.js", "ponytail-default.js", "windows-exit.js")'
+}
+
+
 test_shared_agent_skills_use_vendored_pinned_sources() {
   local pins windows
   pins="$REPO_DIR/config/shared/ai/skills/sources.json"
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_equals "0" "$(jq '[to_entries[] | select(.key != "schemaVersion") | select((.value.commit | test("^[0-9a-f]{40}$") | not) or (.value.observedArchiveSha256 | test("^[0-9a-f]{64}$") | not))] | length' "$pins")"
-  for skill in systematic-debugging test-driven-development diff-review-qa ponytail-audit ponytail-debt; do
+  for skill in systematic-debugging test-driven-development diff-review-qa; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
-  assert_equals "false" "$(jq 'has("caveman")' "$pins")"
-  for skill in systematic-debugging test-driven-development diff-review-qa ponytail-audit ponytail-debt; do
+  assert_equals "false" "$(jq 'has("caveman") or has("ponytail")' "$pins")"
+  for skill in systematic-debugging test-driven-development diff-review-qa; do
     assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
   done
   assert_not_contains "$HOME_CONFIG" '.agents/skills/caveman'
   assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail"'
   assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail-help'
-  for skill in verification-before-completion efficient-subagent-use ponytail-gain ponytail-review; do
+  for skill in verification-before-completion efficient-subagent-use ponytail-audit ponytail-debt ponytail-gain ponytail-review; do
     assert_not_contains "$HOME_CONFIG" ".agents/skills/$skill"
     assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md" ]] && echo true || echo false)"
   done
   assert_not_contains "$windows" 'npx --yes skills add'
+}
+
+
+test_agents_own_complexity_audit_and_debt_policy() {
+  local agents
+  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+
+  assert_contains "$agents" 'For explicit whole-repository complexity or dependency audits'
+  assert_contains "$agents" '`delete`, `stdlib`, `native`, `yagni`, or `shrink`'
+  assert_contains "$agents" 'For debt-ledger requests, search `debt:` comments'
+  assert_contains "$agents" 'tag markers without one as `no-trigger`'
+  assert_equals "0" "$(grep -RIl --exclude-dir=.git --exclude='test_config_merge.sh' 'ponytail:' "$REPO_DIR/config" "$REPO_DIR/scripts" 2>/dev/null | wc -l)"
 }
 
 
