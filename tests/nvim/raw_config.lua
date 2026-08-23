@@ -88,8 +88,10 @@ assert(lazy.plugins["mini.icons"].event == "VeryLazy", "Mini Icons should load w
 assert(not lazy.plugins["mini.icons"]._.loaded, "Mini Icons must stay off file-open path")
 assert(lazy.plugins["gitsigns.nvim"].event == "VeryLazy", "Gitsigns should load after startup")
 assert(not lazy.plugins["gitsigns.nvim"]._.loaded, "Gitsigns must stay off file-open path")
-assert(lazy.plugins["snacks.nvim"].event == "VimEnter", "Snacks should load after file opening")
-assert(not lazy.plugins["snacks.nvim"]._.loaded, "Snacks must stay off file-open path")
+local snacks = lazy.plugins["snacks.nvim"]
+assert(snacks.lazy == true and not snacks.event, "Snacks should defer only during explicit sync")
+assert(not snacks.opts.quickfile, "dead Snacks Quickfile setup must stay removed")
+assert(not snacks._.loaded, "Snacks must stay deferred during explicit sync")
 assert(vim.env.PATH:match("^" .. vim.pesc(vim.fn.stdpath("data") .. "/mason/bin")), "Mason bin missing from PATH")
 if vim.env.RAW_CONFIG_PARSE_ONLY == "1" then
   print("RAW_CONFIG_OK")

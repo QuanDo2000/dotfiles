@@ -229,10 +229,10 @@ local plugins = {
   },
   {
     "folke/snacks.nvim",
-    event = "VimEnter",
+    lazy = vim.env.DOTFILE_NVIM_SYNC == "1",
     opts = {
       bigfile = { enabled = true },
-      explorer = {}, input = {}, picker = {}, quickfile = { enabled = true }, terminal = {}, notifier = {}, lazygit = {},
+      explorer = {}, input = {}, picker = {}, terminal = {}, notifier = {}, lazygit = {},
     },
     config = function(_, options)
       _G.Snacks = require("snacks")

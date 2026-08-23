@@ -102,7 +102,7 @@ test_neovim_sync_defers_eager_plugins_until_installed() {
   local config
   config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
 
-  assert_equals "2" "$(grep -c 'lazy = vim.env.DOTFILE_NVIM_SYNC == "1"' <<< "$config")"
+  assert_equals "3" "$(grep -c 'lazy = vim.env.DOTFILE_NVIM_SYNC == "1"' <<< "$config")"
   assert_contains "$config" 'concurrency = os.getenv("DOTFILE_NVIM_SYNC") == "1" and 2 or nil'
   assert_contains "$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")" 'options.git.timeout = 600'
 }
@@ -214,6 +214,15 @@ test_sync_neovim_dry_run_does_not_start_neovim() {
   unset -f nvim
 }
 
+test_neovim_loads_snacks_before_initial_buffer() {
+  local config
+  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
+
+  assert_contains "$config" $'"folke/snacks.nvim",\n    lazy = vim.env.DOTFILE_NVIM_SYNC == "1",'
+  assert_not_contains "$config" 'event = "VimEnter"'
+  assert_not_contains "$config" 'quickfile = { enabled = true }'
+}
+
 test_neovim_uses_snacks_without_fff_dependency() {
   local config lock home flake sync updater
   config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
@@ -318,7 +327,7 @@ test_raw_neovim_cache_serializes_publication() {
 
 test_raw_neovim_headless_config() {
   is_windows_bash && return 0
-  local data source_lazy output status lock_hash cache_base cache_root cached_plugins marker lazy_dir lazy_package
+  local data source_lazy output status lock_hash cache_base cache_root cached_plugins marker lazy_dir lazy_package bigfile
   data="$(mktemp -d)"
   source_lazy="${LAZY_NVIM_PATH:-$ORIG_HOME/.local/share/nvim/site/pack/hm/start/lazy.nvim}"
   lock_hash="$(sha256sum "$REPO_DIR/config/shared/config/nvim/lazy-lock.json" | awk '{print $1}')"
@@ -347,6 +356,16 @@ test_raw_neovim_headless_config() {
   assert_equals "0" "$status"
   assert_contains "$output" "RAW_PLUGIN_SYNC_OK"
   assert_contains "$output" "RAW_CONFIG_OK"
+
+  bigfile="$data/big.lua"
+  head -c 1600000 </dev/zero | tr '\0' x > "$bigfile"
+  set +e
+  output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" nvim --headless "$bigfile" \
+    -c "lua assert(vim.bo.filetype == 'bigfile', 'initial big file was not protected'); assert(vim.b.completion == false, 'completion remained enabled for initial big file'); print('INITIAL_BIGFILE_OK')" +qa 2>&1)"
+  status=$?
+  set -e
+  assert_equals "0" "$status"
+  assert_contains "$output" "INITIAL_BIGFILE_OK"
   rm -rf "$data"
 }
 
