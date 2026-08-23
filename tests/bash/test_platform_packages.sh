@@ -390,17 +390,17 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_equals "0" "$(jq '[to_entries[] | select(.key != "schemaVersion") | select((.value.commit | test("^[0-9a-f]{40}$") | not) or (.value.observedArchiveSha256 | test("^[0-9a-f]{64}$") | not))] | length' "$pins")"
-  for skill in systematic-debugging test-driven-development diff-review-qa; do
+  for skill in systematic-debugging test-driven-development; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
   assert_equals "false" "$(jq 'has("caveman") or has("ponytail")' "$pins")"
-  for skill in systematic-debugging test-driven-development diff-review-qa; do
+  for skill in systematic-debugging test-driven-development; do
     assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
   done
   assert_not_contains "$HOME_CONFIG" '.agents/skills/caveman'
   assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail"'
   assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail-help'
-  for skill in verification-before-completion efficient-subagent-use ponytail-audit ponytail-debt ponytail-gain ponytail-review; do
+  for skill in diff-review-qa verification-before-completion efficient-subagent-use ponytail-audit ponytail-debt ponytail-gain ponytail-review; do
     assert_not_contains "$HOME_CONFIG" ".agents/skills/$skill"
     assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md" ]] && echo true || echo false)"
   done
@@ -434,10 +434,9 @@ test_codex_seeds_have_no_remote_ponytail_marketplace() {
 
 
 test_all_ai_agents_delegate_efficiently() {
-  local agents debugging_skill review_skill soul
+  local agents debugging_skill soul
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
   debugging_skill="$(<"$REPO_DIR/config/shared/ai/skills/systematic-debugging/SKILL.md")"
-  review_skill="$(<"$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md")"
   soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
 
   for guidance in "$agents" "$soul"; do
@@ -459,13 +458,10 @@ test_all_ai_agents_delegate_efficiently() {
   assert_not_contains "$debugging_skill" 'superpowers:test-driven-development'
   assert_contains "$debugging_skill" 'Follow the global verification policy before claiming success.'
   assert_not_contains "$debugging_skill" 'superpowers:verification-before-completion'
-  assert_file_exists "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md"
-  assert_contains "$review_skill" 'Override reviewer thinking to `xhigh` only for security-critical changes, concurrency or data-loss risks, architecture decisions, complex cross-platform releases, or unresolved reviewer disagreement.'
-  assert_contains "$review_skill" 'Before a follow-up wave, reuse its artifact or resume its retained reviewer when lane and target identity are unchanged; relaunch only after the target or required evidence changes.'
-  assert_contains "$review_skill" 'Do not request an `acceptance-report` schema from read-only reviewers.'
-  assert_contains "$review_skill" 'Reviewer inspects source and supplied validation evidence only; it never runs commands or edits files.'
-  assert_contains "$review_skill" '`delete` for dead/speculative code, `stdlib` for hand-rolled standard-library features, `native` for platform features, `yagni` for unused abstractions, and `shrink` for equivalent shorter logic.'
-  assert_contains "$HOME_CONFIG" '".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;'
+  assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md" ]] && echo true || echo false)"
+  assert_contains "$agents" 'For explicit code reviews, report findings only: severity `P0`–`P3`, confidence, exact `path:line`, concrete failure mode, smallest fix, and residual risk.'
+  assert_contains "$agents" 'Reject praise, style-only noise, speculative findings, duplicates, and claims unsupported by source or supplied validation evidence.'
+  assert_not_contains "$HOME_CONFIG" '.agents/skills/diff-review-qa'
 
   for guidance in "$agents" "$soul"; do
     assert_contains "$guidance" 'Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check'

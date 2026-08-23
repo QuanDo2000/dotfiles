@@ -201,7 +201,6 @@ in
     ".codex/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;
-    ".agents/skills/diff-review-qa" = forceSource ./shared/ai/skills/diff-review-qa;
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
     ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;

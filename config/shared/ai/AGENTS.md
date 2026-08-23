@@ -14,6 +14,12 @@ For explicit whole-repository complexity or dependency audits, scan the whole tr
 
 For debt-ledger requests, search `debt:` comments and report each path, line, deliberate limitation, ceiling, and upgrade trigger. Group by file, tag markers without one as `no-trigger`, and make no changes unless asked.
 
+## Code Review
+
+For explicit code reviews, report findings only: severity `P0`–`P3`, confidence, exact `path:line`, concrete failure mode, smallest fix, and residual risk. Reject praise, style-only noise, speculative findings, duplicates, and claims unsupported by source or supplied validation evidence.
+
+Resolve the review target and inspect changed behavior plus impacted callers. Review remains read-only until fixes are authorized. Parent verifies each finding against source and owns final validation; repository tests, lint, type checks, and builds remain authoritative.
+
 ## Efficient Delegation
 
 Use subagents proactively when work has multiple independent, substantial lanes or one bounded lane can run while the parent continues useful work. Run independent read, research, review, and validation lanes in parallel and asynchronously when supported; keep one writer per worktree. Before launching, check active and completed runs for the same lane and unchanged target revision. Reuse its artifact or resume its retained child; relaunch only when the target or required evidence changes.
