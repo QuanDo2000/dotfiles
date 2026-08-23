@@ -18,6 +18,16 @@ import zipfile
 from pathlib import Path
 
 USER_AGENT = "dotfiles-pin-updater/1"
+MASON_TOOLS = (
+    "json-lsp",
+    "lua-language-server",
+    "markdownlint-cli2",
+    "marksman",
+    "prettier",
+    "stylua",
+    "taplo",
+    "yaml-language-server",
+)
 
 
 def die(message: str) -> None:
@@ -499,6 +509,47 @@ def update_skills(repo: Path) -> None:
         shutil.rmtree(staged_parent, ignore_errors=True)
 
 
+def mason_pins_from_registry(registry_version: str, registry_sha256: str, registry: list[dict]) -> dict:
+    packages = {package.get("name"): package for package in registry}
+    tools = {}
+    for name in MASON_TOOLS:
+        package = packages.get(name)
+        if package is None:
+            die(f"missing Mason package: {name}")
+        source_id = str(package.get("source", {}).get("id", ""))
+        if "@" not in source_id:
+            die(f"Mason package has no pinned source version: {name}")
+        version = source_id.rsplit("@", 1)[1].split("?", 1)[0]
+        if not version or re.search(r"\s", version):
+            die(f"invalid Mason package version for {name}: {version}")
+        tools[name] = version
+    if not re.fullmatch(r"[0-9a-f]{64}", registry_sha256):
+        die("invalid Mason registry SHA-256")
+    return {"registryVersion": registry_version, "registrySha256": registry_sha256, "tools": tools}
+
+
+def latest_mason_pins() -> dict:
+    release = fetch_json("https://api.github.com/repos/mason-org/mason-registry/releases/latest")
+    version = str(release.get("tag_name", ""))
+    if release.get("draft") or release.get("prerelease") or not re.fullmatch(r"\d{4}-\d{2}-\d{2}-[a-z]+-[a-z]+", version):
+        die(f"unexpected Mason registry release: {version}")
+    asset = github_asset(release, "registry.json.zip")
+    with tempfile.TemporaryDirectory(prefix="dotfiles-mason-registry-") as temporary:
+        archive = Path(temporary) / "registry.json.zip"
+        download_twice(asset["browser_download_url"], archive)
+        registry_sha256 = sha256(archive)
+        digest = asset.get("digest")
+        if digest and digest != f"sha256:{registry_sha256}":
+            die("Mason registry GitHub digest mismatch")
+        with zipfile.ZipFile(archive) as source:
+            if source.namelist() != ["registry.json"]:
+                die("unexpected Mason registry archive entries")
+            registry = json.loads(source.read("registry.json"))
+    if not isinstance(registry, list):
+        die("invalid Mason registry document")
+    return mason_pins_from_registry(version, registry_sha256, registry)
+
+
 def update_neovim(repo: Path) -> None:
     lock_path = repo / "config/shared/config/nvim/lazy-lock.json"
     lazy_expression = (
@@ -546,7 +597,12 @@ def update_neovim(repo: Path) -> None:
         for name, value in lock.items()
     ) + "\n}\n"
     atomic_text(lock_path, compact_lock)
-    print(f"updated {len(lock)} Neovim plugin pins")
+    mason_path = repo / "config/shared/config/nvim/mason-tools.json"
+    existing_mason = json.loads(mason_path.read_text(encoding="utf-8"))
+    mason = latest_mason_pins()
+    mason["retiredPlatformPackages"] = existing_mason["retiredPlatformPackages"]
+    atomic_json(mason_path, mason)
+    print(f"updated {len(lock)} Neovim plugin pins and {len(mason['tools'])} Mason tool pins")
 
 
 def main() -> int:

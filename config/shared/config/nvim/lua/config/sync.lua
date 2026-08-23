@@ -1,15 +1,5 @@
 local M = {}
-
-local tools = {
-  "json-lsp",
-  "lua-language-server",
-  "markdownlint-cli2",
-  "marksman",
-  "prettier",
-  "stylua",
-  "taplo",
-  "yaml-language-server",
-}
+local mason = require("config.mason")
 
 local parsers = {
   "bash", "diff", "git_config", "git_rebase", "gitattributes", "gitcommit", "gitignore", "json", "json5",
@@ -62,50 +52,65 @@ end
 
 local function tools_installed()
   require("lazy").load({ plugins = { "mason.nvim" }, wait = true })
+  if not mason.registry_current() then return false end
   local registry = require("mason-registry")
-  for _, name in ipairs(tools) do
+  for name, version in pairs(mason.tools()) do
     local ok, package = pcall(registry.get_package, name)
-    if not ok or not package:is_installed() then return false end
+    if not ok or not package:is_installed() or package:get_installed_version() ~= version then return false end
   end
   return true
 end
 
+local function run_package_operations(operations, callback)
+  if #operations == 0 then callback(); return end
+  local pending, failure = #operations, nil
+  for _, operation in ipairs(operations) do
+    operation.run(function(success, operation_error)
+      if not success then failure = failure or tostring(operation_error or (operation.name .. " failed")) end
+      pending = pending - 1
+      if pending == 0 then callback(failure) end
+    end)
+  end
+end
+
 function M.tools()
-  if tools_installed() then return end
+  require("lazy").load({ plugins = { "mason.nvim" }, wait = true })
   local registry = require("mason-registry")
   local done, failure = false, nil
   registry.refresh(function(success)
-    if success == false then
-      failure, done = "Mason registry refresh failed", true
-      return
-    end
-
+    if success == false then failure, done = "Mason registry refresh failed", true; return end
     local ok, err = pcall(function()
-      local missing = {}
-      for _, name in ipairs(tools) do
+      local operations = {}
+      for name, version in pairs(mason.tools()) do
         local package = registry.get_package(name)
-        if not package:is_installed() then missing[#missing + 1] = package end
+        if not package:is_installed() or package:get_installed_version() ~= version then
+          local target_package, target_version = package, version
+          operations[#operations + 1] = {
+            name = name,
+            run = function(callback) target_package:install({ version = target_version }, callback) end,
+          }
+        end
       end
-      if #missing == 0 then
-        done = true
-        return
+      for _, name in ipairs(mason.retired_platform_packages()) do
+        local found, package = pcall(registry.get_package, name)
+        if found and package:is_installed() and mason.platform_executable(name) then
+          local target_package = package
+          operations[#operations + 1] = {
+            name = name,
+            run = function(callback) target_package:uninstall(nil, callback) end,
+          }
+        end
       end
-
-      local pending = #missing
-      for _, package in ipairs(missing) do
-        package:install(nil, function(installed, install_error)
-          if not installed then failure = tostring(install_error or (package.name .. " installation failed")) end
-          pending = pending - 1
-          if pending == 0 then done = true end
-        end)
-      end
+      run_package_operations(operations, function(operation_error)
+        failure, done = operation_error, true
+      end)
     end)
     if not ok then failure, done = tostring(err), true end
   end)
 
-  if not vim.wait(300000, function() return done end, 100) then error("Mason tool installation timed out") end
+  if not vim.wait(300000, function() return done end, 100) then error("Mason tool synchronization timed out") end
   if failure then error(failure) end
-  if not tools_installed() then error("Required Mason tools are missing after sync") end
+  if not tools_installed() then error("Required Mason tools do not match their reviewed pins") end
 end
 
 local function installed_parsers()

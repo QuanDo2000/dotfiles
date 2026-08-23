@@ -304,7 +304,7 @@ local plugins = {
   {
     "mason-org/mason.nvim",
     cmd = { "Mason", "MasonInstall", "MasonUpdate" },
-    opts = {},
+    opts = { registries = { require("config.mason").registry() } },
   },
   {
     "neovim/nvim-lspconfig",

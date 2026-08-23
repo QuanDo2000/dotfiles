@@ -32,6 +32,16 @@ function test_windows_neovim_bootstraps_lazy_at_reviewed_lock {
     Assert-Equals '85c7ff3711b730b4030d03144f6db6375044ae82' $lock.'lazy.nvim'.commit
 }
 
+function test_windows_neovim_links_mason_tool_pins {
+    $destination = Join-Path $env:LOCALAPPDATA 'nvim\mason-tools.json'
+    $spec = Get-WindowsLinkSpecs | Where-Object Destination -eq $destination
+
+    Assert-True ([bool]$spec) 'Mason tool pins should be linked into the Windows Neovim config'
+    if ($spec) {
+        Assert-Equals (Join-Path $script:RepoDir 'config\shared\config\nvim\mason-tools.json') $spec.Source
+    }
+}
+
 function test_windows_neovim_uses_snacks_without_fff_plugin {
     $config = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/init.lua')
     Assert-False ($config.Contains('dmtrKovalenko/fff.nvim')) 'fff.nvim should stay removed on every platform'

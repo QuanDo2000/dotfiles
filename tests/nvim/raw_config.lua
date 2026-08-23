@@ -76,6 +76,9 @@ local blink = lazy.plugins["blink.cmp"]
 assert(vim.tbl_contains(blink.event, "CmdlineEnter"), "Blink should load for command-line completion")
 assert(type(blink.opts.cmdline.completion.menu.auto_show) == "function", "Blink command-line suggestions must auto-show selectively")
 local mason = lazy.plugins["mason.nvim"]
+local mason_pins = vim.json.decode(table.concat(vim.fn.readfile(vim.fn.stdpath("config") .. "/mason-tools.json"), "\n"))
+assert(vim.tbl_count(mason_pins.tools) == 8, "Mason tool pins changed unexpectedly")
+assert(mason.opts.registries[1] == "github:mason-org/mason-registry@" .. mason_pins.registryVersion, "Mason registry pin missing")
 assert(vim.tbl_contains(mason.cmd, "Mason"), "Mason UI command missing")
 assert(not mason.event, "Mason must not provision tools during startup")
 assert(not mason._.loaded, "Mason must stay off file-open path")

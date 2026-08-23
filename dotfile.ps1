@@ -1706,6 +1706,7 @@ function Get-WindowsLinkSpecs {
     $nvimTarget = "$env:LOCALAPPDATA\nvim"
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource "init.lua") (Join-Path $nvimTarget "init.lua")
     $specs += New-LinkSpec 'Dir' (Join-Path $nvimSource "lua") (Join-Path $nvimTarget "lua")
+    $specs += New-LinkSpec 'File' (Join-Path $nvimSource "mason-tools.json") (Join-Path $nvimTarget "mason-tools.json")
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource ".gitignore") (Join-Path $nvimTarget ".gitignore")
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource "stylua.toml") (Join-Path $nvimTarget "stylua.toml")
 

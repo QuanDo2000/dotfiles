@@ -810,6 +810,7 @@ in
 
   xdg.configFile."nvim/init.lua".force = true;
   xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;
+  xdg.configFile."nvim/mason-tools.json" = forceSource ./shared/config/nvim/mason-tools.json;
   xdg.configFile."nvim/.gitignore" = forceSource ./shared/config/nvim/.gitignore;
   xdg.configFile."nvim/stylua.toml" = forceSource ./shared/config/nvim/stylua.toml;
 

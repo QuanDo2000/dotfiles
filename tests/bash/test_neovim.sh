@@ -36,13 +36,30 @@ test_neovim_provisions_nix_linter() {
 }
 
 test_neovim_provisions_configured_formatters() {
-  local home tools
+  local home pins
   home="$(<"$REPO_DIR/config/home.nix")"
-  tools="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")"
-  assert_contains "$tools" '"prettier"'
-  assert_not_contains "$tools" '"nixfmt"'
+  pins="$REPO_DIR/config/shared/config/nvim/mason-tools.json"
+  assert_equals "string" "$(jq -r '.tools.prettier | type' "$pins")"
+  assert_equals "null" "$(jq -r '.tools.nixfmt' "$pins")"
   assert_contains "$home" $'    nixfmt\n'
   assert_not_contains "$home" "nixfmt-rfc-style"
+}
+
+test_neovim_pins_mason_registry_and_tool_versions() {
+  local home init pins sync
+  home="$(<"$REPO_DIR/config/home.nix")"
+  init="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
+  sync="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")"
+  pins="$REPO_DIR/config/shared/config/nvim/mason-tools.json"
+
+  assert_file_exists "$pins"
+  assert_equals "8" "$(jq '.tools | length' "$pins")"
+  assert_equals "64" "$(jq -r '.registrySha256 | length' "$pins")"
+  assert_equals "bash-language-server,nil,nixfmt,shellcheck,vtsls" "$(jq -r '.retiredPlatformPackages | join(",")' "$pins")"
+  assert_contains "$init" 'registries = { require("config.mason").registry() }'
+  assert_contains "$home" 'xdg.configFile."nvim/mason-tools.json"'
+  assert_contains "$sync" 'get_installed_version() ~= version'
+  assert_contains "$sync" 'retired_platform_packages()'
 }
 
 test_neovim_owns_only_used_build_and_mason_tools() {

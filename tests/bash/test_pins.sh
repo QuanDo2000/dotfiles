@@ -15,6 +15,8 @@ test_pin_updater_keeps_security_checks() {
   assert_contains "$(<"$REPO_DIR/flake.nix")" 'nodejs'
   assert_contains "$(<"$REPO_DIR/flake.nix")" 'neovim'
   assert_contains "$updater" 'repeated downloads differ'
+  assert_contains "$updater" 'Mason registry GitHub digest mismatch'
+  assert_contains "$updater" 'unexpected Mason registry archive entries'
   assert_contains "$updater" 'signed checksum mismatch'
   assert_contains "$updater" '"--certificate-identity"'
   assert_contains "$updater" 'member.issym() or member.islnk()'
@@ -38,6 +40,52 @@ PY
 
 
 
+
+test_mason_pin_extraction_requires_every_reviewed_tool() {
+  PYTHONPATH="$REPO_DIR/scripts" python3 - <<'PY' 2>>"$ERROR_FILE"
+import update_pins
+
+versions = {
+    "json-lsp": "4.10.0",
+    "lua-language-server": "3.19.1",
+    "markdownlint-cli2": "0.23.2",
+    "marksman": "2026-02-08",
+    "prettier": "3.9.6",
+    "stylua": "v2.5.2",
+    "taplo": "0.10.0",
+    "yaml-language-server": "1.24.0",
+}
+registry = [{"name": name, "source": {"id": f"pkg:github/example/{name}@{version}"}} for name, version in versions.items()]
+pins = update_pins.mason_pins_from_registry("registry-release", "a" * 64, registry)
+assert pins["registryVersion"] == "registry-release"
+assert pins["registrySha256"] == "a" * 64
+assert pins["tools"] == versions
+registry.pop()
+try:
+    update_pins.mason_pins_from_registry("registry-release", "a" * 64, registry)
+except RuntimeError as error:
+    assert "missing Mason package" in str(error)
+else:
+    raise AssertionError("missing Mason tool must fail")
+
+import hashlib
+import json
+import zipfile
+update_pins.fetch_json = lambda _: {
+    "tag_name": "2026-08-23-wordy-july",
+    "draft": False,
+    "prerelease": False,
+    "assets": [{"name": "registry.json.zip", "browser_download_url": "https://example/registry.zip"}],
+}
+def fake_download_twice(_, destination):
+    with zipfile.ZipFile(destination, "w") as archive:
+        archive.writestr("registry.json", json.dumps(registry + [{"name": "yaml-language-server", "source": {"id": "pkg:npm/yaml-language-server@1.24.0"}}]))
+update_pins.download_twice = fake_download_twice
+latest = update_pins.latest_mason_pins()
+assert latest["registryVersion"] == "2026-08-23-wordy-july"
+assert len(latest["registrySha256"]) == 64
+PY
+}
 
 test_neovim_pin_update_provisions_fresh_plugins_and_reports_internal_key_errors() {
   PYTHONPATH="$REPO_DIR/scripts" TEST_REPO_DIR="$REPO_DIR" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
@@ -69,7 +117,10 @@ def fake_subprocess_run(args, **kwargs):
 
 update_pins.run = fake_run
 update_pins.subprocess.run = fake_subprocess_run
+existing_pins = json.loads((repo / "config/shared/config/nvim/mason-tools.json").read_text())
+update_pins.latest_mason_pins = lambda: existing_pins
 update_pins.update_neovim(repo)
+assert json.loads((repo / "config/shared/config/nvim/mason-tools.json").read_text()) == existing_pins
 assert any("require('config.sync').plugins(false)" in arg for arg in commands[0])
 
 update_pins.update_neovim = lambda _: (_ for _ in ()).throw(KeyError("plugin"))
