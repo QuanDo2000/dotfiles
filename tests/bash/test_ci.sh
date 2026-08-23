@@ -38,12 +38,12 @@ test_ci_runs_direct_nix_checks() {
 
   assert_not_contains "$workflow" "run: ./scripts/check.sh"
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
-  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions .#fff-mcp .#fff-nvim-backend .#codebase-memory-mcp --no-link'
-  assert_contains "$workflow" 'nix build .#codex .#codebase-memory-mcp .#fff-mcp .#fff-nvim-backend .#pi-extensions --no-link'
+  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions .#fff-mcp .#codebase-memory-mcp --no-link'
+  assert_contains "$workflow" 'nix build .#codex .#codebase-memory-mcp .#fff-mcp .#pi-extensions --no-link'
   assert_contains "$workflow" 'darwinConfigurations.mac.system.drvPath'
   assert_contains "$workflow" 'homeConfigurations.\"$username@linux\".activationPackage.drvPath'
   assert_contains "$workflow" 'homeConfigurations.\"$username@arch-server\".activationPackage.drvPath'
-  assert_contains "$check" '"$flake#fff-nvim-backend"'
+  assert_not_contains "$check" 'fff-nvim-backend'
 }
 
 test_ci_runs_windows_neovim_integration() {

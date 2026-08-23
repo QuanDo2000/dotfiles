@@ -1,18 +1,5 @@
 {
   "version": "0.10.5",
-  "commit": "459ebcdbdba094843fe5339a1a7f7dae4ced2d82",
-  "backend": {
-    "x86_64-linux": {
-      "file": "x86_64-unknown-linux-gnu.so",
-      "sha256": "8f4e732e3b0674fa9fa70b2f0d52358caf0eef55f80fb7ad1dd6bf01ee3c75c2",
-      "hash": "sha256-j05zLjsGdPqfpwsvDVI1jK8O71X4D7etHda/Ae48dcI="
-    },
-    "aarch64-darwin": {
-      "file": "aarch64-apple-darwin.dylib",
-      "sha256": "649fbc0a3afde0c883831fe6c5a275c4a66641346a1dc1af0882809edbabbcfd",
-      "hash": "sha256-ZJ+8Cjr94MiDgx/mxaJ1xKZmQTRqHcGvCIKAnturvP0="
-    }
-  },
   "mcp": {
     "x86_64-linux": {
       "file": "fff-mcp-x86_64-unknown-linux-musl",

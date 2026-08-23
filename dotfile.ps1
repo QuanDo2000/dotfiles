@@ -1573,6 +1573,10 @@ function Sync-NeovimPlugins {
 
     $nvim = Get-NeovimCommand
     if (-not $nvim) { throw "nvim executable not found" }
+    $dataPath = Get-NeovimDataPath $nvim
+    if (-not $dataPath) { throw "could not determine Neovim data path" }
+    $staleFff = Join-Path $dataPath 'lazy\fff.nvim'
+    if (Test-Path -LiteralPath $staleFff) { Remove-Item -LiteralPath $staleFff -Recurse -Force -ErrorAction Stop }
     $previousSync = $env:DOTFILE_NVIM_SYNC
     try {
         $env:DOTFILE_NVIM_SYNC = '0'
@@ -1606,8 +1610,6 @@ function Sync-NeovimPlugins {
         throw "Neovim plugin or tool sync failed: $output"
     }
 
-    $dataPath = Get-NeovimDataPath $nvim
-    if (-not $dataPath) { throw "could not determine Neovim data path" }
     $lazyRoot = Join-Path $dataPath "lazy"
     if (-not (Test-Path -LiteralPath (Join-Path $lazyRoot "lazy.nvim")) -or
         -not (Test-Path -LiteralPath (Join-Path $lazyRoot "snacks.nvim"))) {

@@ -20,7 +20,6 @@ let
     SystemCallArchitectures = "native";
     RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
   };
-  fffNvimBinary = pkgs.callPackage ../packages/fff-nvim-backend.nix { };
   piExtensionsPins = builtins.fromJSON (builtins.readFile ../packages/pi-extensions-release.json);
   piExtensionsReleaseId = piExtensionsPins.releaseId;
   piExtensions = pkgs.callPackage ../packages/pi-extensions.nix { };
@@ -179,10 +178,7 @@ in
   home.sessionPath = [
     "${homeDir}/.local/bin"
   ];
-  home.sessionVariables = {
-    FFF_FRECENCY_DB = "${homeDir}/.local/state/fff/frecency";
-    FFF_HISTORY_DB = "${homeDir}/.local/state/fff/history";
-  };
+  home.sessionVariables.FFF_FRECENCY_DB = "${homeDir}/.local/state/fff/frecency";
   home.packages = devTerminalPackages
   ++ lib.optionals (!nixosSystem) [
     pkgs.nerd-fonts.fira-code
@@ -824,7 +820,6 @@ in
     fi
   '';
 
-  xdg.configFile."nvim/fff-nvim-backend".source = fffNvimBinary;
   xdg.configFile."nvim/init.lua".force = true;
   xdg.configFile."nvim/lua" = forceSource ./shared/config/nvim/lua;
   xdg.configFile."nvim/.gitignore" = forceSource ./shared/config/nvim/.gitignore;

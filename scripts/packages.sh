@@ -469,8 +469,7 @@ function _sync_neovim {
   fi
 
   info "Restoring Neovim plugins and tools..."
-  local output plugin="$HOME/.local/share/nvim/lazy/fff.nvim"
-  local backend="$HOME/.config/nvim/fff-nvim-backend"
+  local output
 
   if output="$(DOTFILE_NVIM_SYNC=0 nvim --headless "+lua if require('config.sync').runtime_complete() then print('RAW_NEOVIM_SYNC_CURRENT') end" +qa 2>&1)" \
     && [[ "$output" == *RAW_NEOVIM_SYNC_CURRENT* ]]; then
@@ -484,14 +483,6 @@ function _sync_neovim {
   fi
   if [[ "$output" != *RAW_NEOVIM_SYNC_OK* ]]; then
     NEOVIM_SYNC_ERROR="Neovim plugin or tool sync did not complete:\n$output"
-    return 1
-  fi
-  if [ ! -d "$plugin" ]; then
-    NEOVIM_SYNC_ERROR="Neovim plugin sync did not install $plugin"
-    return 1
-  fi
-  if [ ! -f "$backend" ]; then
-    NEOVIM_SYNC_ERROR="Nix-managed fff.nvim backend is missing: $backend"
     return 1
   fi
 }

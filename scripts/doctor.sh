@@ -286,7 +286,6 @@ function doctor {
   _check_symlink .config/tmux/tmux.conf "$platform"
   _check_symlink .config/git/config "$platform"
   _check_symlink .config/nvim/init.lua "$platform"
-  _check_symlink .config/nvim/fff-nvim-backend "$platform"
   _check_neovim_runtime
   _check_symlink .local/bin/dotfile "$platform" "$DOTFILES_DIR/dotfile"
   _check_writable_file .codex/config.toml

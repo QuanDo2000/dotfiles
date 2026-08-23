@@ -20,7 +20,7 @@ test_pin_updater_keeps_security_checks() {
   assert_contains "$updater" 'member.issym() or member.islnk()'
   assert_contains "$updater" 'unsafe Pi extension lock entries'
   assert_contains "$updater" '"--no-audit"'
-  assert_contains "$updater" 'lock["fff.nvim"]["commit"] != fff["commit"]'
+  assert_not_contains "$updater" 'fff.nvim'
   assert_not_contains "$updater" 'shell=True'
 }
 
@@ -35,6 +35,39 @@ assert "Authorization" not in update_pins.request("https://ankiweb.net/example")
 PY
 }
 
+
+
+test_fff_pin_update_keeps_only_mcp_assets() {
+  PYTHONPATH="$REPO_DIR/scripts" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
+import json
+import os
+from pathlib import Path
+import update_pins
+
+repo = Path(os.environ["TEST_TMPDIR"]) / "fff-repo"
+pins = repo / "packages/fff-release.json"
+pins.parent.mkdir(parents=True)
+pins.write_text('{"version":"0.0.1","mcp":{}}\n')
+names = []
+update_pins.github_release = lambda _: {"tag_name": "v0.0.2"}
+def verify_asset(_release, name, path, checksum_file=False):
+    assert checksum_file
+    names.append(name)
+    path.write_bytes(name.encode())
+    return "a" * 64
+update_pins.verify_asset = verify_asset
+update_pins.nix_hash = lambda path: "sha256-test"
+
+update_pins.update_fff(repo)
+updated = json.loads(pins.read_text())
+assert set(updated) == {"version", "mcp"}
+assert updated["version"] == "0.0.2"
+assert set(updated["mcp"]) == {"x86_64-linux", "aarch64-darwin", "windows-x64"}
+assert updated["mcp"]["x86_64-linux"]["hash"] == "sha256-test"
+assert "hash" not in updated["mcp"]["windows-x64"]
+assert sorted(names) == sorted(asset["file"] for asset in updated["mcp"].values())
+PY
+}
 
 
 test_neovim_pin_update_provisions_fresh_plugins_and_reports_internal_key_errors() {
@@ -52,24 +85,15 @@ import update_pins
 source = Path(os.environ["TEST_REPO_DIR"])
 repo = Path(os.environ["TEST_TMPDIR"]) / "repo"
 shutil.copytree(source / "config/shared/config/nvim", repo / "config/shared/config/nvim")
-(repo / "packages").mkdir(parents=True)
-shutil.copy2(source / "packages/fff-release.json", repo / "packages/fff-release.json")
-backend = Path(os.environ["TEST_TMPDIR"]) / "backend.so"
 lazy = Path(os.environ["TEST_TMPDIR"]) / "lazy.nvim"
-backend.touch()
 lazy.mkdir()
 commands = []
 
 def fake_run(*args, cwd=None):
-    if args[:2] == ("nix", "build") and "#fff-nvim-backend" in args[2]:
-        return str(backend)
     return str(lazy)
 
 def fake_subprocess_run(args, **kwargs):
     commands.append(args)
-    environment = kwargs["env"]
-    assert environment["FFF_FRECENCY_DB"].startswith(environment["XDG_STATE_HOME"])
-    assert environment["FFF_HISTORY_DB"].startswith(environment["XDG_STATE_HOME"])
     if not any("require('config.sync').plugins(false)" in arg for arg in args):
         (Path(kwargs["env"]["XDG_CONFIG_HOME"]) / "nvim/lazy-lock.json").write_text("{}\n")
     return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -79,7 +103,7 @@ update_pins.subprocess.run = fake_subprocess_run
 update_pins.update_neovim(repo)
 assert any("require('config.sync').plugins(false)" in arg for arg in commands[0])
 
-update_pins.update_neovim = lambda _: (_ for _ in ()).throw(KeyError("fff.nvim"))
+update_pins.update_neovim = lambda _: (_ for _ in ()).throw(KeyError("plugin"))
 sys.argv = ["update_pins.py", "neovim", str(repo)]
 stderr = io.StringIO()
 with contextlib.redirect_stderr(stderr):

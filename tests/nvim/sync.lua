@@ -88,8 +88,6 @@ vim.fn.has = function(name)
 end
 
 local sync = dofile(module)
-local linked, link_error = pcall(sync.link_fff, { dir = vim.fn.tempname() })
-assert(not linked and tostring(link_error):find("Nix-managed fff.nvim backend is missing", 1, true), "missing fff backend must fail before sync")
 sync.plugins(true)
 assert(vim.deep_equal(calls, { "install", "restore", "clean" }), "plugin sync must install, restore, then clean")
 assert(vim.fn.readfile(lockfile)[1] == "reviewed", "plugin sync must preserve reviewed lock")
@@ -165,16 +163,8 @@ for _, name in ipairs(required_parsers) do assert(installed_parsers[name], name 
 
 lazy_options.root = vim.fn.tempname()
 plugins.sample.dir = lazy_options.root .. "/sample"
-plugins["fff.nvim"] = { dir = lazy_options.root .. "/fff.nvim" }
-package.preload.fff = function() return {} end
 vim.fn.mkdir(plugins.sample.dir, "p")
-vim.fn.mkdir(plugins["fff.nvim"].dir .. "/target/release", "p")
-local fff_source = vim.fn.stdpath("config") .. "/fff-nvim-backend"
-local fff_target = plugins["fff.nvim"].dir .. "/target/release/libfff_nvim.so"
-vim.fn.mkdir(vim.fs.dirname(fff_source), "p")
-vim.fn.writefile({ "backend" }, fff_source)
-assert((vim.uv or vim.loop).fs_symlink(fff_source, fff_target))
-vim.fn.writefile({ '{"sample":{"commit":"abc"},"fff.nvim":{"commit":"abc"}}' }, lockfile)
+vim.fn.writefile({ '{"sample":{"commit":"abc"}}' }, lockfile)
 local system = vim.system
 vim.system = function(command)
   return {
@@ -185,13 +175,10 @@ vim.system = function(command)
   }
 end
 is_windows = false
-assert(sync.runtime_complete(), "matching plugins, tools, parsers, and FFF backend must be current")
+assert(sync.runtime_complete(), "matching plugins, tools, and parsers must be current")
 plugins.unlocked = { dir = lazy_options.root .. "/unlocked" }
 assert(not sync.runtime_complete(), "enabled plugin missing from lock must make runtime stale")
 plugins.unlocked = nil
-package.loaded.fff, package.preload.fff = nil, function() error("broken backend") end
-assert(not sync.runtime_complete(), "unloadable FFF backend must make runtime stale")
-package.preload.fff = function() return {} end
 vim.fn.writefile({ "stale" }, parser_info_dir .. "/lua.revision")
 assert(not sync.runtime_complete(), "stale parser revision must make runtime stale")
 sync.parsers()

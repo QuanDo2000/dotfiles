@@ -40,24 +40,6 @@ local function lazy_errors()
   if #errors > 0 then error("Lazy sync failed:\n" .. table.concat(errors, "\n")) end
 end
 
-function M.link_fff(plugin)
-  local uv = vim.uv or vim.loop
-  local source = vim.fn.stdpath("config") .. "/fff-nvim-backend"
-  local extension = vim.fn.has("mac") == 1 and "dylib" or "so"
-  local target = plugin.dir .. "/target/release/libfff_nvim." .. extension
-  if not uv.fs_stat(source) then error("Nix-managed fff.nvim backend is missing: " .. source) end
-  vim.fn.mkdir(vim.fs.dirname(target), "p")
-  local temporary = target .. ".tmp." .. vim.fn.getpid()
-  vim.fn.delete(temporary)
-  local linked, err = uv.fs_symlink(source, temporary)
-  if not linked then error("Failed to link fff.nvim backend: " .. (err or "unknown error")) end
-  local renamed, rename_error = uv.fs_rename(temporary, target)
-  if not renamed then
-    vim.fn.delete(temporary)
-    error("Failed to activate fff.nvim backend: " .. (rename_error or "unknown error"))
-  end
-end
-
 function M.plugins(clean)
   local lazy = require("lazy")
   local options = require("lazy.core.config").options
@@ -76,12 +58,6 @@ function M.plugins(clean)
   run(function() return lazy.install({ wait = true, show = false, lockfile = true }) end)
   run(function() return lazy.restore({ wait = true, show = false }) end)
   if clean then run(function() return lazy.clean({ wait = true, show = false }) end) end
-
-  local fff = require("lazy.core.config").plugins["fff.nvim"]
-  if fff and fff.enabled ~= false then
-    M.link_fff(fff)
-    require("fff")
-  end
 end
 
 local function tools_installed()
@@ -186,7 +162,7 @@ function M.runtime_complete()
     local lock = vim.json.decode(table.concat(vim.fn.readfile(config.options.lockfile), "\n"))
     local windows, managed = vim.fn.has("win32") == 1, {}
     for name, entry in pairs(lock) do
-      local platform_disabled = (name == "lazy.nvim" and not windows) or (name == "fff.nvim" and windows)
+      local platform_disabled = name == "lazy.nvim" and not windows
       if not platform_disabled then
         local plugin = config.plugins[name]
         if not plugin_current(plugin, entry.commit) then return false end
@@ -194,7 +170,7 @@ function M.runtime_complete()
       end
     end
     for name, plugin in pairs(config.plugins) do
-      local platform_disabled = (name == "lazy.nvim" and not windows) or (name == "fff.nvim" and windows)
+      local platform_disabled = name == "lazy.nvim" and not windows
       if plugin.enabled ~= false and not platform_disabled and not lock[name] then return false end
     end
     if not windows then
@@ -203,15 +179,6 @@ function M.runtime_complete()
       end
     end
     if not tools_installed() or not parsers_current() then return false end
-
-    if not windows then
-      local uv = vim.uv or vim.loop
-      local fff = config.plugins["fff.nvim"]
-      local source = vim.fn.stdpath("config") .. "/fff-nvim-backend"
-      local target = fff and (fff.dir .. "/target/release/libfff_nvim." .. (vim.fn.has("mac") == 1 and "dylib" or "so"))
-      if not target or not uv.fs_stat(source) or uv.fs_realpath(source) ~= uv.fs_realpath(target) then return false end
-      require("fff")
-    end
     return true
   end)
   return ok and complete == true

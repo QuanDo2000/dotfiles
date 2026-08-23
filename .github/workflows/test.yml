@@ -30,7 +30,7 @@ jobs:
         run: nix eval --raw .#darwinConfigurations.mac.system.drvPath
 
       - name: Build custom packages
-        run: nix build .#codex .#codebase-memory-mcp .#fff-mcp .#fff-nvim-backend .#pi-extensions --no-link
+        run: nix build .#codex .#codebase-memory-mcp .#fff-mcp .#pi-extensions --no-link
 
   powershell:
     runs-on: windows-latest
@@ -88,4 +88,4 @@ jobs:
           nix eval --raw ".#homeConfigurations.\"$username@arch-server\".activationPackage.drvPath"
 
       - name: Build custom packages
-        run: nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions .#fff-mcp .#fff-nvim-backend .#codebase-memory-mcp --no-link
+        run: nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions .#fff-mcp .#codebase-memory-mcp --no-link

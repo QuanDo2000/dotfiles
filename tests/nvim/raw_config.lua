@@ -22,8 +22,8 @@ end
 
 local windows = vim.fn.has("win32") == 1
 local expected = {
-  [" ff"] = windows and "Find Files" or "Find Files (FFF)",
-  [" sg"] = windows and "Grep" or "Grep (FFF)",
+  [" ff"] = "Find Files",
+  [" sg"] = "Grep",
   [" aa"] = "Toggle Pi",
   [" af"] = "Send File",
   [" at"] = "Send Position",
@@ -166,7 +166,7 @@ end
 for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "lualine.nvim", "mason-lspconfig.nvim", "mini.ai", "mini.hipatterns", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
-assert((not windows) == (lazy.plugins["fff.nvim"] and lazy.plugins["fff.nvim"].enabled ~= false), "fff.nvim platform gate is wrong")
+assert(not lazy.plugins["fff.nvim"], "fff.nvim must stay removed")
 require("lazy").load({ plugins = { "conform.nvim", "nvim-lint" } })
 local conform = lazy.plugins["conform.nvim"].opts
 assert(vim.deep_equal(conform.formatters_by_ft.markdown, { "prettier", "markdownlint-cli2" }), "Markdown formatter ownership changed")

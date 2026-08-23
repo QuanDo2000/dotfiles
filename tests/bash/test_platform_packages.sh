@@ -328,10 +328,9 @@ test_pi_subagents_configures_workflow_guardrails() {
 }
 
 test_code_search_stack_enables_auto_index_and_agent_workflows() {
-  local codex agents nvim_fff
+  local codex agents
   codex="$(<"$REPO_DIR/config/shared/ai/codex/config.toml")"
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-  nvim_fff="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
 
   assert_contains "$HOME_CONFIG" 'config set auto_index true'
   assert_contains "$HOME_CONFIG" 'config set auto_watch true'
@@ -340,9 +339,8 @@ test_code_search_stack_enables_auto_index_and_agent_workflows() {
   assert_contains "$HOME_CONFIG" 'exec "${pkgs.fff-mcp}/bin/fff-mcp"'
   assert_contains "$HOME_CONFIG" '--frecency-db'
   assert_not_contains "$HOME_CONFIG" '--history-db'
+  assert_not_contains "$HOME_CONFIG" 'FFF_HISTORY_DB'
   assert_contains "$codex" 'args = ["fff-mcp-agent"]'
-  assert_contains "$nvim_fff" 'frecency = { db_path = vim.env.FFF_FRECENCY_DB or vim.fn.expand("~/.local/state/fff/frecency") }'
-  assert_contains "$nvim_fff" 'history = { db_path = vim.env.FFF_HISTORY_DB or vim.fn.expand("~/.local/state/fff/history") }'
   assert_contains "$codex" '[mcp_servers.fff.tools.find_files]'
   assert_contains "$codex" '[mcp_servers.fff.tools.grep]'
   assert_contains "$codex" '[mcp_servers.fff.tools.multi_grep]'

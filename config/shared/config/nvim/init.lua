@@ -240,16 +240,6 @@ local plugins = {
       vim.notify = Snacks.notifier
     end,
   },
-  {
-    "dmtrKovalenko/fff.nvim",
-    enabled = vim.fn.has("win32") ~= 1,
-    version = "v0.10.5",
-    build = function(plugin) require("config.sync").link_fff(plugin) end,
-    opts = {
-      frecency = { db_path = vim.env.FFF_FRECENCY_DB or vim.fn.expand("~/.local/state/fff/frecency") },
-      history = { db_path = vim.env.FFF_HISTORY_DB or vim.fn.expand("~/.local/state/fff/history") },
-    },
-  },
   { "nvim-tree/nvim-web-devicons", enabled = false },
   {
     "nvim-mini/mini.icons",
@@ -456,13 +446,8 @@ map({ "n", "x" }, "<leader>at", pi.send_position, "Send Position")
 map("n", "<leader>af", pi.send_file, "Send File")
 map("x", "<leader>av", pi.send_selection, "Send Selection")
 
-if vim.fn.has("win32") ~= 1 then
-  map("n", "<leader>ff", function() require("fff").find_files() end, "Find Files (FFF)")
-  map("n", "<leader>sg", function() require("fff").live_grep() end, "Grep (FFF)")
-else
-  map("n", "<leader>ff", function() Snacks.picker.files({ cwd = root() }) end, "Find Files")
-  map("n", "<leader>sg", function() Snacks.picker.grep({ cwd = root() }) end, "Grep")
-end
+map("n", "<leader>ff", function() Snacks.picker.files({ cwd = root() }) end, "Find Files")
+map("n", "<leader>sg", function() Snacks.picker.grep({ cwd = root() }) end, "Grep")
 map("n", "<leader><space>", function() Snacks.picker.files({ cwd = root() }) end, "Find Files (Root Dir)")
 map("n", "<leader>/", function() Snacks.picker.grep({ cwd = root() }) end, "Grep (Root Dir)")
 map("n", "<leader>,", function() Snacks.picker.buffers() end, "Buffers")

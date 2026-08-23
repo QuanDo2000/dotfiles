@@ -88,7 +88,7 @@ test_update_ai_updates_only_ai_tools_and_configs() {
     printf 'pi %s\n' "$*" >> "$calls"
   }
   _sync_neovim() {
-    printf 'fff.nvim\n' >> "$calls"
+    printf 'neovim-sync\n' >> "$calls"
   }
   _publish_dependency_update() {
     printf 'publish:%s\n' "$1" >> "$calls"

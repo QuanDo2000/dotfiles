@@ -34,7 +34,7 @@ test_check_script_runs_repo_verification() {
   assert_contains "$check_text" 'run shellcheck'
   assert_contains "$flake_text" "pi-agent = final.callPackage ./packages/pi-agent.nix"
   assert_contains "$flake_text" "fff-mcp = final.callPackage ./packages/fff-mcp.nix"
-  assert_contains "$flake_text" "fff-nvim-backend = final.callPackage ./packages/fff-nvim-backend.nix"
+  assert_not_contains "$flake_text" "fff-nvim-backend"
   assert_contains "$flake_text" "codebase-memory-mcp = final.callPackage ./packages/codebase-memory-mcp.nix"
   assert_contains "$flake_text" "packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent"
   assert_contains "$flake_text" "packages.x86_64-linux.pi-extensions = linuxPkgs.pi-extensions"

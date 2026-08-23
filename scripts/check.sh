@@ -32,7 +32,6 @@ packages=(
   "$flake#codex"
   "$flake#pi-extensions"
   "$flake#fff-mcp"
-  "$flake#fff-nvim-backend"
   "$flake#codebase-memory-mcp"
 )
 if [[ "$(uname -s)" == "Linux" ]]; then

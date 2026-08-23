@@ -32,9 +32,10 @@ function test_windows_neovim_bootstraps_lazy_at_reviewed_lock {
     Assert-Equals '85c7ff3711b730b4030d03144f6db6375044ae82' $lock.'lazy.nvim'.commit
 }
 
-function test_windows_neovim_disables_fff_plugin {
+function test_windows_neovim_uses_snacks_without_fff_plugin {
     $config = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/init.lua')
-    Assert-Contains $config 'enabled = vim.fn.has("win32") ~= 1'
+    Assert-False ($config.Contains('dmtrKovalenko/fff.nvim')) 'fff.nvim should stay removed on every platform'
+    Assert-Contains $config 'Snacks.picker.files({ cwd = root() })'
 }
 
 function test_windows_gitconfig_uses_platform_gpg_program {

@@ -134,12 +134,9 @@ plugins, packages, hooks, and generated runtime state
 such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
 
 Note: Home Manager owns the `lazy.nvim` bootstrap package, and tracked
-`lazy-lock.json` pins raw Neovim plugin state. On Unix,
-Home Manager supplies the `fff.nvim` backend from hash-pinned release assets;
-`dotfile packages` and `dotfile update` sync plugin source and link it without runtime
-downloads or compilation. Failures are reported after the package operation.
-
-Windows installs Neovim and the locked raw plugin set but does not enable or install `fff.nvim`.
+`lazy-lock.json` pins raw Neovim plugin state. Neovim uses Snacks pickers on all
+platforms; `dotfile packages` and `dotfile update` restore the locked plugin set.
+Failures are reported after the package operation.
 
 Note: Home Manager profile ownership is explicit. NixOS enables Linux desktop,
 personal apps, Obsidian Sync, and Google Drive. Arch server enables Obsidian
@@ -186,7 +183,7 @@ sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
 ```
 
 After provisioning, use `dotfile update` to refresh every repository-managed
-dependency: Nix inputs, release archives, npm closures, native FFF assets,
+dependency: Nix inputs, release archives, npm closures, native FFF MCP assets,
 Windows font pins, vendored skills, and Neovim plugins. It runs full
 checks, shows the resulting uncommitted diff, and requires confirmation before
 activation; non-interactive runs must pass `--force`. After successful activation,

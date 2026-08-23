@@ -135,17 +135,6 @@ def verify_asset(release: dict, name: str, destination: Path, checksum_file: boo
     return actual
 
 
-def github_tag_commit(repository: str, tag: str) -> str:
-    remote = f"https://github.com/{repository}.git"
-    output = run("git", "ls-remote", remote, f"refs/tags/{tag}^{{}}", f"refs/tags/{tag}")
-    rows = [line.split() for line in output.splitlines() if line.strip()]
-    peeled = [sha for sha, ref in rows if ref.endswith("^{}")]
-    commit = peeled[0] if peeled else (rows[0][0] if rows else "")
-    if not re.fullmatch(r"[0-9a-f]{40}", commit):
-        die(f"failed to resolve {repository} {tag}")
-    return commit
-
-
 def update_codebase_memory(repo: Path) -> None:
     pins_path = repo / "packages/codebase-memory-mcp-release.json"
     current = json.loads(pins_path.read_text(encoding="utf-8"))
@@ -212,37 +201,22 @@ def update_fff(repo: Path) -> None:
     if current["version"] == version:
         print(f"FFF {version} already current")
         return
-    commit = github_tag_commit("dmtrKovalenko/fff.nvim", release["tag_name"])
     assets = {
-        "backend": {
-            "x86_64-linux": "x86_64-unknown-linux-gnu.so",
-            "aarch64-darwin": "aarch64-apple-darwin.dylib",
-        },
-        "mcp": {
-            "x86_64-linux": "fff-mcp-x86_64-unknown-linux-musl",
-            "aarch64-darwin": "fff-mcp-aarch64-apple-darwin",
-            "windows-x64": "fff-mcp-x86_64-pc-windows-msvc.exe",
-        },
+        "x86_64-linux": "fff-mcp-x86_64-unknown-linux-musl",
+        "aarch64-darwin": "fff-mcp-aarch64-apple-darwin",
+        "windows-x64": "fff-mcp-x86_64-pc-windows-msvc.exe",
     }
-    updated: dict[str, object] = {"version": version, "commit": commit, "backend": {}, "mcp": {}}
+    updated: dict[str, object] = {"version": version, "mcp": {}}
     with tempfile.TemporaryDirectory(prefix="dotfiles-fff-") as temporary:
         root = Path(temporary)
-        for group, platforms in assets.items():
-            for platform, name in platforms.items():
-                path = root / name
-                digest = verify_asset(release, name, path, checksum_file=True)
-                data = {"file": name, "sha256": digest}
-                if not platform.startswith("windows-"):
-                    data["hash"] = nix_hash(path)
-                updated[group][platform] = data  # type: ignore[index]
+        for platform, name in assets.items():
+            path = root / name
+            digest = verify_asset(release, name, path, checksum_file=True)
+            data = {"file": name, "sha256": digest}
+            if not platform.startswith("windows-"):
+                data["hash"] = nix_hash(path)
+            updated["mcp"][platform] = data  # type: ignore[index]
     atomic_json(pins_path, updated)
-
-    fff_lua = repo / "config/shared/config/nvim/init.lua"
-    replace_once(fff_lua, f'version = "v{current["version"]}"', f'version = "v{version}"')
-    lock_path = repo / "config/shared/config/nvim/lazy-lock.json"
-    lock = json.loads(lock_path.read_text(encoding="utf-8"))
-    lock["fff.nvim"]["commit"] = commit
-    atomic_json(lock_path, lock)
     print(f"updated FFF to {version}")
 
 
@@ -554,8 +528,6 @@ def update_skills(repo: Path) -> None:
 
 def update_neovim(repo: Path) -> None:
     lock_path = repo / "config/shared/config/nvim/lazy-lock.json"
-    fff = json.loads((repo / "packages/fff-release.json").read_text(encoding="utf-8"))
-    backend = run("nix", "build", f"path:{repo}#fff-nvim-backend", "--no-link", "--print-out-paths")
     lazy_expression = (
         f'let f = builtins.getFlake "path:{repo}"; '
         "in (import f.inputs.nixpkgs { system = builtins.currentSystem; }).vimPlugins.lazy-nvim"
@@ -566,7 +538,6 @@ def update_neovim(repo: Path) -> None:
         config_home = root / "config"
         config = config_home / "nvim"
         shutil.copytree(repo / "config/shared/config/nvim", config)
-        os.symlink(backend.splitlines()[-1], config / "fff-nvim-backend")
         lazy_root = root / "data/nvim/site/pack/pins/start"
         lazy_root.mkdir(parents=True)
         os.symlink(lazy.splitlines()[-1], lazy_root / "lazy.nvim")
@@ -576,8 +547,6 @@ def update_neovim(repo: Path) -> None:
             "XDG_DATA_HOME": str(root / "data"),
             "XDG_STATE_HOME": str(root / "state"),
             "XDG_CACHE_HOME": str(root / "cache"),
-            "FFF_FRECENCY_DB": str(root / "state/fff/frecency"),
-            "FFF_HISTORY_DB": str(root / "state/fff/history"),
         })
         result = subprocess.run(
             (
@@ -599,8 +568,6 @@ def update_neovim(repo: Path) -> None:
     invalid = [name for name, value in lock.items() if not re.fullmatch(r"[0-9a-f]{40}", str(value.get("commit", "")))]
     if invalid:
         die(f"invalid Neovim lock commits: {invalid}")
-    if lock["fff.nvim"]["commit"] != fff["commit"]:
-        die("Neovim update did not retain reviewed FFF release")
     compact_lock = "{\n" + ",\n".join(
         f"  {json.dumps(name)}: {json.dumps(value, separators=(',', ': '))}"
         for name, value in lock.items()

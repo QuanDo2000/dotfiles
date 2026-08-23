@@ -24,7 +24,6 @@ link_core_dotfiles() {
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
   mkdir -p "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.codex" "$HOME/.pi/agent"
   ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/init.lua"
-  ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/fff-nvim-backend"
   : > "$HOME/.codex/config.toml"
   : > "$HOME/.pi/agent/settings.json"
   : > "$HOME/.pi/agent/mcp.json"
@@ -221,8 +220,8 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "check       Run full repository checks"
   assert_contains "$readme_text" "Home Manager owns tracked Obsidian settings"
   assert_contains "$readme_text" 'Home Manager owns the `lazy.nvim` bootstrap package'
-  assert_contains "$readme_text" 'Home Manager supplies the `fff.nvim` backend from hash-pinned release assets'
-  assert_contains "$readme_text" 'Windows installs Neovim and the locked raw plugin set but does not enable or install `fff.nvim`'
+  assert_contains "$readme_text" 'Neovim uses Snacks pickers on all'
+  assert_not_contains "$readme_text" '`fff.nvim`'
   assert_contains "$readme_text" 'an existing `home-manager` when available'
   assert_contains "$readme_text" '`~/dotfiles#darwin-rebuild` app'
   assert_contains "$readme_text" "### Windows Commands"

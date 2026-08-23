@@ -46,13 +46,12 @@ link_valid_core_dotfiles() {
     done
   else
     mkdir -p "$root/.config/nvim" "$root/.config/systemd/user" "$root/bin"
-    touch "$root/.zshrc" "$root/.tmux.conf" "$root/.gitconfig" "$root/.config/nvim/init.lua" "$root/.config/nvim/fff-nvim-backend" "$root/.config/systemd/user/obsidian-sync.service" "$root/bin/dotfile"
+    touch "$root/.zshrc" "$root/.tmux.conf" "$root/.gitconfig" "$root/.config/nvim/init.lua" "$root/.config/systemd/user/obsidian-sync.service" "$root/bin/dotfile"
   fi
   ln -s "${store_target:-$root/.zshrc}" "$HOME/.zshrc"
   ln -s "${store_target:-$root/.tmux.conf}" "$HOME/.config/tmux/tmux.conf"
   ln -s "${store_target:-$root/.gitconfig}" "$HOME/.config/git/config"
   ln -s "${store_target:-$root/.config/nvim/init.lua}" "$HOME/.config/nvim/init.lua"
-  ln -s "${store_target:-$root/.config/nvim/fff-nvim-backend}" "$HOME/.config/nvim/fff-nvim-backend"
   ln -s /nix/store/test-obsidian-sync.service/obsidian-sync.service "$HOME/.config/systemd/user/obsidian-sync.service"
   ln -s "${store_target:-$root/bin/dotfile}" "$HOME/.local/bin/dotfile"
   : > "$HOME/.codex/config.toml"
@@ -343,7 +342,7 @@ test_doctor_accepts_repo_dotfile_command_link() {
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
   mkdir -p "$HOME/.config/nvim" "$HOME/.codex" "$HOME/.pi/agent"
   mkdir -p "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/systemd/user"
-  for path in .config/tmux/tmux.conf .config/git/config .config/nvim/init.lua .config/nvim/fff-nvim-backend .config/systemd/user/obsidian-sync.service; do
+  for path in .config/tmux/tmux.conf .config/git/config .config/nvim/init.lua .config/systemd/user/obsidian-sync.service; do
     mkdir -p "$DOTFILES_DIR/$(dirname "$path")"
     : > "$DOTFILES_DIR/$path"
     ln -s "$DOTFILES_DIR/$path" "$HOME/$path"

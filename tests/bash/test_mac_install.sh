@@ -154,7 +154,6 @@ test_dotfile_packages_command_mac() {
   ln -s "$REPO_DIR/config/unix/.tmux.conf" "$HOME/.config/tmux/tmux.conf"
   ln -s "$REPO_DIR/config/shared/.gitconfig" "$HOME/.config/git/config"
   ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/init.lua"
-  ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/fff-nvim-backend"
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
   : > "$HOME/.codex/config.toml"
   : > "$HOME/.pi/agent/settings.json"

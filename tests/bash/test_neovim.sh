@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Neovim and fff.nvim setup tests.
+# Neovim setup tests.
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
@@ -102,13 +102,13 @@ test_neovim_uses_reviewed_plugin_lock() {
   assert_contains "$lazy" 'lazy-lock.json'
   assert_contains "$lazy" 'git", "-C", lazypath, "checkout", "--force", commit'
   assert_not_contains "$lazy" '"--branch=stable"'
-  assert_equals "$(jq -r .commit "$REPO_DIR/packages/fff-release.json")" "$(jq -r '."fff.nvim".commit' "$lock")"
-  assert_contains "$lazy" "version = \"v$(jq -r .version "$REPO_DIR/packages/fff-release.json")\""
+  assert_equals "false" "$(jq 'has("fff.nvim")' "$lock")"
+  assert_not_contains "$lazy" 'dmtrKovalenko/fff.nvim'
   assert_contains "$updater" '"XDG_CONFIG_HOME"'
   assert_contains "$updater" '"XDG_DATA_HOME"'
-  assert_contains "$updater" 'repo / "config/shared/config/nvim/init.lua"'
+  assert_contains "$updater" 'repo / "config/shared/config/nvim"'
   assert_not_contains "$updater" 'config/shared/config/nvim/lua/plugins/fff.lua'
-  assert_contains "$updater" 'lock["fff.nvim"]["commit"] != fff["commit"]'
+  assert_not_contains "$updater" 'fff.nvim'
 }
 
 test_install_packages_syncs_neovim() {
@@ -163,13 +163,10 @@ test_sync_neovim_skips_full_restore_when_runtime_is_current() {
 }
 
 test_sync_neovim_restores_all_plugins_cleans_and_verifies_tools() {
-  local calls="$TEST_TMPDIR/nvim.log" source="$HOME/.config/nvim/fff-nvim-backend"
+  local calls="$TEST_TMPDIR/nvim.log"
   DRY=false
-  mkdir -p "$(dirname "$source")"
-  touch "$source"
   nvim() {
     printf '%s\n' "$*" >> "$calls"
-    mkdir -p "$HOME/.local/share/nvim/lazy/fff.nvim"
     printf 'RAW_NEOVIM_SYNC_OK\n'
   }
   nix() { printf 'nix should not run\n'; return 1; }
@@ -185,8 +182,6 @@ test_sync_neovim_restores_all_plugins_cleans_and_verifies_tools() {
 
 test_sync_neovim_fails_without_success_marker() {
   DRY=false
-  mkdir -p "$HOME/.config/nvim"
-  touch "$HOME/.config/nvim/fff-nvim-backend"
   nvim() { printf 'Lazy build failed\n'; return 0; }
 
   assert_exit_code 1 _sync_neovim
@@ -202,35 +197,29 @@ test_sync_neovim_dry_run_does_not_start_neovim() {
   unset -f nvim
 }
 
-test_fff_nvim_is_disabled_on_windows() {
-  local config
+test_neovim_uses_snacks_without_fff_dependency() {
+  local config lock home flake pins sync updater
   config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-
-  assert_contains "$config" 'enabled = vim.fn.has("win32") ~= 1'
-}
-
-test_fff_nvim_uses_hash_pinned_nix_backend() {
-  local home package flake config sync
+  lock="$REPO_DIR/config/shared/config/nvim/lazy-lock.json"
   home="$(<"$REPO_DIR/config/home.nix")"
-  package="$(<"$REPO_DIR/packages/fff-nvim-backend.nix")"
   flake="$(<"$REPO_DIR/flake.nix")"
-  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
+  pins="$REPO_DIR/packages/fff-release.json"
   sync="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")"
+  updater="$(<"$REPO_DIR/scripts/update_pins.py")"
 
-  assert_contains "$package" 'fff-release.json'
-  assert_equals "true" "$(jq -r '.backend["x86_64-linux"] | (.file | endswith(".so")) and (.sha256 | test("^[0-9a-f]{64}$")) and (.hash | startswith("sha256-"))' "$REPO_DIR/packages/fff-release.json")"
-  assert_equals "true" "$(jq -r '.backend["aarch64-darwin"] | (.file | endswith(".dylib")) and (.sha256 | test("^[0-9a-f]{64}$")) and (.hash | startswith("sha256-"))' "$REPO_DIR/packages/fff-release.json")"
-  assert_contains "$flake" 'packages.x86_64-linux.fff-nvim-backend'
-  assert_contains "$flake" 'packages.aarch64-darwin.fff-nvim-backend'
-  assert_contains "$home" 'xdg.configFile."nvim/fff-nvim-backend".source = fffNvimBinary;'
-  assert_contains "$config" 'link_fff'
-  assert_contains "$sync" 'fff-nvim-backend'
-  assert_contains "$sync" 'fs_symlink'
-  assert_contains "$sync" 'fs_rename'
-  assert_not_contains "$sync" 'vim.fn.delete(target)'
-  assert_not_contains "$config" 'download_or_build_binary'
-  assert_not_contains "$config" 'cargo build'
+  assert_contains "$config" 'map("n", "<leader>ff", function() Snacks.picker.files({ cwd = root() }) end, "Find Files")'
+  assert_contains "$config" 'map("n", "<leader>sg", function() Snacks.picker.grep({ cwd = root() }) end, "Grep")'
+  assert_not_contains "$config" 'dmtrKovalenko/fff.nvim'
+  assert_not_contains "$config" 'require("fff")'
+  assert_equals "false" "$(jq 'has("fff.nvim")' "$lock")"
+  assert_equals "false" "$(jq 'has("commit") or has("backend")' "$pins")"
+  assert_not_contains "$home" 'fff-nvim-backend'
+  assert_not_contains "$flake" 'fff-nvim-backend'
+  assert_not_contains "$sync" 'link_fff'
+  assert_not_contains "$updater" 'fff.nvim'
+  assert_equals "false" "$([[ -e "$REPO_DIR/packages/fff-nvim-backend.nix" ]] && echo true || echo false)"
 }
+
 
 _raw_neovim_cache_lock() {
   local lock="$1" attempts=0
@@ -314,10 +303,9 @@ test_raw_neovim_cache_serializes_publication() {
 
 test_raw_neovim_headless_config() {
   is_windows_bash && return 0
-  local data source_lazy source_backend output status lock_hash cache_base cache_root cached_plugins marker lazy_dir lazy_package
+  local data source_lazy output status lock_hash cache_base cache_root cached_plugins marker lazy_dir lazy_package
   data="$(mktemp -d)"
   source_lazy="${LAZY_NVIM_PATH:-$ORIG_HOME/.local/share/nvim/site/pack/hm/start/lazy.nvim}"
-  source_backend="${FFF_NVIM_BACKEND_PATH:-$ORIG_HOME/.config/nvim/fff-nvim-backend}"
   lock_hash="$(sha256sum "$REPO_DIR/config/shared/config/nvim/lazy-lock.json" | awk '{print $1}')"
   cache_base="${XDG_CACHE_HOME:-$ORIG_HOME/.cache}/dotfile/nvim/test-plugins"
   cache_root="$cache_base/$lock_hash"
@@ -327,28 +315,23 @@ test_raw_neovim_headless_config() {
   lazy_package="$data/data/nvim/site/pack/pins/start/lazy.nvim"
   mkdir -p "$data/config" "$lazy_dir" "$(dirname "$lazy_package")"
   cp -R "$REPO_DIR/config/shared/config/nvim" "$data/config/nvim"
-  ln -s "$source_backend" "$data/config/nvim/fff-nvim-backend"
 
   _raw_neovim_cache_seed "$cache_base" "$lock_hash" "$lazy_dir" || true
   ln -s "$source_lazy" "$lazy_package"
   set +e
   output="$(DOTFILE_NVIM_SYNC=1 XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
-    FFF_FRECENCY_DB="$data/fff-frecency" FFF_HISTORY_DB="$data/fff-history" \
     nvim --headless \
       -c "lua require('config.sync').plugins(true); print('RAW_PLUGIN_SYNC_OK')" \
-      -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" \
-      -c "lua require('fff'); print('FFF_REQUIRE_OK')" +qa 2>&1)"
+      -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1)"
   status=$?
   set -e
-  if [[ "$status" -eq 0 && "$output" == *"RAW_PLUGIN_SYNC_OK"* && "$output" == *"RAW_CONFIG_OK"* && "$output" == *"FFF_REQUIRE_OK"* \
+  if [[ "$status" -eq 0 && "$output" == *"RAW_PLUGIN_SYNC_OK"* && "$output" == *"RAW_CONFIG_OK"* \
     && ! -f "$marker" && "${DOTFILE_NEOVIM_TEST_FRESH:-false}" != true ]]; then
     _raw_neovim_cache_write "$lazy_dir" "$cached_plugins" "$marker"
   fi
   assert_equals "0" "$status"
   assert_contains "$output" "RAW_PLUGIN_SYNC_OK"
   assert_contains "$output" "RAW_CONFIG_OK"
-  assert_contains "$output" "FFF_REQUIRE_OK"
-  assert_not_contains "$output" "Nix-managed fff.nvim backend is missing"
   rm -rf "$data"
 }
 
