@@ -31,9 +31,9 @@ function Resolve-DotfilesDir($Override, $ScriptPath) {
 # Resolve symlink so invoking via ~\.local\bin points back to the real repo.
 # Allow override via $env:DOTFILES_DIR so the install path is not hardcoded.
 $script:DotfilesDir = Resolve-DotfilesDir $env:DOTFILES_DIR $PSCommandPath
-$script:FiraCodeNerdFontVersion = '3.5.0'
-$script:FiraCodeNerdFontUrl = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.0/FiraCode.zip'
-$script:FiraCodeNerdFontSha256 = '8ad2834d8ea1945d8ab042538e608f6370573a29913aa94b5e6bbc92ffacbab5'
+$script:FiraCodeNerdFontVersion = '3.5.1'
+$script:FiraCodeNerdFontUrl = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/FiraCode.zip'
+$script:FiraCodeNerdFontSha256 = '239395baf60c89b2eaf4862b6b09db0ef95605cd3e8eef51c00345822a81a665'
 
 # Logging helpers
 function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }

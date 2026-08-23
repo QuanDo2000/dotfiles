@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-08-23-wordy-july",
-  "registrySha256": "54280061ee901e3d1d230942c2972575debff333eee64c7e0f3e585d68ab0c6b",
+  "registryVersion": "2026-08-23-neat-crush",
+  "registrySha256": "2e815a5c3211dc13ca29c1ae59ef7044472cd9fcd2d8d97996d2cb925fb65f30",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
