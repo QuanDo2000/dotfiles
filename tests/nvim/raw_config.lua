@@ -41,7 +41,7 @@ for lhs, desc in pairs(expected) do assert(maps[lhs] == desc, lhs .. " mapping m
 assert(vim.fn.maparg("jk", "i") ~= "", "jk mapping missing")
 assert(maps[" e"] == "Explorer (Root Dir)" and maps[" E"] == "Explorer (cwd)", "explorer mappings missing")
 assert(maps[" ,"] == "Buffers", "buffer picker mapping missing")
-for _, lhs in ipairs({ " :", " s/", " sa", " sC", " sH", " sM", " fb", " fe", " fE", " sc" }) do
+for _, lhs in ipairs({ " :", " s/", " sa", " sC", " sH", " sM", " fb", " fe", " fE", " sc", " xt", " xT" }) do
   assert(maps[lhs] == nil, lhs .. " mapping must stay removed")
 end
 assert(maps.H == "Prev Buffer" and maps.L == "Next Buffer", "buffer navigation missing")

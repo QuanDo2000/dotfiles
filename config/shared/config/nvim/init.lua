@@ -500,8 +500,6 @@ map("n", "<leader>xL", "<cmd>Trouble loclist toggle<cr>", "Location List (Troubl
 map("n", "<leader>xQ", "<cmd>Trouble qflist toggle<cr>", "Quickfix List (Trouble)")
 map("n", "]t", function() require("todo-comments").jump_next() end, "Next Todo Comment")
 map("n", "[t", function() require("todo-comments").jump_prev() end, "Previous Todo Comment")
-map("n", "<leader>xt", "<cmd>Trouble todo toggle<cr>", "Todo (Trouble)")
-map("n", "<leader>xT", "<cmd>Trouble todo toggle filter = {tag = {TODO,FIX,FIXME}}<cr>", "Todo/Fix/Fixme (Trouble)")
 map("n", "<leader>st", function() Snacks.picker.todo_comments() end, "Todo")
 map("n", "<leader>sT", function() Snacks.picker.todo_comments({ keywords = { "TODO", "FIX", "FIXME" } }) end, "Todo/Fix/Fixme")
 map("n", "<leader>snh", "<cmd>messages<cr>", "Message History")
