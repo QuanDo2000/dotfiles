@@ -74,6 +74,21 @@ def remove_retired_marketplaces(config):
         config.pop("hooks", None)
 
 
+def remove_generated_codebase_memory_hook(config):
+    hooks = config.get("hooks")
+    if not isinstance(hooks, dict) or not isinstance(hooks.get("SessionStart"), list):
+        return
+    generated = {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [{"type": "command", "command": "codebase-memory-mcp hook-augment"}],
+    }
+    hooks["SessionStart"] = [hook for hook in hooks["SessionStart"] if hook != generated]
+    if not hooks["SessionStart"]:
+        hooks.pop("SessionStart")
+    if not hooks:
+        config.pop("hooks")
+
+
 def quote(value):
     return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
 
@@ -158,6 +173,7 @@ try:
     live_config = load(live_path)
     seed_config = load(seed_compare_path)
     remove_retired_marketplaces(live_config)
+    remove_generated_codebase_memory_hook(live_config)
     missing = missing_from_seed(live_config, seed_config)
 except Exception as exc:
     print(f"Warning: failed to compare Codex config with tracked seed: {exc}", file=sys.stderr)

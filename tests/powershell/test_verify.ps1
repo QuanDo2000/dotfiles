@@ -13,6 +13,8 @@ function TestSetup {
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.
     $script:Quiet = $false
+    $script:OriginalCodexHome = $env:CODEX_HOME
+    Remove-Item Env:CODEX_HOME -ErrorAction SilentlyContinue
     $script:OriginalGetInstalledWingetPackages = (Get-Command Get-InstalledWingetPackages).ScriptBlock
     Set-HealthyToolMocks
     Set-FunctionMock 'Get-InstalledWingetPackages' { @() }
@@ -27,6 +29,7 @@ function TestTeardown {
     Clear-CommandMock 'Get-Command'
     Clear-CommandMock 'Get-Module'
     Set-FunctionMock 'Get-InstalledWingetPackages' $script:OriginalGetInstalledWingetPackages
+    if ($null -eq $script:OriginalCodexHome) { Remove-Item Env:CODEX_HOME -ErrorAction SilentlyContinue } else { $env:CODEX_HOME = $script:OriginalCodexHome }
     Clear-TestEnv
 }
 
@@ -76,9 +79,10 @@ function test_verify_reports_missing_managed_ai_command {
 }
 
 function test_verify_reports_missing_codex_config {
+    $env:CODEX_HOME = Join-Path $env:USERPROFILE 'custom-codex-home'
     $output = Verify 6>&1 | Out-String
 
-    Assert-Contains $output (Join-Path $env:USERPROFILE '.codex\config.toml')
+    Assert-Contains $output (Join-Path $env:CODEX_HOME 'config.toml')
     Assert-True $script:VerifyFailed 'missing Codex config should fail verification'
 }
 

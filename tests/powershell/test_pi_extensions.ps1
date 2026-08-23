@@ -174,6 +174,7 @@ function test_installai_installs_pinned_node_before_ai_tools {
         InstallAi
         Assert-Equals 'InstallFnm' $calls[0] 'pinned Node should install first'
         Assert-Equals 'InstallCodex' $calls[1] 'Codex should follow pinned Node'
+        Assert-True ($calls.IndexOf('SyncCodexConfig') -lt $calls.IndexOf('InstallCodebaseMemory')) 'repo-owned Codex config should exist before codebase-memory runtime setup'
     } finally {
         foreach ($name in $names) { Set-FunctionMock $name $original[$name] }
     }

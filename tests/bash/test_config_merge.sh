@@ -248,6 +248,34 @@ EOF
 }
 
 
+test_codex_seed_merge_removes_generated_codebase_memory_hook() {
+  local tmp script live seed
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/codex.py"
+  live="$tmp/live.toml"
+  seed="$tmp/seed.toml"
+
+  cat > "$live" <<'EOF'
+model = "live"
+
+[[hooks.SessionStart]]
+matcher = "startup|resume|clear|compact"
+hooks = [{ type = "command", command = "codebase-memory-mcp hook-augment" }]
+
+[[hooks.SessionStart]]
+matcher = "startup"
+hooks = [{ type = "command", command = "custom-hook" }]
+EOF
+
+  printf '%s\n' 'model = "tracked"' > "$seed"
+  python3 "$script" "$live" "$seed" '' >/dev/null
+
+  assert_not_contains "$(<"$live")" 'codebase-memory-mcp hook-augment'
+  assert_contains "$(<"$live")" 'command = "custom-hook"'
+  rm -rf "$tmp"
+}
+
+
 test_codex_seed_merge_engine_applies_tracked_additions_to_live() {
   local tmp script live seed
   tmp="$(mktemp -d)"
