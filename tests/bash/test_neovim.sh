@@ -357,7 +357,7 @@ test_raw_neovim_headless_config() {
   assert_contains "$output" "RAW_PLUGIN_SYNC_OK"
   assert_contains "$output" "RAW_CONFIG_OK"
 
-  bigfile="$data/big.lua"
+  bigfile="$(cd "$data" && pwd -P)/big.lua"
   head -c 1600000 </dev/zero | tr '\0' x > "$bigfile"
   set +e
   output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" nvim --headless "$bigfile" \
