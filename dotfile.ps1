@@ -193,7 +193,7 @@ function Get-RequiredCommands {
     @(
         "git", "gpg", "nvim", "starship", "fzf", "fd", "rg", "lazygit",
         "fnm", "node", "jj", "zoxide", "jq", "codex", "pi",
-        "codebase-memory-mcp", "fff-mcp", "fff-mcp-agent", "py", "gh", "vtsls",
+        "codebase-memory-mcp", "py", "gh", "vtsls",
         "bash-language-server", "shellcheck", "tree-sitter", "clang"
     )
 }
@@ -1103,58 +1103,19 @@ function SyncPiConfigs {
     Success "Finished syncing Pi configuration"
 }
 
-function InstallFffMcp {
-    param([switch]$Update)
-    Info "Installing FFF MCP server..."
-    if ($script:Dry) { return }
-
-    $pinsPath = Join-Path $script:DotfilesDir 'packages\fff-release.json'
-    if (-not (Test-Path -LiteralPath $pinsPath -PathType Leaf)) { throw "Missing FFF pin file: $pinsPath" }
-    $pins = Get-Content -Raw -LiteralPath $pinsPath | ConvertFrom-Json
-    $version = [string]$pins.version
-    $asset = $pins.mcp.'windows-x64'
-    $assetFile = [string]$asset.file
-    $expectedHash = [string]$asset.sha256
-    if ($version -notmatch '^\d+\.\d+\.\d+$' -or $assetFile -ne 'fff-mcp-x86_64-pc-windows-msvc.exe' -or $expectedHash -notmatch '^[0-9a-f]{64}$') {
-        throw 'Invalid pinned FFF MCP release'
+function Remove-RetiredFffMcp {
+    $destination = Join-Path $env:USERPROFILE '.local\bin\fff-mcp.exe'
+    $processes = @(Get-Process -Name 'fff-mcp' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $destination })
+    if ($processes.Count -gt 0) {
+        $processes | Stop-Process -Force -ErrorAction Stop
+        $processes | Wait-Process -Timeout 5 -ErrorAction Stop
     }
-
-    $binDir = Join-Path $env:USERPROFILE '.local\bin'
-    $destination = Join-Path $binDir 'fff-mcp.exe'
-    $current = Test-Path -LiteralPath $destination -PathType Leaf
-    if ($current) {
-        $current = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant() -eq $expectedHash
+    foreach ($path in @(
+        $destination,
+        (Join-Path $env:USERPROFILE '.local\bin\fff-mcp-agent.cmd')
+    )) {
+        if (Test-Path -LiteralPath $path -PathType Leaf) { Remove-Item -LiteralPath $path -Force -ErrorAction Stop }
     }
-    if (-not $current) {
-        $url = "https://github.com/dmtrKovalenko/fff/releases/download/v$version/$assetFile"
-        $download = "$destination.download"
-        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-        try {
-            Invoke-WebRequest -Uri $url -OutFile $download
-            if ((Get-FileHash -Algorithm SHA256 $download).Hash -ne $expectedHash) {
-                throw 'FFF MCP download hash mismatch'
-            }
-            if (Test-Path -LiteralPath $destination) {
-                $processes = @(Get-Process -Name 'fff-mcp' -ErrorAction SilentlyContinue)
-                $processes | Stop-Process -Force -ErrorAction Stop
-                $processes | Wait-Process -Timeout 5 -ErrorAction Stop
-                Remove-Item -LiteralPath $destination -Force
-            }
-            Move-Item -LiteralPath $download -Destination $destination
-        } finally {
-            Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue
-        }
-    } else {
-        Info "Already installed FFF MCP server"
-    }
-    $launcher = Join-Path $binDir 'fff-mcp-agent.cmd'
-    @'
-@echo off
-"%~dp0fff-mcp.exe" --frecency-db "%LOCALAPPDATA%\fff\frecency" %*
-'@ | Set-Content -LiteralPath $launcher -Encoding ascii
-    AddToUserPath $binDir
-
-    Success "Finished installing FFF MCP server"
 }
 
 function Get-CodebaseMemoryWindowsArch($Architecture) {
@@ -1531,7 +1492,7 @@ function InstallAi {
     SyncCodexConfig
 
     InstallCodebaseMemory -Update:$Update
-    InstallFffMcp -Update:$Update
+    Remove-RetiredFffMcp
     InstallPi -Update:$Update
     InstallPiLanguageServers -Update:$Update
     InstallPiExtensions

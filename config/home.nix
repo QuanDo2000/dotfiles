@@ -128,7 +128,6 @@ let
     bash-language-server
     codex
     codebase-memory-mcp
-    fff-mcp
     jq
     nil
     nixfmt
@@ -178,7 +177,6 @@ in
   home.sessionPath = [
     "${homeDir}/.local/bin"
   ];
-  home.sessionVariables.FFF_FRECENCY_DB = "${homeDir}/.local/state/fff/frecency";
   home.packages = devTerminalPackages
   ++ lib.optionals (!nixosSystem) [
     pkgs.nerd-fonts.fira-code
@@ -212,16 +210,6 @@ in
       force = true;
     };
 
-    ".local/bin/fff-mcp-agent" = {
-      text = ''
-        #!${pkgs.runtimeShell}
-        exec "${pkgs.fff-mcp}/bin/fff-mcp" \
-          --frecency-db "''${FFF_FRECENCY_DB:-$HOME/.local/state/fff/frecency}" \
-          "$@"
-      '';
-      executable = true;
-      force = true;
-    };
     ".local/bin/bitwarden-picker" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ./unix/bin/bitwarden-picker // {
       executable = true;
     });

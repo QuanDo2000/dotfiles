@@ -159,8 +159,6 @@ test_dotfile_packages_command_mac() {
   : > "$HOME/.pi/agent/settings.json"
   : > "$HOME/.pi/agent/mcp.json"
   printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/pi"
-  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
-  chmod +x "$HOME/.local/bin/pi" "$HOME/.local/bin/fff-mcp-agent"
   with_nix_agent_tools
 
   local output status=0

@@ -122,6 +122,35 @@ function test_getcodebasememorywindowsarch_supports_x64_and_arm64 {
     Assert-Throws { Get-CodebaseMemoryWindowsArch 'X86' } '32-bit Windows should be rejected'
 }
 
+function test_remove_retired_fff_mcp_cleans_only_executables {
+    $binDir = Join-Path $env:USERPROFILE '.local\bin'
+    New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+    $exe = Join-Path $binDir 'fff-mcp.exe'
+    $launcher = Join-Path $binDir 'fff-mcp-agent.cmd'
+    $frecency = Join-Path $env:LOCALAPPDATA 'fff\frecency'
+    New-Item -ItemType Directory -Force -Path (Split-Path $frecency -Parent) | Out-Null
+    'retired' | Set-Content -NoNewline $exe
+    'retired' | Set-Content -NoNewline $launcher
+    'state' | Set-Content -NoNewline $frecency
+    $script:FffProcessesStopped = @()
+    Set-CommandMock 'Get-Process' {
+        @(
+            [pscustomobject]@{ ProcessName = 'fff-mcp'; Path = $exe },
+            [pscustomobject]@{ ProcessName = 'fff-mcp'; Path = 'C:\other\fff-mcp.exe' }
+        )
+    }
+    Set-CommandMock 'Stop-Process' { $script:FffProcessesStopped = @($input) }
+    Set-CommandMock 'Wait-Process' { }
+
+    Remove-RetiredFffMcp
+
+    Assert-Equals 1 $script:FffProcessesStopped.Count
+    Assert-Equals $exe $script:FffProcessesStopped[0].Path
+    Assert-False (Test-Path -LiteralPath $exe) 'retired FFF executable should be removed'
+    Assert-False (Test-Path -LiteralPath $launcher) 'retired FFF launcher should be removed'
+    Assert-FileExists $frecency 'FFF frecency state must be preserved'
+}
+
 function test_codebasememory_archive_rejects_unexpected_members {
     $source = Join-Path $script:_TestTmp.FullName 'codebase-archive-source'
     $archive = Join-Path $script:_TestTmp.FullName 'codebase-archive.zip'
@@ -267,7 +296,6 @@ function test_windows_codex_seed_contains_only_portable_state {
             '[windows]',
             'sandbox = "elevated"',
             'network_access = false',
-            '[mcp_servers.fff]',
             '[mcp_servers.codebase-memory-mcp]'
         )) {
         Assert-True ($seed.Contains($portableSetting)) "Codex seed should retain portable setting: $portableSetting"
@@ -299,79 +327,8 @@ function test_synccodexconfig_does_not_apply_live_state_to_tracked_seed {
     Assert-Equals 'model = "tracked"' ((Get-Content -Raw $source).Trim())
 }
 
-function test_installfffmcp_installs_verified_windows_binary_for_codex {
-    $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\fff-release.json') | ConvertFrom-Json
-    $script:FffUrl = ''
-    Set-CommandMock 'Invoke-WebRequest' {
-        param($Uri, $OutFile)
-        $script:FffUrl = $Uri
-        'fff' | Set-Content -NoNewline $OutFile
-    }
-    Set-CommandMock 'Get-FileHash' {
-        [pscustomobject]@{ Hash = $pins.mcp.'windows-x64'.sha256 }
-    }
-    Set-FunctionMock 'AddToUserPath' { }
 
-    InstallFffMcp
 
-    $binDir = Join-Path $env:USERPROFILE '.local\bin'
-    $launcher = Join-Path $binDir 'fff-mcp-agent.cmd'
-    Assert-FileExists (Join-Path $binDir 'fff-mcp.exe')
-    Assert-FileExists $launcher
-    Assert-Contains (Get-Content -Raw $launcher) '--frecency-db "%LOCALAPPDATA%\fff\frecency"'
-    Assert-False ((Get-Content -Raw $launcher) -like '*--history-db*') 'native MCP history is unsupported and should not be configured'
-    Assert-Contains $script:FffUrl "/v$($pins.version)/$($pins.mcp.'windows-x64'.file)"
-    $codex = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\codex\config.toml')
-    Assert-Contains $codex 'command = "cmd.exe"'
-    Assert-Contains $codex '"fff-mcp-agent.cmd"'
-}
-
-function test_installfffmcp_skips_current_pinned_binary_during_update {
-    $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\fff-release.json') | ConvertFrom-Json
-    $binDir = Join-Path $env:USERPROFILE '.local\bin'
-    New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-    'current' | Set-Content -NoNewline (Join-Path $binDir 'fff-mcp.exe')
-    $script:FffDownloaded = $false
-    Set-CommandMock 'Invoke-WebRequest' { $script:FffDownloaded = $true }
-    Set-CommandMock 'Get-FileHash' { [pscustomobject]@{ Hash = $pins.mcp.'windows-x64'.sha256 } }
-    Set-FunctionMock 'AddToUserPath' { }
-
-    InstallFffMcp -Update
-
-    Assert-False $script:FffDownloaded 'matching pinned binary should not download again'
-    Assert-Equals 'current' (Get-Content -Raw (Join-Path $binDir 'fff-mcp.exe'))
-}
-
-function test_installfffmcp_stops_running_server_before_update {
-    $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\fff-release.json') | ConvertFrom-Json
-    $binDir = Join-Path $env:USERPROFILE '.local\bin'
-    New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-    'old' | Set-Content -NoNewline (Join-Path $binDir 'fff-mcp.exe')
-    $script:FffProcessesStopped = $false
-    Set-CommandMock 'Get-Process' { [pscustomobject]@{ ProcessName = 'fff-mcp' } }
-    Set-CommandMock 'Stop-Process' { $script:FffProcessesStopped = $true }
-    Set-CommandMock 'Wait-Process' { }
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force)
-        if (Test-Path -LiteralPath $Destination) { throw 'Cannot create a file when that file already exists.' }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
-    }
-    Set-CommandMock 'Invoke-WebRequest' {
-        param($Uri, $OutFile)
-        'new' | Set-Content -NoNewline $OutFile
-    }
-    Set-CommandMock 'Get-FileHash' {
-        param($LiteralPath)
-        $hash = if ($LiteralPath -like '*.download') { $pins.mcp.'windows-x64'.sha256 } else { '0' * 64 }
-        [pscustomobject]@{ Hash = $hash }
-    }
-    Set-FunctionMock 'AddToUserPath' { }
-
-    InstallFffMcp -Update
-
-    Assert-True $script:FffProcessesStopped 'running FFF MCP server should stop before replacing its executable'
-    Assert-Equals 'new' (Get-Content -Raw (Join-Path $binDir 'fff-mcp.exe'))
-}
 
 function Initialize-TestAiInstructions($Content = 'shared instructions') {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'

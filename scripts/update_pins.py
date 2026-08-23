@@ -193,33 +193,6 @@ def update_codebase_memory(repo: Path) -> None:
     print(f"updated codebase-memory-mcp to {version}")
 
 
-def update_fff(repo: Path) -> None:
-    pins_path = repo / "packages/fff-release.json"
-    current = json.loads(pins_path.read_text(encoding="utf-8"))
-    release = github_release("dmtrKovalenko/fff")
-    version = release["tag_name"].removeprefix("v")
-    if current["version"] == version:
-        print(f"FFF {version} already current")
-        return
-    assets = {
-        "x86_64-linux": "fff-mcp-x86_64-unknown-linux-musl",
-        "aarch64-darwin": "fff-mcp-aarch64-apple-darwin",
-        "windows-x64": "fff-mcp-x86_64-pc-windows-msvc.exe",
-    }
-    updated: dict[str, object] = {"version": version, "mcp": {}}
-    with tempfile.TemporaryDirectory(prefix="dotfiles-fff-") as temporary:
-        root = Path(temporary)
-        for platform, name in assets.items():
-            path = root / name
-            digest = verify_asset(release, name, path, checksum_file=True)
-            data = {"file": name, "sha256": digest}
-            if not platform.startswith("windows-"):
-                data["hash"] = nix_hash(path)
-            updated["mcp"][platform] = data  # type: ignore[index]
-    atomic_json(pins_path, updated)
-    print(f"updated FFF to {version}")
-
-
 def locked_node(repo: Path) -> tuple[str, str]:
     expression = (
         f'let f = builtins.getFlake "path:{repo}"; '
@@ -584,7 +557,6 @@ def main() -> int:
     repo = Path(repo_arg).resolve()
     handlers = {
         "codebase-memory": update_codebase_memory,
-        "fff": update_fff,
         "pi-extensions": update_pi_extensions,
         "webcord": update_webcord,
         "anki-zoom": update_anki_zoom,

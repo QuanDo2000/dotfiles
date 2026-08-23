@@ -198,12 +198,11 @@ test_sync_neovim_dry_run_does_not_start_neovim() {
 }
 
 test_neovim_uses_snacks_without_fff_dependency() {
-  local config lock home flake pins sync updater
+  local config lock home flake sync updater
   config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
   lock="$REPO_DIR/config/shared/config/nvim/lazy-lock.json"
   home="$(<"$REPO_DIR/config/home.nix")"
   flake="$(<"$REPO_DIR/flake.nix")"
-  pins="$REPO_DIR/packages/fff-release.json"
   sync="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")"
   updater="$(<"$REPO_DIR/scripts/update_pins.py")"
 
@@ -212,7 +211,6 @@ test_neovim_uses_snacks_without_fff_dependency() {
   assert_not_contains "$config" 'dmtrKovalenko/fff.nvim'
   assert_not_contains "$config" 'require("fff")'
   assert_equals "false" "$(jq 'has("fff.nvim")' "$lock")"
-  assert_equals "false" "$(jq 'has("commit") or has("backend")' "$pins")"
   assert_not_contains "$home" 'fff-nvim-backend'
   assert_not_contains "$flake" 'fff-nvim-backend'
   assert_not_contains "$sync" 'link_fff'

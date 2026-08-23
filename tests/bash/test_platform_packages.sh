@@ -187,15 +187,11 @@ test_tmux_config_parses_and_applies_theme() {
 }
 
 test_code_search_stack_uses_current_full_feature_packages() {
-  local fff codebase codebase_pins fff_pins pi_extensions
-  fff="$(<"$REPO_DIR/packages/fff-mcp.nix")"
+  local codebase codebase_pins pi_extensions
   codebase="$(<"$REPO_DIR/packages/codebase-memory-mcp.nix")"
   codebase_pins="$REPO_DIR/packages/codebase-memory-mcp-release.json"
-  fff_pins="$REPO_DIR/packages/fff-release.json"
   pi_extensions="$REPO_DIR/config/shared/ai/pi/extensions/package.json"
 
-  assert_contains "$fff" 'fff-release.json'
-  assert_equals "true" "$(jq -r '.version | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")' "$fff_pins")"
   assert_equals "true" "$(jq -r '.version | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")' "$codebase_pins")"
   assert_contains "$codebase" 'codebase-memory-mcp-release.json'
   assert_contains "$codebase" '${source.file}'
@@ -258,9 +254,6 @@ test_pi_subagent_search_tools_are_read_only() {
   if [[ -f "$settings" ]]; then
     assert_exit_code 0 jq -e '
       def search_tools: [
-        "mcp_fff_find_files",
-        "mcp_fff_grep",
-        "mcp_fff_multi_grep",
         "mcp_codebaseMemory_search_graph",
         "mcp_codebaseMemory_trace_path",
         "mcp_codebaseMemory_get_code_snippet",
@@ -334,22 +327,11 @@ test_code_search_stack_enables_auto_index_and_agent_workflows() {
 
   assert_contains "$HOME_CONFIG" 'config set auto_index true'
   assert_contains "$HOME_CONFIG" 'config set auto_watch true'
-  assert_contains "$HOME_CONFIG" 'FFF_FRECENCY_DB = "${homeDir}/.local/state/fff/frecency";'
-  assert_contains "$HOME_CONFIG" '".local/bin/fff-mcp-agent"'
-  assert_contains "$HOME_CONFIG" 'exec "${pkgs.fff-mcp}/bin/fff-mcp"'
-  assert_contains "$HOME_CONFIG" '--frecency-db'
-  assert_not_contains "$HOME_CONFIG" '--history-db'
-  assert_not_contains "$HOME_CONFIG" 'FFF_HISTORY_DB'
-  assert_contains "$codex" 'args = ["fff-mcp-agent"]'
-  assert_contains "$codex" '[mcp_servers.fff.tools.find_files]'
-  assert_contains "$codex" '[mcp_servers.fff.tools.grep]'
-  assert_contains "$codex" '[mcp_servers.fff.tools.multi_grep]'
   assert_contains "$codex" '[mcp_servers.codebase-memory-mcp.tools.detect_changes]'
   assert_contains "$agents" 'Use codebase-memory first when those tools are available'
-  assert_contains "$agents" 'Strict-tool subagents without them use their provided `read`, `grep`, `find`, and `ls` tools.'
+  assert_contains "$agents" 'Use native read-only filename/text search (`rg`, `fd`, `find`, or harness-provided `grep`/`find`) for raw lookup and fallback.'
   assert_contains "$agents" 'get_architecture'
   assert_contains "$agents" 'detect_changes'
-  assert_contains "$agents" 'multi_grep'
 }
 
 

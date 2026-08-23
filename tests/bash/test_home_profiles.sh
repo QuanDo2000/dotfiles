@@ -60,7 +60,6 @@ assert_line_absent() { grep -Fxq "$2" <<< "$1" && echo "  unexpected line presen
 _test_present() { local text="$1" item; shift; for item in "$@"; do assert_line_present "$text" "$item"; done; }
 _test_absent() { local text="$1" item; shift; for item in "$@"; do assert_line_absent "$text" "$item"; done; }
 
-common_packages=(bash-language-server codex codebase-memory-mcp fff-mcp jq nil pi-coding-agent ShellCheck statix vtsls)
 desktop_packages=(ghostty google-chrome grim hyprshutdown pavucontrol playerctl rbw slurp thunar wl-clipboard xarchiver)
 personal_packages=(anki-with-addons obsidian webcord)
 sync_packages=(obsidian-headless rclone)

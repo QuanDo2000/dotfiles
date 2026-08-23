@@ -27,19 +27,6 @@ enabled = true
 [plugins."visualize@openai-bundled"]
 enabled = true
 
-[mcp_servers.fff]
-command = "/usr/bin/env"
-args = ["fff-mcp-agent"]
-
-[mcp_servers.fff.tools.find_files]
-approval_mode = "approve"
-
-[mcp_servers.fff.tools.grep]
-approval_mode = "approve"
-
-[mcp_servers.fff.tools.multi_grep]
-approval_mode = "approve"
-
 [mcp_servers.codebase-memory-mcp]
 command = "/usr/bin/env"
 args = ["codebase-memory-mcp"]

@@ -57,8 +57,6 @@ link_valid_core_dotfiles() {
   : > "$HOME/.codex/config.toml"
   : > "$HOME/.pi/agent/settings.json"
   : > "$HOME/.pi/agent/mcp.json"
-  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
-  chmod +x "$HOME/.local/bin/fff-mcp-agent"
   mkdir -p "$HOME/.config/dotfiles"
   printf 'desktop=false\npersonalApps=false\nobsidianSync=false\ngoogleDriveSync=false\nstorageOffsiteBackup=false\n' > "$HOME/.config/dotfiles/profile"
 }
@@ -121,16 +119,6 @@ test_doctor_is_a_small_smoke_check() {
   fi
 }
 
-test_doctor_finds_managed_fff_without_session_path() {
-  mkdir -p "$HOME/.local/bin"
-  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
-  chmod +x "$HOME/.local/bin/fff-mcp-agent"
-  command() { return 1; }
-  errors=0
-  _check_managed_commands
-  assert_equals "4" "$errors"
-  unset -f command
-}
 
 test_doctor_accepts_equivalent_physical_symlink_paths() {
   local original_dotfiles="$DOTFILES_DIR" physical="$TEST_TMPDIR/physical" alias="$TEST_TMPDIR/alias"
@@ -163,7 +151,7 @@ test_doctor_fails_missing_runtime_health() {
   assert_equals "1" "$errors"
   command() { return 1; }
   _check_managed_commands
-  assert_equals "6" "$errors"
+  assert_equals "5" "$errors"
   unset -f command
 }
 
@@ -264,8 +252,6 @@ test_doctor_rejects_nvm_shadowed_pi() {
     builtin command "$@"
   }
   mkdir -p "$HOME/.local/bin"
-  : > "$HOME/.local/bin/fff-mcp-agent"
-  chmod +x "$HOME/.local/bin/fff-mcp-agent"
   errors=0
   local output_file="$TEST_TMPDIR/nvm-pi-doctor.log" output
   _check_managed_commands > "$output_file" 2>&1
@@ -350,8 +336,6 @@ test_doctor_accepts_repo_dotfile_command_link() {
   : > "$HOME/.codex/config.toml"
   : > "$HOME/.pi/agent/settings.json"
   : > "$HOME/.pi/agent/mcp.json"
-  printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/fff-mcp-agent"
-  chmod +x "$HOME/.local/bin/fff-mcp-agent"
   mkdir -p "$HOME/.config/dotfiles"
   printf 'desktop=false\npersonalApps=false\nobsidianSync=false\ngoogleDriveSync=false\nstorageOffsiteBackup=false\n' > "$HOME/.config/dotfiles/profile"
   with_nix_agent_tools

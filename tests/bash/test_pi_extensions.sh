@@ -72,24 +72,6 @@ test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
   assert_contains "$check" '"$flake#pi-extensions"'
 }
 
-test_pi_mcp_uses_native_fff_with_persistent_frecency() {
-  local config agents updater
-  config="$REPO_DIR/config/shared/ai/pi/mcp.json"
-  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-  updater="$(<"$REPO_DIR/scripts/update_pins.py")"
-
-  assert_exit_code 0 jq -e '
-    .mcpServers.fff.command == "fff-mcp-agent" and
-    .mcpServers.fff.transport == "stdio" and
-    .mcpServers.fff.lifecycle == "eager"
-  ' "$config"
-  assert_contains "$agents" 'mcp_fff_find_files'
-  assert_contains "$agents" 'mcp_fff_grep'
-  assert_contains "$agents" 'mcp_fff_multi_grep'
-  assert_not_contains "$updater" '@ff-labs/pi-fff'
-  assert_not_contains "$updater" '@ff-labs/fff-bun'
-  assert_not_contains "$updater" '@ff-labs/fff-node'
-}
 
 test_pi_extension_update_reconciles_local_packages_only() {
   local settings packages

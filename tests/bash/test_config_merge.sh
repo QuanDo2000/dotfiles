@@ -187,8 +187,6 @@ EOF
   cat > "$seed" <<'EOF'
 model = "tracked"
 
-[mcp_servers.fff]
-command = "fff-mcp"
 EOF
 
   before="$(sha256sum "$seed")"
@@ -199,7 +197,6 @@ EOF
   assert_equals "tracked" "$(python3 -c 'import sys,tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["model"])' "$live")"
   assert_contains "$(<"$live")" '[mcp_servers.node_repl]'
   assert_contains "$(<"$live")" '[projects."C:\\Users\\Quan\\project"]'
-  assert_contains "$(<"$live")" '[mcp_servers.fff]'
   rm -rf "$tmp"
 }
 
@@ -244,6 +241,40 @@ EOF
   assert_contains "$(<"$live")" '[marketplaces.openai-bundled]'
   assert_contains "$(<"$live")" '[plugins."sites@openai-bundled"]'
   assert_contains "$(<"$live")" 'other@local:hooks/'
+  rm -rf "$tmp"
+}
+
+
+test_codex_seed_merge_removes_retired_fff_mcp() {
+  local tmp script live seed
+  tmp="$(mktemp -d)"
+  script="$REPO_DIR/scripts/seed_merge/codex.py"
+  live="$tmp/live.toml"
+  seed="$tmp/seed.toml"
+
+  cat > "$live" <<'EOF'
+model = "live"
+
+[mcp_servers.fff]
+command = "fff-mcp-agent"
+
+[mcp_servers.custom]
+command = "custom-mcp"
+EOF
+
+  cat > "$seed" <<'EOF'
+model = "tracked"
+
+[mcp_servers.fff]
+command = "fff-mcp-agent"
+EOF
+
+  python3 "$script" "$live" "$seed" "$seed" >/dev/null
+
+  assert_not_contains "$(<"$live")" '[mcp_servers.fff]'
+  assert_not_contains "$(<"$seed")" '[mcp_servers.fff]'
+  assert_contains "$(<"$live")" '[mcp_servers.custom]'
+  assert_contains "$(<"$seed")" '[mcp_servers.custom]'
   rm -rf "$tmp"
 }
 
@@ -293,14 +324,10 @@ EOF
   cat > "$seed" <<'EOF'
 model = "gpt-5.5"
 
-[mcp_servers.fff]
-command = "fff-mcp-agent"
 EOF
 
   python3 "$script" "$live" "$seed" "$seed" >/dev/null
 
-  assert_contains "$(<"$live")" '[mcp_servers.fff]'
-  assert_contains "$(<"$live")" 'command = "fff-mcp-agent"'
   assert_contains "$(<"$live")" 'live_only = "keep"'
   assert_exit_code 0 python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$live"
   rm -rf "$tmp"

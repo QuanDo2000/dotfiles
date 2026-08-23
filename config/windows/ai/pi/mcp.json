@@ -9,17 +9,6 @@
       "command": "codebase-memory-mcp",
       "transport": "stdio",
       "lifecycle": "eager"
-    },
-    "fff": {
-      "command": "cmd.exe",
-      "args": [
-        "/d",
-        "/s",
-        "/c",
-        "fff-mcp-agent.cmd"
-      ],
-      "transport": "stdio",
-      "lifecycle": "eager"
     }
   }
 }

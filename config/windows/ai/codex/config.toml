@@ -51,19 +51,6 @@ enabled = true
 [plugins."browser@openai-bundled"]
 enabled = true
 
-[mcp_servers.fff]
-command = "cmd.exe"
-args = ["/d", "/s", "/c", "fff-mcp-agent.cmd"]
-
-[mcp_servers.fff.tools.find_files]
-approval_mode = "approve"
-
-[mcp_servers.fff.tools.grep]
-approval_mode = "approve"
-
-[mcp_servers.fff.tools.multi_grep]
-approval_mode = "approve"
-
 [mcp_servers.codebase-memory-mcp]
 command = "codebase-memory-mcp"
 

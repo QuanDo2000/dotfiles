@@ -183,7 +183,6 @@ sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
 ```
 
 After provisioning, use `dotfile update` to refresh every repository-managed
-dependency: Nix inputs, release archives, npm closures, native FFF MCP assets,
 Windows font pins, vendored skills, and Neovim plugins. It runs full
 checks, shows the resulting uncommitted diff, and requires confirmation before
 activation; non-interactive runs must pass `--force`. After successful activation,

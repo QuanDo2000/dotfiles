@@ -26,8 +26,6 @@ function test_windows_package_manifests_cover_parity_tools {
     Assert-True ($winget -contains 'koalaman.shellcheck') 'Winget should manage ShellCheck for Bash diagnostics'
     Assert-True ($winget -contains 'jqlang.jq') 'Winget should manage jq'
     Assert-True ($commands -contains 'gh') 'Doctor should verify GitHub CLI'
-    Assert-True ($commands -contains 'fff-mcp') 'Doctor should verify the native FFF MCP server'
-    Assert-True ($commands -contains 'fff-mcp-agent') 'Doctor should verify the configured FFF launcher'
     foreach ($command in 'vtsls', 'bash-language-server', 'shellcheck') {
         Assert-True ($commands -contains $command) "Doctor should verify Windows LSP dependency: $command"
     }

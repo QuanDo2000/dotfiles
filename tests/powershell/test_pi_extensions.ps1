@@ -151,20 +151,11 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
     }).Count
 }
 
-function test_windows_pi_mcp_uses_spawnable_native_fff_with_persistent_frecency {
-    $config = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\pi\mcp.json') | ConvertFrom-Json
-    $fff = $config.mcpServers.fff
-
-    Assert-Equals 'cmd.exe' $fff.command
-    Assert-Equals '/d' @($fff.args)[0]
-    Assert-Contains (@($fff.args) -join ' ') 'fff-mcp-agent.cmd'
-    Assert-Equals 'eager' $fff.lifecycle
-}
 
 function test_installai_installs_pinned_node_before_ai_tools {
     $script:Dry = $false
     $calls = [Collections.Generic.List[string]]::new()
-    $names = 'InstallFnm', 'InstallCodex', 'InstallCodebaseMemory', 'InstallFffMcp', 'SyncCodexConfig', 'InstallPi', 'InstallPiLanguageServers', 'InstallPiExtensions', 'SyncPiConfigs', 'SyncAiInstructions', 'InstallAiSkills'
+    $names = 'InstallFnm', 'InstallCodex', 'InstallCodebaseMemory', 'SyncCodexConfig', 'InstallPi', 'InstallPiLanguageServers', 'InstallPiExtensions', 'SyncPiConfigs', 'SyncAiInstructions', 'InstallAiSkills'
     $original = @{}
     try {
         foreach ($name in $names) {

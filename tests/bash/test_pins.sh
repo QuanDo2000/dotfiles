@@ -37,37 +37,6 @@ PY
 
 
 
-test_fff_pin_update_keeps_only_mcp_assets() {
-  PYTHONPATH="$REPO_DIR/scripts" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
-import json
-import os
-from pathlib import Path
-import update_pins
-
-repo = Path(os.environ["TEST_TMPDIR"]) / "fff-repo"
-pins = repo / "packages/fff-release.json"
-pins.parent.mkdir(parents=True)
-pins.write_text('{"version":"0.0.1","mcp":{}}\n')
-names = []
-update_pins.github_release = lambda _: {"tag_name": "v0.0.2"}
-def verify_asset(_release, name, path, checksum_file=False):
-    assert checksum_file
-    names.append(name)
-    path.write_bytes(name.encode())
-    return "a" * 64
-update_pins.verify_asset = verify_asset
-update_pins.nix_hash = lambda path: "sha256-test"
-
-update_pins.update_fff(repo)
-updated = json.loads(pins.read_text())
-assert set(updated) == {"version", "mcp"}
-assert updated["version"] == "0.0.2"
-assert set(updated["mcp"]) == {"x86_64-linux", "aarch64-darwin", "windows-x64"}
-assert updated["mcp"]["x86_64-linux"]["hash"] == "sha256-test"
-assert "hash" not in updated["mcp"]["windows-x64"]
-assert sorted(names) == sorted(asset["file"] for asset in updated["mcp"].values())
-PY
-}
 
 
 test_neovim_pin_update_provisions_fresh_plugins_and_reports_internal_key_errors() {

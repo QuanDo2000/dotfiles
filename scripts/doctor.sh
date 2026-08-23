@@ -116,13 +116,6 @@ _check_managed_commands() {
       errors=$((errors + 1))
     fi
   done
-  local fff_agent="$HOME/.local/bin/fff-mcp-agent"
-  if [[ -x "$fff_agent" ]]; then
-    success "fff-mcp-agent available"
-  else
-    fail_soft "fff-mcp-agent not found at $fff_agent"
-    errors=$((errors + 1))
-  fi
 }
 
 _is_obsidian_service_target() {

@@ -31,7 +31,6 @@ fi
 packages=(
   "$flake#codex"
   "$flake#pi-extensions"
-  "$flake#fff-mcp"
   "$flake#codebase-memory-mcp"
 )
 if [[ "$(uname -s)" == "Linux" ]]; then

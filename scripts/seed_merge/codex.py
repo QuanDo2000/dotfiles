@@ -74,6 +74,16 @@ def remove_retired_marketplaces(config):
         config.pop("hooks", None)
 
 
+def remove_retired_fff_mcp(config):
+    servers = config.get("mcp_servers")
+    if not isinstance(servers, dict) or "fff" not in servers:
+        return False
+    servers.pop("fff")
+    if not servers:
+        config.pop("mcp_servers")
+    return True
+
+
 def remove_generated_codebase_memory_hook(config):
     hooks = config.get("hooks")
     if not isinstance(hooks, dict) or not isinstance(hooks.get("SessionStart"), list):
@@ -173,11 +183,16 @@ try:
     live_config = load(live_path)
     seed_config = load(seed_compare_path)
     remove_retired_marketplaces(live_config)
+    remove_retired_fff_mcp(live_config)
+    seed_changed = remove_retired_fff_mcp(seed_config)
     remove_generated_codebase_memory_hook(live_config)
     missing = missing_from_seed(live_config, seed_config)
 except Exception as exc:
     print(f"Warning: failed to compare Codex config with tracked seed: {exc}", file=sys.stderr)
     sys.exit(0)
+
+if apply_path and seed_changed:
+    write_toml(apply_path, seed_config)
 
 if missing:
     if apply_path:

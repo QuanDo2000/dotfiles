@@ -34,7 +34,7 @@ Normally use one fan-out wave; launch another only for a changed target or unres
 
 ## Code Search
 
-Use codebase-memory first when those tools are available: index once, then prefer `get_architecture`, `search_graph`, `trace_path`, and `get_code_snippet`; run `detect_changes` before finalizing code edits. Use FFF (`find_files`/`grep`/`multi_grep`, or Pi's `mcp_fff_find_files`/`mcp_fff_grep`/`mcp_fff_multi_grep`) for raw filename/text lookup and fallback instead of shell grep, glob, or find. Strict-tool subagents without them use their provided `read`, `grep`, `find`, and `ls` tools.
+Use codebase-memory first when those tools are available: index once, then prefer `get_architecture`, `search_graph`, `trace_path`, and `get_code_snippet`; run `detect_changes` before finalizing code edits. Use native read-only filename/text search (`rg`, `fd`, `find`, or harness-provided `grep`/`find`) for raw lookup and fallback. Strict-tool subagents without them use their provided `read`, `grep`, `find`, and `ls` tools.
 
 ## Unknown Framework Boundaries
 
