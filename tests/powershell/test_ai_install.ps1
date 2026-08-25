@@ -6,6 +6,7 @@ function TestSetup {
     $script:OriginalInstallCodex = (Get-Command InstallCodex).ScriptBlock
     $script:OriginalAddToUserPath = (Get-Command AddToUserPath).ScriptBlock
     $script:OriginalTestPiSourceHash = (Get-Command Test-PiSourceHash).ScriptBlock
+    $script:OriginalGetFileSha256 = (Get-Command Get-FileSha256).ScriptBlock
     $releaseCheck = Get-Command Test-CodexRelease -ErrorAction SilentlyContinue
     $pathSetter = Get-Command Set-CodexActivePath -ErrorAction SilentlyContinue
     $codebaseReleaseCheck = Get-Command Test-CodebaseMemoryRelease -ErrorAction SilentlyContinue
@@ -40,6 +41,7 @@ function TestTeardown {
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
     Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
     Set-FunctionMock 'Test-PiSourceHash' $script:OriginalTestPiSourceHash
+    Set-FunctionMock 'Get-FileSha256' $script:OriginalGetFileSha256
     if ($script:OriginalTestCodexRelease) { Set-FunctionMock 'Test-CodexRelease' $script:OriginalTestCodexRelease }
     if ($script:OriginalSetCodexActivePath) { Set-FunctionMock 'Set-CodexActivePath' $script:OriginalSetCodexActivePath }
     if ($script:OriginalTestCodebaseMemoryRelease) { Set-FunctionMock 'Test-CodebaseMemoryRelease' $script:OriginalTestCodebaseMemoryRelease }
@@ -920,10 +922,10 @@ function test_installpi_installs_verified_versioned_release {
     Set-FunctionMock 'Expand-WindowsTarArchive' {
         param($Archive, $Destination)
         $package = Join-Path $Destination 'package'
-        New-Item -ItemType Directory -Force -Path (Join-Path $package 'dist\core') | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $package 'dist\core'), (Join-Path $package 'dist\bundle') | Out-Null
         Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $package 'npm-shrinkwrap.json')
         "{`"version`":`"$version`",`"devDependencies`":{`"typescript`":`"1.0.0`"}}" | Set-Content (Join-Path $package 'package.json')
-        'entry' | Set-Content (Join-Path $package 'dist\cli.js')
+        'entry' | Set-Content (Join-Path $package 'dist\bundle\cli.js')
         Write-TestPatchedPiSession (Join-Path $package 'dist\core\agent-session.js')
         $global:LASTEXITCODE = 0
     }
@@ -941,6 +943,7 @@ function test_installpi_installs_verified_versioned_release {
     Assert-False $script:NpmSawDevDependencies 'npm ci manifest must match production-only reviewed shrinkwrap'
     $launcher = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\bin\pi.cmd'
     Assert-FileExists $launcher
+    Assert-Contains (Get-Content -Raw -LiteralPath $launcher) 'dist\bundle\cli.js'
     Assert-Equals (Split-Path $launcher -Parent) (($env:Path -split ';')[0])
 }
 
@@ -949,14 +952,14 @@ function test_installpi_verifies_cached_release_and_rejects_tamper {
     $root = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
     $releaseId = -join ((Get-PiSourceDigest (Get-PinnedPiSourceHash)) | ForEach-Object { $_.ToString('x2') })
     $release = Join-Path $root "releases\$version-$($releaseId.Substring(0, 12))"
-    New-Item -ItemType Directory -Force -Path (Join-Path $release 'dist\core') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $release 'dist\core'), (Join-Path $release 'dist\bundle') | Out-Null
     Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $release 'npm-shrinkwrap.json')
     "{`"version`":`"$version`"}" | Set-Content (Join-Path $release 'package.json')
-    'entry' | Set-Content (Join-Path $release 'dist\cli.js')
+    'entry' | Set-Content (Join-Path $release 'dist\bundle\cli.js')
     Write-TestPatchedPiSession (Join-Path $release 'dist\core\agent-session.js')
     (Get-PiReleaseDigest $release) | Set-Content (Join-Path $release '.release.sha256') -NoNewline
     InstallPi
-    'tampered' | Set-Content (Join-Path $release 'dist\cli.js')
+    'tampered' | Set-Content (Join-Path $release 'dist\bundle\cli.js')
     Assert-Throws { InstallPi } 'cached content tamper must be rejected'
 }
 
@@ -971,6 +974,34 @@ function test_getpinnedpiversion_rejects_invalid_json {
 function test_dotfile_script_is_ascii_for_windows_powershell {
     $nonAscii = @([IO.File]::ReadAllBytes($script:DotfileScript) | Where-Object { $_ -gt 127 })
     Assert-Equals 0 $nonAscii.Count 'Windows PowerShell 5.1 reads UTF-8 without BOM as ANSI'
+}
+
+function test_getfilesha256_runs_without_getfilehash_in_windows_powershell {
+    $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if (-not $windowsPowerShell) { Skip-Test 'Windows PowerShell unavailable'; return }
+    $fixture = Join-Path $script:_TestTmp.FullName 'hash-fixture'
+    [IO.File]::WriteAllText($fixture, 'hash', [Text.Encoding]::ASCII)
+    $expected = Get-TestSha256 'hash'
+    $escapedScript = $script:DotfileScript.Replace("'", "''")
+    $escapedFixture = $fixture.Replace("'", "''")
+    $probe = ". '$escapedScript' -NoMain; `$env:PATH = `$env:SystemRoot + '\System32'; if ((Get-FileSha256 '$escapedFixture') -ne '$expected') { exit 1 }; 'hash-ok'"
+
+    $output = & $windowsPowerShell.Source -NoProfile -NonInteractive -Command $probe 2>&1 | Out-String
+
+    Assert-Contains $output 'hash-ok'
+}
+
+function test_comparepipackagelocks_runs_in_windows_powershell {
+    $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if (-not $windowsPowerShell) { Skip-Test 'Windows PowerShell unavailable'; return }
+    $escapedScript = $script:DotfileScript.Replace("'", "''")
+    $lock = (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json').Replace("'", "''")
+    $working = $script:_TestTmp.FullName.Replace("'", "''")
+    $probe = ". '$escapedScript' -NoMain; Compare-PiPackageLocks '$lock' '$lock' '$working'"
+
+    & $windowsPowerShell.Source -NoProfile -NonInteractive -Command $probe
+
+    Assert-Equals 0 $LASTEXITCODE
 }
 
 function test_getpinnedpiversion_runs_in_windows_powershell {
@@ -989,6 +1020,15 @@ function test_getpinnedpiversion_runs_in_windows_powershell {
     }
 }
 
+function test_reportpiupdatestatus_explains_unpublished_latest_release {
+    Set-CommandMock 'Invoke-RestMethod' { [pscustomobject]@{ version = '9.9.9' } }
+
+    $output = Report-PiUpdateStatus '1.2.3' 6>&1 | Out-String
+
+    Assert-Contains $output 'Pi 9.9.9 is available but the latest reviewed pin is 1.2.3'
+    Assert-Contains $output 'Windows installs only published reviewed pins'
+}
+
 function test_installpi_source_checksum_fails_before_install {
     Set-CommandMock 'Invoke-WebRequest' { param($Uri, $OutFile) [IO.File]::WriteAllText($OutFile, 'bad') }
     Set-FunctionMock 'Test-PiSourceHash' { $false }
@@ -998,18 +1038,19 @@ function test_installpi_source_checksum_fails_before_install {
 
 function test_pi_release_validation_requires_version_and_entry {
     $dir = Join-Path $script:_TestTmp.FullName 'pi-release'
-    New-Item -ItemType Directory -Force -Path (Join-Path $dir 'dist\core') | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $dir 'dist\core'), (Join-Path $dir 'dist\bundle') | Out-Null
+    $version = Get-PinnedPiVersion
     $lock = Get-Content -Raw (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json')
     Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $dir 'npm-shrinkwrap.json')
-    '{"version":"0.84.2","dependencies":{"example-package":"1.0.0"}}' | Set-Content (Join-Path $dir 'package.json')
-    'entry' | Set-Content (Join-Path $dir 'dist\cli.js')
+    "{`"version`":`"$version`",`"dependencies`":{`"example-package`":`"1.0.0`"}}" | Set-Content (Join-Path $dir 'package.json')
+    'entry' | Set-Content (Join-Path $dir 'dist\bundle\cli.js')
     Write-TestPatchedPiSession (Join-Path $dir 'dist\core\agent-session.js')
     (Get-PiReleaseDigest $dir) | Set-Content (Join-Path $dir '.release.sha256') -NoNewline
-    Assert-False (Test-PiRelease $dir '0.84.2' $lock) 'release missing dependency closure must fail'
+    Assert-False (Test-PiRelease $dir $version $lock) 'release missing dependency closure must fail'
     New-Item -ItemType Directory -Force -Path (Join-Path $dir 'node_modules\example-package') | Out-Null
     '{}' | Set-Content (Join-Path $dir 'node_modules\example-package\package.json')
     (Get-PiReleaseDigest $dir) | Set-Content (Join-Path $dir '.release.sha256') -NoNewline
-    Assert-True (Test-PiRelease $dir '0.84.2' $lock)
+    Assert-True (Test-PiRelease $dir $version $lock)
 }
 
 function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
@@ -1712,13 +1753,13 @@ function test_syncpiconfigs_rollback_preserves_destination_created_after_quarant
         Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
     }
     $script:ConcurrentPiConfigCreated = $false
-    Set-CommandMock 'Get-FileHash' {
-        param($LiteralPath, $Algorithm)
-        if (-not $script:ConcurrentPiConfigCreated -and $LiteralPath -like "$($paths.Target).rollback.*") {
+    Set-FunctionMock 'Get-FileSha256' {
+        param($Path)
+        if (-not $script:ConcurrentPiConfigCreated -and $Path -like "$($paths.Target).rollback.*") {
             $script:ConcurrentPiConfigCreated = $true
             'concurrent target content' | Set-Content -LiteralPath $paths.Target
         }
-        Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath $LiteralPath -Algorithm $Algorithm
+        & $script:OriginalGetFileSha256 $Path
     }
 
     $failure = $null

@@ -21,6 +21,8 @@ try {
 if (Get-Command fnm -ErrorAction SilentlyContinue) {
     fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
 }
+$managedPi = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\bin'
+$env:Path = (@($managedPi) + @($env:Path -split ';' | Where-Object { $_ -and $_ -ine $managedPi })) -join ';'
 
 # zoxide — bind it to `cd` (mirrors the unix .zshrc)
 if (Get-Command zoxide -ErrorAction SilentlyContinue) {

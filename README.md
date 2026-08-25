@@ -182,19 +182,21 @@ config evaluates:
 sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
 ```
 
-After provisioning, use `dotfile update` to refresh every repository-managed
-Windows font pins, vendored skills, and Neovim plugins. It runs full
-checks, shows the resulting uncommitted diff, and requires confirmation before
-activation; non-interactive runs must pass `--force`. After successful activation,
-it commits the reviewed changes, fetches and rebases if the upstream advanced,
-and pushes the current branch. Existing unpublished commits stop publication.
+After provisioning, use `dotfile update` to update managed dependencies. On Unix,
+it refreshes every repository-managed pin, runs full checks, shows the resulting
+uncommitted diff, and requires confirmation before activation; non-interactive
+runs must pass `--force`. After successful activation, it commits the reviewed
+changes, fetches and rebases if the upstream advanced, and pushes the current
+branch. Existing unpublished commits stop publication. Windows pulls and activates
+those published reviewed pins instead of installing an unreviewed latest release;
+it reports when npm has a newer Pi release awaiting publication.
 Full updates install missing native prerequisites for the detected platform
 before activating its configured profile; installed-state detection does not
 select dependencies.
-Use `dotfile update ai` to update only tracked AI configs, Codex and Pi release
-pins, managed AI packages, and Pi extensions.
-AI-only updates use the same isolated validation, diff review, and approval
-boundary. On NixOS the full update ends with:
+Use `dotfile update ai` to update only AI tools and configs. On Unix this
+refreshes Codex and Pi release pins, managed AI packages, and Pi extensions with
+the same isolated validation, diff review, and approval boundary. On Windows it
+activates their published reviewed pins. On NixOS the full update ends with:
 
 ```bash
 nix flake update --flake ~/dotfiles

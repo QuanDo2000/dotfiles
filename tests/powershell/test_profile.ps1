@@ -19,6 +19,22 @@ if (`$env:COMPLETE -ne 'keep') { throw "COMPLETE leaked: `$env:COMPLETE" }
     }
 }
 
+function test_profile_keeps_managed_pi_ahead_of_fnm_shims {
+    $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
+    $managedPi = Join-Path $localAppData 'dotfiles\pi\bin'
+    $probe = @"
+`$ErrorActionPreference = 'Stop'
+`$env:LOCALAPPDATA = '$localAppData'
+`$env:PATH = 'C:\Windows\System32'
+function Set-PSReadLineOption { throw 'PSReadLine unsupported' }
+function fnm { '`$env:PATH = ''C:\fnm;'' + `$env:PATH' }
+. '$script:ProfileFile'
+(`$env:PATH -split ';')[0]
+"@
+    $out = pwsh -NoProfile -Command $probe 2>&1 | Out-String
+    Assert-Contains $out $managedPi
+}
+
 function test_profile_loads_when_psreadline_options_are_unsupported {
     $probe = @"
 `$ErrorActionPreference = 'Stop'

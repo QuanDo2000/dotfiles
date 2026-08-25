@@ -239,11 +239,13 @@ function InstallPackages {
 }
 
 function Get-StreamSha256($Stream) {
-    return (Get-FileHash -InputStream $Stream -Algorithm SHA256).Hash.ToLowerInvariant()
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha256.ComputeHash($Stream)) -replace '-', '').ToLowerInvariant() } finally { $sha256.Dispose() }
 }
 
 function Get-FileSha256($Path) {
-    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+    try { return Get-StreamSha256 $stream } finally { $stream.Dispose() }
 }
 
 function Grant-FontReadAccess($Path) {
@@ -530,6 +532,18 @@ function Get-PinnedPiVersion {
     return $version
 }
 
+function Report-PiUpdateStatus($PinnedVersion) {
+    try {
+        $latest = [string](Invoke-RestMethod -Uri 'https://registry.npmjs.org/@earendil-works%2fpi-coding-agent/latest' -UseBasicParsing).version
+        if ($latest -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw 'npm returned an invalid Pi version' }
+        if ($latest -ne $PinnedVersion) {
+            Info "Pi $latest is available but the latest reviewed pin is $PinnedVersion. Windows installs only published reviewed pins."
+        }
+    } catch {
+        Info "Could not check the latest Pi release: $($_.Exception.Message)"
+    }
+}
+
 function Get-PinnedPiSourceHash {
     $packagePath = Join-Path $script:DotfilesDir 'packages\pi-agent.nix'
     $content = Get-Content -Raw -LiteralPath $packagePath
@@ -549,6 +563,16 @@ function Test-PiSourceHash($Stream, $Expected) {
     $actual = [Security.Cryptography.SHA256]::Create().ComputeHash($Stream)
     $Stream.Position = 0
     return [Convert]::ToBase64String($actual) -ceq [Convert]::ToBase64String((Get-PiSourceDigest $Expected))
+}
+
+function Compare-PiPackageLocks($EmbeddedLock, $ReviewedLock, $WorkingDirectory) {
+    $comparison = Join-Path $WorkingDirectory ".pi-lock-compare.$([Guid]::NewGuid().ToString('N')).cjs"
+    try {
+        [IO.File]::WriteAllText($comparison, 'const fs=require("fs");const clean=v=>Array.isArray(v)?v.map(clean):v&&typeof v==="object"?Object.fromEntries(Object.keys(v).filter(k=>k!=="integrity").sort().map(k=>[k,clean(v[k])])):v;const a=clean(JSON.parse(fs.readFileSync(process.argv[2],"utf8")));const b=clean(JSON.parse(fs.readFileSync(process.argv[3],"utf8")));process.exit(JSON.stringify(a)===JSON.stringify(b)?0:1);', [Text.Encoding]::ASCII)
+        Invoke-NativeChecked 'Pi embedded npm shrinkwrap mismatch' { node $comparison $EmbeddedLock $ReviewedLock }
+    } finally {
+        Remove-Item -LiteralPath $comparison -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Get-PiExtensionsWindowsArch($Architecture = $env:PROCESSOR_ARCHITECTURE) {
@@ -695,7 +719,7 @@ function Get-PiReleaseDigest($ReleaseDir) {
     $rows = foreach ($file in Get-ChildItem -LiteralPath $root -File -Recurse | Sort-Object FullName) {
         if ($file.Name -eq '.release.sha256') { continue }
         $relative = $file.FullName.Substring($root.Length + 1).Replace('\', '/')
-        "$relative`n$((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant())"
+        "$relative`n$(Get-FileSha256 $file.FullName)"
     }
     $bytes = [Text.Encoding]::UTF8.GetBytes(($rows -join "`n"))
     $sha256 = [Security.Cryptography.SHA256]::Create()
@@ -705,7 +729,7 @@ function Get-PiReleaseDigest($ReleaseDir) {
 function Test-PiRelease($ReleaseDir, $Version, $Shrinkwrap) {
     $manifest = Join-Path $ReleaseDir 'package.json'
     $lock = Join-Path $ReleaseDir 'npm-shrinkwrap.json'
-    $entry = Join-Path $ReleaseDir 'dist\cli.js'
+    $entry = Join-Path $ReleaseDir 'dist\bundle\cli.js'
     $session = Join-Path $ReleaseDir 'dist\core\agent-session.js'
     $digest = Join-Path $ReleaseDir '.release.sha256'
     foreach ($path in $manifest, $lock, $entry, $session, $digest) {
@@ -753,9 +777,7 @@ function InstallPi {
                 if (-not (Test-Path -LiteralPath $package)) { throw 'Pi package archive missing package directory' }
                 $embeddedLock = Join-Path $package 'npm-shrinkwrap.json'
                 if (-not (Test-Path -LiteralPath $embeddedLock)) { throw 'Pi package archive missing npm shrinkwrap' }
-                Invoke-NativeChecked 'Pi embedded npm shrinkwrap mismatch' {
-                    node -e 'const fs=require("fs");const clean=v=>Array.isArray(v)?v.map(clean):v&&typeof v==="object"?Object.fromEntries(Object.keys(v).filter(k=>k!=="integrity").sort().map(k=>[k,clean(v[k])])):v;const a=clean(JSON.parse(fs.readFileSync(process.argv[1],"utf8")));const b=clean(JSON.parse(fs.readFileSync(process.argv[2],"utf8")));process.exit(JSON.stringify(a)===JSON.stringify(b)?0:1)' $embeddedLock $lockPath
-                }
+                Compare-PiPackageLocks $embeddedLock $lockPath $stage
                 Copy-Item -LiteralPath $lockPath -Destination $embeddedLock -Force
                 $manifestPath = Join-Path $package 'package.json'
                 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
@@ -776,7 +798,7 @@ function InstallPi {
         $launcher = Join-Path $bin 'pi.cmd'
         $launcherTemporary = "$launcher.tmp.$([Guid]::NewGuid().ToString('N'))"
         try {
-            "@echo off`r`nnode `"$release\dist\cli.js`" %*" | Set-Content -LiteralPath $launcherTemporary -Encoding ascii
+            "@echo off`r`nnode `"$release\dist\bundle\cli.js`" %*" | Set-Content -LiteralPath $launcherTemporary -Encoding ascii
             Move-Item -LiteralPath $launcherTemporary -Destination $launcher -Force
         } finally { Remove-Item -LiteralPath $launcherTemporary -Force -ErrorAction SilentlyContinue }
         $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
@@ -785,7 +807,8 @@ function InstallPi {
         $processEntries = @($env:Path -split ';' | Where-Object { $_ -and $_ -ine $bin })
         $env:Path = (@($bin) + $processEntries) -join ';'
     } finally { $guard.Dispose() }
-    Success "Finished installing Pi coding agent"
+    if ($Update) { Report-PiUpdateStatus $version }
+    Success "Finished installing Pi coding agent $version"
 }
 
 function InstallPiLanguageServers {
@@ -1910,7 +1933,7 @@ Usage: dotfile.ps1 [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update [ai] Update system packages
+  update [ai] Pull and activate published reviewed package pins
               Update only AI tools and configs with update ai
   packages    Install all managed packages only
   ai          Install AI tools and shared skills
