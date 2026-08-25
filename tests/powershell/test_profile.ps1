@@ -25,19 +25,22 @@ function test_profile_keeps_managed_pi_ahead_of_fnm_shims {
     $probe = @"
 `$ErrorActionPreference = 'Stop'
 `$env:LOCALAPPDATA = '$localAppData'
-`$env:PATH = 'C:\Windows\System32'
+`$env:PATH = ''
+`$env:Path = 'C:\Windows\System32'
 function Set-PSReadLineOption { throw 'PSReadLine unsupported' }
-function fnm { '`$env:PATH = ''C:\fnm;'' + `$env:PATH' }
+function fnm { '`$env:Path = ''C:\fnm;'' + `$env:Path' }
 . '$script:ProfileFile'
-(`$env:PATH -split ';')[0]
+(`$env:Path -split ';')[0]
 "@
     $out = pwsh -NoProfile -Command $probe 2>&1 | Out-String
     Assert-Contains $out $managedPi
 }
 
 function test_profile_loads_when_psreadline_options_are_unsupported {
+    $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
     $probe = @"
 `$ErrorActionPreference = 'Stop'
+`$env:LOCALAPPDATA = '$localAppData'
 `$env:PATH = ''
 function Set-PSReadLineOption { throw 'PSReadLine unsupported' }
 . '$script:ProfileFile'

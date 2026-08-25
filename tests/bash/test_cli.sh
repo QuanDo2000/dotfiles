@@ -206,7 +206,8 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "Install native prerequisites and activate current profile"
   assert_contains "$readme_text" "Update only AI tools and configs"
   assert_contains "$readme_text" "upgrade     Upgrade native system packages"
-  assert_contains "$readme_flat" 'AI-only updates use the same isolated validation, diff review, and approval boundary'
+  assert_contains "$readme_flat" 'On Unix this refreshes Codex and Pi release pins, managed AI packages, and Pi extensions with the same isolated validation, diff review, and approval boundary'
+  assert_contains "$readme_flat" 'On Windows it activates their published reviewed pins'
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
   assert_contains "$readme_text" "codex       Update pinned Codex release package"
   assert_contains "$readme_text" "lix-installer"
