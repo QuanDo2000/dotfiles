@@ -951,7 +951,7 @@ function test_installpi_verifies_cached_release_and_rejects_tamper {
     $version = Get-PinnedPiVersion
     $root = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
     $releaseId = -join ((Get-PiSourceDigest (Get-PinnedPiSourceHash)) | ForEach-Object { $_.ToString('x2') })
-    $release = Join-Path $root "releases\$version-$($releaseId.Substring(0, 12))"
+    $release = Join-Path $root "releases\$version-$($releaseId.Substring(0, 12))-digest2"
     New-Item -ItemType Directory -Force -Path (Join-Path $release 'dist\core'), (Join-Path $release 'dist\bundle') | Out-Null
     Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $release 'npm-shrinkwrap.json')
     "{`"version`":`"$version`"}" | Set-Content (Join-Path $release 'package.json')
@@ -989,6 +989,23 @@ function test_getfilesha256_runs_without_getfilehash_in_windows_powershell {
     $output = & $windowsPowerShell.Source -NoProfile -NonInteractive -Command $probe 2>&1 | Out-String
 
     Assert-Contains $output 'hash-ok'
+}
+
+function test_pireleasedigest_matches_windows_powershell {
+    $windowsPowerShell = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if (-not $windowsPowerShell) { Skip-Test 'Windows PowerShell unavailable'; return }
+    $fixture = Join-Path $script:_TestTmp.FullName 'pi-digest-fixture'
+    New-Item -ItemType Directory -Force -Path $fixture | Out-Null
+    [IO.File]::WriteAllText((Join-Path $fixture 'a-b'), 'hyphen', [Text.Encoding]::ASCII)
+    [IO.File]::WriteAllText((Join-Path $fixture 'ab'), 'plain', [Text.Encoding]::ASCII)
+    $expected = Get-PiReleaseDigest $fixture
+    $escapedScript = $script:DotfileScript.Replace("'", "''")
+    $escapedFixture = $fixture.Replace("'", "''")
+    $probe = ". '$escapedScript' -NoMain; Get-PiReleaseDigest '$escapedFixture'"
+
+    $actual = (& $windowsPowerShell.Source -NoProfile -NonInteractive -Command $probe | Select-Object -Last 1).Trim()
+
+    Assert-Equals $expected $actual 'Pi release digest must not depend on the PowerShell runtime'
 }
 
 function test_comparepipackagelocks_runs_in_windows_powershell {

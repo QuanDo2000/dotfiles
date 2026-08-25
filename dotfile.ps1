@@ -716,10 +716,12 @@ function RepairPiCompactionSteering {
 
 function Get-PiReleaseDigest($ReleaseDir) {
     $root = [IO.Path]::GetFullPath($ReleaseDir).TrimEnd([char[]](92, 47))
-    $rows = foreach ($file in Get-ChildItem -LiteralPath $root -File -Recurse | Sort-Object FullName) {
-        if ($file.Name -eq '.release.sha256') { continue }
-        $relative = $file.FullName.Substring($root.Length + 1).Replace('\', '/')
-        "$relative`n$(Get-FileSha256 $file.FullName)"
+    $relativeFiles = [string[]]@(Get-ChildItem -LiteralPath $root -File -Recurse |
+        Where-Object Name -ne '.release.sha256' |
+        ForEach-Object { $_.FullName.Substring($root.Length + 1) })
+    [Array]::Sort($relativeFiles, [StringComparer]::Ordinal)
+    $rows = foreach ($relative in $relativeFiles) {
+        "$($relative.Replace('\', '/'))`n$(Get-FileSha256 (Join-Path $root $relative))"
     }
     $bytes = [Text.Encoding]::UTF8.GetBytes(($rows -join "`n"))
     $sha256 = [Security.Cryptography.SHA256]::Create()
@@ -757,7 +759,7 @@ function InstallPi {
     $releaseId = -join ((Get-PiSourceDigest $sourceHash) | ForEach-Object { $_.ToString('x2') })
     $root = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
     $releases = Join-Path $root 'releases'
-    $release = Join-Path $releases "$version-$($releaseId.Substring(0,12))"
+    $release = Join-Path $releases "$version-$($releaseId.Substring(0,12))-digest2"
     $bin = Join-Path $root 'bin'
     New-Item -ItemType Directory -Force -Path $releases, $bin | Out-Null
     $guard = [IO.File]::Open((Join-Path $root 'install.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
