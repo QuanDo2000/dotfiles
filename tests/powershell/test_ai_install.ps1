@@ -951,7 +951,7 @@ function test_installpi_verifies_cached_release_and_rejects_tamper {
     $release = Join-Path $root "releases\$version-$($releaseId.Substring(0, 12))"
     New-Item -ItemType Directory -Force -Path (Join-Path $release 'dist\core') | Out-Null
     Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $release 'npm-shrinkwrap.json')
-    '{"version":"0.84.2"}' | Set-Content (Join-Path $release 'package.json')
+    "{`"version`":`"$version`"}" | Set-Content (Join-Path $release 'package.json')
     'entry' | Set-Content (Join-Path $release 'dist\cli.js')
     Write-TestPatchedPiSession (Join-Path $release 'dist\core\agent-session.js')
     (Get-PiReleaseDigest $release) | Set-Content (Join-Path $release '.release.sha256') -NoNewline
