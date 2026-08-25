@@ -155,6 +155,30 @@ PY
   assert_equals "$before" "$(sha256sum "$target")"
 }
 
+test_pi_compaction_patch_accepts_formatted_error_message() {
+  local target="$TEST_TMPDIR/agent-session.js" status=0
+  write_unpatched_fixture "$target"
+
+  python3 - "$target" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+source = path.read_text()
+old = '''                    errorMessage: reason === "overflow"
+                        ? `Context overflow recovery failed: ${errorMessage}`
+                        : `Auto-compaction failed: ${errorMessage}`,'''
+new = '''                    errorMessage: formattedErrorMessage,'''
+assert source.count(old) == 1
+path.write_text(source.replace(old, new))
+PY
+
+  python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$target" 2>>"$ERROR_FILE" || status=$?
+
+  assert_equals 0 "$status"
+  assert_equals 4 "$(grep -c 'this._autoCompactionAbortController = undefined;' "$target")"
+}
+
 test_pi_compaction_patch_is_idempotent() {
   local target="$TEST_TMPDIR/agent-session.js" before
   write_unpatched_fixture "$target"

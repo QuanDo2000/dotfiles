@@ -28,11 +28,7 @@ ERROR_EMIT = """                this._emit({
                     reason,
                     result: undefined,
                     aborted: false,
-                    willRetry: false,
-                    errorMessage: reason === "overflow"
-                        ? `Context overflow recovery failed: ${errorMessage}`
-                        : `Auto-compaction failed: ${errorMessage}`,
-                });"""
+                    willRetry: false,"""
 LATE_STEERING = """                if (inputResult.action === "transform") {
                     currentText = inputResult.text;
                     currentImages = inputResult.images ?? currentImages;
