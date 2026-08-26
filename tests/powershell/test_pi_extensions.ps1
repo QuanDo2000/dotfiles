@@ -99,6 +99,11 @@ if (!cancellationPath || !command || !Number.isFinite(timeoutMs) || timeoutMs <=
   process.exit(2);
 }
 
+const child = spawn(command, args, {
+  detached: process.platform !== "win32",
+  stdio: ["ignore", "pipe", "pipe"],
+});
+
 child.once("error", (error) => {
   clearTimeout(timeout);
   if (cancellationPoll) clearInterval(cancellationPoll);
@@ -202,7 +207,8 @@ function test_piextensionsrelease_validates_hermes_background_flush_patch {
     $definition = (Get-Command Test-PiExtensionsRelease).Definition
 
     Assert-Contains $definition 'execDetachedChildPrompt'
-    Assert-Contains $definition '"--cleanup-dir"'
+    Assert-Contains $definition 'cleanupPromptDirectory'
+    Assert-Contains $definition 'windowsHide: true'
 }
 
 function test_installpiextensions_applies_hermes_background_flush_patch_after_npm {
@@ -323,8 +329,9 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
     Assert-Contains $script:NpmArgs '--legacy-peer-deps'
     $stagedMcp = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-mcp-extension\src\index.ts"
     Assert-Contains (Get-Content -Raw $stagedMcp) 'if (process.env.PI_SUBAGENT_DEPTH) await eagerStartup;'
-    $stagedHermes = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-hermes-memory\src\handlers\session-flush.ts"
-    Assert-Contains (Get-Content -Raw $stagedHermes) 'execDetachedChildPrompt'
+    $stagedHermes = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-hermes-memory\src\handlers"
+    Assert-Contains (Get-Content -Raw (Join-Path $stagedHermes 'session-flush.ts')) 'execDetachedChildPrompt'
+    Assert-Contains (Get-Content -Raw (Join-Path $stagedHermes 'child-process-watchdog.mjs')) 'windowsHide: true'
     $pins = Get-Content -Raw $pinsPath | ConvertFrom-Json
     $release = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$($pins.releaseId)"
     Assert-True (Test-PiExtensionsRelease $release $pins) 'immutable extension release should validate'

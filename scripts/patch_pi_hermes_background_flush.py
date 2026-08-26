@@ -155,6 +155,18 @@ function cleanupPromptDirectory() {
             1,
         ),
         (
+            """const child = spawn(command, args, {
+  detached: process.platform !== "win32",
+  stdio: ["ignore", "pipe", "pipe"],
+});""",
+            """const child = spawn(command, args, {
+  detached: process.platform !== "win32",
+  stdio: ["ignore", "pipe", "pipe"],
+  windowsHide: true,
+});""",
+            1,
+        ),
+        (
             """  if (cancellationPoll) clearInterval(cancellationPoll);
   if (forceTimer) clearTimeout(forceTimer);""",
             """  if (cancellationPoll) clearInterval(cancellationPoll);

@@ -616,7 +616,8 @@ function Test-PiExtensionsRelease($ReleaseDir, $Pins) {
     try {
         if ((Get-Content -Raw -LiteralPath $hermesSessionFlush) -notlike '*execDetachedChildPrompt*') { return $false }
         if ((Get-Content -Raw -LiteralPath $hermesChildProcess) -notlike '*"--cleanup-dir"*') { return $false }
-        if ((Get-Content -Raw -LiteralPath $hermesWatchdog) -notlike '*cleanupPromptDirectory*') { return $false }
+        $watchdogSource = Get-Content -Raw -LiteralPath $hermesWatchdog
+        if ($watchdogSource -notlike '*cleanupPromptDirectory*' -or $watchdogSource -notlike '*windowsHide: true*') { return $false }
     } catch { return $false }
     $betterManifest = Join-Path $nodeModules 'better-sqlite3\package.json'
     $betterBinary = Join-Path $nodeModules 'better-sqlite3\build\Release\better_sqlite3.node'

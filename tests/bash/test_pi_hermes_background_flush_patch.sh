@@ -69,7 +69,10 @@ if (!cancellationPath || !command || !Number.isFinite(timeoutMs) || timeoutMs <=
   process.exit(2);
 }
 
-const child = spawn(command, args, { stdio: "ignore" });
+const child = spawn(command, args, {
+  detached: process.platform !== "win32",
+  stdio: ["ignore", "pipe", "pipe"],
+});
 let timedOut = false;
 let cancelled = false;
 let forceTimer;
@@ -115,6 +118,16 @@ test_pi_hermes_patch_detaches_shutdown_flush() {
   assert_contains "$(<"$root/src/handlers/pi-child-process.ts")" 'child.unref();'
   assert_contains "$(<"$root/src/handlers/child-process-watchdog.mjs")" '"--cleanup-dir"'
   assert_contains "$(<"$root/src/handlers/child-process-watchdog.mjs")" 'rmSync(cleanupDir, { recursive: true, force: true })'
+}
+
+test_pi_hermes_watchdog_hides_child_window() {
+  local root="$TEST_TMPDIR/pi-hermes-memory" watchdog
+  write_unpatched_fixture "$root"
+
+  python3 "$REPO_DIR/scripts/patch_pi_hermes_background_flush.py" "$root" 2>>"$ERROR_FILE"
+  watchdog="$(<"$root/src/handlers/child-process-watchdog.mjs")"
+
+  assert_contains "$watchdog" $'const child = spawn(command, args, {\n  detached: process.platform !== "win32",\n  stdio: ["ignore", "pipe", "pipe"],\n  windowsHide: true,\n});'
 }
 
 test_pi_hermes_watchdog_removes_private_prompt_after_child_exit() {
