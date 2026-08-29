@@ -38,16 +38,7 @@
           "find",
           "ls",
           "bash",
-          "write",
-          "mcp_codebaseMemory_search_graph",
-          "mcp_codebaseMemory_trace_path",
-          "mcp_codebaseMemory_get_code_snippet",
-          "mcp_codebaseMemory_get_architecture",
-          "mcp_codebaseMemory_search_code",
-          "mcp_codebaseMemory_list_projects",
-          "mcp_codebaseMemory_index_status",
-          "mcp_codebaseMemory_check_index_coverage",
-          "mcp_codebaseMemory_detect_changes"
+          "write"
         ]
       },
       "worker": {
@@ -66,16 +57,7 @@
           "read",
           "grep",
           "find",
-          "ls",
-          "mcp_codebaseMemory_search_graph",
-          "mcp_codebaseMemory_trace_path",
-          "mcp_codebaseMemory_get_code_snippet",
-          "mcp_codebaseMemory_get_architecture",
-          "mcp_codebaseMemory_search_code",
-          "mcp_codebaseMemory_list_projects",
-          "mcp_codebaseMemory_index_status",
-          "mcp_codebaseMemory_check_index_coverage",
-          "mcp_codebaseMemory_detect_changes"
+          "ls"
         ]
       }
     }
@@ -83,11 +65,10 @@
   "defaultProjectTrust": "ask",
   "enableInstallTelemetry": false,
   "packages": [
-    "./locked-extensions/releases/742a5fa8bcefae60e70801ececaf4a6a6a852a7d326b6f83641fdae13675ff5f/node_modules/pi-mcp-extension",
-    "./locked-extensions/releases/742a5fa8bcefae60e70801ececaf4a6a6a852a7d326b6f83641fdae13675ff5f/node_modules/pi-hermes-memory",
-    "./locked-extensions/releases/742a5fa8bcefae60e70801ececaf4a6a6a852a7d326b6f83641fdae13675ff5f/node_modules/@narumitw/pi-lsp",
-    "./locked-extensions/releases/742a5fa8bcefae60e70801ececaf4a6a6a852a7d326b6f83641fdae13675ff5f/node_modules/pi-web-access",
-    "./locked-extensions/releases/742a5fa8bcefae60e70801ececaf4a6a6a852a7d326b6f83641fdae13675ff5f/node_modules/pi-subagents"
+    "./locked-extensions/releases/cc77d5ccc7c763648458f1be7e81d22ccab67cbda9c6d5080fb9fc4e6a3c7433/node_modules/pi-hermes-memory",
+    "./locked-extensions/releases/cc77d5ccc7c763648458f1be7e81d22ccab67cbda9c6d5080fb9fc4e6a3c7433/node_modules/@narumitw/pi-lsp",
+    "./locked-extensions/releases/cc77d5ccc7c763648458f1be7e81d22ccab67cbda9c6d5080fb9fc4e6a3c7433/node_modules/pi-web-access",
+    "./locked-extensions/releases/cc77d5ccc7c763648458f1be7e81d22ccab67cbda9c6d5080fb9fc4e6a3c7433/node_modules/pi-subagents"
   ],
   "theme": "dark",
   "terminal": {

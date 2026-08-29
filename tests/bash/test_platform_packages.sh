@@ -251,32 +251,18 @@ test_pi_lsp_uses_pinned_package_and_nix_servers() {
   assert_contains "$HOME_CONFIG" 'settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json'
 }
 
-test_pi_subagent_search_tools_are_read_only() {
+test_pi_subagent_tools_exclude_removed_codebase_memory() {
   local settings
   settings="$REPO_DIR/config/shared/ai/pi/settings.json"
 
   assert_file_exists "$settings"
   if [[ -f "$settings" ]]; then
     assert_exit_code 0 jq -e '
-      def search_tools: [
-        "mcp_codebaseMemory_search_graph",
-        "mcp_codebaseMemory_trace_path",
-        "mcp_codebaseMemory_get_code_snippet",
-        "mcp_codebaseMemory_get_architecture",
-        "mcp_codebaseMemory_search_code",
-        "mcp_codebaseMemory_list_projects",
-        "mcp_codebaseMemory_index_status",
-        "mcp_codebaseMemory_check_index_coverage",
-        "mcp_codebaseMemory_detect_changes"
-      ];
       .subagents.agentOverrides as $roles |
-      search_tools as $search_tools |
-      ($roles.reviewer.tools - $search_tools | sort) == ["find", "grep", "ls", "read"] and
-      ($roles.scout.tools - $search_tools | sort) == ["bash", "find", "grep", "ls", "read", "write"] and
-      ($search_tools - $roles.reviewer.tools | length) == 0 and
-      ($search_tools - $roles.scout.tools | length) == 0 and
+      ($roles.reviewer.tools | sort) == ["find", "grep", "ls", "read"] and
+      ($roles.scout.tools | sort) == ["bash", "find", "grep", "ls", "read", "write"] and
       $roles.reviewer.completionGuard == false and
-      ([$roles.reviewer.tools[], $roles.scout.tools[]] | map(select(test("index_repository|delete_project|manage_adr|ingest_traces"))) | length) == 0
+      ([$roles.reviewer.tools[], $roles.scout.tools[]] | map(select(startswith("mcp_codebaseMemory_"))) | length) == 0
     ' "$settings"
   fi
 }

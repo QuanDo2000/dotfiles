@@ -26,7 +26,6 @@ function New-PiExtensionTestFixture($Root, [switch]$WrongLockHash) {
     $packages = Join-Path $Root 'packages'
     $scripts = Join-Path $Root 'scripts'
     New-Item -ItemType Directory -Force -Path $source, $packages, $scripts | Out-Null
-    Copy-Item -LiteralPath (Join-Path $script:RepoDir 'scripts\patch_pi_mcp_background.py') -Destination $scripts
     Copy-Item -LiteralPath (Join-Path $script:RepoDir 'scripts\patch_pi_hermes_background_flush.py') -Destination $scripts
     '{"name":"fixture","private":true,"version":"1.0.0","dependencies":{"example-extension":"1.2.3"}}' |
         Set-Content -LiteralPath (Join-Path $source 'package.json') -Encoding ascii
@@ -137,9 +136,11 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
     $lock = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package-lock.json'
 
     Assert-Equals $pins.releaseId (Get-PiExtensionTestSha256 $lock)
-    Assert-Equals 5 @($settings.packages).Count
-    Assert-Equals 5 @($package.dependencies.PSObject.Properties).Count
-    Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@ff-labs/pi-fff') 'native FFF MCP should replace npm adapter'
+    Assert-Equals 4 @($settings.packages).Count
+    Assert-Equals 4 @($package.dependencies.PSObject.Properties).Count
+    Assert-False ($package.dependencies.PSObject.Properties.Name -contains 'pi-mcp-extension') 'Pi MCP extension should be removed'
+    Assert-False ($settings.packages -like '*pi-mcp-extension*') 'Pi MCP package path should be removed'
+    Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@ff-labs/pi-fff') 'native FFF MCP should remain absent'
     Assert-False ($package.PSObject.Properties.Name -contains 'overrides') 'FFF npm overrides should be removed'
     foreach ($entry in $settings.packages) {
         $source = if ($entry -is [string]) { $entry } else { $entry.source }
@@ -195,12 +196,6 @@ function test_installpiextensions_rejects_lock_hash_mismatch_before_npm {
 
     Assert-Throws { InstallPiExtensions 6>&1 | Out-Null } 'lock mismatch should fail closed'
     Assert-False $script:NpmCalled 'npm should not run before lock validation'
-}
-
-function test_piextensionsrelease_validates_mcp_subagent_startup_patch {
-    $definition = (Get-Command Test-PiExtensionsRelease).Definition
-
-    Assert-Contains $definition 'if (process.env.PI_SUBAGENT_DEPTH) await eagerStartup;'
 }
 
 function test_piextensionsrelease_validates_hermes_background_flush_patch {
@@ -285,25 +280,11 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         $script:NpmArgs = $args -join ' '
         $prefix = $args[[Array]::IndexOf($args, '--prefix') + 1]
         $packageDir = Join-Path $prefix 'node_modules\example-extension'
-        $mcpDir = Join-Path $prefix 'node_modules\pi-mcp-extension\src'
         $hermesDir = Join-Path $prefix 'node_modules\pi-hermes-memory'
-        New-Item -ItemType Directory -Force -Path $packageDir, $mcpDir, (Join-Path $prefix 'node_modules\better-sqlite3') | Out-Null
+        New-Item -ItemType Directory -Force -Path $packageDir, (Join-Path $prefix 'node_modules\better-sqlite3') | Out-Null
         Write-PiHermesUnpatchedFixture $hermesDir
         '{"name":"example-extension","version":"1.2.3"}' | Set-Content -LiteralPath (Join-Path $packageDir 'package.json') -Encoding ascii
         '{"name":"better-sqlite3","version":"12.11.1"}' | Set-Content -LiteralPath (Join-Path $prefix 'node_modules\better-sqlite3\package.json') -Encoding ascii
-        @'
-    // Start all eager servers concurrently
-    await Promise.allSettled(
-      eagerServers.map(async ([name]) => {
-        try {
-          await manager.startServer(name, ctx.cwd);
-        } catch (err) {
-          const msg = err instanceof McpError ? err.userMessage : String(err);
-          ctx.ui.notify(`pi-mcp: Failed to start ${name} — ${msg}`, "error");
-        }
-      }),
-    );
-'@ | Set-Content -LiteralPath (Join-Path $mcpDir 'index.ts') -Encoding utf8
         $global:LASTEXITCODE = 0
     }
     Set-CommandMock 'py' {
@@ -327,8 +308,6 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
     Assert-Contains $script:NpmArgs 'ci --prefix'
     Assert-Contains $script:NpmArgs '--ignore-scripts'
     Assert-Contains $script:NpmArgs '--legacy-peer-deps'
-    $stagedMcp = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-mcp-extension\src\index.ts"
-    Assert-Contains (Get-Content -Raw $stagedMcp) 'if (process.env.PI_SUBAGENT_DEPTH) await eagerStartup;'
     $stagedHermes = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$((Get-Content -Raw $pinsPath | ConvertFrom-Json).releaseId)\node_modules\pi-hermes-memory\src\handlers"
     Assert-Contains (Get-Content -Raw (Join-Path $stagedHermes 'session-flush.ts')) 'execDetachedChildPrompt'
     Assert-Contains (Get-Content -Raw (Join-Path $stagedHermes 'child-process-watchdog.mjs')) 'windowsHide: true'

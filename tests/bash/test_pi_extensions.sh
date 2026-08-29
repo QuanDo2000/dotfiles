@@ -33,15 +33,33 @@ test_pi_extension_settings_use_locked_local_release() {
   package="$extension_dir/package.json"
 
   assert_equals "$release_id" "$(_lock_sha256)"
-  assert_equals 5 "$(jq '.packages | length' "$settings")"
-  assert_equals 5 "$(jq '.dependencies | length' "$package")"
+  assert_equals 4 "$(jq '.packages | length' "$settings")"
+  assert_equals 4 "$(jq '.dependencies | length' "$package")"
   assert_equals false "$(jq 'has("overrides")' "$package")"
+  assert_equals false "$(jq '.dependencies | has("pi-mcp-extension")' "$package")"
+  assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("pi-mcp-extension"))] | length' "$settings")"
   assert_equals false "$(jq '.dependencies | has("@ff-labs/pi-fff")' "$package")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@ff-labs/pi-fff"))] | length' "$settings")"
   assert_equals 0 "$(jq --arg id "$release_id" '[.packages[] | (if type == "string" then . else .source end) | select(startswith("./locked-extensions/releases/" + $id + "/node_modules/") | not)] | length' "$settings")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(startswith("npm:"))] | length' "$settings")"
   assert_equals false "$(jq '.dependencies | has("@dietrichgebert/ponytail")' "$package")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@dietrichgebert/ponytail"))] | length' "$settings")"
+}
+
+test_pi_mcp_removal_preserves_codebase_memory_codex_integration() {
+  assert_exit_code 0 jq -e '
+    .settings.toolPrefix == "mcp" and
+    .mcpServers == {} and
+    ([.. | strings | select(test("codebaseMemory|codebase-memory-mcp"))] | length) == 0
+  ' "$REPO_DIR/config/shared/ai/pi/mcp.json"
+  assert_exit_code 0 jq -e '
+    .settings.toolPrefix == "mcp" and
+    .mcpServers == {} and
+    ([.. | strings | select(test("codebaseMemory|codebase-memory-mcp"))] | length) == 0
+  ' "$REPO_DIR/config/windows/ai/pi/mcp.json"
+  assert_contains "$(<"$REPO_DIR/config/shared/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
+  assert_contains "$(<"$REPO_DIR/config/windows/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
+  assert_file_exists "$REPO_DIR/packages/codebase-memory-mcp.nix"
 }
 
 test_pi_extension_lock_has_integrity_for_every_tarball() {
@@ -64,8 +82,10 @@ test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
   assert_contains "$package" '"--ignore-scripts"'
   assert_contains "$package" 'better-sqlite3'
   assert_contains "$package" 'better_sqlite3.node'
-  assert_contains "$package" 'python3 ${../scripts/patch_pi_mcp_background.py} node_modules/pi-mcp-extension/src/index.ts'
+  assert_not_contains "$package" 'pi-mcp-extension'
+  assert_not_contains "$package" 'patch_pi_mcp_background.py'
   assert_contains "$package" 'python3 ${../scripts/patch_pi_hermes_background_flush.py} node_modules/pi-hermes-memory'
+  assert_equals false "$([[ -f "$REPO_DIR/scripts/patch_pi_mcp_background.py" ]] && echo true || echo false)"
   assert_contains "$home" 'locked-extensions/releases/${piExtensionsReleaseId}'
   assert_contains "$flake" 'packages.x86_64-linux.pi-extensions'
   assert_contains "$flake" 'packages.aarch64-darwin.pi-extensions'

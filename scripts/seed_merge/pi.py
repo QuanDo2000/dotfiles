@@ -19,6 +19,9 @@ missing = object()
 
 def normalize(config, keep_runtime=False):
     runtime = {}
+    mcp_servers = config.get("mcpServers")
+    if isinstance(mcp_servers, dict):
+        mcp_servers.pop("codebaseMemory", None)
     for key, value in REDUNDANT_DEFAULTS.items():
         if same_json(config.get(key), value):
             del config[key]

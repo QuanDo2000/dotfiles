@@ -110,7 +110,8 @@ function test_windows_codebase_memory_uses_pinned_release_packages {
     Assert-Contains $nixPackage 'codebase-memory-mcp-release.json'
     Assert-Contains $nixPackage '${source.file}'
     Assert-Contains $codexSeed '[mcp_servers.codebase-memory-mcp]'
-    Assert-Equals 'codebase-memory-mcp' $piSeed.mcpServers.codebaseMemory.command
+    Assert-Equals 'mcp' $piSeed.settings.toolPrefix
+    Assert-Equals 0 @($piSeed.mcpServers.PSObject.Properties).Count
 }
 
 function test_getcodebasememoryversion_requires_exact_semver_token {
