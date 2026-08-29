@@ -1496,7 +1496,7 @@ function InstallAiSkills {
 
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'test-driven-development')
+    $skills = @('systematic-debugging', 'test-driven-development', 'skill-retrospective')
     foreach ($skill in $skills) {
         Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill)
         Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue

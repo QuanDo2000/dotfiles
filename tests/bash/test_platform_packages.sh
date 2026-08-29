@@ -393,6 +393,20 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
 }
 
 
+test_skill_retrospective_is_installed_cross_platform() {
+  local skill windows
+  skill="$REPO_DIR/config/shared/ai/skills/skill-retrospective/SKILL.md"
+  windows="$(<"$REPO_DIR/dotfile.ps1")"
+
+  assert_file_exists "$skill"
+  assert_contains "$HOME_CONFIG" '".agents/skills/skill-retrospective" = forceSource ./shared/ai/skills/skill-retrospective;'
+  assert_contains "$windows" "'systematic-debugging', 'test-driven-development', 'skill-retrospective'"
+  assert_contains "$(<"$skill")" 'Use bounded session search rather than scanning all history by default.'
+  assert_contains "$(<"$skill")" 'Do not assign numeric grades or composite scores.'
+  assert_contains "$(<"$skill")" 'Do not modify installed skills without explicit user approval.'
+}
+
+
 test_agents_own_complexity_audit_and_debt_policy() {
   local agents
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
