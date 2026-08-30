@@ -110,7 +110,7 @@ function test_windows_codebase_memory_uses_pinned_release_packages {
     Assert-True ($pins.windows.amd64.file -match '^codebase-memory-mcp(?:-ui)?-windows-amd64.*\.zip$') 'amd64 file should be pinned'
     Assert-Contains $nixPackage 'codebase-memory-mcp-release.json'
     Assert-Contains $nixPackage '${source.file}'
-    Assert-Contains $codexSeed '[mcp_servers.codebase-memory-mcp]'
+    Assert-False ($codexSeed.Contains('[mcp_servers.codebase-memory-mcp]')) 'Codex should not enable codebase-memory-mcp by default'
     Assert-Equals 'mcp' $piSeed.settings.toolPrefix
     Assert-Equals 0 @($piSeed.mcpServers.PSObject.Properties).Count
 }
@@ -270,11 +270,11 @@ function test_windows_codex_seed_contains_only_portable_state {
     foreach ($portableSetting in @(
             '[windows]',
             'sandbox = "elevated"',
-            'network_access = false',
-            '[mcp_servers.codebase-memory-mcp]'
+            'network_access = false'
         )) {
         Assert-True ($seed.Contains($portableSetting)) "Codex seed should retain portable setting: $portableSetting"
     }
+    Assert-False ($seed.Contains('[mcp_servers.codebase-memory-mcp]')) 'Codex seed should remain minimal by default'
 }
 
 function test_synccodexconfig_does_not_apply_live_state_to_tracked_seed {
