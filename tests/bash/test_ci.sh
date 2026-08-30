@@ -15,7 +15,8 @@ test_ci_bash_jobs_match_local_nix_environment() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
-  assert_contains "$workflow" 'nix develop . -c bash ./tests/bash/runner.sh'
+  assert_equals 1 "$(grep -c 'run: nix develop \. -c bash \./tests/bash/runner\.sh$' <<< "$workflow")"
+  assert_contains "$workflow" 'runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_neovim.sh test_tmux.sh'
   assert_not_contains "$workflow" 'runner.sh --no-docker'
   assert_not_contains "$workflow" 'docker'
 }
