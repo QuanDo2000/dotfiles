@@ -29,6 +29,9 @@ test_ci_dev_shell_includes_script_dependencies() {
   assert_contains "$flake" "jq"
   assert_contains "$flake" "cosign"
   assert_contains "$flake" 'LAZY_NVIM_PATH = "${pkgs.vimPlugins.lazy-nvim}";'
+  local dev_shell
+  dev_shell="$(sed -n '/devShell =/,/^[[:space:]]*};/p' "$REPO_DIR/flake.nix")"
+  assert_contains "$dev_shell" 'zsh'
   assert_contains "$flake" 'devShells.aarch64-darwin.ci = ciShell darwinPkgs;'
   assert_contains "$flake" 'devShells.x86_64-linux.ci = ciShell linuxPkgs;'
   assert_contains "$flake" 'ciShell = pkgs: pkgs.mkShellNoCC {'

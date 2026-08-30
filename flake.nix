@@ -53,6 +53,7 @@
           shellcheck
           tree-sitter
           tmux
+          zsh
         ];
       };
       ciShell = pkgs: pkgs.mkShellNoCC {
