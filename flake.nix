@@ -51,6 +51,15 @@
           tmux
         ];
       };
+      ciShell = pkgs: pkgs.mkShellNoCC {
+        LAZY_NVIM_PATH = "${pkgs.vimPlugins.lazy-nvim}";
+        packages = with pkgs; [
+          git
+          jq
+          neovim
+          tmux
+        ];
+      };
     in
     {
       packages.x86_64-linux.codex = linuxPkgs.codex;
@@ -117,6 +126,8 @@
       };
 
       devShells.x86_64-linux.default = devShell linuxPkgs;
+      devShells.x86_64-linux.ci = ciShell linuxPkgs;
       devShells.aarch64-darwin.default = devShell darwinPkgs;
+      devShells.aarch64-darwin.ci = ciShell darwinPkgs;
     };
 }

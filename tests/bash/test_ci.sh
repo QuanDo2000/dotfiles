@@ -16,7 +16,7 @@ test_ci_bash_jobs_match_local_nix_environment() {
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_equals 1 "$(grep -c 'run: nix develop \. -c bash \./tests/bash/runner\.sh$' <<< "$workflow")"
-  assert_contains "$workflow" 'runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_neovim.sh test_tmux.sh'
+  assert_contains "$workflow" 'nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_neovim.sh test_tmux.sh'
   assert_not_contains "$workflow" 'runner.sh --no-docker'
   assert_not_contains "$workflow" 'docker'
 }
@@ -28,6 +28,10 @@ test_ci_dev_shell_includes_script_dependencies() {
   assert_contains "$flake" "jq"
   assert_contains "$flake" "cosign"
   assert_contains "$flake" 'LAZY_NVIM_PATH = "${pkgs.vimPlugins.lazy-nvim}";'
+  assert_contains "$flake" 'devShells.aarch64-darwin.ci = ciShell darwinPkgs;'
+  assert_contains "$flake" 'devShells.x86_64-linux.ci = ciShell linuxPkgs;'
+  assert_contains "$flake" 'ciShell = pkgs: pkgs.mkShellNoCC {'
+  assert_not_contains "$(sed -n '/ciShell =/,/^[[:space:]]*};/p' "$REPO_DIR/flake.nix")" 'pi-agent'
   assert_contains "$(<"$REPO_DIR/scripts/update_pins.py")" '"cosign", "verify-blob"'
   assert_not_contains "$(<"$REPO_DIR/scripts/update_pins.py")" '"nix", "develop", f"path:{repo}", "-c", "cosign"'
 }
