@@ -45,12 +45,5 @@ in
 
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
-  home-manager.extraSpecialArgs = {
-    desktop = false;
-    personalApps = false;
-    obsidianSync = false;
-    googleDriveSync = false;
-    storageOffsiteBackup = false;
-  };
   home-manager.users.${machine.username} = import ../home.nix;
 }

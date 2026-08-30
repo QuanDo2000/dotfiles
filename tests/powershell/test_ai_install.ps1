@@ -98,7 +98,7 @@ function test_windows_codebase_memory_uses_pinned_release_packages {
     $pins = Get-Content -Raw (Join-Path $script:RepoDir 'packages\codebase-memory-mcp-release.json') | ConvertFrom-Json
     $nixPackage = Get-Content -Raw (Join-Path $script:RepoDir 'packages\codebase-memory-mcp.nix')
     $codexSeed = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\codex\config.toml')
-    $piSeed = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\ai\pi\mcp.json') | ConvertFrom-Json
+    $piSeed = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\ai\pi\mcp.json') | ConvertFrom-Json
 
     Assert-False ($text -like '*codebase-memory-mcp/$releaseTag/install.ps1*') 'remote codebase-memory installer should not execute'
     Assert-False ($text -like '*--clients=codex*') 'repo-owned agent configs should not be regenerated'
@@ -124,35 +124,6 @@ function test_getcodebasememorywindowsarch_supports_x64_and_arm64 {
     Assert-Equals 'amd64' (Get-CodebaseMemoryWindowsArch 'X64')
     Assert-Equals 'arm64' (Get-CodebaseMemoryWindowsArch 'Arm64')
     Assert-Throws { Get-CodebaseMemoryWindowsArch 'X86' } '32-bit Windows should be rejected'
-}
-
-function test_remove_retired_fff_mcp_cleans_only_executables {
-    $binDir = Join-Path $env:USERPROFILE '.local\bin'
-    New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-    $exe = Join-Path $binDir 'fff-mcp.exe'
-    $launcher = Join-Path $binDir 'fff-mcp-agent.cmd'
-    $frecency = Join-Path $env:LOCALAPPDATA 'fff\frecency'
-    New-Item -ItemType Directory -Force -Path (Split-Path $frecency -Parent) | Out-Null
-    'retired' | Set-Content -NoNewline $exe
-    'retired' | Set-Content -NoNewline $launcher
-    'state' | Set-Content -NoNewline $frecency
-    $script:FffProcessesStopped = @()
-    Set-CommandMock 'Get-Process' {
-        @(
-            [pscustomobject]@{ ProcessName = 'fff-mcp'; Path = $exe },
-            [pscustomobject]@{ ProcessName = 'fff-mcp'; Path = 'C:\other\fff-mcp.exe' }
-        )
-    }
-    Set-CommandMock 'Stop-Process' { $script:FffProcessesStopped = @($input) }
-    Set-CommandMock 'Wait-Process' { }
-
-    Remove-RetiredFffMcp
-
-    Assert-Equals 1 $script:FffProcessesStopped.Count
-    Assert-Equals $exe $script:FffProcessesStopped[0].Path
-    Assert-False (Test-Path -LiteralPath $exe) 'retired FFF executable should be removed'
-    Assert-False (Test-Path -LiteralPath $launcher) 'retired FFF launcher should be removed'
-    Assert-FileExists $frecency 'FFF frecency state must be preserved'
 }
 
 function test_codebasememory_archive_rejects_unexpected_members {
@@ -1128,11 +1099,11 @@ function Initialize-TestPiConfigSeeds {
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
     $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir | Out-Null
+    '{}' | Set-Content -LiteralPath (Join-Path $seedDir 'mcp.json')
     foreach ($name in 'settings.json', 'keybindings.json', 'web-search.json') {
         '{}' | Set-Content -LiteralPath (Join-Path $seedDir $name)
     }
     '{"globalConcurrencyLimit":7}' | Set-Content -LiteralPath (Join-Path $seedDir 'subagent-config.json')
-    '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'mcp.json')
     '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
 
@@ -1198,14 +1169,10 @@ function test_syncpiconfigs_creates_writable_seed_files {
     '{"workflow":"none"}' | Set-Content (Join-Path $seedDir 'web-search.json')
     '{"mcpServers":{"unixOnly":{"command":"unix"}}}' | Set-Content (Join-Path $seedDir 'mcp.json')
     '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
-    '{"mcpServers":{"windowsOnly":{"command":"windows"}}}' | Set-Content (Join-Path $windowsSeedDir 'mcp.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
-    'stale' | Set-Content (Join-Path $extensionDir 'caveman-default.js')
-    'stale' | Set-Content (Join-Path $extensionDir 'windows-exit.js')
-    'stale' | Set-Content (Join-Path $extensionDir 'ponytail-default.js')
 
     SyncPiConfigs
 
@@ -1232,13 +1199,10 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-Equals 0 @($keys.'app.model.cycleForward').Count
     Assert-Equals 0 @($keys.'app.model.cycleBackward').Count
     Assert-Equals 'none' (Get-Content -Raw $webSearch | ConvertFrom-Json).workflow
-    Assert-Contains (Get-Content -Raw $mcp) '"windowsOnly"'
-    Assert-False ((Get-Content -Raw $mcp) -like '*unixOnly*') 'Windows should deploy Windows MCP seed'
+    Assert-Contains (Get-Content -Raw $mcp) '"unixOnly"'
+    Assert-False ((Get-Content -Raw $mcp) -like '*windowsOnly*') 'Windows should deploy the shared MCP seed'
     Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
-    Assert-False (Test-Path (Join-Path $extensionDir 'windows-exit.js')) 'Retired exit alias remains'
-    Assert-False (Test-Path (Join-Path $extensionDir 'caveman-default.js')) 'Obsolete Caveman hook remains'
-    Assert-False (Test-Path (Join-Path $extensionDir 'ponytail-default.js')) 'Obsolete Ponytail hook remains'
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
 }
 
@@ -1408,11 +1372,11 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $extensionDir | Out-Null
+    '{}' | Set-Content -LiteralPath (Join-Path $seedDir 'mcp.json')
 
     foreach ($name in 'settings.json', 'keybindings.json', 'web-search.json', 'subagent-config.json') {
         '{}' | Set-Content -LiteralPath (Join-Path $seedDir $name)
     }
-    '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'mcp.json')
     'same lsp' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
     'same lsp' | Set-Content -LiteralPath (Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json')
     'linked replacement' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
@@ -1463,7 +1427,6 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
     '{"workflow":"none"}' | Set-Content (Join-Path $seedDir 'web-search.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
     '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
-    '{"mcpServers":{}}' | Set-Content (Join-Path $windowsSeedDir 'mcp.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     '{"servers":{"nil":{"command":["nil"]}}}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
     '{"globalConcurrencyLimit":99}' | Set-Content (Join-Path $subagentDir 'config.json')

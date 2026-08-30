@@ -82,7 +82,7 @@ run_test_file() {
 
     # Discover test_* functions
     local test_funcs
-    test_funcs="$(declare -F | awk '{print $3}' | grep '^test_')" || true
+    test_funcs="$(compgen -A function test_)" || true
 
     if [ -z "$test_funcs" ]; then
         echo "  (no test_* functions found)"

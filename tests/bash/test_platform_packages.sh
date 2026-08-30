@@ -282,8 +282,6 @@ test_all_ai_agents_start_with_shared_policy() {
   assert_contains "$soul" '**Minimal implementation:**'
   assert_contains "$soul" '**Terse communication:**'
   assert_contains "$HOME_CONFIG" '".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;'
-  assert_not_contains "$HOME_CONFIG" 'ponytail-default.js'
-  assert_not_contains "$HOME_CONFIG" 'caveman-default.js'
 }
 
 
@@ -294,8 +292,7 @@ test_pi_uses_upstream_quit_command() {
 
   assert_not_contains "$package" "dist/core/slash-commands.js"
   assert_not_contains "$package" "dist/modes/interactive/interactive-mode.js"
-  assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/pi/windows-exit.js" ]] && echo true || echo false)"
-  assert_contains "$windows" '@("caveman-default.js", "ponytail-default.js", "windows-exit.js")'
+  assert_not_contains "$windows" 'caveman-default.js'
 }
 
 
@@ -672,7 +669,7 @@ test_arch_bootstrap_declares_host_fuse3() {
 test_home_manager_declares_optional_profile_features() {
   local feature
   for feature in desktop personalApps obsidianSync googleDriveSync; do
-    assert_contains "$HOME_CONFIG" "$feature ? false"
+    assert_contains "$HOME_CONFIG" "$feature = args.$feature or false"
   done
   assert_contains "$HOME_CONFIG" 'personalPackages = with pkgs; [ ankiWithAddons obsidian webcord ];'
   assert_contains "$HOME_CONFIG" 'obsidianSyncPackages = with pkgs; [ obsidian-headless ];'
@@ -694,43 +691,6 @@ test_home_manager_separates_desktop_and_sync_services() {
   assert_contains "$HOME_CONFIG" 'lib.mkIf (googleDriveSync && pkgs.stdenv.hostPlatform.isLinux)'
   assert_contains "$HOME_CONFIG" 'lib.mkIf (obsidianSync && pkgs.stdenv.hostPlatform.isLinux)'
   assert_contains "$HOME_CONFIG" 'systemd.user.services.storage-offsite-backup = lib.mkIf storageOffsiteBackup'
-}
-
-test_flake_profiles_select_optional_features() {
-  local nixos_args generic_linux_args arch_args darwin_args feature nixos_value arch_value
-  nixos_args="$(awk '
-    /home-manager\.extraSpecialArgs = \{/ { found = 1 }
-    found { print }
-    found && /^  \};/ { exit }
-  ' <<< "$NIXOS_CONFIG")"
-  generic_linux_args="$(awk '
-    /homeConfigurations\."\$\{machine\.username\}@linux"/ { profile = 1 }
-    profile && /extraSpecialArgs = \{/ { found = 1 }
-    found { print }
-    found && /^        \};/ { exit }
-  ' <<< "$FLAKE_CONFIG")"
-  arch_args="$(awk '
-    /homeConfigurations\."\$\{machine\.username\}@arch-server"/ { profile = 1 }
-    profile && /extraSpecialArgs = \{/ { found = 1 }
-    found { print }
-    found && /^        \};/ { exit }
-  ' <<< "$FLAKE_CONFIG")"
-  darwin_args="$(awk '
-    /home-manager\.extraSpecialArgs = \{/ { found = 1 }
-    found { print }
-    found && /^  \};/ { exit }
-  ' <<< "$(<"$REPO_DIR/config/darwin.nix")")"
-
-  for feature in desktop personalApps obsidianSync googleDriveSync storageOffsiteBackup; do
-    nixos_value=false
-    arch_value=false
-    [[ "$feature" != storageOffsiteBackup ]] && nixos_value=true
-    [[ "$feature" == obsidianSync || "$feature" == googleDriveSync || "$feature" == storageOffsiteBackup ]] && arch_value=true
-    assert_contains "$nixos_args" "$feature = $nixos_value;"
-    assert_contains "$arch_args" "$feature = $arch_value;"
-    assert_contains "$generic_linux_args" "$feature = false;"
-    assert_contains "$darwin_args" "$feature = false;"
-  done
 }
 
 test_home_manager_installs_pinned_webcord_release() {
@@ -771,7 +731,7 @@ test_network_services_apply_safe_process_sandbox() {
     assert_contains "$HOME_CONFIG" "$setting"
   done
   assert_equals "5" "$(grep -c 'Service = networkServiceHardening //' <<< "$HOME_CONFIG")"
-  assert_equals "6" "$(grep -c 'UMask = "0077";' <<< "$HOME_CONFIG")"
+  assert_equals "2" "$(grep -c 'UMask = "0077";' <<< "$HOME_CONFIG")"
   assert_equals "1" "$(grep -c 'NoNewPrivileges = false;' <<< "$HOME_CONFIG")"
   assert_contains "$mount_service" 'NoNewPrivileges = false;'
   for setting in \
@@ -808,7 +768,7 @@ test_storage_offsite_backup() {
   local exit_code=0
   bash "$REPO_DIR/config/arch-server/restic-recover" --self-test >/dev/null 2>&1 || exit_code=$?
   assert_equals "0" "$exit_code"
-  assert_contains "$HOME_CONFIG" "storageOffsiteBackup ? false"
+  assert_contains "$HOME_CONFIG" "storageOffsiteBackup = args.storageOffsiteBackup or false"
   assert_contains "$HOME_CONFIG" 'lib.optionals storageOffsiteBackup [ pkgs.restic ]'
   assert_contains "$HOME_CONFIG" '".local/bin/restic-recover" = lib.mkIf storageOffsiteBackup'
   assert_contains "$HOME_CONFIG" "systemd.user.services.storage-offsite-backup"

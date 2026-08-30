@@ -153,6 +153,7 @@ function test_windows_notepadplusplus_links_stable_settings_and_themes {
         $config = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\Notepad++\config.xml')
         Assert-False $config.Contains('AppPosition') 'portable config should not pin machine geometry'
         Assert-False $config.Contains('FindWindowPosition') 'portable config should not pin dialog geometry'
+        Assert-False $config.Contains('nextUpdateDate') 'portable config should not pin time-derived update state'
     } finally {
         $env:APPDATA = $oldAppData
     }
@@ -222,25 +223,6 @@ function test_sync_notepadplusplus_config_seeds_writable_settings {
         $script:DotfilesDir = $oldDotfilesDir
         $env:APPDATA = $oldAppData
     }
-}
-
-function test_migrate_windows_nvim_config_replaces_legacy_directory_link {
-    $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
-    New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
-    $legacySource = Join-Path $script:DotfilesDir 'config\shared\config\nvim'
-    $destination = Join-Path $env:LOCALAPPDATA 'nvim'
-    try {
-        New-Item -ItemType SymbolicLink -Path $destination -Target $legacySource | Out-Null
-    } catch {
-        Skip-Test 'symlink privilege unavailable'
-        return
-    }
-
-    Migrate-WindowsNvimConfig
-
-    $item = Get-Item -LiteralPath $destination -Force
-    Assert-True $item.PSIsContainer 'migrated Neovim path should remain a directory'
-    Assert-False ([bool]$item.LinkType) 'migrated Neovim directory should be writable'
 }
 
 function test_linkpath_file_dry_run_does_not_create_destination {

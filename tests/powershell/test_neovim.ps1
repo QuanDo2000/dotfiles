@@ -48,8 +48,6 @@ function test_neovim_plugin_sync_skips_full_restore_when_runtime_is_current {
     $script:Dry = $false
     $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData\Local'
     $dataPath = Join-Path $env:LOCALAPPDATA 'nvim-data'
-    $staleFff = Join-Path $dataPath 'lazy\fff.nvim'
-    New-Item -ItemType Directory -Force -Path $staleFff | Out-Null
     $originalGetNeovim = (Get-Command Get-NeovimCommand).ScriptBlock
     $script:NvimCalls = @()
     $script:ProbeSync = $null
@@ -76,7 +74,6 @@ function test_neovim_plugin_sync_skips_full_restore_when_runtime_is_current {
     Assert-Equals '1' $env:DOTFILE_NVIM_SYNC
     Assert-Contains $script:NvimCalls[1] 'runtime_complete()'
     Assert-False ($script:NvimCalls[1].Contains("plugins(false)")) 'current runtime must skip full plugin restore'
-    Assert-False (Test-Path -LiteralPath $staleFff) 'retired fff.nvim checkout should be removed before the fast path'
     Remove-Item Env:DOTFILE_NVIM_SYNC
 }
 

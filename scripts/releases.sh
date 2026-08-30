@@ -221,15 +221,18 @@ function _pi_archive_url {
   printf 'https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-%s.tgz\n' "$1"
 }
 
-function _prefetch_pi_src_hash {
-  local version output hash store_path
-  version="$1"
-  output="$(nix store prefetch-file --json --hash-type sha256 "$(_pi_archive_url "$version")")" \
-    || fail "Failed to prefetch Pi archive"
+function _prefetch_release_source_hash {
+  local label="$1" url="$2" output hash store_path
+  output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
+    || fail "Failed to prefetch $label archive"
   hash="$(jq -r '.hash // empty' <<< "$output")"
   store_path="$(jq -r '.storePath // empty' <<< "$output")"
-  [[ -n "$hash" && -f "$store_path" ]] || fail "Failed to parse Pi archive prefetch"
+  [[ -n "$hash" && -f "$store_path" ]] || fail "Failed to parse $label archive prefetch"
   printf '%s\t%s\n' "$hash" "$store_path"
+}
+
+function _prefetch_pi_src_hash {
+  _prefetch_release_source_hash "Pi" "$(_pi_archive_url "$1")"
 }
 
 function _download_pi_package_lock {
@@ -258,29 +261,35 @@ function _download_pi_package_lock {
   done < <(jq -r '.packages | to_entries[] | select(.value.resolved and (.value.integrity | not)) | [.key, (.key | sub("^node_modules/"; "")), .value.version] | @tsv' "$lock_file")
 }
 
-function _prefetch_pi_npm_deps_hash {
-  nix run "path:$DOTFILES_DIR#prefetch-npm-deps" -- "$1" \
-    || fail "Failed to prefetch Pi npm deps"
+function _prefetch_release_npm_deps_hash {
+  local label="$1" lock_file="$2"
+  nix run "path:$DOTFILES_DIR#prefetch-npm-deps" -- "$lock_file" \
+    || fail "Failed to prefetch $label npm deps"
 }
 
-function _write_pi_package {
-  local version src_hash deps_hash package_file output_file tmp
-  version="$1"
-  src_hash="$2"
-  deps_hash="$3"
-  package_file="$DOTFILES_DIR/packages/pi-agent.nix"
-  output_file="${4:-$package_file}"
-  [[ -f "$package_file" ]] || fail "Missing Pi package file: $package_file"
+function _prefetch_pi_npm_deps_hash {
+  _prefetch_release_npm_deps_hash "Pi" "$1"
+}
+
+function _write_release_package {
+  local label="$1" package_file="$2" version="$3" src_hash="$4" deps_hash="$5" output_file tmp
+  output_file="${6:-$package_file}"
+  [[ -f "$package_file" ]] || fail "Missing $label package file: $package_file"
   tmp="$output_file"
   [[ "$output_file" != "$package_file" ]] || tmp="$(mktemp)"
-
   sed -E \
     -e 's#version = "[^"]+";#version = "'"$version"'";#' \
     -e 's#^([[:space:]]*hash = ")[^"]+(";)$#\1'"$src_hash"'\2#' \
     -e 's#npmDepsHash = "[^"]+";#npmDepsHash = "'"$deps_hash"'";#' \
     "$package_file" > "$tmp" \
-    || fail "Failed to update Pi package file"
-  [[ "$tmp" == "$output_file" ]] || mv "$tmp" "$package_file"
+    || fail "Failed to update $label package file"
+  [[ "$tmp" == "$output_file" ]] \
+    || mv "$tmp" "$package_file" \
+    || fail "Failed to update $label package file"
+}
+
+function _write_pi_package {
+  _write_release_package "Pi" "$DOTFILES_DIR/packages/pi-agent.nix" "$1" "$2" "$3" "${4:-$DOTFILES_DIR/packages/pi-agent.nix}"
 }
 
 function _validate_release_files {
@@ -577,15 +586,7 @@ function _obsidian_headless_archive_url {
 }
 
 function _prefetch_obsidian_headless_src_hash {
-  local version url output hash store_path
-  version="$1"
-  url="$(_obsidian_headless_archive_url "$version")"
-  output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
-    || fail "Failed to prefetch Obsidian Headless archive"
-  hash="$(jq -r '.hash // empty' <<< "$output")"
-  store_path="$(jq -r '.storePath // empty' <<< "$output")"
-  [[ -n "$hash" && -f "$store_path" ]] || fail "Failed to parse Obsidian Headless archive prefetch"
-  printf '%s\t%s\n' "$hash" "$store_path"
+  _prefetch_release_source_hash "Obsidian Headless" "$(_obsidian_headless_archive_url "$1")"
 }
 
 function _download_obsidian_headless_package_lock {
@@ -613,35 +614,11 @@ function _download_obsidian_headless_package_lock {
 }
 
 function _prefetch_obsidian_headless_npm_deps_hash {
-  local lock_file
-  lock_file="${1:-$DOTFILES_DIR/packages/obsidian-headless-package-lock.json}"
-  nix run "path:$DOTFILES_DIR#prefetch-npm-deps" -- "$lock_file" \
-    || fail "Failed to prefetch Obsidian Headless npm deps"
+  _prefetch_release_npm_deps_hash "Obsidian Headless" "${1:-$DOTFILES_DIR/packages/obsidian-headless-package-lock.json}"
 }
 
 function _write_obsidian_headless_package {
-  local version src_hash deps_hash package_file output_file tmp
-  version="$1"
-  src_hash="$2"
-  deps_hash="$3"
-  package_file="$DOTFILES_DIR/packages/obsidian-headless.nix"
-  output_file="${4:-$package_file}"
-  [[ -f "$package_file" ]] || fail "Missing Obsidian Headless package file: $package_file"
-
-  tmp="$output_file"
-  if [[ "$output_file" == "$package_file" ]]; then
-    tmp="$(mktemp)" || fail "Failed to create temp file"
-  fi
-
-  sed -E \
-    -e 's#version = "[^"]+";#version = "'"$version"'";#' \
-    -e 's#^([[:space:]]*hash = ")[^"]+(";)$#\1'"$src_hash"'\2#' \
-    -e 's#npmDepsHash = "[^"]+";#npmDepsHash = "'"$deps_hash"'";#' \
-    "$package_file" > "$tmp" \
-    || fail "Failed to update Obsidian Headless package file"
-  [[ "$tmp" == "$output_file" ]] \
-    || mv "$tmp" "$package_file" \
-    || fail "Failed to update Obsidian Headless package file"
+  _write_release_package "Obsidian Headless" "$DOTFILES_DIR/packages/obsidian-headless.nix" "$1" "$2" "$3" "${4:-$DOTFILES_DIR/packages/obsidian-headless.nix}"
 }
 
 function _update_obsidian_headless_package {

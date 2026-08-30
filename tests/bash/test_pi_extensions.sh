@@ -52,11 +52,6 @@ test_pi_mcp_removal_preserves_codebase_memory_codex_integration() {
     .mcpServers == {} and
     ([.. | strings | select(test("codebaseMemory|codebase-memory-mcp"))] | length) == 0
   ' "$REPO_DIR/config/shared/ai/pi/mcp.json"
-  assert_exit_code 0 jq -e '
-    .settings.toolPrefix == "mcp" and
-    .mcpServers == {} and
-    ([.. | strings | select(test("codebaseMemory|codebase-memory-mcp"))] | length) == 0
-  ' "$REPO_DIR/config/windows/ai/pi/mcp.json"
   assert_contains "$(<"$REPO_DIR/config/shared/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
   assert_contains "$(<"$REPO_DIR/config/windows/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
   assert_file_exists "$REPO_DIR/packages/codebase-memory-mcp.nix"

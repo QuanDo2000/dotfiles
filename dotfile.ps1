@@ -915,11 +915,7 @@ function SyncPiConfigs {
 
     try {
     foreach ($name in @("settings.json", "keybindings.json", "web-search.json", "mcp.json", "subagent-config.json")) {
-        $source = if ($name -eq "mcp.json") {
-            Join-Path $script:DotfilesDir "config\windows\ai\pi\mcp.json"
-        } else {
-            Join-Path $seedDir $name
-        }
+        $source = Join-Path $seedDir $name
         $relative = if ($name -eq "subagent-config.json") {
             "extensions\subagent\config.json"
         } elseif ($name -eq "web-search.json") {
@@ -973,28 +969,10 @@ function SyncPiConfigs {
     foreach ($copy in $directCopies) {
         Copy-FileWithRollback $copy.Source $copy.Destination 'Pi direct config copy'
     }
-    foreach ($name in @("caveman-default.js", "ponytail-default.js", "windows-exit.js")) {
-        Remove-Item -LiteralPath (Join-Path $extensionDir $name) -Force -ErrorAction SilentlyContinue
-    }
     } finally {
         $syncLock.Dispose()
     }
     Success "Finished syncing Pi configuration"
-}
-
-function Remove-RetiredFffMcp {
-    $destination = Join-Path $env:USERPROFILE '.local\bin\fff-mcp.exe'
-    $processes = @(Get-Process -Name 'fff-mcp' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $destination })
-    if ($processes.Count -gt 0) {
-        $processes | Stop-Process -Force -ErrorAction Stop
-        $processes | Wait-Process -Timeout 5 -ErrorAction Stop
-    }
-    foreach ($path in @(
-        $destination,
-        (Join-Path $env:USERPROFILE '.local\bin\fff-mcp-agent.cmd')
-    )) {
-        if (Test-Path -LiteralPath $path -PathType Leaf) { Remove-Item -LiteralPath $path -Force -ErrorAction Stop }
-    }
 }
 
 function Get-CodebaseMemoryWindowsArch($Architecture) {
@@ -1357,7 +1335,6 @@ function InstallAi {
     SyncCodexConfig
 
     InstallCodebaseMemory
-    Remove-RetiredFffMcp
     InstallPi -Update:$Update
     InstallPiLanguageServers
     InstallPiExtensions
@@ -1401,8 +1378,6 @@ function Sync-NeovimPlugins {
     if (-not $nvim) { throw "nvim executable not found" }
     $dataPath = Get-NeovimDataPath $nvim
     if (-not $dataPath) { throw "could not determine Neovim data path" }
-    $staleFff = Join-Path $dataPath 'lazy\fff.nvim'
-    if (Test-Path -LiteralPath $staleFff) { Remove-Item -LiteralPath $staleFff -Recurse -Force -ErrorAction Stop }
     $previousSync = $env:DOTFILE_NVIM_SYNC
     try {
         $env:DOTFILE_NVIM_SYNC = '0'
@@ -1602,22 +1577,6 @@ function Sync-NotepadPlusPlusConfig {
     (Get-Item -LiteralPath $target).IsReadOnly = $false
 }
 
-function Migrate-WindowsNvimConfig {
-    if ($script:Dry) { return }
-    $destination = "$env:LOCALAPPDATA\nvim"
-    if (-not (Test-Path -LiteralPath $destination)) { return }
-
-    $item = Get-Item -LiteralPath $destination -Force
-    if (-not $item.LinkType) { return }
-
-    $legacySource = Join-Path $script:DotfilesDir "config\shared\config\nvim"
-    if ($item.Target -ne $legacySource) {
-        throw "Neovim config points to unexpected target: $($item.Target)"
-    }
-    Remove-Item -LiteralPath $destination -Force
-    New-Item -ItemType Directory -Path $destination -Force | Out-Null
-}
-
 function Sync-LazyLock {
     Info "Syncing writable Neovim plugin lock..."
     if ($script:Dry) { return }
@@ -1634,7 +1593,6 @@ function SetupSymlinks {
     $script:OverwriteAll = $script:Force
     $script:BackupAll = $false
     $script:SkipAll = $false
-    Migrate-WindowsNvimConfig
 
     foreach ($spec in Get-WindowsLinkSpecs) {
         if ($spec.AddToPath) {

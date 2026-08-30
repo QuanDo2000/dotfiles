@@ -1,6 +1,11 @@
-{ config, pkgs, lib, osConfig ? null, desktop ? false, personalApps ? false, obsidianSync ? false, googleDriveSync ? false, storageOffsiteBackup ? false, ... }:
+args@{ config, pkgs, lib, osConfig ? null, ... }:
 
 let
+  desktop = args.desktop or false;
+  personalApps = args.personalApps or false;
+  obsidianSync = args.obsidianSync or false;
+  googleDriveSync = args.googleDriveSync or false;
+  storageOffsiteBackup = args.storageOffsiteBackup or false;
   machine = import ./host.nix;
   nixosSystem = pkgs.stdenv.hostPlatform.isLinux && osConfig != null;
   standaloneLinux = pkgs.stdenv.hostPlatform.isLinux && !nixosSystem;
@@ -22,8 +27,6 @@ let
   };
   piExtensionsPins = builtins.fromJSON (builtins.readFile ../packages/pi-extensions-release.json);
   piExtensionsReleaseId = piExtensionsPins.releaseId;
-  piExtensions = pkgs.callPackage ../packages/pi-extensions.nix { };
-  pi-agent = pkgs.callPackage ../packages/pi-agent.nix { };
   ankiWithAddons = pkgs.anki.withAddons [
     (pkgs.ankiAddons.passfail2.withConfig {
       config = {
@@ -132,7 +135,7 @@ let
     nil
     nixfmt
     nodejs
-    pi-agent
+    pkgs.pi-agent
     shellcheck
     statix
     vtsls
@@ -201,7 +204,7 @@ in
     ".agents/skills/skill-retrospective" = forceSource ./shared/ai/skills/skill-retrospective;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".pi/agent/extensions/gpg-signing-display" = forceSource ./shared/ai/pi/gpg-signing-display;
-    ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource piExtensions;
+    ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource pkgs.pi-extensions;
     ".local/bin/dotfile" = {
       text = ''
         #!/usr/bin/env bash
@@ -520,7 +523,6 @@ in
 
     Service = networkServiceHardening // {
       Type = "oneshot";
-      UMask = "0077";
       ExecStartPre = "${pkgs.coreutils}/bin/install -d -m 700 ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";
       # debt: one lock serializes jobs that touch the same Drive tree; split only when independent trees need concurrent sync.
       ExecStart = "${pkgs.util-linux}/bin/flock --no-fork --wait 1800 %t/google-drive-sync.lock ${pkgs.rclone}/bin/rclone bisync ${homeDir}/Documents/Drive gdrive:Drive --check-access --check-filename .rclone-bisync-check --create-empty-src-dirs --resilient --recover --max-lock 2m --conflict-resolve newer --max-delete 25 --backup-dir1 ${homeDir}/Documents/.Drive-backup --backup-dir2 gdrive:.Drive-backup --verbose";
@@ -556,7 +558,6 @@ in
     Service = networkServiceHardening // {
       Type = "oneshot";
       Environment = "RCLONE=${pkgs.rclone}/bin/rclone";
-      UMask = "0077";
       ExecStart = "${pkgs.util-linux}/bin/flock --no-fork --wait 1800 %t/google-drive-sync.lock ${pkgs.python3}/bin/python ${../scripts/google-drive-storage-sync.py}";
       TimeoutStartSec = "infinity";
     };
@@ -591,7 +592,6 @@ in
     };
     Service = networkServiceHardening // {
       Type = "oneshot";
-      UMask = "0077";
       Environment = [
         "PATH=${lib.makeBinPath [ pkgs.rclone pkgs.coreutils ]}"
         "RESTIC_REPOSITORY=rclone:gdrive:ServerBackup/restic"
@@ -627,7 +627,6 @@ in
     };
     Service = networkServiceHardening // {
       Type = "oneshot";
-      UMask = "0077";
       Environment = [
         "PATH=${lib.makeBinPath [ pkgs.rclone pkgs.coreutils ]}"
         "RESTIC_REPOSITORY=rclone:gdrive:ServerBackup/restic"
@@ -683,15 +682,6 @@ in
         fi
       done
     '');
-
-  home.activation.migrateNvimConfig = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-    nvim_config="$HOME/.config/nvim"
-    if [ -L "$nvim_config" ]; then
-      case "$(readlink "$nvim_config")" in
-        /nix/store/*-home-manager-files/.config/nvim) rm -f "$nvim_config" ;;
-      esac
-    fi
-  '';
 
   home.activation.fixCodexRuntime = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ -L "$HOME/.codex/dotfiles.config.toml" ] && [ ! -e "$HOME/.codex/dotfiles.config.toml" ]; then

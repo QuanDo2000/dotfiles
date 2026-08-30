@@ -9,7 +9,6 @@ import tempfile
 import tomllib
 
 live_path, seed_path, apply_path = sys.argv[1:]
-RETIRED_MARKETPLACES = {"ponytail"}
 RUNTIME_ONLY_KEYS = {"marketplaces", "projects"}
 
 
@@ -49,54 +48,6 @@ def overlay_tracked(live, seed):
         else:
             merged[key] = value
     return merged
-
-
-def remove_retired_marketplaces(config):
-    marketplaces = config.get("marketplaces", {})
-    plugins = config.get("plugins", {})
-    hooks = config.get("hooks", {})
-    hook_state = hooks.get("state", {})
-    for marketplace in RETIRED_MARKETPLACES:
-        marketplaces.pop(marketplace, None)
-        for plugin in list(plugins):
-            if plugin.rpartition("@")[2] == marketplace:
-                plugins.pop(plugin)
-        for hook in list(hook_state):
-            if hook.partition(":")[0].rpartition("@")[2] == marketplace:
-                hook_state.pop(hook)
-    if not marketplaces:
-        config.pop("marketplaces", None)
-    if not plugins:
-        config.pop("plugins", None)
-    if not hook_state:
-        hooks.pop("state", None)
-    if not hooks:
-        config.pop("hooks", None)
-
-
-def remove_retired_fff_mcp(config):
-    servers = config.get("mcp_servers")
-    if not isinstance(servers, dict) or "fff" not in servers:
-        return False
-    servers.pop("fff")
-    if not servers:
-        config.pop("mcp_servers")
-    return True
-
-
-def remove_generated_codebase_memory_hook(config):
-    hooks = config.get("hooks")
-    if not isinstance(hooks, dict) or not isinstance(hooks.get("SessionStart"), list):
-        return
-    generated = {
-        "matcher": "startup|resume|clear|compact",
-        "hooks": [{"type": "command", "command": "codebase-memory-mcp hook-augment"}],
-    }
-    hooks["SessionStart"] = [hook for hook in hooks["SessionStart"] if hook != generated]
-    if not hooks["SessionStart"]:
-        hooks.pop("SessionStart")
-    if not hooks:
-        config.pop("hooks")
 
 
 def quote(value):
@@ -182,17 +133,10 @@ try:
     seed_compare_path = apply_path or seed_path
     live_config = load(live_path)
     seed_config = load(seed_compare_path)
-    remove_retired_marketplaces(live_config)
-    remove_retired_fff_mcp(live_config)
-    seed_changed = remove_retired_fff_mcp(seed_config)
-    remove_generated_codebase_memory_hook(live_config)
     missing = missing_from_seed(live_config, seed_config)
 except Exception as exc:
     print(f"Warning: failed to compare Codex config with tracked seed: {exc}", file=sys.stderr)
     sys.exit(0)
-
-if apply_path and seed_changed:
-    write_toml(apply_path, seed_config)
 
 if missing:
     if apply_path:

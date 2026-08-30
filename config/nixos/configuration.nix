@@ -75,7 +75,6 @@ in
     personalApps = true;
     obsidianSync = true;
     googleDriveSync = true;
-    storageOffsiteBackup = false;
   };
   home-manager.users.${machine.username} = import ../home.nix;
 

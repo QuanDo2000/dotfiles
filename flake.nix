@@ -110,21 +110,12 @@
 
       homeConfigurations."${machine.username}@linux" = home-manager.lib.homeManagerConfiguration {
         pkgs = linuxPkgs;
-        extraSpecialArgs = {
-          desktop = false;
-          personalApps = false;
-          obsidianSync = false;
-          googleDriveSync = false;
-          storageOffsiteBackup = false;
-        };
         modules = [ ./config/home.nix ];
       };
 
       homeConfigurations."${machine.username}@arch-server" = home-manager.lib.homeManagerConfiguration {
         pkgs = linuxPkgs;
         extraSpecialArgs = {
-          desktop = false;
-          personalApps = false;
           obsidianSync = true;
           googleDriveSync = true;
           storageOffsiteBackup = true;
