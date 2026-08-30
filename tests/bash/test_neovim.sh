@@ -35,6 +35,13 @@ test_neovim_provisions_nix_linter() {
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "statix"
 }
 
+test_neovim_provisions_native_node_for_mason_npm_packages() {
+  local home
+  home="$(<"$REPO_DIR/config/home.nix")"
+
+  assert_contains "$home" $'    nodejs\n'
+}
+
 test_neovim_provisions_configured_formatters() {
   local home pins
   home="$(<"$REPO_DIR/config/home.nix")"

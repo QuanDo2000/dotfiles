@@ -131,6 +131,7 @@ let
     jq
     nil
     nixfmt
+    nodejs
     pi-agent
     shellcheck
     statix
