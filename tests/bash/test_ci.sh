@@ -66,19 +66,18 @@ test_ci_runs_direct_nix_checks() {
   assert_not_contains "$check" 'fff-nvim-backend'
 }
 
-test_ci_avoids_disposable_neovim_cache_and_parallelizes_windows() {
+test_ci_avoids_disposable_neovim_cache_and_shards_windows() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_equals 2 "$(grep -c 'DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh' <<< "$workflow")"
-  assert_contains "$workflow" '- name: Run Windows checks in parallel'
-  assert_contains "$workflow" 'Start-Job'
-  assert_contains "$workflow" 'Wait-Job'
-  assert_contains "$workflow" "'PowerShell tests'"
-  assert_contains "$workflow" "'Pi extension integration'"
-  assert_contains "$workflow" "'Neovim integration'"
-  assert_not_contains "$workflow" '- name: Run PowerShell tests (Windows)'
-  assert_not_contains "$workflow" '- name: Test locked Pi extensions (Windows)'
+  assert_contains "$workflow" $'  powershell:\n    runs-on: windows-latest'
+  assert_contains "$workflow" $'  windows-pi:\n    runs-on: windows-latest'
+  assert_contains "$workflow" $'  windows-neovim:\n    runs-on: windows-latest'
+  assert_contains "$workflow" '- name: Run PowerShell tests (Windows)'
+  assert_contains "$workflow" '- name: Test locked Pi extensions (Windows)'
+  assert_contains "$workflow" '- name: Test raw Neovim config (Windows)'
+  assert_not_contains "$workflow" 'Start-Job'
 }
 
 test_ci_runs_windows_neovim_integration() {
@@ -133,5 +132,5 @@ test_ci_cancels_superseded_runs_and_bounds_jobs() {
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_contains "$workflow" 'cancel-in-progress: true'
-  assert_equals 4 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
+  assert_equals 6 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
 }

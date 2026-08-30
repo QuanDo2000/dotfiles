@@ -54,9 +54,32 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Run PowerShell tests (Windows)
+        shell: pwsh
+        run: ./tests/powershell/runner.ps1
+
+  windows-pi:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.19.0
+
+      - name: Test locked Pi extensions (Windows)
+        shell: pwsh
+        env:
+          PI_EXTENSIONS_ARCHIVE_URL: https://github.com/QuanDo2000/dotfiles/releases/download/ci-pi-extensions-7e23f87bcd4f-exp/pi-extensions-ci-exp.tar.gz
+          PI_EXTENSIONS_ARCHIVE_SHA256: fd60abc009499abbe8bfcfaeeb90f862752dc3f081fb18995da4691aba94a833
+        run: ./tests/powershell/integration_pi_extensions.ps1
+
+  windows-neovim:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Neovim
         shell: pwsh
@@ -68,37 +91,9 @@ jobs:
             winget install --id Neovim.Neovim --exact --silent --accept-package-agreements --accept-source-agreements
           }
 
-      - name: Run Windows checks in parallel
+      - name: Test raw Neovim config (Windows)
         shell: pwsh
-        env:
-          PI_EXTENSIONS_ARCHIVE_URL: https://github.com/QuanDo2000/dotfiles/releases/download/ci-pi-extensions-7e23f87bcd4f-exp/pi-extensions-ci-exp.tar.gz
-          PI_EXTENSIONS_ARCHIVE_SHA256: fd60abc009499abbe8bfcfaeeb90f862752dc3f081fb18995da4691aba94a833
-        run: |
-          $checks = @(
-            [pscustomobject]@{ Name = 'PowerShell tests'; Path = './tests/powershell/runner.ps1' }
-            [pscustomobject]@{ Name = 'Pi extension integration'; Path = './tests/powershell/integration_pi_extensions.ps1' }
-            [pscustomobject]@{ Name = 'Neovim integration'; Path = './tests/powershell/integration_neovim.ps1' }
-          )
-          $jobs = foreach ($check in $checks) {
-            Start-Job -Name $check.Name -WorkingDirectory $PWD -ArgumentList $check.Path -ScriptBlock {
-              param($path)
-              & $path
-              if ($LASTEXITCODE -ne 0) { throw "$path exited with code $LASTEXITCODE" }
-            }
-          }
-
-          Wait-Job -Job $jobs | Out-Null
-          $status = 0
-          foreach ($job in $jobs) {
-            Write-Host "--- $($job.Name) ---"
-            Receive-Job -Job $job -ErrorAction Continue
-            if ($job.State -ne 'Completed') {
-              Write-Error "::error::$($job.Name) failed: $($job.ChildJobs[0].JobStateInfo.Reason.Message)" -ErrorAction Continue
-              $status = 1
-            }
-          }
-          Remove-Job -Job $jobs -Force
-          exit $status
+        run: ./tests/powershell/integration_neovim.ps1
 
   bash-linux:
     runs-on: ubuntu-latest
