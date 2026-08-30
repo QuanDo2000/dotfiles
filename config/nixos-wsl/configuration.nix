@@ -8,6 +8,7 @@ in
 {
   wsl.enable = true;
   wsl.defaultUser = machine.username;
+  wsl.wslConf.interop.appendWindowsPath = false;
 
   system.stateVersion = machine.stateVersion;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];

@@ -1083,6 +1083,7 @@ test_nixos_wsl_has_separate_hardware_free_configuration() {
   assert_contains "$FLAKE_CONFIG" 'nixosConfigurations."${machine.hostName}-wsl"'
   assert_contains "$config" 'wsl.enable = true;'
   assert_contains "$config" 'wsl.defaultUser = machine.username;'
+  assert_contains "$config" 'wsl.wslConf.interop.appendWindowsPath = false;'
   assert_not_contains "$config" 'hardware-configuration.nix'
   assert_not_contains "$config" 'systemd-boot'
   assert_not_contains "$config" 'hardware.nvidia'
