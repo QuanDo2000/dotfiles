@@ -225,7 +225,7 @@ enabled = true
 [plugins."sites@openai-bundled"]
 enabled = true
 
-[hooks.state."ponytail@ponytail:hooks/claude-codex-hooks.json:session_start:0:0"]
+[hooks.state."ponytail@ponytail:hooks/legacy-hooks.json:session_start:0:0"]
 trusted_hash = "sha256:retired"
 
 [hooks.state."other@local:hooks/hooks.json:session_start:0:0"]
