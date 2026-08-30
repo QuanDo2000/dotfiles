@@ -256,7 +256,6 @@ function Grant-FontReadAccess($Path) {
 }
 
 function InstallFiraCodeNerdFont {
-    param([switch]$Update)
     Info "Installing FiraCode Nerd Font..."
     if ($script:Dry) { return }
 
@@ -354,8 +353,7 @@ function InstallFnm {
 }
 
 function InstallExtras {
-    param([switch]$Update)
-    InstallFiraCodeNerdFont -Update:$Update
+    InstallFiraCodeNerdFont
 }
 
 function InstallManagedPackages {
@@ -833,23 +831,37 @@ function InstallPiLanguageServers {
 }
 
 function Copy-FileWithRollback($Source, $Destination, $Label) {
+    $sourceHash = Get-FileSha256 $Source
     $destinationItem = Get-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
     if ($destinationItem -and $destinationItem.PSIsContainer) {
         throw "Pi config destination is a directory: $Destination"
     }
-    if ($destinationItem -and -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
-        (Get-FileSha256 $Source) -eq (Get-FileSha256 $Destination)) {
+    $destinationReparse = [bool]($destinationItem -and ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint))
+    $destinationHash = if ($destinationItem -and -not $destinationReparse) { Get-FileSha256 $Destination } else { $null }
+    $destinationTarget = if ($destinationReparse) { @($destinationItem.Target) -join '|' } else { $null }
+    if ($destinationItem -and -not $destinationReparse -and $sourceHash -eq $destinationHash) {
         return
     }
 
     $temporary = "$Destination.tmp.$([Guid]::NewGuid().ToString('N'))"
     $backup = "$Destination.backup.$([Guid]::NewGuid().ToString('N'))"
     $backedUp = $false
-    Copy-Item -LiteralPath $Source -Destination $temporary -ErrorAction Stop
     try {
-        $destinationItem = Get-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
-        if ($destinationItem) {
-            if ($destinationItem.PSIsContainer) { throw "Pi config destination is a directory: $Destination" }
+        Copy-Item -LiteralPath $Source -Destination $temporary -ErrorAction Stop
+        if ((Get-FileSha256 $temporary) -ne $sourceHash -or (Get-FileSha256 $Source) -ne $sourceHash) {
+            throw "$Label source changed during staging: $Source"
+        }
+        $currentDestination = Get-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
+        $destinationChanged = ([bool]$currentDestination) -ne ([bool]$destinationItem)
+        if ($currentDestination -and $destinationItem) {
+            $currentReparse = [bool]($currentDestination.Attributes -band [IO.FileAttributes]::ReparsePoint)
+            $currentIdentity = if ($currentReparse) { @($currentDestination.Target) -join '|' } else { Get-FileSha256 $Destination }
+            $originalIdentity = if ($destinationReparse) { $destinationTarget } else { $destinationHash }
+            $destinationChanged = $currentDestination.PSIsContainer -or $currentReparse -ne $destinationReparse -or
+                $currentIdentity -ne $originalIdentity
+        }
+        if ($destinationChanged) { throw "$Label destination changed during staging: $Destination" }
+        if ($currentDestination) {
             Move-Item -LiteralPath $Destination -Destination $backup -ErrorAction Stop
             $backedUp = $true
         }
@@ -924,134 +936,15 @@ function SyncPiConfigs {
         $target = Join-Path $targetDir $relative
         $base = Join-Path $baseDir $name
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
-        foreach ($destination in $target, $base) {
+        $destinations = if ($name -eq "subagent-config.json") { @($target) } else { @($target, $base) }
+        foreach ($destination in $destinations) {
             $destinationItem = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
             if ($destinationItem -and $destinationItem.PSIsContainer) {
                 throw "Pi config destination is a directory: $destination"
             }
         }
         if ($name -eq "subagent-config.json") {
-            $changes = @()
-            $sourceHash = Get-FileSha256 $source
-            $operationError = $null
-            $rollbackErrors = @()
-            $cleanupErrors = @()
-            $committed = $false
-            try {
-                foreach ($destination in $target, $base) {
-                    $destinationItem = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
-                    if ($destinationItem -and -not $destinationItem.PSIsContainer -and
-                        -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
-                        $sourceHash -eq (Get-FileSha256 $destination)) {
-                        continue
-                    }
-                    $change = @{
-                        Destination = $destination
-                        Temp = "$destination.tmp.$([Guid]::NewGuid().ToString('N'))"
-                        Backup = "$destination.backup.$([Guid]::NewGuid().ToString('N'))"
-                        Rollback = "$destination.rollback.$([Guid]::NewGuid().ToString('N'))"
-                        Original = $destinationItem
-                        OriginalHash = if ($destinationItem) { Get-FileSha256 $destination } else { $null }
-                        OriginalReparse = [bool]($destinationItem -and ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint))
-                        InstalledHash = $null
-                        BackedUp = $false
-                        Installed = $false
-                    }
-                    $changes += $change
-                    Copy-Item -LiteralPath $source -Destination $change.Temp -ErrorAction Stop
-                    $change.InstalledHash = Get-FileSha256 $change.Temp
-                    if ($change.InstalledHash -ne $sourceHash) {
-                        throw "Pi subagent config source changed during sync: $source"
-                    }
-                }
-
-                foreach ($change in $changes) {
-                    if ($change.Original) {
-                        Move-Item -LiteralPath $change.Destination -Destination $change.Backup -ErrorAction Stop
-                        $change.BackedUp = $true
-                        $backupItem = Get-Item -LiteralPath $change.Backup -Force -ErrorAction Stop
-                        $backupReparse = [bool]($backupItem.Attributes -band [IO.FileAttributes]::ReparsePoint)
-                        if ($backupItem.PSIsContainer -or $backupReparse -ne $change.OriginalReparse -or
-                            (Get-FileSha256 $change.Backup) -ne $change.OriginalHash) {
-                            throw "Pi subagent config destination changed during sync: $($change.Destination)"
-                        }
-                    }
-                    Move-Item -LiteralPath $change.Temp -Destination $change.Destination -ErrorAction Stop
-                    $change.Installed = $true
-                }
-                $committed = $true
-            } catch {
-                $operationError = $_
-                for ($index = $changes.Count - 1; $index -ge 0; $index--) {
-                    $change = $changes[$index]
-                    try {
-                        $partial = Get-Item -LiteralPath $change.Destination -Force -ErrorAction SilentlyContinue
-                        $removeCurrent = $partial -and ($change.BackedUp -or (-not $change.Original -and $change.Installed))
-                        if ($removeCurrent) {
-                            Move-Item -LiteralPath $change.Destination -Destination $change.Rollback -ErrorAction Stop
-                            $candidate = Get-Item -LiteralPath $change.Rollback -Force -ErrorAction Stop
-                            $matchesInstalled = -not $candidate.PSIsContainer -and
-                                -not ($candidate.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
-                                (Get-FileSha256 $change.Rollback) -eq $change.InstalledHash
-                            if (-not $matchesInstalled) {
-                                $recovery = if ($change.BackedUp) { "recovery backup: '$($change.Backup)'" } else { 'no recovery backup exists' }
-                                $replacement = Get-Item -LiteralPath $change.Destination -Force -ErrorAction SilentlyContinue
-                                if ($replacement) {
-                                    throw "Pi subagent config rollback found concurrently created destination '$($change.Destination)'; concurrent content quarantined at '$($change.Rollback)'; $recovery"
-                                }
-                                try {
-                                    Move-Item -LiteralPath $change.Rollback -Destination $change.Destination -ErrorAction Stop
-                                } catch {
-                                    throw "Pi subagent config rollback could not restore concurrently modified destination '$($change.Destination)'; concurrent content quarantined at '$($change.Rollback)': $($_.Exception.Message); $recovery"
-                                }
-                                throw "Pi subagent config rollback refused to replace concurrently modified destination '$($change.Destination)'; $recovery"
-                            }
-                            Remove-Item -LiteralPath $change.Rollback -Force -ErrorAction Stop
-                        }
-                        if ($change.BackedUp) {
-                            $replacement = Get-Item -LiteralPath $change.Destination -Force -ErrorAction SilentlyContinue
-                            if ($replacement) {
-                                throw "Pi subagent config rollback refused to replace concurrently created destination '$($change.Destination)'; recovery backup: '$($change.Backup)'"
-                            }
-                            Move-Item -LiteralPath $change.Backup -Destination $change.Destination -ErrorAction Stop
-                            $change.BackedUp = $false
-                        }
-                    } catch {
-                        $detail = "destination '$($change.Destination)': $($_.Exception.Message)"
-                        if ($change.BackedUp) { $detail += "; recovery backup: '$($change.Backup)'" }
-                        $rollbackErrors += $detail
-                    }
-                }
-            } finally {
-                foreach ($change in $changes) {
-                    try {
-                        $staged = Get-Item -LiteralPath $change.Temp -Force -ErrorAction SilentlyContinue
-                        if ($staged) { Remove-Item -LiteralPath $change.Temp -Force -ErrorAction Stop }
-                    } catch {
-                        $cleanupErrors += "temporary file '$($change.Temp)': $($_.Exception.Message)"
-                    }
-                    if ($committed -and $change.BackedUp) {
-                        try {
-                            Remove-Item -LiteralPath $change.Backup -Force -ErrorAction Stop
-                            $change.BackedUp = $false
-                        } catch {
-                            $cleanupErrors += "recovery backup '$($change.Backup)': $($_.Exception.Message)"
-                        }
-                    }
-                }
-            }
-            if ($rollbackErrors.Count -gt 0) {
-                $message = "Pi subagent config rollback failed after '$($operationError.Exception.Message)': $($rollbackErrors -join '; ')"
-                if ($cleanupErrors.Count -gt 0) { $message += "; cleanup also failed: $($cleanupErrors -join '; ')" }
-                throw $message
-            }
-            if ($cleanupErrors.Count -gt 0) {
-                if ($operationError) {
-                    throw "Pi subagent config cleanup failed after '$($operationError.Exception.Message)': $($cleanupErrors -join '; ')"
-                }
-                throw "Pi subagent config cleanup failed: $($cleanupErrors -join '; ')"
-            }
-            if ($operationError) { throw $operationError }
+            Copy-FileWithRollback $source $target "Pi subagent config copy"
             continue
         }
         if (-not (Test-Path -LiteralPath $target)) {
@@ -1618,7 +1511,7 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
         InstallAi -Update
     } else {
         InstallPackages -Update
-        InstallExtras -Update
+        InstallExtras
         InstallAi -Update
         SetupSymlinks
         Sync-NeovimPlugins

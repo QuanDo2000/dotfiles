@@ -100,31 +100,9 @@ function test_installfiracodenerdfont_skips_download_when_complete_pinned_set_is
     Assert-Equals 'installed' ([IO.File]::ReadAllText((Join-Path $fontDir 'FiraCodeNerdFont-Regular-9.9.9.ttf'))) 'complete pinned font set should remain untouched'
 }
 
-function test_installfiracodenerdfont_update_skips_complete_pinned_set {
-    $script:Dry = $false
-    $script:UpdateFontDownloadCalled = $false
-    $script:FiraCodeNerdFontVersion = '9.9.9'
-    $fontDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
-    $styles = 'Bold', 'Light', 'Medium', 'Regular', 'Retina', 'SemiBold'
-    $families = 'FiraCodeNerdFont', 'FiraCodeNerdFontMono', 'FiraCodeNerdFontPropo'
-    New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
-    foreach ($family in $families) {
-        foreach ($style in $styles) {
-            [IO.File]::WriteAllText((Join-Path $fontDir "$family-$style-9.9.9.ttf"), 'old font')
-        }
-    }
-    Set-CommandMock 'Invoke-WebRequest' { $script:UpdateFontDownloadCalled = $true }
-    Set-CommandMock 'New-ItemProperty' {}
-    Set-CommandMock 'icacls' { $global:LASTEXITCODE = 0 }
-
-    InstallFiraCodeNerdFont -Update 6>&1 | Out-Null
-
-    Assert-False $script:UpdateFontDownloadCalled 'update should not download complete pinned font set'
-}
-
-function test_installextras_forwards_update_to_font_installer {
-    $definition = (Get-Command InstallExtras).Definition
-    Assert-True ($definition.Contains('InstallFiraCodeNerdFont -Update:$Update')) 'InstallExtras should forward update switch'
+function test_font_installers_do_not_expose_unused_update_switches {
+    Assert-False ((Get-Command InstallFiraCodeNerdFont).Parameters.ContainsKey('Update')) 'font installer should not expose unused update switch'
+    Assert-False ((Get-Command InstallExtras).Parameters.ContainsKey('Update')) 'extras installer should not expose unused update switch'
 }
 
 function test_installfiracodenerdfont_force_bypasses_fast_path {

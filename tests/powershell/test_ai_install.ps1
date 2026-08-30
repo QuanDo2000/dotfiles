@@ -1133,21 +1133,6 @@ function Initialize-TestPiConfigSeeds {
     }
 }
 
-function test_syncpiconfigs_replaces_linked_seed_baseline_without_touching_external_file {
-    Initialize-TestPiConfigSeeds | Out-Null
-    $base = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\settings.json'
-    $external = Join-Path $script:_TestTmp.FullName 'external-settings.json'
-    New-Item -ItemType Directory -Force -Path (Split-Path $base -Parent) | Out-Null
-    '{"external":true}' | Set-Content -LiteralPath $external
-    New-Item -ItemType SymbolicLink -Path $base -Target $external | Out-Null
-
-    SyncPiConfigs
-
-    Assert-False ([bool](Get-Item -LiteralPath $base -Force).LinkType) 'linked baseline should become regular file'
-    Assert-Equals '{}' ((Get-Content -Raw -LiteralPath $base).Trim())
-    Assert-Equals '{"external":true}' ((Get-Content -Raw -LiteralPath $external).Trim())
-}
-
 function test_syncpiconfigs_restores_direct_copy_when_staged_replacement_fails {
     Initialize-TestPiConfigSeeds | Out-Null
     $destination = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
@@ -1173,25 +1158,6 @@ function test_syncpiconfigs_restores_direct_copy_when_staged_replacement_fails {
     Assert-Equals 'old lsp' ((Get-Content -Raw -LiteralPath $destination).Trim())
     Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $destination -Parent) -Filter 'pi-lsp.json.tmp.*' -Force).Count
     Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $destination -Parent) -Filter 'pi-lsp.json.backup.*' -Force).Count
-}
-
-function test_syncpiconfigs_rejects_directory_seed_baseline_without_partial_copy {
-    Initialize-TestPiConfigSeeds | Out-Null
-    $target = Join-Path $env:USERPROFILE '.pi\agent\settings.json'
-    $base = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\settings.json'
-    New-Item -ItemType Directory -Force -Path $base | Out-Null
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'Pi config destination is a directory'
-    Assert-Contains $failure $base
-    Assert-False (Test-Path -LiteralPath $target) 'directory baseline should fail before target copy'
-    Assert-False (Test-Path -LiteralPath (Join-Path $base 'settings.json')) 'source should not be copied inside baseline directory'
 }
 
 function test_syncpiconfigs_rejects_directory_direct_copy_destination {
@@ -1251,7 +1217,7 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-FileExists (Join-Path $baseDir 'keybindings.json')
     Assert-FileExists (Join-Path $baseDir 'web-search.json')
     Assert-FileExists (Join-Path $baseDir 'mcp.json')
-    Assert-FileExists (Join-Path $baseDir 'subagent-config.json')
+    Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'subagent-config.json')) 'subagent config should not create an unused seed baseline'
     $keys = Get-Content -Raw $keybindings | ConvertFrom-Json
     Assert-Equals 0 @($keys.'app.model.cycleForward').Count
     Assert-Equals 0 @($keys.'app.model.cycleBackward').Count
@@ -1275,9 +1241,8 @@ function Assert-NoPiConfigStagingFiles($Destination) {
 
 function test_syncpiconfigs_rejects_overlapping_sync {
     $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
     '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
     $script:NestedPiConfigSyncAttempted = $false
     $script:NestedPiConfigSyncFailure = $null
     Set-CommandMock 'Copy-Item' {
@@ -1305,786 +1270,70 @@ function test_syncpiconfigs_rejects_overlapping_sync {
     Assert-Contains $script:NestedPiConfigSyncFailure $lockPath
 }
 
-function test_syncpiconfigs_rejects_destination_change_before_commit {
+function test_syncpiconfigs_subagent_sync_does_not_touch_legacy_baseline {
     $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    $script:PiConfigDestinationChanged = $false
-    Set-CommandMock 'Copy-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($null -eq $ErrorAction) {
-            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
-        } else {
-            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-        }
-        if (-not $script:PiConfigDestinationChanged -and $LiteralPath -eq $paths.Source -and $Destination -like "$($paths.Target).tmp.*") {
-            $script:PiConfigDestinationChanged = $true
-            'concurrent target content' | Set-Content -LiteralPath $paths.Target
-        }
-    }
+    $sentinel = Join-Path $paths.Base 'sentinel.txt'
+    New-Item -ItemType Directory -Force -Path $paths.Base | Out-Null
+    'keep' | Set-Content -LiteralPath $sentinel
 
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
+    SyncPiConfigs
 
-    Assert-Contains $failure 'Pi subagent config destination changed during sync'
-    Assert-Contains $failure $paths.Target
-    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $paths.Target).Trim())
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-NoPiConfigStagingFiles $paths.Target
-    Assert-NoPiConfigStagingFiles $paths.Base
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Equals 'keep' ((Get-Content -Raw -LiteralPath $sentinel).Trim())
 }
 
-function test_syncpiconfigs_rejects_source_change_between_staged_copies {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    $script:PiConfigSourceCopies = 0
-    Set-CommandMock 'Copy-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($null -eq $ErrorAction) {
-            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
-        } else {
-            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-        }
-        if ($LiteralPath -eq $paths.Source -and $Destination -like '*.tmp.*') {
-            $script:PiConfigSourceCopies++
-            if ($script:PiConfigSourceCopies -eq 1) {
-                '{"globalConcurrencyLimit":8}' | Set-Content -LiteralPath $paths.Source
-            }
-        }
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'Pi subagent config source changed during sync'
-    Assert-Contains $failure $paths.Source
-    Assert-Equals 2 $script:PiConfigSourceCopies
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-NoPiConfigStagingFiles $paths.Target
-    Assert-NoPiConfigStagingFiles $paths.Base
-}
-
-function test_syncpiconfigs_staging_failure_preserves_regular_subagent_target {
+function test_syncpiconfigs_rejects_source_change_during_subagent_staging {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
     '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    $script:PiConfigFailureInjected = $false
     Set-CommandMock 'Copy-Item' {
-        param($LiteralPath, $Destination, [switch]$Force)
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
         if ($LiteralPath -eq $paths.Source -and $Destination -like "$($paths.Target).tmp.*") {
-            $script:PiConfigFailureInjected = $true
-            'partial' | Set-Content -LiteralPath $Destination
-            throw 'simulated staging failure'
+            '{"globalConcurrencyLimit":8}' | Set-Content -LiteralPath $paths.Source
         }
-        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
     }
 
-    Assert-Throws { SyncPiConfigs }
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
 
-    Assert-True $script:PiConfigFailureInjected 'target staging failure should be injected'
-    Assert-False ([bool](Get-Item -LiteralPath $paths.Target -Force).LinkType) 'regular target should remain regular'
+    Assert-Contains $failure 'Pi subagent config copy source changed during staging'
     Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
     Assert-NoPiConfigStagingFiles $paths.Target
 }
 
-function test_syncpiconfigs_staging_failure_preserves_linked_subagent_base {
+function test_syncpiconfigs_rejects_destination_change_during_subagent_staging {
     $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
     '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    $external = Join-Path $script:_TestTmp.FullName 'external-base.json'
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $external
-    New-Item -ItemType SymbolicLink -Path $paths.Base -Target $external | Out-Null
-    $script:PiConfigFailureInjected = $false
     Set-CommandMock 'Copy-Item' {
-        param($LiteralPath, $Destination, [switch]$Force)
-        if ($LiteralPath -eq $paths.Source -and $Destination -like "$($paths.Base).tmp.*") {
-            $script:PiConfigFailureInjected = $true
-            'partial' | Set-Content -LiteralPath $Destination
-            throw 'simulated staging failure'
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+        if ($LiteralPath -eq $paths.Source -and $Destination -like "$($paths.Target).tmp.*") {
+            '{"globalConcurrencyLimit":8}' | Set-Content -LiteralPath $paths.Target
         }
-        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
     }
 
-    Assert-Throws { SyncPiConfigs }
+    $failure = $null
+    try {
+        SyncPiConfigs
+    } catch {
+        $failure = $_.Exception.Message
+    }
 
-    Assert-True $script:PiConfigFailureInjected 'base staging failure should be injected'
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-True ([bool](Get-Item -LiteralPath $paths.Base -Force).LinkType) 'linked base should remain linked'
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $external | ConvertFrom-Json).globalConcurrencyLimit
+    Assert-Contains $failure 'Pi subagent config copy destination changed during staging'
+    Assert-Equals 8 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
     Assert-NoPiConfigStagingFiles $paths.Target
-    Assert-NoPiConfigStagingFiles $paths.Base
 }
 
-function test_syncpiconfigs_replacement_failure_preserves_regular_subagent_target {
+function test_syncpiconfigs_skips_unchanged_regular_subagent_target {
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    $script:PiConfigFailureInjected = $false
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
-            $script:PiConfigFailureInjected = $true
-            throw 'simulated replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    Assert-Throws { SyncPiConfigs }
-
-    Assert-True $script:PiConfigFailureInjected 'target replacement failure should be injected'
-    Assert-False ([bool](Get-Item -LiteralPath $paths.Target -Force).LinkType) 'regular target should remain regular'
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-NoPiConfigStagingFiles $paths.Target
-    Assert-NoPiConfigStagingFiles $paths.Base
-}
-
-function test_syncpiconfigs_replacement_failure_preserves_linked_subagent_base {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    $external = Join-Path $script:_TestTmp.FullName 'external-base.json'
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $external
-    New-Item -ItemType SymbolicLink -Path $paths.Base -Target $external | Out-Null
-    $script:PiConfigFailureInjected = $false
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
-            $script:PiConfigFailureInjected = $true
-            throw 'simulated replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    Assert-Throws { SyncPiConfigs }
-
-    Assert-True $script:PiConfigFailureInjected 'base replacement failure should be injected'
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-True ([bool](Get-Item -LiteralPath $paths.Base -Force).LinkType) 'linked base should remain linked'
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $external | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-NoPiConfigStagingFiles $paths.Target
-    Assert-NoPiConfigStagingFiles $paths.Base
-}
-
-function test_syncpiconfigs_reports_operation_rollback_and_temp_cleanup_failures {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
-            throw 'simulated replacement failure'
-        }
-        if ($LiteralPath -like "$($paths.Target).backup.*" -and $Destination -eq $paths.Target) {
-            throw 'simulated backup restoration failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-    Set-CommandMock 'Remove-Item' {
-        param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*") { throw 'simulated temp deletion failure' }
-        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    } finally {
-        Clear-CommandMock 'Remove-Item'
-    }
-
-    Assert-Contains $failure 'simulated replacement failure'
-    Assert-Contains $failure 'simulated backup restoration failure'
-    Assert-Contains $failure 'simulated temp deletion failure'
-    Assert-False (Test-Path -LiteralPath $paths.Target) 'failed restoration should leave destination absent rather than partial'
-    $backups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    Assert-Equals 1 $backups.Count
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $backups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-}
-
-function test_syncpiconfigs_reports_all_rollback_failures_and_recovery_paths {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    $script:FailedTargetBackup = $null
-    $script:FailedBaseBackup = $null
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
-            throw 'simulated base replacement failure'
-        }
-        if ($LiteralPath -like "$($paths.Base).backup.*" -and $Destination -eq $paths.Base) {
-            $script:FailedBaseBackup = $LiteralPath
-            throw 'simulated base backup restoration failure'
-        }
-        if ($LiteralPath -like "$($paths.Target).backup.*" -and $Destination -eq $paths.Target) {
-            $script:FailedTargetBackup = $LiteralPath
-            throw 'simulated target backup restoration failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'simulated base replacement failure'
-    Assert-Contains $failure 'simulated base backup restoration failure'
-    Assert-Contains $failure 'simulated target backup restoration failure'
-    Assert-Contains $failure $script:FailedBaseBackup
-    Assert-Contains $failure $script:FailedTargetBackup
-    Assert-False (Test-Path -LiteralPath $paths.Target) 'failed target restoration should leave target absent'
-    Assert-False (Test-Path -LiteralPath $paths.Base) 'failed base restoration should leave base absent'
-    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    $baseBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force)
-    Assert-Equals 1 $targetBackups.Count
-    Assert-Equals 1 $baseBackups.Count
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $baseBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-}
-
-function test_syncpiconfigs_continues_rollback_after_one_backup_restoration_fails {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
-            throw 'simulated base replacement failure'
-        }
-        if ($LiteralPath -like "$($paths.Base).backup.*" -and $Destination -eq $paths.Base) {
-            throw 'simulated base backup restoration failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'simulated base replacement failure'
-    Assert-Contains $failure 'simulated base backup restoration failure'
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-False (Test-Path -LiteralPath $paths.Base) 'failed restoration should leave base absent'
-    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    $baseBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force)
-    Assert-Equals 0 $targetBackups.Count
-    Assert-Equals 1 $baseBackups.Count
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $baseBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-    foreach ($destination in $paths.Target, $paths.Base) {
-        $parent = Split-Path $destination -Parent
-        $leaf = Split-Path $destination -Leaf
-        Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
-    }
-}
-
-function test_syncpiconfigs_reports_later_rollback_failure_after_first_restoration_succeeds {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    $script:FailedPiConfigBackup = $null
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
-            throw 'simulated base replacement failure'
-        }
-        if ($LiteralPath -like "$($paths.Target).backup.*" -and $Destination -eq $paths.Target) {
-            $script:FailedPiConfigBackup = $LiteralPath
-            throw "simulated target backup restoration failure: $LiteralPath"
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'Pi subagent config rollback failed after'
-    Assert-Contains $failure 'simulated base replacement failure'
-    Assert-Contains $failure 'simulated target backup restoration failure'
-    Assert-Contains $failure $script:FailedPiConfigBackup
-    Assert-False (Test-Path -LiteralPath $paths.Target) 'failed later restoration should leave target absent'
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    $baseBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force)
-    Assert-Equals 1 $targetBackups.Count
-    Assert-Equals $script:FailedPiConfigBackup $targetBackups[0].FullName
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 0 $baseBackups.Count
-    foreach ($destination in $paths.Target, $paths.Base) {
-        $parent = Split-Path $destination -Parent
-        $leaf = Split-Path $destination -Leaf
-        Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
-    }
-}
-
-function test_syncpiconfigs_rollback_preserves_concurrent_destination_after_failed_install {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
-            'concurrent target content' | Set-Content -LiteralPath $paths.Target
-            throw 'simulated target replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'simulated target replacement failure'
-    Assert-Contains $failure 'concurrently modified destination'
-    Assert-Contains $failure $paths.Target
-    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $paths.Target).Trim())
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    Assert-Equals 1 $targetBackups.Count
-    Assert-Contains $failure $targetBackups[0].FullName
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force).Count
-}
-
-function test_syncpiconfigs_rollback_preserves_concurrently_replaced_installed_destination {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
-            'concurrent target content' | Set-Content -LiteralPath $paths.Target
-            throw 'simulated base replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'simulated base replacement failure'
-    Assert-Contains $failure 'concurrently modified destination'
-    Assert-Contains $failure $paths.Target
-    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $paths.Target).Trim())
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    $baseBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force)
-    Assert-Equals 1 $targetBackups.Count
-    Assert-Contains $failure $targetBackups[0].FullName
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 0 $baseBackups.Count
-    foreach ($destination in $paths.Target, $paths.Base) {
-        $parent = Split-Path $destination -Parent
-        $leaf = Split-Path $destination -Leaf
-        Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
-    }
-}
-
-function test_syncpiconfigs_reports_quarantined_content_when_restore_fails {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    $script:FailedRollbackPath = $null
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
-            'concurrent target content' | Set-Content -LiteralPath $paths.Target
-            throw 'simulated target replacement failure'
-        }
-        if ($LiteralPath -like "$($paths.Target).rollback.*" -and $Destination -eq $paths.Target) {
-            $script:FailedRollbackPath = $LiteralPath
-            throw 'simulated concurrent content restoration failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'simulated target replacement failure'
-    Assert-Contains $failure 'simulated concurrent content restoration failure'
-    Assert-Contains $failure $script:FailedRollbackPath
-    Assert-False (Test-Path -LiteralPath $paths.Target) 'failed concurrent-content restoration should leave target absent'
-    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $script:FailedRollbackPath).Trim())
-    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    Assert-Equals 1 $targetBackups.Count
-    Assert-Contains $failure $targetBackups[0].FullName
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-}
-
-function test_syncpiconfigs_rollback_preserves_destination_created_after_quarantine {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
-            throw 'simulated base replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-    $script:ConcurrentPiConfigCreated = $false
-    Set-FunctionMock 'Get-FileSha256' {
-        param($Path)
-        if (-not $script:ConcurrentPiConfigCreated -and $Path -like "$($paths.Target).rollback.*") {
-            $script:ConcurrentPiConfigCreated = $true
-            'concurrent target content' | Set-Content -LiteralPath $paths.Target
-        }
-        & $script:OriginalGetFileSha256 $Path
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-True $script:ConcurrentPiConfigCreated 'concurrent destination should be created during rollback validation'
-    Assert-Contains $failure 'simulated base replacement failure'
-    Assert-Contains $failure 'concurrently created destination'
-    Assert-Contains $failure $paths.Target
-    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $paths.Target).Trim())
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    Assert-Equals 1 $targetBackups.Count
-    Assert-Contains $failure $targetBackups[0].FullName
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-}
-
-function test_syncpiconfigs_rollback_preserves_concurrently_replaced_new_destination {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":88}' | Set-Content -LiteralPath $paths.Base
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Base).tmp.*" -and $Destination -eq $paths.Base) {
-            'concurrent target content' | Set-Content -LiteralPath $paths.Target
-            throw 'simulated base replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'simulated base replacement failure'
-    Assert-Contains $failure 'concurrently modified destination'
-    Assert-Contains $failure $paths.Target
-    Assert-Contains $failure 'no recovery backup exists'
-    Assert-Equals 'concurrent target content' ((Get-Content -Raw -LiteralPath $paths.Target).Trim())
-    Assert-Equals 88 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force).Count
-    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force).Count
-    foreach ($destination in $paths.Target, $paths.Base) {
-        $parent = Split-Path $destination -Parent
-        $leaf = Split-Path $destination -Leaf
-        Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
-    }
-}
-
-function test_syncpiconfigs_rollback_does_not_delete_uninstalled_destination {
-    $paths = Initialize-TestPiConfigSeeds
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
-            New-Item -ItemType Directory -Force -Path (Split-Path $paths.Base -Parent) | Out-Null
-            'concurrent content' | Set-Content -LiteralPath $paths.Base
-            throw 'simulated replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-
-    Assert-Throws { SyncPiConfigs }
-
-    Assert-FileExists $paths.Base
-    Assert-Equals 'concurrent content' ((Get-Content -Raw -LiteralPath $paths.Base).Trim())
-}
-
-function test_syncpiconfigs_reports_operation_and_temp_cleanup_failure_after_successful_rollback {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
-            throw 'simulated replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-    Set-CommandMock 'Remove-Item' {
-        param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*") { throw 'simulated temp deletion failure' }
-        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    } finally {
-        Clear-CommandMock 'Remove-Item'
-    }
-
-    Assert-Contains $failure 'simulated replacement failure'
-    Assert-Contains $failure 'simulated temp deletion failure'
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force).Count
-}
-
-function test_syncpiconfigs_continues_temp_cleanup_after_one_deletion_fails {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
-            throw 'simulated replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-    $script:FailedPiConfigTemp = $null
-    Set-CommandMock 'Remove-Item' {
-        param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*") {
-            $script:FailedPiConfigTemp = $LiteralPath
-            throw "simulated temp deletion failure: $LiteralPath"
-        }
-        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    } finally {
-        Clear-CommandMock 'Remove-Item'
-    }
-
-    Assert-Contains $failure 'Pi subagent config cleanup failed after'
-    Assert-Contains $failure 'simulated replacement failure'
-    Assert-Contains $failure 'simulated temp deletion failure'
-    Assert-Contains $failure $script:FailedPiConfigTemp
-    $targetTemps = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.tmp.*' -Force)
-    $baseTemps = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.tmp.*' -Force)
-    Assert-Equals 1 $targetTemps.Count
-    Assert-Equals $script:FailedPiConfigTemp $targetTemps[0].FullName
-    Assert-Equals 0 $baseTemps.Count
-}
-
-function test_syncpiconfigs_retains_only_later_temp_when_second_deletion_fails {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).tmp.*" -and $Destination -eq $paths.Target) {
-            throw 'simulated replacement failure'
-        }
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-    }
-    $script:FailedPiConfigTemp = $null
-    Set-CommandMock 'Remove-Item' {
-        param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Base).tmp.*") {
-            $script:FailedPiConfigTemp = $LiteralPath
-            throw "simulated base temp deletion failure: $LiteralPath"
-        }
-        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    } finally {
-        Clear-CommandMock 'Remove-Item'
-    }
-
-    Assert-Contains $failure 'Pi subagent config cleanup failed after'
-    Assert-Contains $failure 'simulated replacement failure'
-    Assert-Contains $failure 'simulated base temp deletion failure'
-    Assert-Contains $failure $script:FailedPiConfigTemp
-    $targetTemps = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.tmp.*' -Force)
-    $baseTemps = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.tmp.*' -Force)
-    Assert-Equals 0 $targetTemps.Count
-    Assert-Equals 1 $baseTemps.Count
-    Assert-Equals $script:FailedPiConfigTemp $baseTemps[0].FullName
-}
-
-function test_syncpiconfigs_reports_backup_cleanup_failure_and_keeps_recovery_backup {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
-    $script:FailedTargetBackup = $null
-    $script:FailedBaseBackup = $null
-    Set-CommandMock 'Remove-Item' {
-        param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).backup.*") {
-            $script:FailedTargetBackup = $LiteralPath
-            throw 'simulated target backup deletion failure'
-        }
-        if ($LiteralPath -like "$($paths.Base).backup.*") {
-            $script:FailedBaseBackup = $LiteralPath
-            throw 'simulated base backup deletion failure'
-        }
-        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    } finally {
-        Clear-CommandMock 'Remove-Item'
-    }
-
-    Assert-Contains $failure 'Pi subagent config cleanup failed'
-    Assert-Contains $failure 'simulated target backup deletion failure'
-    Assert-Contains $failure 'simulated base backup deletion failure'
-    Assert-Contains $failure $script:FailedTargetBackup
-    Assert-Contains $failure $script:FailedBaseBackup
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    foreach ($destination in $paths.Target, $paths.Base) {
-        $parent = Split-Path $destination -Parent
-        $leaf = Split-Path $destination -Leaf
-        $backups = @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.backup.*" -Force)
-        Assert-Equals 1 $backups.Count
-        Assert-Equals 99 (Get-Content -Raw -LiteralPath $backups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-    }
-}
-
-function test_syncpiconfigs_continues_backup_cleanup_after_one_deletion_fails {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
-    $script:FailedPiConfigBackup = $null
-    Set-CommandMock 'Remove-Item' {
-        param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Target).backup.*") {
-            $script:FailedPiConfigBackup = $LiteralPath
-            throw "simulated target backup deletion failure: $LiteralPath"
-        }
-        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    } finally {
-        Clear-CommandMock 'Remove-Item'
-    }
-
-    Assert-Contains $failure 'Pi subagent config cleanup failed'
-    Assert-Contains $failure 'simulated target backup deletion failure'
-    Assert-Contains $failure $script:FailedPiConfigBackup
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    Assert-Equals 1 $targetBackups.Count
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $targetBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force).Count
-}
-
-function test_syncpiconfigs_retains_only_later_backup_when_second_deletion_fails {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
-    $script:FailedPiConfigBackup = $null
-    Set-CommandMock 'Remove-Item' {
-        param($LiteralPath, [switch]$Force, [switch]$Recurse, $ErrorAction)
-        if ($LiteralPath -like "$($paths.Base).backup.*") {
-            $script:FailedPiConfigBackup = $LiteralPath
-            throw "simulated base backup deletion failure: $LiteralPath"
-        }
-        Microsoft.PowerShell.Management\Remove-Item -LiteralPath $LiteralPath -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    } finally {
-        Clear-CommandMock 'Remove-Item'
-    }
-
-    Assert-Contains $failure 'Pi subagent config cleanup failed'
-    Assert-Contains $failure 'simulated base backup deletion failure'
-    Assert-Contains $failure $script:FailedPiConfigBackup
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
-    $targetBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Target -Parent) -Filter 'config.json.backup.*' -Force)
-    $baseBackups = @(Get-ChildItem -LiteralPath (Split-Path $paths.Base -Parent) -Filter 'subagent-config.json.backup.*' -Force)
-    Assert-Equals 0 $targetBackups.Count
-    Assert-Equals 1 $baseBackups.Count
-    Assert-Equals $script:FailedPiConfigBackup $baseBackups[0].FullName
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $baseBackups[0].FullName | ConvertFrom-Json).globalConcurrencyLimit
-}
-
-function test_syncpiconfigs_skips_unchanged_regular_subagent_destinations {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
     Copy-Item -LiteralPath $paths.Source -Destination $paths.Target
-    Copy-Item -LiteralPath $paths.Source -Destination $paths.Base
     $script:PiConfigMoves = @()
     Set-CommandMock 'Move-Item' {
         param($LiteralPath, $Destination, [switch]$Force)
@@ -2095,48 +1344,54 @@ function test_syncpiconfigs_skips_unchanged_regular_subagent_destinations {
     SyncPiConfigs
 
     Assert-False ($script:PiConfigMoves -contains $paths.Target) 'unchanged regular target should not be replaced'
-    Assert-False ($script:PiConfigMoves -contains $paths.Base) 'unchanged regular base should not be replaced'
 }
 
-function test_syncpiconfigs_replaces_changed_regular_subagent_destinations {
+function test_syncpiconfigs_replaces_changed_regular_subagent_target {
     $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
     '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Base
 
     SyncPiConfigs
 
     Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
 }
 
-function test_syncpiconfigs_creates_missing_subagent_destinations {
+function test_syncpiconfigs_creates_missing_subagent_target {
     $paths = Initialize-TestPiConfigSeeds
 
     SyncPiConfigs
 
     Assert-FileExists $paths.Target
-    Assert-FileExists $paths.Base
     Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
 }
 
-function test_syncpiconfigs_replaces_linked_subagent_destinations {
+function test_syncpiconfigs_replaces_dangling_subagent_target {
     $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent), (Split-Path $paths.Base -Parent) | Out-Null
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
+    try {
+        New-Item -ItemType SymbolicLink -Path $paths.Target -Target (Join-Path $script:_TestTmp.FullName 'missing.json') -ErrorAction Stop | Out-Null
+    } catch {
+        Skip-Test 'symlink privilege unavailable'
+        return
+    }
+
+    SyncPiConfigs
+
+    Assert-False ([bool](Get-Item -LiteralPath $paths.Target -Force).LinkType) 'dangling target should become a regular file'
+    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
+}
+
+function test_syncpiconfigs_replaces_linked_subagent_target {
+    $paths = Initialize-TestPiConfigSeeds
+    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
     $externalTarget = Join-Path $script:_TestTmp.FullName 'external-target.json'
-    $externalBase = Join-Path $script:_TestTmp.FullName 'external-base.json'
     Copy-Item -LiteralPath $paths.Source -Destination $externalTarget
-    Copy-Item -LiteralPath $paths.Source -Destination $externalBase
     New-Item -ItemType SymbolicLink -Path $paths.Target -Target $externalTarget | Out-Null
-    New-Item -ItemType SymbolicLink -Path $paths.Base -Target $externalBase | Out-Null
 
     SyncPiConfigs
 
     Assert-False ([bool](Get-Item -LiteralPath $paths.Target -Force).LinkType) 'linked target should become a regular file'
-    Assert-False ([bool](Get-Item -LiteralPath $paths.Base -Force).LinkType) 'linked base should become a regular file'
     Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Base | ConvertFrom-Json).globalConcurrencyLimit
 }
 
 function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
