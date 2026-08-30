@@ -34,6 +34,13 @@ function test_windows_package_manifests_cover_parity_tools {
     }
 }
 
+function test_windows_terminal_defaults_to_managed_powershell_profile {
+    $terminal = Get-Content -Raw -LiteralPath (Join-Path $script:RepoDir 'config/windows/Terminal/settings.json') | ConvertFrom-Json
+    $powershellProfile = $terminal.profiles.list | Where-Object source -eq 'Windows.Terminal.PowershellCore'
+
+    Assert-Equals $powershellProfile.guid $terminal.defaultProfile
+}
+
 function test_windows_firacode_release_is_reviewed_and_immutable {
     Assert-True ($script:FiraCodeNerdFontVersion -match '^\d+\.\d+\.\d+$') 'font version should be exact semver'
     Assert-Equals "https://github.com/ryanoasis/nerd-fonts/releases/download/v$script:FiraCodeNerdFontVersion/FiraCode.zip" $script:FiraCodeNerdFontUrl
