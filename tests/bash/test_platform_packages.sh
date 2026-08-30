@@ -550,6 +550,17 @@ test_install_nixos_dry_run() {
   assert_not_contains "$output" "neovim"
 }
 
+test_install_nixos_wsl_dry_run_uses_separate_target() {
+  DRY=true
+  is_wsl() { return 0; }
+
+  local output
+  output=$(install_nixos 2>&1)
+
+  assert_contains "$output" "sudo nixos-rebuild switch --flake $DOTFILES_DIR#testhost-wsl"
+  unset -f is_wsl
+}
+
 
 
 test_nixos_flake_target_reads_host_config_when_nix_is_missing() {
@@ -1031,6 +1042,22 @@ test_nixos_enables_gnome_keyring() {
   local config="$NIXOS_CONFIG"
 
   assert_contains "$config" "services.gnome.gnome-keyring.enable = true;"
+}
+
+test_nixos_wsl_has_separate_hardware_free_configuration() {
+  local path="$REPO_DIR/config/nixos-wsl/configuration.nix"
+  assert_file_exists "$path"
+  [[ -f "$path" ]] || return
+
+  local config
+  config="$(<"$path")"
+  assert_contains "$FLAKE_CONFIG" 'nixos-wsl.nixosModules.default'
+  assert_contains "$FLAKE_CONFIG" 'nixosConfigurations."${machine.hostName}-wsl"'
+  assert_contains "$config" 'wsl.enable = true;'
+  assert_contains "$config" 'wsl.defaultUser = machine.username;'
+  assert_not_contains "$config" 'hardware-configuration.nix'
+  assert_not_contains "$config" 'systemd-boot'
+  assert_not_contains "$config" 'hardware.nvidia'
 }
 
 test_nixos_configures_nvidia_driver() {

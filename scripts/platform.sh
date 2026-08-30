@@ -4,6 +4,10 @@ set -eo pipefail
 
 is_mac() { [[ "$(uname)" == "Darwin" ]]; }
 is_linux() { [[ "$(uname)" == "Linux" ]]; }
+is_wsl() {
+  local kernel_release="${KERNEL_RELEASE_FILE:-/proc/sys/kernel/osrelease}"
+  is_linux && { [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft "$kernel_release" 2>/dev/null; }
+}
 
 # Print one of: nixos, debian, arch, mac, unknown
 detect_platform() {

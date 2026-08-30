@@ -248,6 +248,7 @@ _check_nix_config() {
         errors=$((errors + 1))
         return
       fi
+      is_wsl && host_name="${host_name}-wsl"
       _check_nix_eval "NixOS configuration $host_name" "$DOTFILES_DIR#nixosConfigurations.$host_name.config.system.build.toplevel.drvPath"
       ;;
     mac)

@@ -6,6 +6,7 @@ setup() {
   init_test_env
   unset -f command 2>/dev/null || true
   source_scripts utils.sh releases.sh doctor.sh
+  is_wsl() { return 1; }
 }
 
 teardown() {
@@ -680,6 +681,22 @@ test_check_nix_config_reads_only_platform_host_key() {
   _check_nix_config mac
   assert_equals "" "$(<"$calls")"
   unset -f nix host_config_value _check_nix_eval
+}
+
+test_doctor_evaluates_separate_nixos_wsl_target() {
+  mkdir -p "$DOTFILES_DIR"
+  touch "$DOTFILES_DIR/flake.nix"
+  nix() { :; }
+  host_config_value() { printf 'testhost\n'; }
+  is_wsl() { return 0; }
+  _check_nix_eval() { printf '%s\n%s\n' "$1" "$2"; }
+
+  local output
+  output="$(_check_nix_config nixos)"
+
+  assert_contains "$output" "NixOS configuration testhost-wsl"
+  assert_contains "$output" "$DOTFILES_DIR#nixosConfigurations.testhost-wsl.config.system.build.toplevel.drvPath"
+  unset -f nix host_config_value is_wsl _check_nix_eval
 }
 
 test_doctor_reads_host_config_when_nix_file_eval_is_unavailable() {

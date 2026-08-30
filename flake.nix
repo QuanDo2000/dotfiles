@@ -11,9 +11,13 @@
       url = "github:nix-darwin/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nixos-wsl = {
+      url = "github:nix-community/NixOS-WSL/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, home-manager, nix-darwin, ... }:
+  outputs = { nixpkgs, home-manager, nix-darwin, nixos-wsl, ... }:
     let
       machine = import ./config/host.nix;
       overlays = [
@@ -80,6 +84,16 @@
         modules = [
           { nixpkgs.overlays = overlays; }
           ./config/nixos/configuration.nix
+          home-manager.nixosModules.home-manager
+        ];
+      };
+
+      nixosConfigurations."${machine.hostName}-wsl" = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          { nixpkgs.overlays = overlays; }
+          nixos-wsl.nixosModules.default
+          ./config/nixos-wsl/configuration.nix
           home-manager.nixosModules.home-manager
         ];
       };

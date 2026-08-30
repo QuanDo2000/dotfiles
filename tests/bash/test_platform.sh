@@ -127,6 +127,16 @@ test_detect_platform_nixos_precedes_arch() {
   assert_equals "nixos" "$result"
 }
 
+test_is_wsl_detects_microsoft_kernel() {
+  mock_uname Linux
+  local kernel_release="$TEST_TMPDIR/kernel-release"
+  printf '6.18.33.2-microsoft-standard-WSL2\n' > "$kernel_release"
+
+  KERNEL_RELEASE_FILE="$kernel_release" is_wsl || {
+    echo "  FAILED: Microsoft kernel should be detected as WSL" >> "$ERROR_FILE"
+  }
+}
+
 test_is_home_manager_platform() {
   source_scripts packages.sh
 

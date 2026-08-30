@@ -321,6 +321,7 @@ function _nixos_flake_target {
   local host_name
   host_name="$(host_config_value hostName)" \
     || fail "Failed to resolve NixOS host name"
+  is_wsl && host_name="${host_name}-wsl"
   echo "${DOTFILE_FLAKE_REF:-$DOTFILES_DIR}#$host_name"
 }
 

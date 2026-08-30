@@ -138,11 +138,13 @@ Note: Home Manager owns the `lazy.nvim` bootstrap package, and tracked
 platforms; `dotfile packages` and `dotfile update` restore the locked plugin set.
 Failures are reported after the package operation.
 
-Note: Home Manager profile ownership is explicit. NixOS enables Linux desktop,
-personal apps, Obsidian Sync, and Google Drive. Arch server enables Obsidian
-Sync, Google Drive, and storage backup, but no desktop or personal apps.
-Generic Linux and macOS profiles keep optional groups disabled. Linux desktop
-configuration is profile-gated, not merely OS-gated.
+Note: Home Manager profile ownership is explicit. Physical NixOS enables Linux
+desktop, personal apps, Obsidian Sync, and Google Drive. NixOS-WSL uses the
+separate `${hostName}-wsl` system target with no bootloader, hardware, desktop,
+or personal-app configuration; `dotfile packages` selects it automatically.
+Arch server enables Obsidian Sync, Google Drive, and storage backup, but no
+desktop or personal apps. Generic Linux and macOS profiles keep optional groups
+disabled. Linux desktop configuration is profile-gated, not merely OS-gated.
 
 Arch server setup and full updates install the tracked service-state backup from
 `config/arch-server/service-state-backup/` into `/usr/local/sbin` and
