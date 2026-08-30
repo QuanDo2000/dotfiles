@@ -273,7 +273,7 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
     )
     foreach ($case in $tamperCases) {
         $original = Get-Content -Raw -LiteralPath $case.Path
-        $tampered = $original.Replace($case.Marker, "REMOVED_$($case.Marker)")
+        $tampered = $original.Replace($case.Marker, 'REMOVED_PATCH_MARKER')
         Set-Content -LiteralPath $case.Path -Value $tampered -Encoding ascii -NoNewline
         Assert-False (Test-PiExtensionsRelease $release $pins) "release missing $($case.Marker) must fail validation"
         Set-Content -LiteralPath $case.Path -Value $original -Encoding ascii -NoNewline
