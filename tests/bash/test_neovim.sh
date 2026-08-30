@@ -352,10 +352,15 @@ test_raw_neovim_headless_config() {
   fi
   ln -s "$source_lazy" "$lazy_package"
   set +e
-  output="$(DOTFILE_NVIM_SYNC=1 XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
-    nvim --headless \
-      -c "lua require('config.sync').plugins(true); print('RAW_PLUGIN_SYNC_OK')" \
-      -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1)"
+  if [[ "${DOTFILE_NEOVIM_TEST_PARSE_ONLY:-false}" == true ]]; then
+    output="$(DOTFILE_NVIM_SYNC=1 RAW_CONFIG_PARSE_ONLY=1 XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
+      nvim --headless -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1)"
+  else
+    output="$(DOTFILE_NVIM_SYNC=1 XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
+      nvim --headless \
+        -c "lua require('config.sync').plugins(true); print('RAW_PLUGIN_SYNC_OK')" \
+        -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1)"
+  fi
   status=$?
   set -e
   if [[ "$status" -eq 0 && "$output" == *"RAW_PLUGIN_SYNC_OK"* && "$output" == *"RAW_CONFIG_OK"* \
@@ -364,9 +369,15 @@ test_raw_neovim_headless_config() {
     _raw_neovim_cache_write "$lazy_dir" "$cached_plugins" "$marker"
   fi
   assert_equals "0" "$status"
-  assert_contains "$output" "RAW_PLUGIN_SYNC_OK"
+  if [[ "${DOTFILE_NEOVIM_TEST_PARSE_ONLY:-false}" != true ]]; then
+    assert_contains "$output" "RAW_PLUGIN_SYNC_OK"
+  fi
   assert_contains "$output" "RAW_CONFIG_OK"
 
+  if [[ "${DOTFILE_NEOVIM_TEST_PARSE_ONLY:-false}" == true ]]; then
+    rm -rf "$data"
+    return
+  fi
   bigfile="$(cd "$data" && pwd -P)/big.lua"
   head -c 1600000 </dev/zero | tr '\0' x > "$bigfile"
   set +e

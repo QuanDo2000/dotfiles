@@ -22,11 +22,11 @@ jobs:
 
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
 
-      - name: Run macOS checks in parallel
+      - name: Run macOS portability checks
         shell: bash
         run: |
           nix develop .#ci -c bash -c '
-            DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh &
+            DOTFILE_NEOVIM_TEST_CACHE=false DOTFILE_NEOVIM_TEST_PARSE_ONLY=true bash ./tests/bash/runner.sh test_neovim.sh &
             neovim_pid=$!
             bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh &
             core_pid=$!
@@ -35,18 +35,35 @@ jobs:
             wait "$neovim_pid" || { echo "::error::macOS Neovim tests failed"; status=1; }
             wait "$core_pid" || { echo "::error::macOS core tests failed"; status=1; }
             exit "$status"
-          ' &
-          tests_pid=$!
-          nix eval --raw .#darwinConfigurations.mac.system.drvPath &
-          darwin_pid=$!
-          nix build .#codex .#codebase-memory-mcp .#pi-extensions --no-link &
-          packages_pid=$!
+          '
 
-          status=0
-          wait "$tests_pid" || { echo "::error::macOS portability tests failed"; status=1; }
-          wait "$darwin_pid" || { echo "::error::nix-darwin evaluation failed"; status=1; }
-          wait "$packages_pid" || { echo "::error::macOS package builds failed"; status=1; }
-          exit "$status"
+  darwin:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+
+      - name: Run nix-darwin evaluation
+        run: nix eval --raw .#darwinConfigurations.mac.system.drvPath
+
+  packages-macos:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+
+      - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
+        with:
+          name: ${{ vars.CACHIX_CACHE_NAME }}
+          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
+          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+
+      - name: Build macOS packages
+        run: nix build .#codex .#codebase-memory-mcp .#pi-extensions --no-link
 
   powershell:
     runs-on: windows-latest
