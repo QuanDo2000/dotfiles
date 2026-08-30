@@ -22,15 +22,21 @@ jobs:
 
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Run macOS portability tests
+      - name: Run macOS checks in parallel
         shell: bash
-        run: nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_neovim.sh test_tmux.sh
+        run: |
+          nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_neovim.sh test_tmux.sh &
+          tests_pid=$!
+          nix eval --raw .#darwinConfigurations.mac.system.drvPath &
+          darwin_pid=$!
+          nix build .#codex .#codebase-memory-mcp .#pi-extensions --no-link &
+          packages_pid=$!
 
-      - name: Evaluate nix-darwin configuration
-        run: nix eval --raw .#darwinConfigurations.mac.system.drvPath
-
-      - name: Build custom packages
-        run: nix build .#codex .#codebase-memory-mcp .#pi-extensions --no-link
+          status=0
+          wait "$tests_pid" || { echo "::error::macOS portability tests failed"; status=1; }
+          wait "$darwin_pid" || { echo "::error::nix-darwin evaluation failed"; status=1; }
+          wait "$packages_pid" || { echo "::error::macOS package builds failed"; status=1; }
+          exit "$status"
 
   powershell:
     runs-on: windows-latest
