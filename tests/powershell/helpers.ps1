@@ -76,6 +76,8 @@ function Initialize-TestEnv {
     $script:_OrigDotfiles = $env:DOTFILES_DIR
     $script:_OrigAppData = $env:APPDATA
     $script:_OrigLocalAppData = $env:LOCALAPPDATA
+    $script:_OrigUserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $script:_OrigProcessPath = $env:Path
     $env:USERPROFILE = Join-Path $script:_TestTmp.FullName 'home'
     $env:HOME = $env:USERPROFILE
     $env:APPDATA = Join-Path $env:USERPROFILE 'AppData\Roaming'
@@ -111,6 +113,8 @@ function Clear-CommandMock {
 }
 
 function Clear-TestEnv {
+    [Environment]::SetEnvironmentVariable('Path', $script:_OrigUserPath, 'User')
+    $env:Path = $script:_OrigProcessPath
     if ($null -eq $script:_OrigHome) { Remove-Item Env:USERPROFILE -ErrorAction SilentlyContinue } else { $env:USERPROFILE = $script:_OrigHome }
     if ($null -eq $script:_OrigHomeEnv) { Remove-Item Env:HOME -ErrorAction SilentlyContinue } else { $env:HOME = $script:_OrigHomeEnv }
     $env:DOTFILES_DIR = $script:_OrigDotfiles
