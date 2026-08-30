@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           nix develop .#ci -c bash -c '
-            DOTFILE_NEOVIM_TEST_FRESH=true bash ./tests/bash/runner.sh test_neovim.sh &
+            DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh &
             neovim_pid=$!
             bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh &
             core_pid=$!
@@ -122,7 +122,7 @@ jobs:
               [[ "$test" == */test_neovim.sh ]] || core_tests+=("${test##*/}")
             done
 
-            DOTFILE_NEOVIM_TEST_FRESH=true bash ./tests/bash/runner.sh test_neovim.sh &
+            DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh &
             neovim_pid=$!
             bash ./tests/bash/runner.sh "${core_tests[@]}" &
             core_pid=$!

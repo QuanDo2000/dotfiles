@@ -347,7 +347,9 @@ test_raw_neovim_headless_config() {
   mkdir -p "$data/config" "$lazy_dir" "$(dirname "$lazy_package")"
   cp -R "$REPO_DIR/config/shared/config/nvim" "$data/config/nvim"
 
-  _raw_neovim_cache_seed "$cache_base" "$lock_hash" "$lazy_dir" || true
+  if [[ "${DOTFILE_NEOVIM_TEST_CACHE:-true}" == true ]]; then
+    _raw_neovim_cache_seed "$cache_base" "$lock_hash" "$lazy_dir" || true
+  fi
   ln -s "$source_lazy" "$lazy_package"
   set +e
   output="$(DOTFILE_NVIM_SYNC=1 XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
@@ -357,7 +359,8 @@ test_raw_neovim_headless_config() {
   status=$?
   set -e
   if [[ "$status" -eq 0 && "$output" == *"RAW_PLUGIN_SYNC_OK"* && "$output" == *"RAW_CONFIG_OK"* \
-    && ! -f "$marker" && "${DOTFILE_NEOVIM_TEST_FRESH:-false}" != true ]]; then
+    && ! -f "$marker" && "${DOTFILE_NEOVIM_TEST_FRESH:-false}" != true \
+    && "${DOTFILE_NEOVIM_TEST_CACHE:-true}" == true ]]; then
     _raw_neovim_cache_write "$lazy_dir" "$cached_plugins" "$marker"
   fi
   assert_equals "0" "$status"
