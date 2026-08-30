@@ -25,6 +25,7 @@ function test_windows_psmux_links_portable_tmux_defaults {
         Assert-Contains $config 'set -g default-terminal xterm-256color'
         Assert-Contains $config 'set -g mouse on'
         Assert-Contains $config 'set -g mode-keys vi'
+        Assert-Contains $config 'set -g paste-detection off'
         Assert-Contains $config 'set -g focus-events on'
         Assert-Contains $config 'set -g history-limit 50000'
         Assert-Contains $config 'set -g allow-passthrough on'
@@ -51,6 +52,14 @@ function test_windows_psmux_links_portable_tmux_defaults {
 function test_windows_terminal_does_not_elevate_every_profile {
     $settings = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\Terminal\settings.json') | ConvertFrom-Json
     Assert-False ($settings.profiles.defaults.elevate -eq $true) 'Windows Terminal profiles should run unelevated by default'
+}
+
+function test_windows_terminal_leaves_ctrl_v_for_visual_block_mode {
+    $settings = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\Terminal\settings.json') | ConvertFrom-Json
+    $pasteBinding = $settings.keybindings | Where-Object id -eq 'User.paste'
+    $ctrlVBinding = $settings.keybindings | Where-Object keys -eq 'ctrl+v'
+    Assert-Equals 'ctrl+shift+v' $pasteBinding.keys
+    Assert-Equals 'unbound' $ctrlVBinding.id
 }
 
 function test_windows_neovim_bootstraps_lazy_at_reviewed_lock {
