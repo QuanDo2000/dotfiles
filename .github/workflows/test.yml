@@ -95,7 +95,7 @@ jobs:
         shell: pwsh
         run: ./tests/powershell/integration_neovim.ps1
 
-  bash-linux:
+  shellcheck-linux:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -111,6 +111,20 @@ jobs:
 
       - name: Run ShellCheck
         run: nix develop . -c shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh
+
+  bash-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
+        with:
+          name: ${{ vars.CACHIX_CACHE_NAME }}
+          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
+          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
       - name: Run bash tests
         run: |
