@@ -25,7 +25,17 @@ jobs:
       - name: Run macOS checks in parallel
         shell: bash
         run: |
-          nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_neovim.sh test_tmux.sh &
+          nix develop .#ci -c bash -c '
+            bash ./tests/bash/runner.sh test_neovim.sh &
+            neovim_pid=$!
+            bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh &
+            core_pid=$!
+
+            status=0
+            wait "$neovim_pid" || { echo "::error::macOS Neovim tests failed"; status=1; }
+            wait "$core_pid" || { echo "::error::macOS core tests failed"; status=1; }
+            exit "$status"
+          ' &
           tests_pid=$!
           nix eval --raw .#darwinConfigurations.mac.system.drvPath &
           darwin_pid=$!
@@ -82,7 +92,23 @@ jobs:
         run: nix develop . -c shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh
 
       - name: Run bash tests
-        run: nix develop . -c bash ./tests/bash/runner.sh
+        run: |
+          nix develop . -c bash -c '
+            core_tests=()
+            for test in ./tests/bash/test_*.sh; do
+              [[ "$test" == */test_neovim.sh ]] || core_tests+=("${test##*/}")
+            done
+
+            bash ./tests/bash/runner.sh test_neovim.sh &
+            neovim_pid=$!
+            bash ./tests/bash/runner.sh "${core_tests[@]}" &
+            core_pid=$!
+
+            status=0
+            wait "$neovim_pid" || { echo "::error::Linux Neovim tests failed"; status=1; }
+            wait "$core_pid" || { echo "::error::Linux core tests failed"; status=1; }
+            exit "$status"
+          '
 
   nix:
     runs-on: ubuntu-latest

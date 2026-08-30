@@ -15,9 +15,13 @@ test_ci_bash_jobs_match_local_nix_environment() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
-  assert_equals 1 "$(grep -c 'run: nix develop \. -c bash \./tests/bash/runner\.sh$' <<< "$workflow")"
+  assert_equals 0 "$(grep -c 'run: nix develop \. -c bash \./tests/bash/runner\.sh$' <<< "$workflow")"
   assert_contains "$workflow" $'  bash-linux:\n    runs-on: ubuntu-latest'
-  assert_contains "$workflow" 'nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_neovim.sh test_tmux.sh'
+  assert_contains "$workflow" 'nix develop .#ci -c bash -c'
+  assert_contains "$workflow" 'nix develop . -c bash -c'
+  assert_equals 2 "$(grep -c 'neovim_pid=\$!' <<< "$workflow")"
+  assert_equals 2 "$(grep -c 'core_pid=\$!' <<< "$workflow")"
+  assert_contains "$workflow" 'test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh'
   assert_contains "$workflow" 'tests_pid=$!'
   assert_contains "$workflow" 'darwin_pid=$!'
   assert_contains "$workflow" 'packages_pid=$!'
