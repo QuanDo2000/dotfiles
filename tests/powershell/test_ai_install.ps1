@@ -35,7 +35,7 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'npx', 'pi', 'py', 'jq', 'Get-Command', 'Get-FileHash', 'Get-Process', 'New-Item', 'Copy-Item', 'Expand-Archive', 'Move-Item', 'Start-Process', 'Stop-Process', 'Wait-Process', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck', 'RepairPiCompactionSteering') {
+    foreach ($command in 'npm', 'npx', 'pi', 'py', 'Get-Command', 'Get-FileHash', 'Get-Process', 'New-Item', 'Copy-Item', 'Expand-Archive', 'Move-Item', 'Start-Process', 'Stop-Process', 'Wait-Process', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck', 'RepairPiCompactionSteering') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
@@ -319,11 +319,6 @@ function test_synccodexconfig_does_not_apply_live_state_to_tracked_seed {
         $script:CodexApplyPath = $args[-1]
         $global:LASTEXITCODE = 0
     }
-    Set-CommandMock 'jq' {
-        $global:LASTEXITCODE = 0
-        '{"model":"tracked"}'
-    }
-
     SyncCodexConfig
 
     Assert-Equals '' $script:CodexApplyPath

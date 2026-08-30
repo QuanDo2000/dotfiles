@@ -20,12 +20,15 @@ function test_windows_package_manifests_cover_parity_tools {
     Assert-True ($winget -contains 'Microsoft.PowerShell') 'Winget should manage PowerShell'
     Assert-True ($winget -contains 'Neovim.Neovim') 'Winget should manage Neovim'
     Assert-True ($winget -contains 'Python.Python.3.14') 'Winget should manage Python for shared seed scripts'
-    Assert-True ($winget -contains 'GitHub.cli') 'Winget should manage GitHub CLI'
     Assert-True ($winget -contains 'GnuPG.Gpg4win') 'Winget should manage Gpg4win'
     Assert-True ($winget -contains 'Notepad++.Notepad++') 'Winget should manage Notepad++'
     Assert-True ($winget -contains 'koalaman.shellcheck') 'Winget should manage ShellCheck for Bash diagnostics'
-    Assert-True ($winget -contains 'jqlang.jq') 'Winget should manage jq'
-    Assert-True ($commands -contains 'gh') 'Doctor should verify GitHub CLI'
+    foreach ($package in 'junegunn.fzf', 'jqlang.jq', 'GitHub.cli') {
+        Assert-False ($winget -contains $package) "Winget should not manage unused Windows package: $package"
+    }
+    foreach ($command in 'fzf', 'jq', 'gh') {
+        Assert-False ($commands -contains $command) "Doctor should not require unused Windows command: $command"
+    }
     foreach ($command in 'vtsls', 'bash-language-server', 'shellcheck') {
         Assert-True ($commands -contains $command) "Doctor should verify Windows LSP dependency: $command"
     }
