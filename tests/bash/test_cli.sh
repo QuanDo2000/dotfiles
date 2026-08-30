@@ -440,12 +440,17 @@ test_packages_nixos_dry() {
 }
 
 test_readme_nixos_fresh_install_does_not_sudo_dotfile_script() {
-  local readme_text
+  local readme_text bash_calls="$TEST_HOME/readme-bash.calls"
   readme_text="$(<"$REPO_DIR/README.md")"
+  bash() { printf 'called\n' >> "$bash_calls"; }
+
   assert_not_contains "$readme_text" "sudo bash ./dotfile packages"
   assert_not_contains "$readme_text" "sudo bash ./dotfile all"
   assert_not_contains "$readme_text" 'bash ./dotfile packages` then `bash ./dotfile all'
-  assert_not_contains "$readme_text" "Then `bash ./dotfile all`"
+  assert_not_contains "$readme_text" 'Then `bash ./dotfile all`'
+
+  unset -f bash
+  assert_equals "" "$(cat "$bash_calls" 2>/dev/null || true)"
 }
 
 test_help_flags_exit_zero() {

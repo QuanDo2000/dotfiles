@@ -16,6 +16,7 @@ test_ci_bash_jobs_match_local_nix_environment() {
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_equals 1 "$(grep -c 'run: nix develop \. -c bash \./tests/bash/runner\.sh$' <<< "$workflow")"
+  assert_contains "$workflow" $'  bash-linux:\n    runs-on: ubuntu-latest'
   assert_contains "$workflow" 'nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_neovim.sh test_tmux.sh'
   assert_not_contains "$workflow" 'runner.sh --no-docker'
   assert_not_contains "$workflow" 'docker'
@@ -100,5 +101,5 @@ test_ci_cancels_superseded_runs_and_bounds_jobs() {
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_contains "$workflow" 'cancel-in-progress: true'
-  assert_equals 3 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
+  assert_equals 4 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
 }
