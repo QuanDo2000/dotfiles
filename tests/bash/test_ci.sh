@@ -32,33 +32,37 @@ test_ci_bash_jobs_match_local_nix_environment() {
 }
 
 test_ci_filters_pull_requests_but_runs_full_main_and_schedule() {
-  local workflow linux_filter macos_filter windows_filter nix_filter
+  local workflow filter output
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
-  linux_filter="$(awk '/^            linux:$/,/^            macos:$/' <<< "$workflow")"
-  macos_filter="$(awk '/^            macos:$/,/^            windows:$/' <<< "$workflow")"
-  windows_filter="$(awk '/^            windows:$/,/^            nix:$/' <<< "$workflow")"
-  nix_filter="$(awk '/^            nix:$/,/^  bash-macos:$/' <<< "$workflow")"
+  filter="$REPO_DIR/scripts/ci_paths.sh"
 
-  assert_contains "$workflow" "dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2"
+  assert_file_exists "$filter"
+  [ -f "$filter" ] || return
+  assert_not_contains "$workflow" 'dorny/paths-filter'
   assert_contains "$workflow" $'schedule:\n    - cron:'
   assert_contains "$workflow" "if: \${{ github.event_name == 'pull_request' }}"
+  assert_contains "$workflow" 'fetch-depth: 0'
+  assert_contains "$workflow" 'git diff --name-only --no-renames'
+  assert_contains "$workflow" 'bash scripts/ci_paths.sh'
   assert_equals 4 "$(grep -c 'needs: changes' <<< "$workflow")"
   assert_equals 4 "$(grep -c "github.event_name != 'pull_request' || needs.changes.outputs" <<< "$workflow")"
   assert_contains "$workflow" "linux: \${{ steps.filter.outputs.linux }}"
   assert_contains "$workflow" "macos: \${{ steps.filter.outputs.macos }}"
   assert_contains "$workflow" "windows: \${{ steps.filter.outputs.windows }}"
   assert_contains "$workflow" "nix: \${{ steps.filter.outputs.nix }}"
-  assert_contains "$linux_filter" "'.gitattributes'"
-  assert_contains "$linux_filter" "'dotfile.ps1'"
-  assert_contains "$linux_filter" "'config/**'"
-  assert_contains "$macos_filter" "'config/darwin.nix'"
-  assert_contains "$windows_filter" "'.gitattributes'"
-  assert_contains "$nix_filter" "'config/arch-server/**'"
-  assert_contains "$nix_filter" "'config/darwin.nix'"
-  assert_contains "$nix_filter" "'config/nixos-wsl/**'"
-  for filter in "$linux_filter" "$macos_filter" "$windows_filter" "$nix_filter"; do
-    assert_contains "$filter" "'.github/workflows/**'"
-  done
+
+  output="$(printf '%s\n' docs/note.md | bash "$filter")"
+  assert_equals $'linux=false\nmacos=false\nwindows=false\nnix=false' "$output"
+  output="$(printf '%s\n' dotfile.ps1 | bash "$filter")"
+  assert_equals $'linux=true\nmacos=false\nwindows=true\nnix=false' "$output"
+  output="$(printf '%s\n' config/darwin.nix | bash "$filter")"
+  assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=true' "$output"
+  output="$(printf '%s\n' config/nixos-wsl/configuration.nix | bash "$filter")"
+  assert_equals $'linux=true\nmacos=false\nwindows=false\nnix=true' "$output"
+  output="$(printf '%s\n' config/shared/ai/AGENTS.md | bash "$filter")"
+  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
+  output="$(printf '%s\n' .gitattributes | bash "$filter")"
+  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
 }
 
 test_ci_dev_shell_includes_script_dependencies() {
