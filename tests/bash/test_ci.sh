@@ -66,11 +66,14 @@ test_ci_runs_direct_nix_checks() {
   assert_not_contains "$check" 'fff-nvim-backend'
 }
 
-test_ci_avoids_disposable_neovim_cache_and_parallelizes_windows() {
+test_ci_restores_reviewed_neovim_bundle_and_parallelizes_windows() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
-  assert_equals 2 "$(grep -c 'DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh' <<< "$workflow")"
+  assert_equals 2 "$(grep -c -- '- name: Restore reviewed Neovim plugins' <<< "$workflow")"
+  assert_equals 2 "$(grep -c 'neovim-plugins-ci-exp.tar.gz' <<< "$workflow")"
+  assert_equals 2 "$(grep -c '77c0a7eb83c976cc45cf3eb48d14b381b990716e656bd711993abc46a26f48a7' <<< "$workflow")"
+  assert_not_contains "$workflow" 'DOTFILE_NEOVIM_TEST_CACHE=false'
   assert_contains "$workflow" '- name: Run Windows checks in parallel'
   assert_contains "$workflow" 'Start-Job'
   assert_contains "$workflow" 'Wait-Job'
