@@ -57,6 +57,8 @@
           git
           jq
           neovim
+          python3
+          tree-sitter
           tmux
         ];
       };

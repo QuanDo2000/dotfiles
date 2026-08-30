@@ -31,7 +31,11 @@ test_ci_dev_shell_includes_script_dependencies() {
   assert_contains "$flake" 'devShells.aarch64-darwin.ci = ciShell darwinPkgs;'
   assert_contains "$flake" 'devShells.x86_64-linux.ci = ciShell linuxPkgs;'
   assert_contains "$flake" 'ciShell = pkgs: pkgs.mkShellNoCC {'
-  assert_not_contains "$(sed -n '/ciShell =/,/^[[:space:]]*};/p' "$REPO_DIR/flake.nix")" 'pi-agent'
+  local ci_shell
+  ci_shell="$(sed -n '/ciShell =/,/^[[:space:]]*};/p' "$REPO_DIR/flake.nix")"
+  assert_contains "$ci_shell" 'python3'
+  assert_contains "$ci_shell" 'tree-sitter'
+  assert_not_contains "$ci_shell" 'pi-agent'
   assert_contains "$(<"$REPO_DIR/scripts/update_pins.py")" '"cosign", "verify-blob"'
   assert_not_contains "$(<"$REPO_DIR/scripts/update_pins.py")" '"nix", "develop", f"path:{repo}", "-c", "cosign"'
 }
