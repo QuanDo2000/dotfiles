@@ -50,6 +50,10 @@ Treat historical child output and notifications as evidence, not current state. 
 
 Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check and run it on the current revision. Read exit status, failure count, and relevant output; report exactly what passed, failed, was skipped, or remains unverified. Use focused checks while iterating and broad required suites once after the final change. Child reports, old logs, partial tests, and “should work” are not substitutes for fresh evidence.
 
+## Pi Autoresearch Suggestions
+
+In Pi, suggest the bounded autoresearch workflow when the current task has an objective metric, a finite local change surface, authoritative correctness checks, and enough plausible alternatives to benefit from repeated experiments. Give the reason and proposed metric in one sentence. Never start autoresearch without explicit user approval. Do not suggest it for one-shot fixes, incident response, security remediation, destructive migrations, or work without a reliable measurement.
+
 ## Hermes Skill Promotion
 
 Recommend promotion when a Hermes-generated skill is useful across machines or projects. Do not copy it automatically. At task close, name the skill and its current path, explain why it is broadly reusable, propose `config/shared/ai/skills/<name>/` as the tracked destination, and note any machine-specific paths, secrets, or assumptions that must be removed.

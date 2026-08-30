@@ -204,6 +204,7 @@ in
     ".agents/skills/skill-retrospective" = forceSource ./shared/ai/skills/skill-retrospective;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".pi/agent/extensions/gpg-signing-display" = forceSource ./shared/ai/pi/gpg-signing-display;
+    ".pi/agent/extensions/autoresearch" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (forceSource ./shared/ai/pi/autoresearch);
     ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource pkgs.pi-extensions;
     ".local/bin/dotfile" = {
       text = ''
