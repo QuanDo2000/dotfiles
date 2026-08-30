@@ -967,6 +967,11 @@ function SyncPiConfigs {
     foreach ($copy in $directCopies) {
         Copy-FileWithRollback $copy.Source $copy.Destination 'Pi direct config copy'
     }
+    Install-DirectoryWithRollback `
+        (Join-Path $seedDir 'autoresearch') `
+        (Join-Path $extensionDir 'autoresearch') `
+        @('index.ts', 'runtime.ts', 'safety.ts', 'git.ts', 'metrics.ts', 'skill\SKILL.md') `
+        'Pi autoresearch extension'
     } finally {
         $syncLock.Dispose()
     }
@@ -1241,52 +1246,76 @@ function SyncAiInstructions {
     }
 }
 
-function Install-SkillDirectory($Source, $Destination) {
-    if (-not (Test-Path -LiteralPath $Source -PathType Container)) { throw "Missing vendored skill: $Source" }
-    if (-not (Test-Path -LiteralPath (Join-Path $Source 'SKILL.md') -PathType Leaf)) { throw "Vendored skill has no SKILL.md: $Source" }
+function Assert-NoReparsePointPath($Path, $Label) {
+    $current = [IO.Path]::GetFullPath($Path)
+    while ($current) {
+        $item = Get-Item -LiteralPath $current -Force -ErrorAction SilentlyContinue
+        if ($item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "${Label} path contains a reparse point: $current"
+        }
+        $parent = Split-Path $current -Parent
+        if (-not $parent -or $parent -eq $current) { break }
+        $current = $parent
+    }
+}
+
+function Test-DirectoryMatchesSource($Source, $Destination) {
+    try {
+        if (-not (Test-Path -LiteralPath $Destination -PathType Container)) { return $false }
+        $sourceItems = @((Get-Item -LiteralPath $Source -Force)) + @(Get-ChildItem -LiteralPath $Source -Recurse -Force)
+        $targetItems = @((Get-Item -LiteralPath $Destination -Force)) + @(Get-ChildItem -LiteralPath $Destination -Recurse -Force)
+        $targetReparsePoint = $targetItems | Where-Object {
+            $_.Attributes -band [IO.FileAttributes]::ReparsePoint
+        } | Select-Object -First 1
+        if ($targetReparsePoint -or $targetItems.Count -ne $sourceItems.Count) { return $false }
+        foreach ($sourceItem in $sourceItems | Select-Object -Skip 1) {
+            $relative = $sourceItem.FullName.Substring($sourceItems[0].FullName.Length + 1)
+            $targetItem = Get-Item -LiteralPath (Join-Path $Destination $relative) -Force -ErrorAction Stop
+            if ($sourceItem.PSIsContainer -ne $targetItem.PSIsContainer) { return $false }
+            if (-not $sourceItem.PSIsContainer -and ($sourceItem.Length -ne $targetItem.Length -or
+                    (Get-FileHash -LiteralPath $sourceItem.FullName -Algorithm SHA256).Hash -ne
+                    (Get-FileHash -LiteralPath $targetItem.FullName -Algorithm SHA256).Hash)) { return $false }
+        }
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Install-DirectoryWithRollback($Source, $Destination, [string[]]$RequiredFiles, $Label) {
+    if (-not (Test-Path -LiteralPath $Source -PathType Container)) { throw "Missing ${Label}: $Source" }
+    foreach ($required in $RequiredFiles) {
+        if (-not (Test-Path -LiteralPath (Join-Path $Source $required) -PathType Leaf)) { throw "${Label} has no ${required}: $Source" }
+    }
     $sourceItems = @((Get-Item -LiteralPath $Source -Force)) + @(Get-ChildItem -LiteralPath $Source -Recurse -Force)
     $sourceReparsePoint = $sourceItems | Where-Object {
         $_.Attributes -band [IO.FileAttributes]::ReparsePoint
     } | Select-Object -First 1
-    if ($sourceReparsePoint) { throw "Vendored skill contains a reparse point: $($sourceReparsePoint.FullName)" }
-
-    if (Test-Path -LiteralPath $Destination -PathType Container) {
-        try {
-            $targetItems = @((Get-Item -LiteralPath $Destination -Force)) + @(Get-ChildItem -LiteralPath $Destination -Recurse -Force)
-            $targetReparsePoint = $targetItems | Where-Object {
-                $_.Attributes -band [IO.FileAttributes]::ReparsePoint
-            } | Select-Object -First 1
-            $current = -not $targetReparsePoint -and $targetItems.Count -eq $sourceItems.Count
-            foreach ($sourceItem in $sourceItems | Select-Object -Skip 1) {
-                if (-not $current) { break }
-                $relative = $sourceItem.FullName.Substring($sourceItems[0].FullName.Length + 1)
-                $targetItem = Get-Item -LiteralPath (Join-Path $Destination $relative) -Force -ErrorAction Stop
-                $current = $sourceItem.PSIsContainer -eq $targetItem.PSIsContainer
-                if ($current -and -not $sourceItem.PSIsContainer) {
-                    $current = $sourceItem.Length -eq $targetItem.Length -and
-                        (Get-FileHash -LiteralPath $sourceItem.FullName -Algorithm SHA256).Hash -eq
-                        (Get-FileHash -LiteralPath $targetItem.FullName -Algorithm SHA256).Hash
-                }
-            }
-            if ($current) { return }
-        } catch { }
-    }
+    if ($sourceReparsePoint) { throw "${Label} contains a reparse point: $($sourceReparsePoint.FullName)" }
 
     $parent = Split-Path $Destination -Parent
+    Assert-NoReparsePointPath $parent $Label
+    if (Test-DirectoryMatchesSource $Source $Destination) { return }
+
     $name = Split-Path $Destination -Leaf
     $staging = Join-Path $parent ".$name.staging.$([Guid]::NewGuid().ToString('N'))"
     $backup = Join-Path $parent ".$name.backup.$([Guid]::NewGuid().ToString('N'))"
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    Assert-NoReparsePointPath $parent $Label
     try {
         Copy-Item -LiteralPath $Source -Destination $staging -Recurse -Force -ErrorAction Stop
-        if (-not (Test-Path -LiteralPath (Join-Path $staging 'SKILL.md') -PathType Leaf)) { throw "Staged skill has no SKILL.md: $Source" }
+        foreach ($required in $RequiredFiles) {
+            if (-not (Test-Path -LiteralPath (Join-Path $staging $required) -PathType Leaf)) { throw "Staged ${Label} has no ${required}: $Source" }
+        }
         $reparsePoint = Get-ChildItem -LiteralPath $staging -Recurse -Force | Where-Object {
             $_.Attributes -band [IO.FileAttributes]::ReparsePoint
         } | Select-Object -First 1
-        if ($reparsePoint) { throw "Vendored skill contains a reparse point: $($reparsePoint.FullName)" }
+        if ($reparsePoint) { throw "${Label} contains a reparse point: $($reparsePoint.FullName)" }
 
         if (Test-Path -LiteralPath $Destination) { Move-Item -LiteralPath $Destination -Destination $backup }
+        if (Test-Path -LiteralPath $Destination) { throw "${Label} destination reappeared during staging: $Destination" }
         Move-Item -LiteralPath $staging -Destination $Destination
+        if (-not (Test-DirectoryMatchesSource $Source $Destination)) { throw "${Label} published directory failed verification: $Destination" }
         if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction Stop }
     } catch {
         $operationError = $_
@@ -1294,15 +1323,21 @@ function Install-SkillDirectory($Source, $Destination) {
         try {
             if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction Stop }
             if (Test-Path -LiteralPath $backup) {
-                if (Test-Path -LiteralPath $Destination) { Remove-Item -LiteralPath $Destination -Recurse -Force -ErrorAction Stop }
+                if (Test-Path -LiteralPath $Destination) {
+                    throw "destination '$Destination' exists; recovery backup: '$backup'"
+                }
                 Move-Item -LiteralPath $backup -Destination $Destination -ErrorAction Stop
             }
         } catch {
             $cleanupError = $_.Exception
         }
-        if ($cleanupError) { throw "Skill rollback failed after '$($operationError.Exception.Message)': $($cleanupError.Message)" }
+        if ($cleanupError) { throw "${Label} rollback failed after '$($operationError.Exception.Message)': $($cleanupError.Message)" }
         throw $operationError
     }
+}
+
+function Install-SkillDirectory($Source, $Destination) {
+    Install-DirectoryWithRollback $Source $Destination @('SKILL.md') 'Vendored skill'
 }
 
 function InstallAiSkills {

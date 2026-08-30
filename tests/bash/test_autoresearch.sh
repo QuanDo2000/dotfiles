@@ -48,7 +48,8 @@ fs.writeFileSync(path.join(safe, ".auto/measure.sh"), "#!/usr/bin/env bash\necho
 fs.writeFileSync(path.join(safe, ".auto/checks.sh"), "#!/usr/bin/env bash\nexit 0\n");
 fs.chmodSync(path.join(safe, ".auto/measure.sh"), 0o755);
 fs.chmodSync(path.join(safe, ".auto/checks.sh"), 0o755);
-check(await validatePilot(safe, { requireFiles: true, requireClean: false }) === null, "bounded files rejected");
+check(await validatePilot(safe, { requireFiles: true, requireClean: false }) === null, "Linux bounded files rejected");
+check(await validatePilot(safe, { requireFiles: true, requireClean: false, platform: "darwin" }) === null, "macOS bounded files rejected");
 fs.writeFileSync(path.join(safe, ".auto/config.json"), JSON.stringify({ maxIterations: 21, metricName: "latency_ms", direction: "lower" }));
 check((await validatePilot(safe, { requireFiles: true, requireClean: false }))?.includes("1 to 20"), "iteration overflow accepted");
 fs.writeFileSync(path.join(safe, ".auto/config.json"), JSON.stringify({ maxIterations: 20, metricName: "latency_ms", direction: "lower" }));
@@ -57,14 +58,48 @@ fs.mkdirSync(path.join(safe, ".auto/checks.sh"));
 check((await validatePilot(safe, { requireFiles: true, requireClean: false }))?.includes("regular executable file"), "checks directory accepted");
 fs.rmSync(path.join(safe, ".auto/checks.sh"), { recursive: true });
 fs.writeFileSync(path.join(safe, ".auto/checks.sh"), "#!/usr/bin/env bash\nexit 0\n", { mode: 0o755 });
+fs.rmSync(path.join(safe, ".auto/measure.sh"));
+fs.rmSync(path.join(safe, ".auto/checks.sh"));
+fs.writeFileSync(path.join(safe, ".auto/measure.ps1"), "Write-Output 'METRIC latency_ms=1'\n");
+fs.writeFileSync(path.join(safe, ".auto/checks.ps1"), "exit 0\n");
+check(await validatePilot(safe, { requireFiles: true, requireClean: false, platform: "win32" }) === null, "Windows bounded files rejected");
+const externalConfig = path.join(path.dirname(safe), "external-config.json");
+fs.copyFileSync(path.join(safe, ".auto/config.json"), externalConfig);
+fs.rmSync(path.join(safe, ".auto/config.json"));
+fs.symlinkSync(externalConfig, path.join(safe, ".auto/config.json"));
+check((await validatePilot(safe, { requireFiles: true, requireClean: false, platform: "win32" }))?.includes("config.json must be a regular file"), "config symlink accepted");
+fs.rmSync(path.join(safe, ".auto/config.json"));
+fs.copyFileSync(externalConfig, path.join(safe, ".auto/config.json"));
 fs.mkdirSync(path.join(safe, ".auto/hooks"));
-check((await validatePilot(safe, { requireFiles: true, requireClean: false }))?.includes("does not allow .auto/hooks"), "hooks accepted");
-const platform = Object.getOwnPropertyDescriptor(process, "platform");
-Object.defineProperty(process, "platform", { value: "win32" });
-check((await validatePilot(safe, { requireFiles: false, requireClean: false }))?.includes("only on Linux"), "non-Linux accepted");
-Object.defineProperty(process, "platform", platform);
+check((await validatePilot(safe, { requireFiles: true, requireClean: false, platform: "win32" }))?.includes("does not allow .auto/hooks"), "hooks accepted");
+fs.rmSync(path.join(safe, ".auto"), { recursive: true });
+const externalAuto = path.join(path.dirname(safe), "external-auto");
+fs.mkdirSync(externalAuto);
+fs.symlinkSync(externalAuto, path.join(safe, ".auto"), "dir");
+check((await validatePilot(safe, { requireFiles: false, requireClean: false }))?.includes("regular directory"), ".auto symlink accepted");
+check((await validatePilot(safe, { requireFiles: false, requireClean: false, platform: "freebsd" }))?.includes("Linux, macOS, and Windows"), "unsupported platform accepted");
 JS
   SAFETY="file://$extension_dir/safety.ts" assert_exit_code 0 node "$TEST_TMPDIR/test-safety.mjs" "$root" "$wrong" "$safe"
+}
+
+test_autoresearch_runtime_selects_native_scripts_without_path_lookup() {
+  assert_file_exists "$extension_dir/runtime.ts"
+  [ -f "$extension_dir/runtime.ts" ] || return
+  RUNTIME="file://$extension_dir/runtime.ts" assert_exit_code 0 node --input-type=module - <<'JS'
+import path from "node:path";
+const { scriptCommand } = await import(process.env.RUNTIME);
+const root = path.resolve("work");
+const linux = scriptCommand(root, "measure", "linux", {});
+if (linux.command !== path.join(root, ".auto", "measure.sh") || linux.args.length !== 0) process.exit(1);
+const mac = scriptCommand(root, "checks", "darwin", {});
+if (mac.command !== path.join(root, ".auto", "checks.sh") || mac.args.length !== 0) process.exit(1);
+const windows = scriptCommand(root, "measure", "win32", { SystemRoot: "C:\\Windows" });
+if (windows.command !== path.win32.join("C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe")) process.exit(1);
+if (windows.args.join("|") !== ["-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", path.join(root, ".auto", "measure.ps1")].join("|")) process.exit(1);
+let rejected = false;
+try { scriptCommand(root, "measure", "win32", {}); } catch { rejected = true; }
+if (!rejected) process.exit(1);
+JS
 }
 
 test_autoresearch_git_helpers_revert_only_experiment_and_fail_closed_on_commit() {

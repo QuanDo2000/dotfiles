@@ -125,7 +125,7 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
     assert_contains "$activation" "$seed"
   done
   assert_equals true "$(_profile_file_meta nixos '.pi/agent/extensions/autoresearch' | jq -r .force)"
-  assert_equals null "$(_profile_file_meta darwin '.pi/agent/extensions/autoresearch')"
+  assert_equals true "$(_profile_file_meta darwin '.pi/agent/extensions/autoresearch' | jq -r .force)"
   assert_equals true "$(_profile_file_meta nixos '.hermes/SOUL.md' | jq -r .force)"
   assert_contains "$(_profile_file_meta nixos '.hermes/SOUL.md')" 'SOUL.md'
 }

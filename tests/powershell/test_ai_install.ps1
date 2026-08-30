@@ -468,6 +468,51 @@ function test_install_skill_directory_preserves_current_copy_when_staging_fails 
     Assert-Contains (Get-Content -Raw (Join-Path $target 'SKILL.md')) 'old'
 }
 
+function test_install_directory_rejects_reparse_point_parent {
+    if (Try-Skip-If-No-Symlink-Privilege) { return }
+    $source = Join-Path $script:_TestTmp.FullName 'source-extension'
+    $external = Join-Path $script:_TestTmp.FullName 'external-parent'
+    $linkedParent = Join-Path $script:_TestTmp.FullName 'linked-parent'
+    New-Item -ItemType Directory -Force -Path $source, $external | Out-Null
+    'runtime' | Set-Content (Join-Path $source 'index.ts')
+    New-Item -ItemType SymbolicLink -Path $linkedParent -Target $external | Out-Null
+
+    Assert-Throws {
+        Install-DirectoryWithRollback $source (Join-Path $linkedParent 'autoresearch') @('index.ts') 'Pi autoresearch extension'
+    } 'reparse-point destination parent should fail closed'
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath $external -Force).Count
+}
+
+function test_install_directory_preserves_concurrent_destination_and_backup {
+    $source = Join-Path $script:_TestTmp.FullName 'source-extension'
+    $target = Join-Path $script:_TestTmp.FullName 'autoresearch'
+    New-Item -ItemType Directory -Force -Path $source, $target | Out-Null
+    'new' | Set-Content (Join-Path $source 'index.ts')
+    'old' | Set-Content (Join-Path $target 'index.ts')
+    Set-CommandMock 'Move-Item' {
+        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        $concurrentTarget = [string]$LiteralPath
+        if ($null -eq $ErrorAction) {
+            Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+        } else {
+            Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+        }
+        New-Item -ItemType Directory -Force -Path $concurrentTarget | Out-Null
+        'concurrent' | Set-Content (Join-Path $concurrentTarget 'concurrent.txt')
+    }
+
+    Assert-Throws {
+        Install-DirectoryWithRollback $source $target @('index.ts') 'Pi autoresearch extension'
+    } 'concurrent destination recreation should fail closed'
+    if (-not (Test-Path -LiteralPath (Join-Path $target 'concurrent.txt'))) {
+        throw 'concurrent destination missing'
+    }
+    Assert-Contains (Get-Content -Raw (Join-Path $target 'concurrent.txt')) 'concurrent'
+    $backups = @(Get-ChildItem -LiteralPath (Split-Path $target -Parent) -Filter '.autoresearch.backup.*' -Directory -Force)
+    Assert-Equals 1 $backups.Count
+    if ($backups.Count -eq 1) { Assert-Contains (Get-Content -Raw (Join-Path $backups[0].FullName 'index.ts')) 'old' }
+}
+
 function test_installai_skills_copies_only_vendored_shared_skills {
     $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
@@ -1103,6 +1148,17 @@ function test_windows_pi_lsp_config_uses_only_supported_servers {
     Assert-False ($config.servers.PSObject.Properties.Name -contains 'nil') 'Windows LSP config should not advertise unavailable nil'
 }
 
+function Initialize-TestAutoresearchSource($SeedDir) {
+    $source = Join-Path $SeedDir 'autoresearch'
+    New-Item -ItemType Directory -Force -Path (Join-Path $source 'skill') | Out-Null
+    'export default function () {}' | Set-Content (Join-Path $source 'index.ts')
+    'runtime' | Set-Content (Join-Path $source 'runtime.ts')
+    'safety' | Set-Content (Join-Path $source 'safety.ts')
+    'git' | Set-Content (Join-Path $source 'git.ts')
+    'metrics' | Set-Content (Join-Path $source 'metrics.ts')
+    "---`nname: pi-autoresearch`n---" | Set-Content (Join-Path $source 'skill\SKILL.md')
+}
+
 function Initialize-TestPiConfigSeeds {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
@@ -1115,6 +1171,7 @@ function Initialize-TestPiConfigSeeds {
     '{"globalConcurrencyLimit":7}' | Set-Content -LiteralPath (Join-Path $seedDir 'subagent-config.json')
     '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
+    Initialize-TestAutoresearchSource $seedDir
 
     return [pscustomobject]@{
         Source = Join-Path $seedDir 'subagent-config.json'
@@ -1180,8 +1237,11 @@ function test_syncpiconfigs_creates_writable_seed_files {
     '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
+    Initialize-TestAutoresearchSource $seedDir
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
-    New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
+    $staleAutoresearch = Join-Path $extensionDir 'autoresearch'
+    New-Item -ItemType Directory -Force -Path $staleAutoresearch | Out-Null
+    'obsolete' | Set-Content (Join-Path $staleAutoresearch 'obsolete.ts')
 
     SyncPiConfigs
 
@@ -1212,6 +1272,12 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-False ((Get-Content -Raw $mcp) -like '*windowsOnly*') 'Windows should deploy the shared MCP seed'
     Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
+    $autoresearch = Join-Path $extensionDir 'autoresearch'
+    Assert-FileExists (Join-Path $autoresearch 'index.ts')
+    Assert-FileExists (Join-Path $autoresearch 'runtime.ts')
+    Assert-FileExists (Join-Path $autoresearch 'skill\SKILL.md')
+    Assert-False (Test-Path -LiteralPath (Join-Path $autoresearch 'obsolete.ts')) 'Pi autoresearch deployment should remove stale files'
+    Assert-False ([bool]((Get-Item $autoresearch -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) 'Pi autoresearch should be a real directory'
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
 }
 
@@ -1229,7 +1295,7 @@ function test_syncpiconfigs_rejects_overlapping_sync {
     $script:NestedPiConfigSyncAttempted = $false
     $script:NestedPiConfigSyncFailure = $null
     Set-CommandMock 'Copy-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
+        param($LiteralPath, $Destination, [switch]$Force, [switch]$Recurse, $ErrorAction)
         if (-not $script:NestedPiConfigSyncAttempted -and $LiteralPath -eq $paths.Source -and $Destination -like '*.tmp.*') {
             $script:NestedPiConfigSyncAttempted = $true
             try {
@@ -1239,9 +1305,9 @@ function test_syncpiconfigs_rejects_overlapping_sync {
             }
         }
         if ($null -eq $ErrorAction) {
-            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -Recurse:$Recurse
         } else {
-            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
+            Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -Recurse:$Recurse -ErrorAction $ErrorAction
         }
     }
 
@@ -1389,15 +1455,16 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     'same lsp' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
     'same lsp' | Set-Content -LiteralPath (Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json')
     'linked replacement' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
+    Initialize-TestAutoresearchSource $seedDir
     $external = Join-Path $script:_TestTmp.FullName 'external-codex-status.js'
     'external' | Set-Content -LiteralPath $external
     New-Item -ItemType SymbolicLink -Path (Join-Path $extensionDir 'codex-status.js') -Target $external | Out-Null
 
     $script:PiConfigCopies = @()
     Set-CommandMock 'Copy-Item' {
-        param($LiteralPath, $Destination, [switch]$Force)
+        param($LiteralPath, $Destination, [switch]$Force, [switch]$Recurse)
         $script:PiConfigCopies += $Destination
-        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
+        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -Recurse:$Recurse
     }
 
     SyncPiConfigs
@@ -1440,6 +1507,7 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
     '{"servers":{"nil":{"command":["nil"]}}}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
     '{"globalConcurrencyLimit":99}' | Set-Content (Join-Path $subagentDir 'config.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
+    Initialize-TestAutoresearchSource $seedDir
     @'
 {
   "theme": "light",

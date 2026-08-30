@@ -5,6 +5,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { commitExperiment, fingerprintWorktree, restoreExperiment, runGit } from "./git.ts";
 import { isImprovement, parseMetrics } from "./metrics.ts";
+import { isSupportedPlatform, scriptCommand } from "./runtime.ts";
 import { readConfig, validatePilot } from "./safety.ts";
 
 const TOOL_NAMES = ["autoresearch_run", "autoresearch_log"];
@@ -33,6 +34,8 @@ function logPath(cwd: string): string {
 function readEntries(cwd: string): Array<Record<string, unknown>> {
   const file = logPath(cwd);
   if (!fs.existsSync(file)) return [];
+  const stat = fs.lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(".auto/log.jsonl must be a regular file");
   return fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
 }
 
@@ -78,11 +81,14 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
       if (!hasBaseline) await requirePilot(ctx, true, true);
 
       const commit = await runGit(ctx.cwd, ["rev-parse", "HEAD"], 5000);
-      const measure = await pi.exec(path.join(ctx.cwd, AUTO_DIR, "measure.sh"), [], { cwd: ctx.cwd, signal, timeout: 600000 });
+      if (!isSupportedPlatform(process.platform)) throw new Error("unsupported autoresearch platform");
+      const measureScript = scriptCommand(ctx.cwd, "measure", process.platform, process.env);
+      const measure = await pi.exec(measureScript.command, measureScript.args, { cwd: ctx.cwd, signal, timeout: 600000 });
       let checksExit: number | null = null;
       let checksOutput = "";
       if (measure.code === 0) {
-        const checks = await pi.exec(path.join(ctx.cwd, AUTO_DIR, "checks.sh"), [], { cwd: ctx.cwd, signal, timeout: 600000 });
+        const checksScript = scriptCommand(ctx.cwd, "checks", process.platform, process.env);
+        const checks = await pi.exec(checksScript.command, checksScript.args, { cwd: ctx.cwd, signal, timeout: 600000 });
         checksExit = checks.code;
         checksOutput = checks.stdout + checks.stderr;
       }

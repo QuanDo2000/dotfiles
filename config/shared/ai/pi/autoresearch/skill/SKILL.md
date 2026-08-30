@@ -10,12 +10,13 @@ Optimize one measurable target through finite, reversible experiments.
 ## Setup
 
 1. Confirm the goal, primary metric, direction, files in scope, constraints, and authoritative correctness checks.
-2. The extension has already verified Linux, a clean linked worktree, and an `autoresearch/*` branch. Never switch branches, change repositories, add hooks, push, or finalize automatically.
+2. The extension has already verified a supported platform, a clean linked worktree, and an `autoresearch/*` branch. Never switch branches, change repositories, add hooks, push, or finalize automatically.
 3. Create and commit:
    - `.auto/prompt.md`: goal, metric, files in scope, off-limits paths, constraints, benchmark method, and attempted ideas.
    - `.auto/config.json`: `maxIterations` from 1 through 20, `metricName`, and `direction` (`lower` or `higher`).
-   - `.auto/measure.sh`: executable, `set -euo pipefail`, and output `METRIC <metricName>=<number>`.
-   - `.auto/checks.sh`: executable, `set -euo pipefail`, and run the smallest authoritative correctness checks.
+   - Linux/macOS: executable `.auto/measure.sh` and `.auto/checks.sh` using `set -euo pipefail`.
+   - Windows: `.auto/measure.ps1` and `.auto/checks.ps1` using `$ErrorActionPreference = 'Stop'`.
+   - The measure script must output `METRIC <metricName>=<number>`; the checks script must run the smallest authoritative correctness checks.
 4. If the setup commit fails because signing is locked, stop and ask the user to run `printf test | gpg --clearsign >/dev/null`. Never disable signing.
 
 ## Loop
