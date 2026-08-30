@@ -16,7 +16,7 @@ test_ci_bash_jobs_match_local_nix_environment() {
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_equals 0 "$(grep -c 'run: nix develop \. -c bash \./tests/bash/runner\.sh$' <<< "$workflow")"
-  assert_contains "$workflow" $'  bash-linux:\n    runs-on: ubuntu-latest'
+  assert_contains "$workflow" $'  bash-linux:\n    needs: changes'
   assert_contains "$workflow" 'nix develop .#ci -c bash -c'
   assert_contains "$workflow" 'nix develop . -c bash -c'
   assert_equals 2 "$(grep -c 'neovim_pid=\$!' <<< "$workflow")"
@@ -29,6 +29,40 @@ test_ci_bash_jobs_match_local_nix_environment() {
   assert_not_contains "$workflow" '- name: Evaluate nix-darwin configuration'
   assert_not_contains "$workflow" 'runner.sh --no-docker'
   assert_not_contains "$workflow" 'docker'
+}
+
+test_ci_filters_pull_requests_but_runs_full_main_and_schedule() {
+  local workflow filter output
+  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+  filter="$REPO_DIR/scripts/ci_paths.sh"
+
+  assert_file_exists "$filter"
+  [ -f "$filter" ] || return
+  assert_not_contains "$workflow" 'dorny/paths-filter'
+  assert_contains "$workflow" $'schedule:\n    - cron:'
+  assert_contains "$workflow" "if: \${{ github.event_name == 'pull_request' }}"
+  assert_contains "$workflow" 'fetch-depth: 0'
+  assert_contains "$workflow" 'git diff --name-only --no-renames'
+  assert_contains "$workflow" 'bash scripts/ci_paths.sh'
+  assert_equals 4 "$(grep -c 'needs: changes' <<< "$workflow")"
+  assert_equals 4 "$(grep -c "github.event_name != 'pull_request' || needs.changes.outputs" <<< "$workflow")"
+  assert_contains "$workflow" "linux: \${{ steps.filter.outputs.linux }}"
+  assert_contains "$workflow" "macos: \${{ steps.filter.outputs.macos }}"
+  assert_contains "$workflow" "windows: \${{ steps.filter.outputs.windows }}"
+  assert_contains "$workflow" "nix: \${{ steps.filter.outputs.nix }}"
+
+  output="$(printf '%s\n' docs/note.md | bash "$filter")"
+  assert_equals $'linux=false\nmacos=false\nwindows=false\nnix=false' "$output"
+  output="$(printf '%s\n' dotfile.ps1 | bash "$filter")"
+  assert_equals $'linux=true\nmacos=false\nwindows=true\nnix=false' "$output"
+  output="$(printf '%s\n' config/darwin.nix | bash "$filter")"
+  assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=true' "$output"
+  output="$(printf '%s\n' config/nixos-wsl/configuration.nix | bash "$filter")"
+  assert_equals $'linux=true\nmacos=false\nwindows=false\nnix=true' "$output"
+  output="$(printf '%s\n' config/shared/ai/AGENTS.md | bash "$filter")"
+  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
+  output="$(printf '%s\n' .gitattributes | bash "$filter")"
+  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
 }
 
 test_ci_dev_shell_includes_script_dependencies() {
@@ -133,5 +167,5 @@ test_ci_cancels_superseded_runs_and_bounds_jobs() {
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_contains "$workflow" 'cancel-in-progress: true'
-  assert_equals 4 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
+  assert_equals 5 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
 }
