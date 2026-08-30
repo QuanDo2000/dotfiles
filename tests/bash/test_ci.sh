@@ -17,6 +17,7 @@ test_ci_bash_jobs_match_local_nix_environment() {
 
   assert_equals 0 "$(grep -c 'run: nix develop \. -c bash \./tests/bash/runner\.sh$' <<< "$workflow")"
   assert_contains "$workflow" $'  bash-linux:\n    runs-on: ubuntu-latest'
+  assert_contains "$workflow" $'  shellcheck-linux:\n    runs-on: ubuntu-latest'
   assert_contains "$workflow" 'nix develop .#ci -c bash -c'
   assert_contains "$workflow" 'nix develop . -c bash -c'
   assert_equals 2 "$(grep -c 'neovim_pid=\$!' <<< "$workflow")"
@@ -113,7 +114,7 @@ test_ci_pins_current_actions() {
   assert_contains "$workflow" "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0"
   assert_contains "$workflow" "DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22"
   assert_contains "$workflow" "cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1"
-  assert_equals 2 "$(grep -c 'cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17' <<< "$workflow")"
+  assert_equals 3 "$(grep -c 'cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17' <<< "$workflow")"
   assert_contains "$workflow" 'name: ${{ vars.CACHIX_CACHE_NAME }}'
   assert_contains "$workflow" "authToken: \${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}"
   assert_contains "$workflow" "skipPush: \${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}"
@@ -136,5 +137,5 @@ test_ci_cancels_superseded_runs_and_bounds_jobs() {
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_contains "$workflow" 'cancel-in-progress: true'
-  assert_equals 4 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
+  assert_equals 5 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
 }
