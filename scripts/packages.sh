@@ -436,7 +436,7 @@ function set_zsh_default {
 }
 
 function _nixos_rebuild_switch {
-  local target
+  local target configured_user current_user distro
   target="$(_nixos_flake_target)"
 
   if [[ "$DRY" == "true" ]]; then
@@ -446,6 +446,22 @@ function _nixos_rebuild_switch {
 
   _stop_codebase_memory_sessions_if_updating \
     || fail "Failed to stop active CBM sessions"
+
+  if is_wsl; then
+    configured_user="$(host_config_value username)" \
+      || fail "Failed to resolve NixOS username"
+    current_user="$(id -un)"
+    if [[ "$current_user" != "$configured_user" ]]; then
+      _run_nix_managed_switch "nixos-rebuild boot failed" sudo nixos-rebuild boot --flake "$target"
+      NIXOS_WSL_RESTART_REQUIRED=true
+      distro="${WSL_DISTRO_NAME:-NixOS}"
+      info "NixOS-WSL user change to $configured_user is staged; user tools were not synced"
+      info "Exit WSL, then run in PowerShell: wsl -t $distro; wsl -d $distro --user root exit; wsl -t $distro"
+      info "Reopen WSL, move this checkout to /home/$configured_user/dotfiles, and rerun dotfile packages"
+      return
+    fi
+  fi
+
   _run_nix_managed_switch "nixos-rebuild switch failed" sudo nixos-rebuild switch --flake "$target"
 
   if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v hyprctl >/dev/null 2>&1; then
@@ -459,6 +475,7 @@ function _nixos_rebuild_switch {
 function install_nixos {
   info "Installing packages for NixOS..."
   _nixos_rebuild_switch
+  [[ "${NIXOS_WSL_RESTART_REQUIRED:-false}" == "true" ]] && return
   success "Finished install for NixOS"
 }
 
@@ -569,6 +586,7 @@ function install_packages {
     unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
   esac
 
+  [[ "${NIXOS_WSL_RESTART_REQUIRED:-false}" == "true" ]] && return
   set_zsh_default
   _sync_neovim || fail "$NEOVIM_SYNC_ERROR"
   success "Finished install"

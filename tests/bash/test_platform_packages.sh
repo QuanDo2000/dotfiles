@@ -561,6 +561,34 @@ test_install_nixos_wsl_dry_run_uses_separate_target() {
   unset -f is_wsl
 }
 
+test_install_nixos_wsl_stages_username_change_without_user_sync() {
+  local calls="$TEST_TMPDIR/wsl-bootstrap.log"
+  DRY=false
+  is_wsl() { return 0; }
+  detect_platform() { printf 'nixos\n'; }
+  id() { printf 'nixos\n'; }
+  host_config_value() {
+    case "$1" in
+      hostName) printf 'testhost\n' ;;
+      username) printf 'quando\n' ;;
+    esac
+  }
+  sudo() { printf '%s\n' "$*" >> "$calls"; }
+  _stop_codebase_memory_sessions_if_updating() { return 0; }
+  _sync_neovim() { printf 'neovim-sync\n' >> "$calls"; }
+  set_zsh_default() { printf 'set-zsh\n' >> "$calls"; }
+
+  install_packages >/dev/null
+
+  local output
+  output="$(<"$calls")"
+  assert_contains "$output" "nixos-rebuild boot --flake $DOTFILES_DIR#testhost-wsl"
+  assert_not_contains "$output" "nixos-rebuild switch"
+  assert_not_contains "$output" "neovim-sync"
+  assert_not_contains "$output" "set-zsh"
+  unset -f is_wsl detect_platform id host_config_value sudo _stop_codebase_memory_sessions_if_updating _sync_neovim set_zsh_default
+}
+
 
 
 test_nixos_flake_target_reads_host_config_when_nix_is_missing() {
