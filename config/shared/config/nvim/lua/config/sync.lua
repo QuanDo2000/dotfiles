@@ -91,16 +91,6 @@ function M.tools()
           }
         end
       end
-      for _, name in ipairs(mason.retired_platform_packages()) do
-        local found, package = pcall(registry.get_package, name)
-        if found and package:is_installed() and mason.platform_executable(name) then
-          local target_package = package
-          operations[#operations + 1] = {
-            name = name,
-            run = function(callback) target_package:uninstall(nil, callback) end,
-          }
-        end
-      end
       run_package_operations(operations, function(operation_error)
         failure, done = operation_error, true
       end)

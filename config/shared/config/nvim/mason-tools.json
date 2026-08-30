@@ -10,12 +10,5 @@
     "stylua": "v2.5.2",
     "taplo": "0.10.0",
     "yaml-language-server": "1.24.0"
-  },
-  "retiredPlatformPackages": [
-    "bash-language-server",
-    "nil",
-    "nixfmt",
-    "shellcheck",
-    "vtsls"
-  ]
+  }
 }

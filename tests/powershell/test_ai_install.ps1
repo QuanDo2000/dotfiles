@@ -102,8 +102,8 @@ function test_windows_codebase_memory_uses_pinned_release_packages {
 
     Assert-False ($text -like '*codebase-memory-mcp/$releaseTag/install.ps1*') 'remote codebase-memory installer should not execute'
     Assert-False ($text -like '*--clients=codex*') 'repo-owned agent configs should not be regenerated'
-    Assert-False (Test-Path (Join-Path $script:RepoDir 'scripts\seed_merge\toml_tools.py')) 'generated-config repair tool should be removed'
     Assert-False ($text -like '*releases/latest*codebase-memory*') 'Windows codebase-memory release should not float'
+    Assert-False (Test-Path (Join-Path $script:RepoDir 'scripts\seed_merge\toml_tools.py')) 'generated-config repair tool should be removed'
     Assert-True ($pins.version -match '^\d+\.\d+\.\d+$') 'version should be exact semver'
     Assert-True ($pins.windows.amd64.sha256 -match '^[0-9a-f]{64}$') 'amd64 hash should be pinned'
     Assert-True ($pins.windows.arm64.sha256 -match '^[0-9a-f]{64}$') 'arm64 hash should be pinned'
@@ -223,7 +223,7 @@ function test_getcodexpathvalue_prepends_release_and_removes_old_managed_paths {
 
     $result = Get-CodexPathValue $old $current $managedRoot
 
-    Assert-Equals "$current;C:\Tools" $result
+    Assert-Equals "$current;C:\Tools;$legacyBin" $result
 }
 
 function test_synccodexconfig_creates_writable_seed_file {
@@ -726,19 +726,25 @@ function test_codex_tar_extracts_locked_archive_in_windows_powershell {
     Assert-Equals 0 $LASTEXITCODE
     New-Item -ItemType Directory -Force -Path $destination | Out-Null
 
+    $maliciousBin = Join-Path $script:_TestTmp.FullName 'malicious-bin'
+    $hijackSentinel = Join-Path $script:_TestTmp.FullName 'path-tar-ran'
+    New-Item -ItemType Directory -Force -Path $maliciousBin | Out-Null
+    "@echo off`r`necho hijacked>`"$hijackSentinel`"`r`nexit /b 1`r`n" |
+        Set-Content -LiteralPath (Join-Path $maliciousBin 'tar.cmd') -Encoding ascii
+
     $oldArchive = $env:CODEX_TEST_ARCHIVE
     $oldDestination = $env:CODEX_TEST_DESTINATION
+    $oldScript = $env:CODEX_TEST_SCRIPT
+    $oldPath = $env:PATH
     $env:CODEX_TEST_ARCHIVE = $archive
     $env:CODEX_TEST_DESTINATION = $destination
+    $env:CODEX_TEST_SCRIPT = $script:DotfileScript
+    $env:PATH = "$maliciousBin;$oldPath"
     $probe = @'
 $ErrorActionPreference = 'Stop'
-$lock = [IO.File]::Open($env:CODEX_TEST_ARCHIVE, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-try {
-    & (Join-Path $env:SystemRoot 'System32\tar.exe') -xzf $env:CODEX_TEST_ARCHIVE -C $env:CODEX_TEST_DESTINATION
-    if ($LASTEXITCODE -ne 0) { exit 1 }
-} finally {
-    $lock.Dispose()
-}
+. $env:CODEX_TEST_SCRIPT -NoMain
+Expand-WindowsTarArchive $env:CODEX_TEST_ARCHIVE $env:CODEX_TEST_DESTINATION
+if ($LASTEXITCODE -ne 0) { exit 1 }
 if (-not (Test-Path -LiteralPath (Join-Path $env:CODEX_TEST_DESTINATION 'codex-resources\codex-windows-sandbox-setup.exe'))) { exit 2 }
 '@
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($probe))
@@ -746,9 +752,12 @@ if (-not (Test-Path -LiteralPath (Join-Path $env:CODEX_TEST_DESTINATION 'codex-r
     try {
         & $windowsPowerShell.Source -NoProfile -NonInteractive -EncodedCommand $encoded
         Assert-Equals 0 $LASTEXITCODE
+        Assert-False (Test-Path -LiteralPath $hijackSentinel) 'PATH-resolved tar must not run'
     } finally {
         $env:CODEX_TEST_ARCHIVE = $oldArchive
         $env:CODEX_TEST_DESTINATION = $oldDestination
+        $env:CODEX_TEST_SCRIPT = $oldScript
+        $env:PATH = $oldPath
     }
 }
 

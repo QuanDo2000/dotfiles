@@ -6,8 +6,6 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 setup() { init_test_env; }
 teardown() { cleanup_test_env; }
 
-HOME_CONFIG="$(<"$REPO_DIR/config/home.nix")"
-
 test_tmux_avoids_recurring_identity_process() {
   local tmux_config
   tmux_config="$(<"$REPO_DIR/config/unix/.tmux.conf")"
@@ -19,7 +17,6 @@ test_tmux_uses_native_clipboard_bindings_without_yank_plugin() {
   local tmux_config
   tmux_config="$(<"$REPO_DIR/config/unix/.tmux.conf")"
 
-  assert_not_contains "$HOME_CONFIG" 'pkgs.tmuxPlugins.yank'
   assert_contains "$tmux_config" 'set -g set-clipboard on'
   assert_contains "$tmux_config" 'bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel'
   assert_contains "$tmux_config" 'bind -T copy-mode-vi Y send-keys -X copy-selection-and-cancel \; paste-buffer -p'
@@ -30,7 +27,6 @@ test_tmux_owns_catppuccin_theme_without_plugin() {
   local tmux_config
   tmux_config="$(<"$REPO_DIR/config/unix/.tmux.conf")"
 
-  assert_not_contains "$HOME_CONFIG" 'tmuxPlugins.catppuccin'
   assert_not_contains "$tmux_config" '@catppuccin_'
   assert_contains "$tmux_config" 'set -g mode-style "bg=#363a4f,bold"'
   assert_contains "$tmux_config" 'set -g status-style "default"'

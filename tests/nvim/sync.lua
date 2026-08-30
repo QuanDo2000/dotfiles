@@ -8,7 +8,6 @@ local packages = {}
 local requested = {}
 local refresh_ok, refresh_calls = true, 0
 local registry_current = true
-local native_replacements = {}
 local tool_pins = {
   ["json-lsp"] = "1.0", ["lua-language-server"] = "1.0", ["markdownlint-cli2"] = "1.0",
   marksman = "1.0", prettier = "1.0", stylua = "1.0", taplo = "1.0", ["yaml-language-server"] = "1.0",
@@ -17,9 +16,7 @@ local tool_pins = {
 package.preload["config.mason"] = function()
   return {
     tools = function() return tool_pins end,
-    retired_platform_packages = function() return { "nil", "nixfmt" } end,
     registry_current = function() return registry_current end,
-    platform_executable = function(name) return native_replacements[name] == true end,
   }
 end
 
@@ -99,12 +96,8 @@ package.preload["mason-registry"] = function()
   }
 end
 
-local executable, has = vim.fn.executable, vim.fn.has
-local has_nix, is_windows = false, true
-vim.fn.executable = function(name)
-  if name == "nix" then return has_nix and 1 or 0 end
-  return executable(name)
-end
+local has = vim.fn.has
+local is_windows = true
 vim.fn.has = function(name)
   if name == "win32" then return is_windows and 1 or 0 end
   if name == "mac" then return 0 end
@@ -141,14 +134,6 @@ sync.tools()
 assert(packages.prettier.version == tool_pins.prettier, "stale Mason tool must update to its pin")
 assert(packages.prettier.installs == prettier_installs + 1, "stale Mason tool must reinstall")
 
-packages["nil"] = { installed = true, uninstalls = 0, is_installed = function(self) return self.installed end,
-  uninstall = function(self, _, callback) self.installed, self.uninstalls = false, self.uninstalls + 1; callback(true) end }
-packages.nixfmt = { installed = true, uninstalls = 0, is_installed = function(self) return self.installed end,
-  uninstall = function(self, _, callback) self.installed, self.uninstalls = false, self.uninstalls + 1; callback(true) end }
-native_replacements["nil"] = true
-sync.tools()
-assert(not packages["nil"].installed and packages["nil"].uninstalls == 1, "native nil must replace retired Mason nil")
-assert(packages.nixfmt.installed, "retired Mason package must remain without a native replacement")
 local initial_refreshes = refresh_calls
 sync.tools()
 assert(refresh_calls == initial_refreshes + 1, "tool sync must refresh the pinned registry")
@@ -237,7 +222,7 @@ packages.prettier.installed = false
 refresh_ok = false
 ok, err = pcall(sync.tools)
 assert(not ok and tostring(err):find("registry refresh failed", 1, true), "registry failure must be clear")
-vim.fn.executable, vim.fn.has = executable, has
+vim.fn.has = has
 vim.fn.delete(lockfile)
 vim.fn.delete(lazy_options.root, "rf")
 vim.fn.delete(parser_info_dir, "rf")

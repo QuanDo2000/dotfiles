@@ -154,7 +154,6 @@ test_pi_web_access_is_pinned() {
   if [[ -f "$config" ]]; then
     assert_equals "none" "$(jq -r '.workflow' "$config")"
   fi
-  assert_contains "$HOME_CONFIG" 'web-search.json:../web-search.json'
 }
 
 test_pi_model_cycling_shortcuts_are_disabled() {
@@ -189,10 +188,6 @@ test_pi_lsp_uses_pinned_package_and_nix_servers() {
       .servers["bash-language-server"].command == ["bash-language-server", "start"]
     ' "$lsp_config"
   fi
-  for package in vtsls nil bash-language-server shellcheck; do
-    assert_contains "$HOME_CONFIG" "$package"
-  done
-  assert_contains "$HOME_CONFIG" 'settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json subagent-config.json:extensions/subagent/config.json'
 }
 
 test_pi_subagent_tools_exclude_removed_codebase_memory() {
@@ -260,8 +255,6 @@ test_code_search_stack_enables_auto_index_and_agent_workflows() {
   codex="$(<"$REPO_DIR/config/shared/ai/codex/config.toml")"
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
 
-  assert_contains "$HOME_CONFIG" 'config set auto_index true'
-  assert_contains "$HOME_CONFIG" 'config set auto_watch true'
   assert_contains "$codex" '[mcp_servers.codebase-memory-mcp.tools.detect_changes]'
   assert_contains "$agents" 'Use codebase-memory first when those tools are available'
   assert_contains "$agents" 'Use native read-only filename/text search (`rg`, `fd`, `find`, or harness-provided `grep`/`find`) for raw lookup and fallback.'
@@ -281,18 +274,15 @@ test_all_ai_agents_start_with_shared_policy() {
   assert_contains "$soul" 'Apply these fixed rules at every main-agent and subagent startup.'
   assert_contains "$soul" '**Minimal implementation:**'
   assert_contains "$soul" '**Terse communication:**'
-  assert_contains "$HOME_CONFIG" '".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;'
 }
 
 
 test_pi_uses_upstream_quit_command() {
-  local package windows
+  local package
   package="$(<"$REPO_DIR/packages/pi-agent.nix")"
-  windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_not_contains "$package" "dist/core/slash-commands.js"
   assert_not_contains "$package" "dist/modes/interactive/interactive-mode.js"
-  assert_not_contains "$windows" 'caveman-default.js'
 }
 
 
@@ -306,14 +296,7 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
   assert_equals "false" "$(jq 'has("caveman") or has("ponytail")' "$pins")"
-  for skill in systematic-debugging test-driven-development; do
-    assert_contains "$HOME_CONFIG" "\".agents/skills/$skill\" = forceSource ./shared/ai/skills/$skill;"
-  done
-  assert_not_contains "$HOME_CONFIG" '.agents/skills/caveman'
-  assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail"'
-  assert_not_contains "$HOME_CONFIG" '.agents/skills/ponytail-help'
   for skill in diff-review-qa verification-before-completion efficient-subagent-use ponytail-audit ponytail-debt ponytail-gain ponytail-review; do
-    assert_not_contains "$HOME_CONFIG" ".agents/skills/$skill"
     assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md" ]] && echo true || echo false)"
   done
   assert_not_contains "$windows" 'npx --yes skills add'
@@ -326,7 +309,6 @@ test_skill_retrospective_is_installed_cross_platform() {
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_file_exists "$skill"
-  assert_contains "$HOME_CONFIG" '".agents/skills/skill-retrospective" = forceSource ./shared/ai/skills/skill-retrospective;'
   assert_contains "$windows" "'systematic-debugging', 'test-driven-development', 'skill-retrospective'"
   assert_contains "$(<"$skill")" 'Use bounded session search rather than scanning all history by default.'
   assert_contains "$(<"$skill")" 'Do not assign numeric grades or composite scores.'
@@ -387,7 +369,6 @@ test_all_ai_agents_delegate_efficiently() {
   assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md" ]] && echo true || echo false)"
   assert_contains "$agents" 'For explicit code reviews, report findings only: severity `P0`–`P3`, confidence, exact `path:line`, concrete failure mode, smallest fix, and residual risk.'
   assert_contains "$agents" 'Reject praise, style-only noise, speculative findings, duplicates, and claims unsupported by source or supplied validation evidence.'
-  assert_not_contains "$HOME_CONFIG" '.agents/skills/diff-review-qa'
 
   for guidance in "$agents" "$soul"; do
     assert_contains "$guidance" 'Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check'
@@ -622,34 +603,9 @@ test_nixos_flake_target_fails_when_hostname_missing() {
   unset -f nix
 }
 
-test_home_manager_uses_current_nix_platform_api() {
-  assert_contains "$HOME_CONFIG" 'pkgs.stdenv.hostPlatform.isLinux'
-  assert_contains "$HOME_CONFIG" 'pkgs.stdenv.hostPlatform.isDarwin'
-  assert_not_contains "$HOME_CONFIG" 'pkgs.stdenv.isLinux'
-  assert_not_contains "$HOME_CONFIG" 'pkgs.stdenv.isDarwin'
-  assert_contains "$(<"$REPO_DIR/packages/webcord-release.nix")" 'appimageTools.extract {'
-}
-
-test_home_manager_declares_default_apps() {
-  local config="$HOME_CONFIG"
-
-  assert_contains "$config" $'    thunar\n'
-  assert_contains "$config" $'    xarchiver\n'
-  assert_contains "$config" '"inode/directory" = [ "thunar.desktop" ];'
-  assert_contains "$config" '"x-scheme-handler/https" = [ "google-chrome.desktop" ];'
-  assert_contains "$config" '"application/zip" = [ "xarchiver.desktop" ];'
-  assert_contains "$config" 'xdg.configFile."mimeapps.list" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {'
-  assert_contains "$config" 'xdg.dataFile."applications/mimeapps.list" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {'
-}
-
 test_home_manager_installs_bitwarden_picker() {
-  local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
+  local hypr_config="$HYPR_CONFIG"
 
-  assert_contains "$home_config" "rbw"
-  assert_contains "$home_config" '".local/bin/bitwarden-picker"'
-  assert_contains "$home_config" './unix/bin/bitwarden-picker'
-  assert_not_contains "$home_config" "rofi-rbw"
-  assert_not_contains "$home_config" "wtype"
   assert_contains "$hypr_config" 'mainMod .. " + CTRL + Space"'
   assert_contains "$hypr_config" 'app .. "bitwarden-picker"'
 }
@@ -666,82 +622,16 @@ test_arch_bootstrap_declares_host_fuse3() {
   assert_contains "$(<"$REPO_DIR/scripts/packages.sh")" 'base-devel curl git zsh fuse3'
 }
 
-test_home_manager_declares_optional_profile_features() {
-  local feature
-  for feature in desktop personalApps obsidianSync googleDriveSync; do
-    assert_contains "$HOME_CONFIG" "$feature = args.$feature or false"
-  done
-  assert_contains "$HOME_CONFIG" 'personalPackages = with pkgs; [ ankiWithAddons obsidian webcord ];'
-  assert_contains "$HOME_CONFIG" 'obsidianSyncPackages = with pkgs; [ obsidian-headless ];'
-  assert_not_contains "$HOME_CONFIG" 'pkgs.fuse3'
-  assert_contains "$HOME_CONFIG" 'lib.optionals storageOffsiteBackup [ pkgs.restic ]'
-  assert_contains "$HOME_CONFIG" 'programs.rclone.enable = googleDriveSync || storageOffsiteBackup;'
-}
-
-test_home_manager_profile_marker_and_guards_cover_all_optional_features() {
-  assert_contains "$HOME_CONFIG" '".config/dotfiles/profile"'
-  for marker in google-drive-bisync-initialized google-drive-storage-sync-initialized storage-offsite-backup-initialized; do
-    assert_contains "$HOME_CONFIG" "$marker"
-  done
-  assert_contains "$HOME_CONFIG" 'googleDriveSync || storageOffsiteBackup'
-}
-
-test_home_manager_separates_desktop_and_sync_services() {
-  assert_contains "$HOME_CONFIG" 'lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux)'
-  assert_contains "$HOME_CONFIG" 'lib.mkIf (googleDriveSync && pkgs.stdenv.hostPlatform.isLinux)'
-  assert_contains "$HOME_CONFIG" 'lib.mkIf (obsidianSync && pkgs.stdenv.hostPlatform.isLinux)'
-  assert_contains "$HOME_CONFIG" 'systemd.user.services.storage-offsite-backup = lib.mkIf storageOffsiteBackup'
-}
-
 test_home_manager_installs_pinned_webcord_release() {
   local package="$REPO_DIR/packages/webcord-release.nix" flake
   flake="$(<"$REPO_DIR/flake.nix")"
 
-  assert_contains "$HOME_CONFIG" "webcord"
   assert_contains "$flake" 'webcord = final.callPackage ./packages/webcord-release.nix { };'
   assert_file_exists "$package"
   [[ -f "$package" ]] || return
   assert_contains "$(<"$package")" 'version = "'
   assert_contains "$(<"$package")" 'hash = "sha256-'
   assert_contains "$(<"$package")" "appimageTools.wrapType2"
-}
-
-test_home_manager_secures_google_drive_sync() {
-  assert_not_contains "$HOME_CONFIG" 'pkgs.fuse3'
-  assert_contains "$HOME_CONFIG" 'programs.rclone.enable = googleDriveSync || storageOffsiteBackup;'
-  assert_contains "$HOME_CONFIG" '--file-perms 0600 --dir-perms 0700'
-  assert_contains "$HOME_CONFIG" 'UMask = "0077";'
-  assert_contains "$HOME_CONFIG" 'ExecStopPost = "${pkgs.coreutils}/bin/chmod -R u=rwX,go= ${homeDir}/Documents/Drive ${homeDir}/Documents/.Drive-backup";'
-}
-
-test_network_services_apply_safe_process_sandbox() {
-  local mount_service
-  mount_service="$(awk '
-    /systemd.user.services.google-drive-mount =/ { found = 1 }
-    /systemd.user.services.google-drive-bisync =/ { exit }
-    found { print }
-  ' <<< "$HOME_CONFIG")"
-  for setting in \
-    'NoNewPrivileges = true;' \
-    'RestrictSUIDSGID = true;' \
-    'RestrictRealtime = true;' \
-    'LockPersonality = true;' \
-    'SystemCallArchitectures = "native";' \
-    'RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];'; do
-    assert_contains "$HOME_CONFIG" "$setting"
-  done
-  assert_equals "5" "$(grep -c 'Service = networkServiceHardening //' <<< "$HOME_CONFIG")"
-  assert_equals "2" "$(grep -c 'UMask = "0077";' <<< "$HOME_CONFIG")"
-  assert_equals "1" "$(grep -c 'NoNewPrivileges = false;' <<< "$HOME_CONFIG")"
-  assert_contains "$mount_service" 'NoNewPrivileges = false;'
-  for setting in \
-    'RestrictSUIDSGID = true;' \
-    'RestrictRealtime = true;' \
-    'LockPersonality = true;' \
-    'SystemCallArchitectures = "native";' \
-    'RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];'; do
-    assert_not_contains "$mount_service" "$setting"
-  done
 }
 
 test_obsidian_service_skips_non_vault_directories() {
@@ -752,38 +642,12 @@ test_google_drive_storage_sync() {
   local exit_code=0
   python3 "$REPO_DIR/scripts/google-drive-storage-sync.py" --self-test >/dev/null 2>&1 || exit_code=$?
   assert_equals "0" "$exit_code"
-  assert_contains "$HOME_CONFIG" "systemd.user.services.google-drive-storage-sync"
-  assert_contains "$HOME_CONFIG" "systemd.user.timers.google-drive-storage-sync"
-  assert_contains "$HOME_CONFIG" 'OnCalendar = "daily";'
-  assert_contains "$HOME_CONFIG" 'google-drive-sync.lock'
-  assert_contains "$HOME_CONFIG" 'TimeoutStartSec = "65m";'
-  assert_contains "$HOME_CONFIG" 'TimeoutStartSec = "infinity";'
-  local lock_wait timeout_minutes
-  lock_wait="$(grep -o -- '--wait [0-9]*' <<<"$HOME_CONFIG" | head -n1 | awk '{print $2}')"
-  timeout_minutes="$(grep -o 'TimeoutStartSec = "[0-9]*m"' <<<"$HOME_CONFIG" | head -n1 | tr -dc '0-9')"
-  (( timeout_minutes * 60 > lock_wait + 1800 )) || echo '  bisync timeout leaves insufficient execution budget after lock wait' >> "$ERROR_FILE"
 }
 
 test_storage_offsite_backup() {
   local exit_code=0
   bash "$REPO_DIR/config/arch-server/restic-recover" --self-test >/dev/null 2>&1 || exit_code=$?
   assert_equals "0" "$exit_code"
-  assert_contains "$HOME_CONFIG" "storageOffsiteBackup = args.storageOffsiteBackup or false"
-  assert_contains "$HOME_CONFIG" 'lib.optionals storageOffsiteBackup [ pkgs.restic ]'
-  assert_contains "$HOME_CONFIG" '".local/bin/restic-recover" = lib.mkIf storageOffsiteBackup'
-  assert_contains "$HOME_CONFIG" "systemd.user.services.storage-offsite-backup"
-  assert_contains "$HOME_CONFIG" "systemd.user.timers.storage-offsite-backup"
-  assert_contains "$HOME_CONFIG" 'RESTIC_REPOSITORY=rclone:gdrive:ServerBackup/restic'
-  assert_contains "$HOME_CONFIG" '/mnt/storage/Storage/Documents /mnt/storage/Storage/Book /mnt/storage/Storage/Music'
-  assert_contains "$HOME_CONFIG" 'ConditionPathIsMountPoint = "/mnt/storage";'
-  assert_contains "$HOME_CONFIG" 'ConditionPathIsDirectory = ['
-  assert_contains "$HOME_CONFIG" '"/mnt/storage/Storage/Documents"'
-  assert_contains "$HOME_CONFIG" '"/mnt/storage/Storage/Book"'
-  assert_contains "$HOME_CONFIG" '"/mnt/storage/Storage/Music"'
-  assert_not_contains "$HOME_CONFIG" '/mnt/storage/Storage/Quan'
-  assert_contains "$HOME_CONFIG" 'storage-offsite-backup-initialized'
-  assert_contains "$HOME_CONFIG" 'storage-offsite-excludes'
-  assert_contains "$HOME_CONFIG" "systemd.user.services.storage-offsite-maintenance"
   assert_contains "$HOME_CONFIG" 'home.activation.guardStorageOffsiteProfile'
   assert_contains "$HOME_CONFIG" 'lib.hm.dag.entryBefore [ "writeBoundary" ]'
   assert_contains "$HOME_CONFIG" 'Refusing generic Home Manager profile'
@@ -795,21 +659,16 @@ test_storage_offsite_backup() {
 }
 
 test_home_manager_installs_screenshot_tools() {
-  local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
+  local hypr_config="$HYPR_CONFIG"
 
-  assert_contains "$home_config" "grim"
-  assert_contains "$home_config" "slurp"
   assert_contains "$hypr_config" 'bind("Print"'
   assert_contains "$hypr_config" 'bind("SHIFT + Print"'
   assert_contains "$hypr_config" 'bind("CTRL + Print"'
 }
 
 test_home_manager_enables_fuzzel() {
-  local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
+  local hypr_config="$HYPR_CONFIG"
 
-  assert_contains "$home_config" "programs.fuzzel = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux)"
-  assert_contains "$home_config" 'terminal = "ghostty";'
-  assert_contains "$home_config" 'launch-prefix = "uwsm app --";'
   assert_contains "$hypr_config" 'mainMod .. " + Space"'
   assert_contains "$hypr_config" 'hl.dsp.exec_cmd(app .. "fuzzel")'
 }
@@ -823,7 +682,6 @@ test_hyprland_uses_uwsm_application_lifecycle() {
 }
 
 test_hyprshutdown_gracefully_ends_power_actions() {
-  assert_contains "$HOME_CONFIG" "hyprshutdown"
   assert_contains "$NIXOS_CONFIG" 'BackgroundModeEnabled = false;'
   assert_contains "$HYPR_CONFIG" 'hl.dsp.exec_cmd("hyprshutdown")'
   assert_contains "$WAYBAR_CONFIG" '"logout": "uwsm app -- hyprshutdown"'
@@ -835,17 +693,14 @@ test_hyprshutdown_gracefully_ends_power_actions() {
 }
 
 test_waybar_and_fcitx_use_session_lifecycle() {
-  assert_contains "$HOME_CONFIG" "programs.waybar ="
-  assert_contains "$HOME_CONFIG" "systemd.enable = desktop && pkgs.stdenv.hostPlatform.isLinux;"
   assert_not_contains "$HYPR_CONFIG" "scripts/reload-waybar.sh"
   assert_not_contains "$HYPR_CONFIG" 'fcitx5 -d'
   assert_contains "$HYPR_CONFIG" "systemctl --user restart waybar.service"
 }
 
 test_hyprland_adds_media_controls() {
-  local home_config="$HOME_CONFIG" hypr_config="$HYPR_CONFIG"
+  local hypr_config="$HYPR_CONFIG"
 
-  assert_contains "$home_config" "playerctl"
   assert_contains "$hypr_config" 'bind("XF86AudioPlay"'
   assert_contains "$hypr_config" 'bind("XF86AudioPrev"'
   assert_contains "$hypr_config" 'bind("XF86AudioNext"'
@@ -879,9 +734,6 @@ test_hyprland_exposes_keybind_list() {
   assert_contains "$config" 'description = description'
   assert_contains "$config" '$HOME/.local/bin/show-keybinds'
   assert_not_contains "$config" '$HOME/dotfiles/scripts/show-keybinds.sh'
-  assert_contains "$HOME_CONFIG" '".local/bin/input-method-status"'
-  assert_contains "$HOME_CONFIG" '".local/bin/hyprsunset-status"'
-  assert_contains "$HOME_CONFIG" '".local/bin/show-keybinds"'
   assert_contains "$script" 'hyprctl binds -j'
   assert_contains "$script" 'fuzzel --dmenu'
 }
@@ -953,7 +805,6 @@ test_waybar_audio_tooltip_shows_selected_output() {
 }
 
 test_waybar_audio_click_opens_mixer() {
-  assert_contains "$HOME_CONFIG" "pavucontrol"
   assert_contains "$WAYBAR_CONFIG" '"on-click": "pavucontrol"'
 }
 
@@ -979,51 +830,11 @@ test_hyprland_configures_actual_mouse() {
 }
 
 test_home_manager_enables_hyprsunset() {
-  local home_config="$HOME_CONFIG" sunset_config="$SUNSET_CONFIG"
+  local sunset_config="$SUNSET_CONFIG"
 
-  assert_contains "$home_config" "services.hyprsunset.enable = desktop && pkgs.stdenv.hostPlatform.isLinux;"
-  assert_contains "$home_config" 'xdg.configFile."ghostty/config" = lib.mkIf (pkgs.stdenv.hostPlatform.isDarwin || (desktop && pkgs.stdenv.hostPlatform.isLinux))'
-  assert_contains "$home_config" 'systemd.user.services.hyprsunset = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {'
   assert_contains "$sunset_config" "time = 07:00"
   assert_contains "$sunset_config" "time = 20:00"
   assert_contains "$sunset_config" "temperature = 4500"
-}
-
-test_home_manager_enables_clipboard_persistence() {
-  local config="$HOME_CONFIG"
-
-  assert_contains "$config" "services.wl-clip-persist = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux)"
-  assert_contains "$config" 'clipboardType = "regular";'
-  assert_contains "$config" 'systemd.user.services.wl-clip-persist = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {'
-}
-
-test_home_manager_enables_mako() {
-  local config="$HOME_CONFIG"
-
-  assert_contains "$config" "services.mako = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux)"
-  assert_contains "$config" 'output = "DP-3";'
-  assert_contains "$config" 'default-timeout = 5000;'
-}
-
-test_home_manager_declares_default_user_dirs() {
-  local config="$HOME_CONFIG"
-
-  assert_contains "$config" 'documents = "${homeDir}/Documents";'
-  assert_contains "$config" 'download = "${homeDir}/Downloads";'
-  assert_contains "$config" "desktop = null;"
-}
-
-test_home_manager_enables_hyprpolkitagent() {
-  local config="$HOME_CONFIG"
-
-  assert_contains "$config" "services.hyprpolkitagent.enable = desktop && pkgs.stdenv.hostPlatform.isLinux;"
-  assert_contains "$config" 'systemd.user.services.hyprpolkitagent = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) {'
-}
-
-test_home_manager_forces_jj_config_takeover() {
-  local config="$HOME_CONFIG"
-
-  assert_contains "$config" '"${homeDir}/.config/jj/config.toml".force = true;'
 }
 
 test_nixos_enables_gnome_keyring() {

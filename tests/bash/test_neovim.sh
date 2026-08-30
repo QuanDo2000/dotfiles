@@ -62,11 +62,9 @@ test_neovim_pins_mason_registry_and_tool_versions() {
   assert_file_exists "$pins"
   assert_equals "8" "$(jq '.tools | length' "$pins")"
   assert_equals "64" "$(jq -r '.registrySha256 | length' "$pins")"
-  assert_equals "bash-language-server,nil,nixfmt,shellcheck,vtsls" "$(jq -r '.retiredPlatformPackages | join(",")' "$pins")"
   assert_contains "$init" 'registries = { require("config.mason").registry() }'
   assert_contains "$home" 'xdg.configFile."nvim/mason-tools.json"'
   assert_contains "$sync" 'get_installed_version() ~= version'
-  assert_contains "$sync" 'retired_platform_packages()'
 }
 
 test_neovim_owns_only_used_build_and_mason_tools() {

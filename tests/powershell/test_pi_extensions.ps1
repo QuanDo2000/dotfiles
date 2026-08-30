@@ -9,7 +9,7 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'Get-Command', 'node', 'npm', 'py', 'tar', 'Invoke-WebRequest', 'Copy-Item') {
+    foreach ($command in 'Get-Command', 'node', 'npm', 'py', 'pi', 'tar', 'Invoke-WebRequest', 'Copy-Item') {
         Clear-CommandMock $command
     }
     $env:PROCESSOR_ARCHITECTURE = $script:OriginalArchitecture
@@ -163,23 +163,12 @@ function test_installai_installs_pinned_node_before_ai_tools {
             $original[$name] = (Get-Command $name).ScriptBlock
             Set-FunctionMock $name { $calls.Add($MyInvocation.MyCommand.Name) }
         }
-        InstallAi
-        Assert-Equals 'InstallFnm' $calls[0] 'pinned Node should install first'
-        Assert-Equals 'InstallCodex' $calls[1] 'Codex should follow pinned Node'
-        Assert-True ($calls.IndexOf('SyncCodexConfig') -lt $calls.IndexOf('InstallCodebaseMemory')) 'repo-owned Codex config should exist before codebase-memory runtime setup'
+        Set-CommandMock 'pi' { $calls.Add('pi update --extensions'); $global:LASTEXITCODE = 0 }
+        InstallAi -Update
+        Assert-Equals 'InstallFnm,InstallCodex,SyncCodexConfig,InstallCodebaseMemory,InstallPi,InstallPiLanguageServers,InstallPiExtensions,SyncPiConfigs,pi update --extensions,SyncAiInstructions,InstallAiSkills' ($calls -join ',') 'InstallAi collaborators should run in the safe order'
     } finally {
         foreach ($name in $names) { Set-FunctionMock $name $original[$name] }
     }
-}
-
-function test_installai_activates_locked_extensions_before_reconciliation {
-    $definition = (Get-Command InstallAi).Definition
-    $installIndex = $definition.IndexOf('InstallPiExtensions')
-    $syncIndex = $definition.IndexOf('SyncPiConfigs')
-    $updateIndex = $definition.IndexOf('pi update --extensions')
-
-    Assert-True ($installIndex -ge 0 -and $installIndex -lt $syncIndex) 'locked release should exist before settings activation'
-    Assert-True ($syncIndex -lt $updateIndex) 'local package settings should activate before Pi reconciliation'
 }
 
 function test_installpiextensions_rejects_lock_hash_mismatch_before_npm {
@@ -191,24 +180,6 @@ function test_installpiextensions_rejects_lock_hash_mismatch_before_npm {
 
     Assert-Throws { InstallPiExtensions 6>&1 | Out-Null } 'lock mismatch should fail closed'
     Assert-False $script:NpmCalled 'npm should not run before lock validation'
-}
-
-function test_piextensionsrelease_validates_hermes_background_flush_patch {
-    $definition = (Get-Command Test-PiExtensionsRelease).Definition
-
-    Assert-Contains $definition 'execDetachedChildPrompt'
-    Assert-Contains $definition 'cleanupPromptDirectory'
-    Assert-Contains $definition 'windowsHide: true'
-}
-
-function test_installpiextensions_applies_hermes_background_flush_patch_after_npm {
-    $definition = (Get-Command InstallPiExtensions).Definition
-    $npmIndex = $definition.IndexOf('npm ci --prefix')
-    $patchIndex = $definition.IndexOf('patch_pi_hermes_background_flush.py')
-    $publishIndex = $definition.IndexOf('Move-Item -LiteralPath $staging -Destination $release')
-
-    Assert-True ($npmIndex -ge 0 -and $npmIndex -lt $patchIndex) 'Hermes patch should run after npm materializes sources'
-    Assert-True ($patchIndex -lt $publishIndex) 'Hermes patch should run before immutable release publication'
 }
 
 function test_installpiextensions_hashes_staged_lock_while_read_locked {
@@ -293,4 +264,19 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
     $pins = Get-Content -Raw $pinsPath | ConvertFrom-Json
     $release = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$($pins.releaseId)"
     Assert-True (Test-PiExtensionsRelease $release $pins) 'immutable extension release should validate'
+
+    $tamperCases = @(
+        @{ Path = Join-Path $release 'node_modules\pi-hermes-memory\src\handlers\session-flush.ts'; Marker = 'execDetachedChildPrompt' },
+        @{ Path = Join-Path $release 'node_modules\pi-hermes-memory\src\handlers\pi-child-process.ts'; Marker = '"--cleanup-dir"' },
+        @{ Path = Join-Path $release 'node_modules\pi-hermes-memory\src\handlers\child-process-watchdog.mjs'; Marker = 'cleanupPromptDirectory' },
+        @{ Path = Join-Path $release 'node_modules\pi-hermes-memory\src\handlers\child-process-watchdog.mjs'; Marker = 'windowsHide: true' }
+    )
+    foreach ($case in $tamperCases) {
+        $original = Get-Content -Raw -LiteralPath $case.Path
+        $tampered = $original.Replace($case.Marker, "REMOVED_$($case.Marker)")
+        Set-Content -LiteralPath $case.Path -Value $tampered -Encoding ascii -NoNewline
+        Assert-False (Test-PiExtensionsRelease $release $pins) "release missing $($case.Marker) must fail validation"
+        Set-Content -LiteralPath $case.Path -Value $original -Encoding ascii -NoNewline
+        Assert-True (Test-PiExtensionsRelease $release $pins) "restored $($case.Marker) release should validate"
+    }
 }

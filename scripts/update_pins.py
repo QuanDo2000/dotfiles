@@ -567,9 +567,7 @@ def update_neovim(repo: Path) -> None:
     ) + "\n}\n"
     atomic_text(lock_path, compact_lock)
     mason_path = repo / "config/shared/config/nvim/mason-tools.json"
-    existing_mason = json.loads(mason_path.read_text(encoding="utf-8"))
     mason = latest_mason_pins()
-    mason["retiredPlatformPackages"] = existing_mason["retiredPlatformPackages"]
     atomic_json(mason_path, mason)
     print(f"updated {len(lock)} Neovim plugin pins and {len(mason['tools'])} Mason tool pins")
 

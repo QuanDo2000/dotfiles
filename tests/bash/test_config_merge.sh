@@ -304,33 +304,6 @@ test_pi_three_way_merge_keeps_live_changes_pending_when_seed_is_read_only() {
   rm -rf "$tmp"
 }
 
-test_pi_seed_merge_removes_retired_codebase_memory_without_baseline() {
-  local tmp script live seed base
-  tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/seed_merge/pi.py"
-  live="$tmp/live.json"
-  seed="$tmp/seed.json"
-  base="$tmp/base.json"
-
-  cat > "$live" <<'EOF'
-{
-  "mcpServers": {
-    "codebaseMemory": {"command": "codebase-memory-mcp", "lifecycle": "eager"},
-    "custom": {"command": "custom-mcp"}
-  }
-}
-EOF
-  printf '%s\n' '{"mcpServers":{}}' > "$seed"
-
-  python3 "$script" "$live" "$seed" "$seed" "$base" >/dev/null
-
-  assert_equals "false" "$(jq '.mcpServers | has("codebaseMemory")' "$live")"
-  assert_equals "false" "$(jq '.mcpServers | has("codebaseMemory")' "$seed")"
-  assert_equals "custom-mcp" "$(jq -r '.mcpServers.custom.command' "$live")"
-  assert_equals "custom-mcp" "$(jq -r '.mcpServers.custom.command' "$seed")"
-  rm -rf "$tmp"
-}
-
 test_pi_seed_merge_engine_applies_live_only_nested_json() {
   local tmp script live seed base output
   tmp="$(mktemp -d)"

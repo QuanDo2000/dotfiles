@@ -373,12 +373,10 @@ function Get-CodexHome {
 
 function Get-CodexPathValue($PathValue, $BinDir, $ManagedRoot) {
     $managedRootNormalized = $ManagedRoot.TrimEnd([char[]](92, 47))
-    $legacyBin = Join-Path $env:LOCALAPPDATA "Programs\OpenAI\Codex\bin"
     $entries = @($PathValue -split ";" | Where-Object {
         if (-not $_) { return $false }
         $entry = $_.TrimEnd([char[]](92, 47))
         return $entry -ine $BinDir.TrimEnd([char[]](92, 47)) -and
-            $entry -ine $legacyBin.TrimEnd([char[]](92, 47)) -and
             -not $entry.StartsWith($managedRootNormalized + [char]92, [StringComparison]::OrdinalIgnoreCase) -and
             -not $entry.StartsWith($managedRootNormalized + [char]47, [StringComparison]::OrdinalIgnoreCase)
     })
