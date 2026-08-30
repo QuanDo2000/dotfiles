@@ -70,6 +70,9 @@ jobs:
 
       - name: Run Windows checks in parallel
         shell: pwsh
+        env:
+          PI_EXTENSIONS_ARCHIVE_URL: https://github.com/QuanDo2000/dotfiles/releases/download/ci-pi-extensions-7e23f87bcd4f-exp/pi-extensions-ci-exp.tar.gz
+          PI_EXTENSIONS_ARCHIVE_SHA256: fd60abc009499abbe8bfcfaeeb90f862752dc3f081fb18995da4691aba94a833
         run: |
           $checks = @(
             [pscustomobject]@{ Name = 'PowerShell tests'; Path = './tests/powershell/runner.ps1' }
