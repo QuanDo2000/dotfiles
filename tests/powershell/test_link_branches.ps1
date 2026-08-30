@@ -10,24 +10,6 @@ function TestTeardown {
     Clear-TestEnv
 }
 
-function Try-Skip-If-No-Symlink-Privilege {
-    # Create a throwaway symlink to detect privilege; return $true if unavailable.
-    $probeSrc = Join-Path $env:USERPROFILE 'probe_src'
-    $probeDst = Join-Path $env:USERPROFILE 'probe_dst'
-    'x' | Set-Content -LiteralPath $probeSrc
-    try {
-        New-Item -ItemType SymbolicLink -Path $probeDst -Target $probeSrc -ErrorAction Stop | Out-Null
-        Remove-Item -LiteralPath $probeDst -Force
-        return $false
-    } catch {
-        if (Test-SymlinkPrivilegeError $_.Exception) {
-            Skip-Test 'symlink privilege unavailable'
-            return $true
-        }
-        throw
-    }
-}
-
 function test_symlink_probe_does_not_hide_unrelated_failures {
     Set-CommandMock 'New-Item' { throw [IO.IOException]::new('disk full') }
     try {

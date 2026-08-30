@@ -100,9 +100,9 @@ function test_installfiracodenerdfont_skips_download_when_complete_pinned_set_is
     Assert-Equals 'installed' ([IO.File]::ReadAllText((Join-Path $fontDir 'FiraCodeNerdFont-Regular-9.9.9.ttf'))) 'complete pinned font set should remain untouched'
 }
 
-function test_font_installers_do_not_expose_unused_update_switches {
+function test_font_installer_does_not_keep_unused_wrappers_or_switches {
     Assert-False ((Get-Command InstallFiraCodeNerdFont).Parameters.ContainsKey('Update')) 'font installer should not expose unused update switch'
-    Assert-False ((Get-Command InstallExtras).Parameters.ContainsKey('Update')) 'extras installer should not expose unused update switch'
+    Assert-False ([bool](Get-Command InstallExtras -ErrorAction SilentlyContinue)) 'font installer should not keep a single-call wrapper'
 }
 
 function test_installfiracodenerdfont_force_bypasses_fast_path {

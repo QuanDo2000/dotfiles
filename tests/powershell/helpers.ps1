@@ -54,6 +54,24 @@ function Skip-Test([string]$Reason) {
     $script:CurrentTestSkipped = $Reason
 }
 
+function Try-Skip-If-No-Symlink-Privilege {
+    $probeSource = Join-Path $env:USERPROFILE "symlink-probe-source-$([Guid]::NewGuid().ToString('N'))"
+    $probeTarget = "$probeSource.link"
+    'probe' | Set-Content -LiteralPath $probeSource
+    try {
+        New-Item -ItemType SymbolicLink -Path $probeTarget -Target $probeSource -ErrorAction Stop | Out-Null
+        return $false
+    } catch {
+        if (Test-SymlinkPrivilegeError $_.Exception) {
+            Skip-Test 'symlink privilege unavailable'
+            return $true
+        }
+        throw
+    } finally {
+        Remove-Item -LiteralPath $probeTarget, $probeSource -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # --- Fixtures -----------------------------------------------------------------
 
 # Reset all $script:* state owned by dotfile.ps1 to defaults.

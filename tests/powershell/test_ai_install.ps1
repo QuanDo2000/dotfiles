@@ -30,6 +30,7 @@ function TestSetup {
     $script:OriginalTestCodebaseMemoryActivePath = if ($codebaseActivePathTester) { $codebaseActivePathTester.ScriptBlock } else { $null }
     $script:OriginalExpandWindowsTarArchive = if ($windowsTarExpander) { $windowsTarExpander.ScriptBlock } else { $null }
     $script:OriginalCodexHome = $env:CODEX_HOME
+    $script:PythonLauncher = (Get-Command py).Source
     Set-CommandMock 'RepairPiCompactionSteering' {}
     if ($script:OriginalStopCodebaseMemoryProcesses) { Set-FunctionMock 'Stop-CodebaseMemoryProcesses' {} }
 }
@@ -383,6 +384,7 @@ function test_syncaiinstructions_creates_missing_files_for_codex_and_pi {
 }
 
 function test_syncaiinstructions_does_not_skip_linked_destinations_for_codex_and_pi {
+    if (Try-Skip-If-No-Symlink-Privilege) { return }
     Initialize-TestAiInstructions | Out-Null
     $external = Join-Path $script:_TestTmp.FullName 'linked-AGENTS.md'
     'shared instructions' | Set-Content $external
@@ -400,6 +402,7 @@ function test_syncaiinstructions_does_not_skip_linked_destinations_for_codex_and
 }
 
 function Assert-AiInstructionCopyFailurePreservesTarget($Target) {
+    if (Try-Skip-If-No-Symlink-Privilege) { return }
     Initialize-TestAiInstructions | Out-Null
     $external = Join-Path $script:_TestTmp.FullName "linked-AGENTS-$([Guid]::NewGuid().ToString('N')).md"
     'old instructions' | Set-Content $external
@@ -448,6 +451,7 @@ function test_install_skill_directory_rejects_linked_source_root {
 }
 
 function test_install_skill_directory_rejects_linked_skill_file {
+    if (Try-Skip-If-No-Symlink-Privilege) { return }
     $source = Join-Path $script:_TestTmp.FullName 'source-skill'
     $external = Join-Path $script:_TestTmp.FullName 'external-SKILL.md'
     $target = Join-Path $script:_TestTmp.FullName 'target-skill'
@@ -574,7 +578,7 @@ function test_installcodebasememory_skips_current_pinned_release {
     Set-FunctionMock 'Set-CodebaseMemoryActivePath' { }
     Set-FunctionMock 'Invoke-CodebaseMemoryCommand' { }
 
-    InstallCodebaseMemory -Update 6>&1 | Out-Null
+    InstallCodebaseMemory 6>&1 | Out-Null
 
     Assert-False $script:CodebaseInstallerDownloaded 'current pinned codebase-memory release should not download again'
 }
@@ -609,7 +613,7 @@ function test_installcodebasememory_skips_current_managed_configuration {
         if ($call -like 'config get *') { return 'true' }
     }
 
-    InstallCodebaseMemory -Update 6>&1 | Out-Null
+    InstallCodebaseMemory 6>&1 | Out-Null
 
     Assert-Equals "config get auto_index`nconfig get auto_watch" ($script:CodebaseMemoryCalls -join "`n")
     Assert-False (($script:CodebaseMemoryCalls -join "`n").Contains('install -y --clients=codex')) 'current managed configuration should not invoke the client generator'
@@ -692,7 +696,7 @@ function test_installcodebasememory_stages_verified_ui_archive_and_configures_di
         $script:CodebaseMemoryCalls += "run:${Executable}:$($Arguments -join ' ')"
     }
 
-    InstallCodebaseMemory -Update 6>&1 | Out-Null
+    InstallCodebaseMemory 6>&1 | Out-Null
 
     $release = Join-Path $env:LOCALAPPDATA "Programs\codebase-memory-mcp\releases\1.2.3-windows-amd64-$($archiveHash.Substring(0, 12))"
     $executable = Join-Path $release 'codebase-memory-mcp.exe'
@@ -868,6 +872,12 @@ function test_installcodex_stages_verified_package_before_activation {
     Assert-True ($finalVerification -ge 0 -and $finalVerification -lt $activation) 'final release should be verified before PATH activation'
 }
 
+function test_ai_installers_do_not_expose_unused_update_switches {
+    foreach ($name in 'InstallCodex', 'InstallCodebaseMemory', 'InstallPiLanguageServers') {
+        Assert-False ((Get-Command $name).Parameters.ContainsKey('Update')) "$name should not expose an unused update switch"
+    }
+}
+
 function test_installpilanguageservers_installs_pinned_npm_servers {
     $script:LspInstalled = $false
     $script:NpmCalls = @()
@@ -894,16 +904,16 @@ function test_installpilanguageservers_installs_pinned_npm_servers {
     Assert-Contains $install 'bash-language-server@5.6.0'
 }
 
-function test_installpilanguageservers_update_skips_current_pinned_servers {
+function test_installpilanguageservers_skips_current_pinned_servers {
     $script:NpmCalls = @()
     Set-CommandMock 'vtsls' { '0.3.0'; $global:LASTEXITCODE = 0 }
     Set-CommandMock 'bash-language-server' { '5.6.0'; $global:LASTEXITCODE = 0 }
     Set-CommandMock 'shellcheck' { $global:LASTEXITCODE = 0 }
     Set-CommandMock 'npm' { $script:NpmCalls += ,($args -join ' '); $global:LASTEXITCODE = 0 }
 
-    InstallPiLanguageServers -Update
+    InstallPiLanguageServers
 
-    Assert-Equals 0 $script:NpmCalls.Count 'update should not reinstall current pinned language servers'
+    Assert-Equals 0 $script:NpmCalls.Count 'current pinned language servers should not be reinstalled'
 }
 
 function Write-TestPatchedPiSession($Path) {
@@ -1366,14 +1376,10 @@ function test_syncpiconfigs_creates_missing_subagent_target {
 }
 
 function test_syncpiconfigs_replaces_dangling_subagent_target {
+    if (Try-Skip-If-No-Symlink-Privilege) { return }
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    try {
-        New-Item -ItemType SymbolicLink -Path $paths.Target -Target (Join-Path $script:_TestTmp.FullName 'missing.json') -ErrorAction Stop | Out-Null
-    } catch {
-        Skip-Test 'symlink privilege unavailable'
-        return
-    }
+    New-Item -ItemType SymbolicLink -Path $paths.Target -Target (Join-Path $script:_TestTmp.FullName 'missing.json') | Out-Null
 
     SyncPiConfigs
 
@@ -1382,6 +1388,7 @@ function test_syncpiconfigs_replaces_dangling_subagent_target {
 }
 
 function test_syncpiconfigs_replaces_linked_subagent_target {
+    if (Try-Skip-If-No-Symlink-Privilege) { return }
     $paths = Initialize-TestPiConfigSeeds
     New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
     $externalTarget = Join-Path $script:_TestTmp.FullName 'external-target.json'
@@ -1395,6 +1402,7 @@ function test_syncpiconfigs_replaces_linked_subagent_target {
 }
 
 function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
+    if (Try-Skip-If-No-Symlink-Privilege) { return }
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
     $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
@@ -1477,7 +1485,7 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
     $seed = Join-Path $seedDir 'settings.json'
     Set-CommandMock 'py' {
         $pythonArgs = @($args)
-        & python3 @($pythonArgs[1..($pythonArgs.Count - 1)])
+        & $script:PythonLauncher -3.14 @($pythonArgs[1..($pythonArgs.Count - 1)])
     }
     try {
         (Get-Item $seed).IsReadOnly = $true

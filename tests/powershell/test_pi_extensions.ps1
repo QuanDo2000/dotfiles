@@ -5,6 +5,7 @@ function TestSetup {
     $script:DotfilesDir = $script:RepoDir
     $script:OriginalArchitecture = $env:PROCESSOR_ARCHITECTURE
     $script:OriginalExpandWindowsTarArchive = (Get-Command Expand-WindowsTarArchive).ScriptBlock
+    $script:PythonLauncher = (Get-Command py).Source
 }
 
 function TestTeardown {
@@ -278,7 +279,7 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         $global:LASTEXITCODE = 0
     }
     Set-CommandMock 'py' {
-        & python3 $args[1] $args[2]
+        & $script:PythonLauncher -3.14 $args[1] $args[2]
         $global:LASTEXITCODE = $LASTEXITCODE
     }
     InstallPiExtensions 6>&1 | Out-Null

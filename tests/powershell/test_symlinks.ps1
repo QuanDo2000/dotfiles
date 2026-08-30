@@ -124,9 +124,11 @@ function test_sync_lazy_lock_seeds_writable_file {
         New-Item -ItemType Directory -Force -Path (Split-Path $source -Parent), (Split-Path $target -Parent) | Out-Null
         '{"plugin":{"commit":"reviewed"}}' | Set-Content $source
         '{"plugin":{"commit":"stale"}}' | Set-Content $target
+        (Get-Item -LiteralPath $target).IsReadOnly = $true
 
         Sync-LazyLock
         Assert-Contains (Get-Content -Raw $target) 'reviewed'
+        Assert-False (Get-Item -LiteralPath $target).IsReadOnly 'seeded lazy-lock.json should be writable'
 
         '{"plugin":{"commit":"runtime"}}' | Set-Content $target
         Assert-False ([bool](Get-Item $target).LinkType) 'lazy-lock.json should be a regular writable file'

@@ -27,9 +27,3 @@ function test_installers_dry_run_before_external_commands {
         Assert-False $script:Called "$($case.Command) should not be called in dry run"
     }
 }
-
-function test_installextras_dry_run_installs_font_only {
-    $output = InstallExtras 6>&1 | Out-String
-    Assert-Contains $output 'Installing FiraCode Nerd Font'
-    Assert-False ($output -match 'Installing Node.js LTS') 'extras should not install Node.js'
-}

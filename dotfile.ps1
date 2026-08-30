@@ -352,13 +352,9 @@ function InstallFnm {
     Success "Finished installing pinned Node.js"
 }
 
-function InstallExtras {
-    InstallFiraCodeNerdFont
-}
-
 function InstallManagedPackages {
     InstallPackages
-    InstallExtras
+    InstallFiraCodeNerdFont
     InstallAi
 }
 
@@ -422,7 +418,6 @@ function Set-CodexActivePath($BinDir, $ManagedRoot) {
 }
 
 function InstallCodex {
-    param([switch]$Update)
     Info "Installing Codex CLI..."
     if ($script:Dry) { return }
     if (-not [Environment]::Is64BitOperatingSystem) { throw "Codex requires 64-bit Windows" }
@@ -788,7 +783,6 @@ function InstallPi {
 }
 
 function InstallPiLanguageServers {
-    param([switch]$Update)
     Info "Installing Pi language servers..."
     if ($script:Dry) { return }
 
@@ -977,15 +971,6 @@ function SyncPiConfigs {
         }
     )
     foreach ($copy in $directCopies) {
-        $destinationItem = Get-Item -LiteralPath $copy.Destination -Force -ErrorAction SilentlyContinue
-        if ($destinationItem -and $destinationItem.PSIsContainer) {
-            throw "Pi config destination is a directory: $($copy.Destination)"
-        }
-        if ($destinationItem -and -not $destinationItem.PSIsContainer -and
-            -not ($destinationItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
-            (Get-FileSha256 $copy.Source) -eq (Get-FileSha256 $copy.Destination)) {
-            continue
-        }
         Copy-FileWithRollback $copy.Source $copy.Destination 'Pi direct config copy'
     }
     foreach ($name in @("caveman-default.js", "ponytail-default.js", "windows-exit.js")) {
@@ -1166,7 +1151,6 @@ function Repair-CodebaseMemoryConfigDatabase($Path) {
 }
 
 function InstallCodebaseMemory {
-    param([switch]$Update)
     Info "Installing codebase-memory-mcp..."
     if ($script:Dry) { return }
     if (-not [Environment]::Is64BitOperatingSystem) { throw "codebase-memory-mcp requires 64-bit Windows" }
@@ -1272,25 +1256,12 @@ function SyncAiInstructions {
     if ($script:Dry) { return }
 
     $source = Join-Path $script:DotfilesDir 'config\shared\ai\AGENTS.md'
-    $sourceSha256 = Get-FileSha256 $source
     foreach ($target in @(
             (Join-Path $env:USERPROFILE '.codex\AGENTS.md'),
             (Join-Path $env:USERPROFILE '.pi\agent\AGENTS.md')
         )) {
-        $targetItem = Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
-        if ($targetItem -and -not $targetItem.PSIsContainer -and
-            -not ($targetItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -and
-            $sourceSha256 -eq (Get-FileSha256 $target)) {
-            continue
-        }
         New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-        $temporary = "$target.tmp.$([Guid]::NewGuid().ToString('N'))"
-        try {
-            Copy-Item -LiteralPath $source -Destination $temporary -Force -ErrorAction Stop
-            Move-Item -LiteralPath $temporary -Destination $target -Force -ErrorAction Stop
-        } finally {
-            Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
-        }
+        Copy-FileWithRollback $source $target 'AI instructions copy'
     }
 }
 
@@ -1382,13 +1353,13 @@ function InstallAi {
     if ($script:Dry) { return }
 
     InstallFnm
-    InstallCodex -Update:$Update
+    InstallCodex
     SyncCodexConfig
 
-    InstallCodebaseMemory -Update:$Update
+    InstallCodebaseMemory
     Remove-RetiredFffMcp
     InstallPi -Update:$Update
-    InstallPiLanguageServers -Update:$Update
+    InstallPiLanguageServers
     InstallPiExtensions
     SyncPiConfigs
     if ($Update) {
@@ -1511,7 +1482,7 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
         InstallAi -Update
     } else {
         InstallPackages -Update
-        InstallExtras
+        InstallFiraCodeNerdFont
         InstallAi -Update
         SetupSymlinks
         Sync-NeovimPlugins
@@ -1653,14 +1624,8 @@ function Sync-LazyLock {
     $source = Join-Path $script:DotfilesDir "config\shared\config\nvim\lazy-lock.json"
     $target = "$env:LOCALAPPDATA\nvim\lazy-lock.json"
     New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-    $temporary = "$target.tmp.$([Guid]::NewGuid().ToString('N'))"
-    try {
-        Copy-Item -LiteralPath $source -Destination $temporary
-        (Get-Item -LiteralPath $temporary).IsReadOnly = $false
-        Move-Item -LiteralPath $temporary -Destination $target -Force
-    } finally {
-        Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
-    }
+    Copy-FileWithRollback $source $target 'Neovim plugin lock copy'
+    (Get-Item -LiteralPath $target).IsReadOnly = $false
 }
 
 function SetupSymlinks {
