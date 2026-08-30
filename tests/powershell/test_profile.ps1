@@ -36,6 +36,20 @@ function fnm { '`$env:Path = ''C:\fnm;'' + `$env:Path' }
     Assert-Contains $out $managedPi
 }
 
+function test_profile_tab_opens_completion_menu {
+    $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
+    $probe = @"
+`$ErrorActionPreference = 'Stop'
+`$env:LOCALAPPDATA = '$localAppData'
+`$env:PATH = ''
+function Set-PSReadLineOption { }
+function Set-PSReadLineKeyHandler { param(`$Key, `$Function) "`$Key|`$Function" }
+. '$script:ProfileFile'
+"@
+    $out = pwsh -NoProfile -Command $probe 2>&1 | Out-String
+    Assert-Contains $out 'Tab|MenuComplete'
+}
+
 function test_profile_psmux_attach_falls_back_to_main_session {
     $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
     $probe = @"
