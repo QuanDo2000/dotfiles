@@ -181,7 +181,7 @@ function Get-InstalledWingetPackages {
 function Get-WingetPackages {
     @(
         "Microsoft.PowerShell", "Git.Git", "GnuPG.Gpg4win", "Microsoft.WindowsTerminal",
-        "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
+        "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit", "marlocarlo.psmux",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd",
         "tree-sitter.tree-sitter-cli", "LLVM.LLVM",
         "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide",
@@ -191,7 +191,7 @@ function Get-WingetPackages {
 
 function Get-RequiredCommands {
     @(
-        "git", "gpg", "nvim", "starship", "fd", "rg", "lazygit",
+        "git", "gpg", "nvim", "starship", "fd", "rg", "lazygit", "psmux",
         "fnm", "node", "jj", "zoxide", "codex", "pi",
         "codebase-memory-mcp", "py", "vtsls",
         "bash-language-server", "shellcheck", "tree-sitter", "clang"
@@ -1543,7 +1543,8 @@ function Get-WindowsLinkSpecs {
         }
     }
 
-    # Windows Terminal settings
+    # psmux and Windows Terminal settings
+    $specs += New-LinkSpec 'File' (Join-Path $configPath '.psmux.conf') (Join-Path $userHome '.psmux.conf')
     $specs += New-LinkSpec 'File' `
         (Join-Path $configPath "Terminal\settings.json") `
         "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"

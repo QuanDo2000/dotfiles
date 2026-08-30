@@ -13,6 +13,11 @@ function test_windows_neovim_provisions_treesitter_build_tools {
     Assert-Contains ((Get-RequiredCommands) -join "`n") "clang"
 }
 
+function test_windows_package_manifests_include_psmux {
+    Assert-True (@(Get-WingetPackages) -contains 'marlocarlo.psmux') 'Winget should manage psmux'
+    Assert-True (@(Get-RequiredCommands) -contains 'psmux') 'Doctor should verify psmux'
+}
+
 function test_windows_package_manifests_cover_parity_tools {
     $winget = @(Get-WingetPackages)
     $commands = @(Get-RequiredCommands)

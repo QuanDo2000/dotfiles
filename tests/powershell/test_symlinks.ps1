@@ -14,6 +14,40 @@ function TestTeardown {
     Clear-TestEnv
 }
 
+function test_windows_psmux_links_portable_tmux_defaults {
+    $destination = Join-Path $env:USERPROFILE '.psmux.conf'
+    $spec = Get-WindowsLinkSpecs | Where-Object Destination -eq $destination
+
+    Assert-True ([bool]$spec) 'psmux config should be linked into the Windows home directory'
+    if ($spec) {
+        Assert-FileExists $spec.Source
+        $config = Get-Content -Raw $spec.Source
+        Assert-Contains $config 'set -g default-terminal xterm-256color'
+        Assert-Contains $config 'set -g mouse on'
+        Assert-Contains $config 'set -g mode-keys vi'
+        Assert-Contains $config 'set -g focus-events on'
+        Assert-Contains $config 'set -g history-limit 50000'
+        Assert-Contains $config 'set -g allow-passthrough on'
+        Assert-Contains $config 'set -g set-clipboard on'
+        Assert-Contains $config 'bind R source-file ~/.psmux.conf \; display-message "Sourced psmux.conf!"'
+        Assert-Contains $config 'bind h select-pane -L'
+        Assert-Contains $config 'bind -r "<" swap-window -d -t -1'
+        Assert-Contains $config 'bind -r H resize-pane -L 5'
+        Assert-Contains $config 'split-window -h -c "#{pane_current_path}"'
+        Assert-Contains $config 'set -g popup-border-style "fg=#494d64"'
+        Assert-Contains $config 'set -g pane-active-border-style "#{?pane_in_mode,fg=#b7bdf8,#{?pane_synchronized,fg=#c6a0f6,fg=#b7bdf8}}"'
+        Assert-Contains $config 'set -g window-status-format "#[fg=#181926,bg=#939ab7] #I #[fg=#cad3f5,bg=#363a4f] #{b:pane_current_command} "'
+        Assert-Contains $config '#{username}'
+        Assert-False ($config -match '(?m)^\s*set\s+.*terminal-features') 'Windows psmux config should omit terminal capability overrides'
+        Assert-False ($config -match '(?m)^\s*set\s+.*extended-keys') 'Windows psmux config should omit unsupported extended-key options'
+        Assert-False $config.Contains('MouseDragEnd1Pane') 'Windows psmux should use its native drag-copy behavior'
+        Assert-False ($config -match '(?m)^\s*set\s+.*menu-selected-style') 'Windows psmux config should omit unsupported menu styling'
+        Assert-False $config.Contains('set -g popup-style') 'Windows psmux config should omit non-functional popup body styling'
+        Assert-False $config.Contains('run-shell') 'Windows psmux config should omit Unix reload commands'
+        Assert-False $config.Contains('#{E:USER}') 'Windows psmux status should use its native username format'
+    }
+}
+
 function test_windows_terminal_does_not_elevate_every_profile {
     $settings = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\Terminal\settings.json') | ConvertFrom-Json
     Assert-False ($settings.profiles.defaults.elevate -eq $true) 'Windows Terminal profiles should run unelevated by default'

@@ -36,6 +36,35 @@ function fnm { '`$env:Path = ''C:\fnm;'' + `$env:Path' }
     Assert-Contains $out $managedPi
 }
 
+function test_profile_psmux_attach_falls_back_to_main_session {
+    $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
+    $probe = @"
+`$ErrorActionPreference = 'Stop'
+`$env:LOCALAPPDATA = '$localAppData'
+`$env:PATH = ''
+`$script:PsmuxCalls = @()
+function Set-PSReadLineOption { throw 'PSReadLine unsupported' }
+function psmux {
+    `$script:PsmuxCalls += (`$args -join ' ')
+    if (`$args[0] -eq 'attach') { `$global:LASTEXITCODE = 1 } else { `$global:LASTEXITCODE = 0 }
+}
+. '$script:ProfileFile'
+Enter-PsmuxMainSession
+`$script:PsmuxCalls -join '|'
+"@
+    $out = pwsh -NoProfile -Command $probe 2>&1 | Out-String
+    Assert-Contains $out 'attach -t main|new-session -s main'
+}
+
+function test_profile_psmux_autostart_is_guarded {
+    $profile = Get-Content -Raw $script:ProfileFile
+
+    Assert-Contains $profile '$env:TMUX'
+    Assert-Contains $profile '$env:NO_TMUX'
+    Assert-Contains $profile '[Console]::IsInputRedirected'
+    Assert-Contains $profile "'vscode'"
+}
+
 function test_profile_loads_when_psreadline_options_are_unsupported {
     $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
     $probe = @"
