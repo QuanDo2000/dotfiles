@@ -66,6 +66,21 @@ test_ci_runs_direct_nix_checks() {
   assert_not_contains "$check" 'fff-nvim-backend'
 }
 
+test_ci_avoids_disposable_neovim_cache_and_parallelizes_windows() {
+  local workflow
+  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+
+  assert_equals 2 "$(grep -c 'DOTFILE_NEOVIM_TEST_FRESH=true bash ./tests/bash/runner.sh test_neovim.sh' <<< "$workflow")"
+  assert_contains "$workflow" '- name: Run Windows checks in parallel'
+  assert_contains "$workflow" 'Start-Job'
+  assert_contains "$workflow" 'Wait-Job'
+  assert_contains "$workflow" "'PowerShell tests'"
+  assert_contains "$workflow" "'Pi extension integration'"
+  assert_contains "$workflow" "'Neovim integration'"
+  assert_not_contains "$workflow" '- name: Run PowerShell tests (Windows)'
+  assert_not_contains "$workflow" '- name: Test locked Pi extensions (Windows)'
+}
+
 test_ci_runs_windows_neovim_integration() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
