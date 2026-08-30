@@ -66,7 +66,7 @@ test_pi_extension_lock_has_integrity_for_every_tarball() {
   [ -f "$extension_dir/package-lock.json" ] || return
 
   assert_equals 0 "$(jq '[.packages | to_entries[] | select(.key != "" and (.value.link != true)) | select((.value.resolved | type) != "string" or (.value.integrity | startswith("sha512-") | not))] | length' "$extension_dir/package-lock.json")"
-  assert_equals 'node_modules/better-sqlite3' "$(jq -r '[.packages | to_entries[] | select(.value.hasInstallScript == true) | .key] | join(" ")' "$extension_dir/package-lock.json")"
+  assert_equals '' "$(jq -r '[.packages | to_entries[] | select(.value.hasInstallScript == true) | .key] | join(" ")' "$extension_dir/package-lock.json")"
   assert_equals "$(jq -r .betterSqlite3.version "$REPO_DIR/packages/pi-extensions-release.json")" "$(jq -r '.packages["node_modules/better-sqlite3"].version' "$extension_dir/package-lock.json")"
 }
 
@@ -81,7 +81,8 @@ test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
   assert_contains "$package" 'npmDepsHash = "sha256-'
   assert_contains "$package" '"--ignore-scripts"'
   assert_contains "$package" 'better-sqlite3'
-  assert_contains "$package" 'better_sqlite3.node'
+  assert_contains "$package" 'prebuilds'
+  assert_not_contains "$package" 'github.com/WiseLibs/better-sqlite3/releases'
   assert_not_contains "$package" 'pi-mcp-extension'
   assert_not_contains "$package" 'patch_pi_mcp_background.py'
   assert_contains "$package" 'python3 ${../scripts/patch_pi_hermes_background_flush.py} node_modules/pi-hermes-memory'

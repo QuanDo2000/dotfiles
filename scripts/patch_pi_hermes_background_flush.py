@@ -45,8 +45,8 @@ PATCHES = {
             1,
         ),
         (
-            "    await flush(ctx, undefined, 10000);",
-            "    await flush(ctx, undefined, 10000, true);",
+            '    await measureLifecycle("shutdown.flush", () => flush(ctx, undefined, 10000));',
+            '    await measureLifecycle("shutdown.flush", () => flush(ctx, undefined, 10000, true));',
             1,
         ),
     ],

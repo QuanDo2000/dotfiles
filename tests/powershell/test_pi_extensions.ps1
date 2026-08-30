@@ -36,13 +36,7 @@ function New-PiExtensionTestFixture($Root, [switch]$WrongLockHash) {
     @{
         releaseId = $lockHash
         node = @{ version = '24.18.1'; abi = '137' }
-        betterSqlite3 = @{
-            version = '12.11.1'
-            assets = @{
-                'windows-x64' = @{ file = 'better-sqlite3-test-win32-x64.tar.gz'; sha256 = 'a' * 64; hash = 'sha256-test' }
-                'windows-arm64' = @{ file = 'better-sqlite3-test-win32-arm64.tar.gz'; sha256 = 'b' * 64; hash = 'sha256-test' }
-            }
-        }
+        betterSqlite3 = @{ version = '13.0.3' }
     } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $packages 'pi-extensions-release.json') -Encoding ascii
 }
 
@@ -74,9 +68,9 @@ import { execChildPrompt, resolveChildPiModel } from "./pi-child-process.js";
     } catch {}
   }
 
-  pi.on("session_shutdown", async (_event, ctx) => {
-    if (!config.flushOnShutdown) return;
-    await flush(ctx, undefined, 10000);
+  pi.on("session_shutdown", async (event, ctx) => {
+    if (!config.flushOnShutdown || event.reason === "reload") return;
+    await measureLifecycle("shutdown.flush", () => flush(ctx, undefined, 10000));
   });
 '@ | Set-Content -LiteralPath (Join-Path $handlers 'session-flush.ts') -Encoding ascii
     @'
@@ -253,23 +247,16 @@ function test_installpiextensions_rechecks_staged_lock_before_npm {
 }
 
 function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_release {
-    if (-not $IsWindows) { Skip-Test 'Windows-only native archive installation'; return }
+    if (-not $IsWindows) { Skip-Test 'Windows-only bundled prebuild installation'; return }
     $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'repo'
     New-PiExtensionTestFixture $script:DotfilesDir
     $env:PROCESSOR_ARCHITECTURE = 'AMD64'
     $script:NpmArgs = ''
-    $archiveText = 'verified better sqlite archive'
-    $archiveFile = Join-Path $script:_TestTmp.FullName 'archive.bin'
-    [IO.File]::WriteAllText($archiveFile, $archiveText)
-    $archiveHash = Get-PiExtensionTestSha256 $archiveFile
     $pinsPath = Join-Path $script:DotfilesDir 'packages\pi-extensions-release.json'
-    $pins = Get-Content -Raw $pinsPath | ConvertFrom-Json
-    $pins.betterSqlite3.assets.'windows-x64'.sha256 = $archiveHash
-    $pins | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $pinsPath -Encoding ascii
 
     Set-CommandMock 'Get-Command' {
         param($Name)
-        if ($Name -in @('node', 'npm', 'py', 'tar')) { return [pscustomobject]@{ Source = "mock-$Name" } }
+        if ($Name -in @('node', 'npm', 'py')) { return [pscustomobject]@{ Source = "mock-$Name" } }
         return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
     }
     Set-CommandMock 'node' {
@@ -281,28 +268,19 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         $prefix = $args[[Array]::IndexOf($args, '--prefix') + 1]
         $packageDir = Join-Path $prefix 'node_modules\example-extension'
         $hermesDir = Join-Path $prefix 'node_modules\pi-hermes-memory'
-        New-Item -ItemType Directory -Force -Path $packageDir, (Join-Path $prefix 'node_modules\better-sqlite3') | Out-Null
+        $betterDir = Join-Path $prefix 'node_modules\better-sqlite3'
+        $prebuilds = Join-Path $betterDir 'prebuilds'
+        New-Item -ItemType Directory -Force -Path $packageDir, $betterDir, $prebuilds | Out-Null
         Write-PiHermesUnpatchedFixture $hermesDir
         '{"name":"example-extension","version":"1.2.3"}' | Set-Content -LiteralPath (Join-Path $packageDir 'package.json') -Encoding ascii
-        '{"name":"better-sqlite3","version":"12.11.1"}' | Set-Content -LiteralPath (Join-Path $prefix 'node_modules\better-sqlite3\package.json') -Encoding ascii
+        '{"name":"better-sqlite3","version":"13.0.3"}' | Set-Content -LiteralPath (Join-Path $betterDir 'package.json') -Encoding ascii
+        'native' | Set-Content -LiteralPath (Join-Path $prebuilds 'win32-x64.node') -Encoding ascii
         $global:LASTEXITCODE = 0
     }
     Set-CommandMock 'py' {
         & python3 $args[1] $args[2]
         $global:LASTEXITCODE = $LASTEXITCODE
     }
-    Set-CommandMock 'Invoke-WebRequest' {
-        param($Uri, $OutFile)
-        [IO.File]::WriteAllText($OutFile, $archiveText)
-    }
-    Set-FunctionMock 'Expand-WindowsTarArchive' {
-        param($Archive, $Destination)
-        $nativeDir = Join-Path $Destination 'build\Release'
-        New-Item -ItemType Directory -Force -Path $nativeDir | Out-Null
-        'native' | Set-Content -LiteralPath (Join-Path $nativeDir 'better_sqlite3.node') -Encoding ascii
-        $global:LASTEXITCODE = 0
-    }
-
     InstallPiExtensions 6>&1 | Out-Null
 
     Assert-Contains $script:NpmArgs 'ci --prefix'

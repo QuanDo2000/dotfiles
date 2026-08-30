@@ -174,27 +174,24 @@ update_pins.run = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError(f
 update_pins.verify_asset = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("unexpected asset download"))
 
 update_pins.update_pi_extensions(repo)
-assert json.loads(release_path.read_text()) == release
+current = json.loads(release_path.read_text())
+assert current["betterSqlite3"] == {"version": release["betterSqlite3"]["version"]}
 assert version_checks == [repo]
 
-release["betterSqlite3"]["assets"] = {}
-release_path.write_text(json.dumps(release) + "\n")
-downloads = []
-def verify_asset(_, name, destination):
-    downloads.append(name)
-    destination.touch()
-    return "a" * 64
-update_pins.verify_asset = verify_asset
-update_pins.fetch_json = lambda _: {}
-update_pins.nix_hash = lambda _: "sha256-test"
+lock = json.loads(lock_path.read_text())
+lock["packages"]["node_modules/better-sqlite3"].pop("hasInstallScript", None)
+lock["packages"]["node_modules/better-sqlite3"]["version"] = "13.0.3"
+lock_path.write_text(json.dumps(lock) + "\n")
+current["releaseId"] = hashlib.sha256(lock_path.read_bytes()).hexdigest()
+release_path.write_text(json.dumps(current) + "\n")
+package["dependencies"]["pi-hermes-memory"] = "0.9.7"
+(extensions / "package.json").write_text(json.dumps(package) + "\n")
+update_pins.npm_latest = lambda name: package["dependencies"][name]
 
 update_pins.update_pi_extensions(repo)
 updated = json.loads(release_path.read_text())
 assert version_checks == [repo, repo]
-assert len(downloads) == 4
-assert set(updated["betterSqlite3"]["assets"]) == {
-    "x86_64-linux", "aarch64-darwin", "windows-x64", "windows-arm64",
-}
+assert updated["betterSqlite3"] == {"version": "13.0.3"}
 PY
 }
 

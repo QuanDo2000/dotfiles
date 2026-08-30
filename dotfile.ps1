@@ -329,12 +329,6 @@ function Get-PiExtensionsPins {
     if ([string]$pins.node.version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid Pi extension Node version" }
     if ([string]$pins.node.abi -notmatch '^\d+$') { throw "Invalid Pi extension Node ABI" }
     if ([string]$pins.betterSqlite3.version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid better-sqlite3 version" }
-    foreach ($key in 'windows-x64', 'windows-arm64') {
-        $asset = $pins.betterSqlite3.assets.$key
-        if (-not $asset -or [string]$asset.file -notmatch '^better-sqlite3-[0-9A-Za-z.-]+\.tar\.gz$' -or [string]$asset.sha256 -notmatch '^[0-9a-f]{64}$') {
-            throw "Invalid better-sqlite3 asset pins for $key"
-        }
-    }
     return $pins
 }
 
@@ -577,10 +571,10 @@ function Compare-PiPackageLocks($EmbeddedLock, $ReviewedLock, $WorkingDirectory)
 
 function Get-PiExtensionsWindowsArch($Architecture = $env:PROCESSOR_ARCHITECTURE) {
     switch ([string]$Architecture) {
-        'AMD64' { return 'windows-x64' }
-        'X64' { return 'windows-x64' }
-        'ARM64' { return 'windows-arm64' }
-        'Arm64' { return 'windows-arm64' }
+        'AMD64' { return 'win32-x64' }
+        'X64' { return 'win32-x64' }
+        'ARM64' { return 'win32-arm64' }
+        'Arm64' { return 'win32-arm64' }
         default { throw "Unsupported Pi extension Windows architecture: $Architecture" }
     }
 }
@@ -615,7 +609,7 @@ function Test-PiExtensionsRelease($ReleaseDir, $Pins) {
         if ($watchdogSource -notlike '*cleanupPromptDirectory*' -or $watchdogSource -notlike '*windowsHide: true*') { return $false }
     } catch { return $false }
     $betterManifest = Join-Path $nodeModules 'better-sqlite3\package.json'
-    $betterBinary = Join-Path $nodeModules 'better-sqlite3\build\Release\better_sqlite3.node'
+    $betterBinary = Join-Path $nodeModules "better-sqlite3\prebuilds\$(Get-PiExtensionsWindowsArch).node"
     if (-not (Test-Path -LiteralPath $betterManifest -PathType Leaf) -or -not (Test-Path -LiteralPath $betterBinary -PathType Leaf)) { return $false }
     try { $better = Get-Content -Raw -LiteralPath $betterManifest | ConvertFrom-Json } catch { return $false }
     return [string]$better.version -eq [string]$Pins.betterSqlite3.version
@@ -631,7 +625,7 @@ function InstallPiExtensions {
     if (-not (Test-Path -LiteralPath $sourceLock -PathType Leaf) -or (Get-FileSha256 $sourceLock) -ne [string]$pins.releaseId) {
         throw "Pi extension package lock does not match release pins"
     }
-    foreach ($command in 'node', 'npm', 'py', 'tar') {
+    foreach ($command in 'node', 'npm', 'py') {
         if (-not (Get-Command $command -ErrorAction SilentlyContinue)) { throw "$command command not found for Pi extensions" }
     }
     $nodeVersion = (& node --version 2>$null | Select-Object -Last 1).TrimStart('v')
@@ -639,7 +633,6 @@ function InstallPiExtensions {
     $nodeAbi = (& node -p 'process.versions.modules' 2>$null | Select-Object -Last 1).Trim()
     if ($LASTEXITCODE -ne 0 -or $nodeAbi -ne [string]$pins.node.abi) { throw "Pi extensions require Node ABI $($pins.node.abi)" }
 
-    $asset = $pins.betterSqlite3.assets.(Get-PiExtensionsWindowsArch)
     $root = Join-Path $env:USERPROFILE '.pi\agent\locked-extensions'
     $releases = Join-Path $root 'releases'
     $release = Join-Path $releases ([string]$pins.releaseId)
@@ -653,7 +646,6 @@ function InstallPiExtensions {
 
         New-Item -ItemType Directory -Force -Path $releases | Out-Null
         $staging = Join-Path $releases ".staging.$([Guid]::NewGuid().ToString('N'))"
-        $archive = Join-Path $staging ([string]$asset.file)
         try {
             New-Item -ItemType Directory -Force -Path $staging | Out-Null
             Copy-Item -LiteralPath (Join-Path $source 'package.json'), $sourceLock -Destination $staging
@@ -667,15 +659,6 @@ function InstallPiExtensions {
                 Invoke-NativeChecked "Pi Hermes background shutdown flush repair failed" { py -3.14 $hermesPatch $hermesRoot }
             } finally { $lockStream.Dispose() }
 
-            $uri = "https://github.com/WiseLibs/better-sqlite3/releases/download/v$($pins.betterSqlite3.version)/$($asset.file)"
-            Invoke-WebRequest -Uri $uri -OutFile $archive -UseBasicParsing
-            $archiveStream = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-            try {
-                if ((Get-StreamSha256 $archiveStream) -ne [string]$asset.sha256) { throw "better-sqlite3 package checksum mismatch" }
-                $betterDir = Join-Path $staging 'node_modules\better-sqlite3'
-                Invoke-NativeChecked "better-sqlite3 package extraction failed" { Expand-WindowsTarArchive $archive $betterDir }
-            } finally { $archiveStream.Dispose() }
-            Remove-Item -LiteralPath $archive -Force -ErrorAction Stop
             if (-not (Test-PiExtensionsRelease $staging $pins)) { throw "Installed Pi extension release verification failed" }
             Move-Item -LiteralPath $staging -Destination $release
         } finally {

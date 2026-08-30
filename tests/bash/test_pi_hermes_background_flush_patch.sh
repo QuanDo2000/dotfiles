@@ -45,9 +45,9 @@ import { execChildPrompt, resolveChildPiModel } from "./pi-child-process.js";
     }
   }
 
-  pi.on("session_shutdown", async (_event, ctx) => {
-    if (!config.flushOnShutdown) return;
-    await flush(ctx, undefined, 10000);
+  pi.on("session_shutdown", async (event, ctx) => {
+    if (!config.flushOnShutdown || event.reason === "reload") return;
+    await measureLifecycle("shutdown.flush", () => flush(ctx, undefined, 10000));
   });
 EOF
   cat > "$root/src/handlers/pi-child-process.ts" <<'EOF'
@@ -112,7 +112,7 @@ test_pi_hermes_patch_detaches_shutdown_flush() {
 
   assert_contains "$(<"$root/src/handlers/session-flush.ts")" 'execDetachedChildPrompt'
   assert_contains "$(<"$root/src/handlers/session-flush.ts")" 'await execDetachedChildPrompt(pi, flushMessage'
-  assert_not_contains "$(<"$root/src/handlers/session-flush.ts")" 'await flush(ctx, undefined, 10000);'
+  assert_contains "$(<"$root/src/handlers/session-flush.ts")" 'measureLifecycle("shutdown.flush", () => flush(ctx, undefined, 10000, true))'
   assert_contains "$(<"$root/src/handlers/pi-child-process.ts")" 'export async function execDetachedChildPrompt('
   assert_contains "$(<"$root/src/handlers/pi-child-process.ts")" 'detached: true'
   assert_contains "$(<"$root/src/handlers/pi-child-process.ts")" 'child.unref();'

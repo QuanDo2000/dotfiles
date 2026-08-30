@@ -259,7 +259,7 @@ def update_pi_extensions(repo: Path) -> None:
         )
     ]
     install_scripts = [name for name, value in lock["packages"].items() if value.get("hasInstallScript")]
-    if invalid or install_scripts != ["node_modules/better-sqlite3"]:
+    if invalid or install_scripts not in ([], ["node_modules/better-sqlite3"]):
         die(f"unsafe Pi extension lock entries: invalid={invalid}, scripts={install_scripts}")
 
     release_id = sha256(lock_path)
@@ -274,45 +274,14 @@ def update_pi_extensions(repo: Path) -> None:
         if resolved_version != node_version:
             die("locked Node version changed during resolution")
         node_version = resolved_version
-    names = {
-        "x86_64-linux": f"better-sqlite3-v{better_version}-node-v{abi}-linux-x64.tar.gz",
-        "aarch64-darwin": f"better-sqlite3-v{better_version}-node-v{abi}-darwin-arm64.tar.gz",
-        "windows-x64": f"better-sqlite3-v{better_version}-node-v{abi}-win32-x64.tar.gz",
-        "windows-arm64": f"better-sqlite3-v{better_version}-node-v{abi}-win32-arm64.tar.gz",
-    }
-    better = old.get("betterSqlite3", {})
-    assets = better.get("assets", {})
-    native_current = (
-        better.get("version") == better_version
-        and isinstance(assets, dict)
-        and set(assets) == set(names)
-        and all(
-            isinstance(assets[platform], dict)
-            and assets[platform].get("file") == name
-            and re.fullmatch(r"[0-9a-f]{64}", str(assets[platform].get("sha256", "")))
-            and str(assets[platform].get("hash", "")).startswith("sha256-")
-            for platform, name in names.items()
-        )
-    )
-    if old["releaseId"] == release_id and old["node"] == {"version": node_version, "abi": abi} and native_current:
-        print(f"Pi extensions already current (Node {node_version}, ABI {abi})")
-        return
-
-    if not native_current or old["node"]["abi"] != abi:
-        release = fetch_json(f"https://api.github.com/repos/WiseLibs/better-sqlite3/releases/tags/v{better_version}")
-        assets = {}
-        with tempfile.TemporaryDirectory(prefix="dotfiles-better-sqlite3-") as temporary:
-            root = Path(temporary)
-            for platform, name in names.items():
-                path = root / name
-                digest = verify_asset(release, name, path)
-                assets[platform] = {"file": name, "sha256": digest, "hash": nix_hash(path)}
-
     updated = {
         "releaseId": release_id,
         "node": {"version": node_version, "abi": abi},
-        "betterSqlite3": {"version": better_version, "assets": assets},
+        "betterSqlite3": {"version": better_version},
     }
+    if old == updated:
+        print(f"Pi extensions already current (Node {node_version}, ABI {abi})")
+        return
     atomic_json(release_path, updated)
 
     if old["releaseId"] != release_id:
