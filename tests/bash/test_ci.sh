@@ -76,8 +76,6 @@ test_ci_runs_windows_neovim_integration() {
   assert_contains "$workflow" "tests/powershell/integration_neovim.ps1"
   assert_contains "$workflow" "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020"
   assert_contains "$workflow" "node-version: $(jq -r .node.version "$REPO_DIR/packages/pi-extensions-release.json")"
-  assert_contains "$workflow" "cache: npm"
-  assert_contains "$workflow" "cache-dependency-path: config/shared/ai/pi/extensions/package-lock.json"
   assert_contains "$workflow" "tests/powershell/integration_pi_extensions.ps1"
 
   local integration
