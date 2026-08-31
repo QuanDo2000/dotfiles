@@ -250,12 +250,11 @@ test_pi_subagents_configures_workflow_guardrails() {
   assert_not_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'native limits are not session-global'
 }
 
-test_code_search_stack_enables_auto_index_and_agent_workflows() {
-  local codex agents
-  codex="$(<"$REPO_DIR/config/shared/ai/codex/config.toml")"
+test_agent_policy_keeps_optional_code_search_guidance() {
+  local agents
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
 
-  assert_contains "$codex" '[mcp_servers.codebase-memory-mcp.tools.detect_changes]'
+  assert_not_contains "$(<"$REPO_DIR/config/shared/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
   assert_contains "$agents" 'Use codebase-memory first when those tools are available'
   assert_contains "$agents" 'Use native read-only filename/text search (`rg`, `fd`, `find`, or harness-provided `grep`/`find`) for raw lookup and fallback.'
   assert_contains "$agents" 'get_architecture'

@@ -46,14 +46,14 @@ test_pi_extension_settings_use_locked_local_release() {
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@dietrichgebert/ponytail"))] | length' "$settings")"
 }
 
-test_pi_mcp_removal_preserves_codebase_memory_codex_integration() {
+test_agent_defaults_leave_codebase_memory_disabled() {
   assert_exit_code 0 jq -e '
     .settings.toolPrefix == "mcp" and
     .mcpServers == {} and
     ([.. | strings | select(test("codebaseMemory|codebase-memory-mcp"))] | length) == 0
   ' "$REPO_DIR/config/shared/ai/pi/mcp.json"
-  assert_contains "$(<"$REPO_DIR/config/shared/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
-  assert_contains "$(<"$REPO_DIR/config/windows/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
+  assert_not_contains "$(<"$REPO_DIR/config/shared/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
+  assert_not_contains "$(<"$REPO_DIR/config/windows/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
   assert_file_exists "$REPO_DIR/packages/codebase-memory-mcp.nix"
 }
 
