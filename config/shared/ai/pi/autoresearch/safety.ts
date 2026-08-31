@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { isSupportedPlatform, scriptFileName, type SupportedPlatform } from "./runtime.ts";
+import { runJj, stateAt } from "./jj.ts";
 
 const execFileAsync = promisify(execFile);
 const AUTO_DIR = ".auto";
@@ -68,9 +69,14 @@ export async function validatePilot(cwd: string, options: PilotValidationOptions
   const platform = options.platform ?? process.platform;
   if (!isSupportedPlatform(platform)) return "pi-autoresearch is supported only on Linux, macOS, and Windows";
   const workDir = path.resolve(cwd);
-  const marker = path.join(workDir, ".git");
-  if (!fs.existsSync(marker) || !fs.lstatSync(marker).isFile()) {
-    return "pi-autoresearch requires a dedicated linked Git worktree (.git file)";
+  const jjMarker = path.join(workDir, ".jj");
+  const gitMarker = path.join(workDir, ".git");
+  const usesJj = fs.existsSync(jjMarker);
+  if (usesJj) {
+    const stat = fs.lstatSync(jjMarker);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) return "pi-autoresearch requires .jj as a regular directory";
+  } else if (!fs.existsSync(gitMarker) || !fs.lstatSync(gitMarker).isFile()) {
+    return "pi-autoresearch requires a dedicated linked Git worktree (.git file) or autoresearch-* JJ workspace";
   }
   const autoDir = path.join(workDir, AUTO_DIR);
   if (fs.existsSync(autoDir)) {
@@ -93,19 +99,37 @@ export async function validatePilot(cwd: string, options: PilotValidationOptions
     }
   }
 
-  try {
-    const root = await git(workDir, ["rev-parse", "--show-toplevel"]);
-    const common = await git(workDir, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
-    const branch = await git(workDir, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
-    if (canonical(root, platform) !== canonical(workDir, platform)) return "pi-autoresearch requires Git root to match the Pi working directory";
-    if (canonical(root, platform) === canonical(path.dirname(common), platform)) return "pi-autoresearch refuses the primary checkout";
-    if (!branch.startsWith("autoresearch/")) return "pi-autoresearch requires an autoresearch/* branch";
-    if (options.requireClean) {
-      const status = await git(workDir, ["status", "--porcelain=v1", "--untracked-files=all"]);
-      if (status) return "pi-autoresearch requires a clean worktree";
+  if (usesJj) {
+    try {
+      const root = await runJj(workDir, ["root"]);
+      if (canonical(root, platform) !== canonical(workDir, platform)) return "pi-autoresearch requires JJ root to match the Pi working directory";
+      const state = await stateAt(workDir);
+      const workspaces = (await runJj(workDir, ["workspace", "list", "-T", 'json(self) ++ "\\n"']))
+        .split("\n").filter(Boolean).map((line) => JSON.parse(line) as { name: string; target: { commit_id: string } });
+      const current = workspaces.filter((workspace) => workspace.target.commit_id === state.commitId);
+      if (workspaces.length < 2 || current.length !== 1 || !current[0].name.startsWith("autoresearch-")) {
+        return "pi-autoresearch requires a dedicated autoresearch-* workspace";
+      }
+      if (state.conflict) return "pi-autoresearch refuses a conflicted JJ working-copy commit";
+      if (options.requireClean && !state.empty) return "pi-autoresearch requires an empty JJ working-copy commit";
+    } catch (error) {
+      return `pi-autoresearch JJ validation failed: ${error instanceof Error ? error.message : String(error)}`;
     }
-  } catch (error) {
-    return `pi-autoresearch Git validation failed: ${error instanceof Error ? error.message : String(error)}`;
+  } else {
+    try {
+      const root = await git(workDir, ["rev-parse", "--show-toplevel"]);
+      const common = await git(workDir, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+      const branch = await git(workDir, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+      if (canonical(root, platform) !== canonical(workDir, platform)) return "pi-autoresearch requires Git root to match the Pi working directory";
+      if (canonical(root, platform) === canonical(path.dirname(common), platform)) return "pi-autoresearch refuses the primary checkout";
+      if (!branch.startsWith("autoresearch/")) return "pi-autoresearch requires an autoresearch/* branch";
+      if (options.requireClean) {
+        const status = await git(workDir, ["status", "--porcelain=v1", "--untracked-files=all"]);
+        if (status) return "pi-autoresearch requires a clean worktree";
+      }
+    } catch (error) {
+      return `pi-autoresearch Git validation failed: ${error instanceof Error ? error.message : String(error)}`;
+    }
   }
   return null;
 }

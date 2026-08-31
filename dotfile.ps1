@@ -970,7 +970,7 @@ function SyncPiConfigs {
     Install-DirectoryWithRollback `
         (Join-Path $seedDir 'autoresearch') `
         (Join-Path $extensionDir 'autoresearch') `
-        @('index.ts', 'runtime.ts', 'safety.ts', 'git.ts', 'metrics.ts', 'skill\SKILL.md') `
+        @('index.ts', 'runtime.ts', 'safety.ts', 'git.ts', 'jj.ts', 'vcs.ts', 'metrics.ts', 'skill\SKILL.md') `
         'Pi autoresearch extension'
     Install-DirectoryWithRollback `
         (Join-Path $seedDir 'fast-mode') `
@@ -1620,7 +1620,7 @@ function Sync-LazyLock {
     if ($script:Dry) { return }
 
     $source = Join-Path $script:DotfilesDir "config\shared\config\nvim\lazy-lock.json"
-    $target = "$env:LOCALAPPDATA\nvim\lazy-lock.json"
+    $target = Join-Path $env:LOCALAPPDATA "nvim\lazy-lock.json"
     New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
     Copy-FileWithRollback $source $target 'Neovim plugin lock copy'
     (Get-Item -LiteralPath $target).IsReadOnly = $false

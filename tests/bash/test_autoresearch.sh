@@ -18,6 +18,23 @@ if (Object.hasOwn(parsed, "constructor") || parsed.constructor !== undefined) pr
 JS
 }
 
+test_autoresearch_completion_summary_reports_best_result() {
+  assert_file_exists "$extension_dir/metrics.ts"
+  [ -f "$extension_dir/metrics.ts" ] || return
+  METRICS="file://$extension_dir/metrics.ts" assert_exit_code 0 node --input-type=module - <<'JS'
+const { formatCompletionSummary } = await import(process.env.METRICS);
+const entries = [
+  { status: "baseline", metric: 100 },
+  { status: "discard", metric: 110 },
+  { status: "keep", metric: 80 },
+];
+const summary = formatCompletionSummary(entries, "latency_ms", "lower", "/tmp/autoresearch-speed");
+for (const expected of ["baseline latency_ms: 100", "best latency_ms: 80", "improvement: 20.00%", "accepted experiments: 1", "/tmp/autoresearch-speed"]) {
+  if (!summary.includes(expected)) throw new Error(`missing summary field: ${expected}`);
+}
+JS
+}
+
 test_autoresearch_guard_rejects_unsafe_and_accepts_bounded_worktree() {
   assert_file_exists "$extension_dir/safety.ts"
   [ -f "$extension_dir/safety.ts" ] || return
@@ -163,23 +180,252 @@ JS
   GIT_HELPERS="file://$extension_dir/git.ts" assert_exit_code 0 node "$TEST_TMPDIR/test-git.mjs" "$work"
 }
 
-test_autoresearch_extension_loads_and_rejects_ordinary_checkout() {
+test_autoresearch_workspace_helpers_create_suffix_and_remove() {
+  assert_file_exists "$extension_dir/git.ts"
+  assert_file_exists "$extension_dir/jj.ts"
+  [ -f "$extension_dir/git.ts" ] && [ -f "$extension_dir/jj.ts" ] || return
+
+  local git_root="$TEST_TMPDIR/create-git" jj_root="$TEST_TMPDIR/create-jj"
+  git init -q "$git_root"
+  git -C "$git_root" config user.name Test
+  git -C "$git_root" config user.email test@example.invalid
+  git -C "$git_root" config commit.gpgsign false
+  echo baseline > "$git_root/input"
+  git -C "$git_root" add input
+  git -C "$git_root" commit -qm baseline
+
+  jj git init "$jj_root" >/dev/null
+  jj -R "$jj_root" config set --repo user.name Test
+  jj -R "$jj_root" config set --repo user.email test@example.invalid
+  echo baseline > "$jj_root/input"
+  jj -R "$jj_root" commit -m baseline >/dev/null
+
+  GIT_HELPERS="file://$extension_dir/git.ts" JJ_HELPERS="file://$extension_dir/jj.ts" assert_exit_code 0 node --input-type=module - "$git_root" "$jj_root" <<'JS'
+import fs from "node:fs";
+import path from "node:path";
+const { createAutoresearchWorktree, removeAutoresearchWorktree, rollbackAutoresearchWorktree, runGit } = await import(process.env.GIT_HELPERS);
+const { createAutoresearchWorkspace, removeAutoresearchWorkspace, runJj, stateAt } = await import(process.env.JJ_HELPERS);
+const [gitRoot, jjRoot] = process.argv.slice(2);
+const check = (condition, message) => { if (!condition) throw new Error(message); };
+
+const occupied = path.join(path.dirname(gitRoot), "autoresearch-reduce-latency");
+fs.symlinkSync(path.join(path.dirname(gitRoot), "missing-target"), occupied);
+fs.writeFileSync(path.join(gitRoot, "dirty"), "dirty\n");
+let dirtyRejected = false;
+try { await createAutoresearchWorktree(gitRoot, "unsafe"); } catch (error) { dirtyRejected = String(error).includes("clean primary checkout"); }
+check(dirtyRejected, "dirty Git primary checkout accepted");
+fs.rmSync(path.join(gitRoot, "dirty"));
+const gitFirst = await createAutoresearchWorktree(gitRoot, "reduce latency");
+const gitSecond = await createAutoresearchWorktree(gitRoot, "reduce latency");
+check(gitFirst.name === "autoresearch/reduce-latency-2", "dangling-link Git collision was not skipped");
+check(gitSecond.name === "autoresearch/reduce-latency-3", "Git collision suffix missing");
+fs.writeFileSync(path.join(gitFirst.path, "dirty"), "dirty\n");
+let dirtyRemovalRejected = false;
+try { await removeAutoresearchWorktree(gitRoot, gitFirst.path); } catch (error) { dirtyRemovalRejected = String(error).includes("dirty Git worktree"); }
+check(dirtyRemovalRejected && fs.existsSync(gitFirst.path), "dirty Git worktree cleanup was not refused");
+fs.rmSync(path.join(gitFirst.path, "dirty"));
+await removeAutoresearchWorktree(gitRoot, gitFirst.path);
+await removeAutoresearchWorktree(gitRoot, gitSecond.path);
+check(!fs.existsSync(gitFirst.path) && !fs.existsSync(gitSecond.path), "Git worktree directory remains");
+check((await runGit(gitRoot, ["branch", "--list", gitFirst.name])) === gitFirst.name, "Git cleanup deleted branch history");
+const gitRollback = await createAutoresearchWorktree(gitRoot, "failed setup");
+await rollbackAutoresearchWorktree(gitRoot, gitRollback);
+check(!fs.existsSync(gitRollback.path), "Git rollback kept worktree path");
+check((await runGit(gitRoot, ["branch", "--list", gitRollback.name])) === "", "Git rollback kept newly created branch");
+
+const jjFirst = await createAutoresearchWorkspace(jjRoot, "reduce latency");
+const jjSecond = await createAutoresearchWorkspace(jjRoot, "reduce latency");
+check(jjFirst.name === "autoresearch-reduce-latency-2", "dangling-link JJ collision was not skipped");
+check(jjSecond.name === "autoresearch-reduce-latency-3", "JJ collision suffix missing");
+check((await stateAt(jjFirst.path)).empty && (await stateAt(jjSecond.path)).empty, "created JJ workspace is not empty");
+await removeAutoresearchWorkspace(jjRoot, jjFirst);
+await removeAutoresearchWorkspace(jjRoot, jjSecond);
+check(!fs.existsSync(jjFirst.path) && !fs.existsSync(jjSecond.path), "JJ workspace directory remains");
+const jjNames = await runJj(jjRoot, ["workspace", "list", "-T", 'name ++ "\\n"']);
+check(!jjNames.includes(jjFirst.name) && !jjNames.includes(jjSecond.name), "JJ cleanup kept workspace registration");
+check(fs.lstatSync(occupied).isSymbolicLink(), "collision handling removed unrelated sibling path");
+JS
+}
+
+test_autoresearch_jj_guard_accepts_only_dedicated_empty_workspace() {
+  assert_file_exists "$extension_dir/safety.ts"
+  [ -f "$extension_dir/safety.ts" ] || return
+
+  local root="$TEST_TMPDIR/jj-repo" work="$TEST_TMPDIR/jj-work"
+  jj git init "$root" >/dev/null
+  jj -R "$root" config set --repo user.name Test
+  jj -R "$root" config set --repo user.email test@example.invalid
+  echo baseline > "$root/input"
+  jj -R "$root" commit -m baseline >/dev/null
+  jj --quiet -R "$root" workspace add --name autoresearch-test -r @- "$work"
+
+  SAFETY="file://$extension_dir/safety.ts" assert_exit_code 0 node --input-type=module - "$root" "$work" <<'JS'
+import fs from "node:fs";
+import path from "node:path";
+const { validatePilot } = await import(process.env.SAFETY);
+const [primary, work] = process.argv.slice(2);
+const check = (condition, message) => { if (!condition) throw new Error(message); };
+check((await validatePilot(primary, { requireFiles: false, requireClean: true }))?.includes("autoresearch-* workspace"), "primary JJ workspace accepted");
+check(await validatePilot(work, { requireFiles: false, requireClean: true }) === null, "dedicated JJ workspace rejected");
+const dirty = path.join(work, "dirty");
+fs.writeFileSync(dirty, "change\n");
+check((await validatePilot(work, { requireFiles: false, requireClean: true }))?.includes("empty JJ working-copy commit"), "nonempty JJ workspace accepted");
+check(await validatePilot(work, { requireFiles: false, requireClean: false }) === null, "JJ experiment changes rejected");
+fs.rmSync(dirty);
+JS
+}
+
+test_autoresearch_jj_helpers_keep_and_discard_experiments() {
+  assert_file_exists "$extension_dir/jj.ts"
+  [ -f "$extension_dir/jj.ts" ] || return
+
+  local root="$TEST_TMPDIR/jj-helper-repo" work="$TEST_TMPDIR/jj-helper-work"
+  jj git init "$root" >/dev/null
+  jj -R "$root" config set --repo user.name Test
+  jj -R "$root" config set --repo user.email test@example.invalid
+  echo baseline > "$root/input"
+  jj -R "$root" commit -m baseline >/dev/null
+  jj --quiet -R "$root" workspace add --name autoresearch-helper -r @- "$work"
+  mkdir "$work/.auto"
+  echo setup > "$work/.auto/log.jsonl"
+
+  JJ_HELPERS="file://$extension_dir/jj.ts" assert_exit_code 0 node --input-type=module - "$work" <<'JS'
+import fs from "node:fs";
+import path from "node:path";
+const { commitExperiment, fingerprintWorktree, isJjCommitId, restoreExperiment, revisionIdentity, runJj } = await import(process.env.JJ_HELPERS);
+const cwd = process.argv[2];
+const check = (condition, message) => { if (!condition) throw new Error(message); };
+check(isJjCommitId("a".repeat(40)) && isJjCommitId("b".repeat(64)), "supported JJ commit ID rejected");
+check(!isJjCommitId("a".repeat(39)) && !isJjCommitId("b".repeat(65)), "invalid JJ commit ID accepted");
+const initialRevision = await revisionIdentity(cwd);
+const initialTree = await fingerprintWorktree(cwd);
+await runJj(cwd, ["describe", "-m", "unexpected metadata change"]);
+check(await revisionIdentity(cwd) !== initialRevision, "JJ description change was not detected");
+await runJj(cwd, ["describe", "-m", ""]);
+const experimentRevision = await revisionIdentity(cwd);
+fs.writeFileSync(path.join(cwd, "input"), "candidate\n");
+fs.writeFileSync(path.join(cwd, "untracked"), "remove\n");
+check(await fingerprintWorktree(cwd) !== initialTree, "JJ mutation was not detected");
+check(await revisionIdentity(cwd) === experimentRevision, "working-copy content changed JJ revision identity");
+await restoreExperiment(cwd);
+check(fs.readFileSync(path.join(cwd, "input"), "utf8") === "baseline\n", "JJ tracked change not restored");
+check(!fs.existsSync(path.join(cwd, "untracked")), "JJ added file not removed");
+check(fs.existsSync(path.join(cwd, ".auto/log.jsonl")), "JJ .auto state removed");
+fs.writeFileSync(path.join(cwd, "input"), "kept\n");
+fs.appendFileSync(path.join(cwd, ".auto/log.jsonl"), "keep\n");
+const kept = await commitExperiment(cwd, "keep", "faster");
+check(isJjCommitId(kept), "JJ keep commit missing");
+fs.writeFileSync(path.join(cwd, "input"), "discard\n");
+fs.appendFileSync(path.join(cwd, ".auto/log.jsonl"), "discard\n");
+await restoreExperiment(cwd);
+await commitExperiment(cwd, "discard", "slower");
+check(fs.readFileSync(path.join(cwd, "input"), "utf8") === "kept\n", "JJ discard kept experiment files");
+check(fs.readFileSync(path.join(cwd, ".auto/log.jsonl"), "utf8").includes("discard"), "JJ discard lost durable log");
+JS
+}
+
+test_autoresearch_extension_loads_commands() {
   assert_file_exists "$extension_dir/index.ts"
   [ -f "$extension_dir/index.ts" ] || return
-  local output="$TEST_TMPDIR/rpc.jsonl" errors="$TEST_TMPDIR/rpc.err" status=0
-  printf '%s\n' \
-    '{"id":"commands","type":"get_commands"}' \
-    '{"id":"unsafe","type":"prompt","message":"/autoresearch test"}' |
-    PI_OFFLINE=1 timeout 20 pi --mode rpc --no-session --no-extensions -e "$extension_dir/index.ts" >"$output" 2>"$errors" || status=$?
+  local output="$TEST_TMPDIR/rpc.jsonl" errors="$TEST_TMPDIR/rpc.err" ordinary="$TEST_TMPDIR/ordinary-checkout" status=0
+  git init -q "$ordinary"
+  echo dirty > "$ordinary/untracked"
+  (
+    cd "$ordinary" || exit 1
+    printf '%s\n' '{"id":"commands","type":"get_commands"}' |
+      PI_OFFLINE=1 timeout 20 pi --mode rpc --no-extensions -e "$extension_dir/index.ts"
+  ) >"$output" 2>"$errors" || status=$?
   assert_equals 0 "$status"
   assert_equals '' "$(<"$errors")"
   assert_exit_code 0 jq -se '
     any(.[]; .type == "response" and .id == "commands" and
       any(.data.commands[]; .name == "autoresearch") and
       any(.data.commands[]; .name == "skill:pi-autoresearch")) and
-    any(.[]; .type == "extension_ui_request" and .method == "notify" and (.message | contains("linked Git worktree"))) and
     all(.[]; .type != "agent_start")
   ' "$output"
+}
+
+test_autoresearch_command_creates_names_reports_and_cleans_git_worktree() {
+  assert_file_exists "$extension_dir/index.ts"
+  [ -f "$extension_dir/index.ts" ] || return
+  local root="$TEST_TMPDIR/git-auto-repo" work="$TEST_TMPDIR/autoresearch-reduce-latency"
+  git init -q "$root"
+  git -C "$root" config user.name Test
+  git -C "$root" config user.email test@example.invalid
+  git -C "$root" config commit.gpgsign false
+  echo baseline > "$root/input"
+  git -C "$root" add input
+  git -C "$root" commit -qm baseline
+
+  EXTENSION="$extension_dir/index.ts" ROOT="$root" WORK="$work" python3 - <<'PY' || echo '  automatic Git worktree QOL flow failed' >> "$ERROR_FILE"
+import json
+import os
+import select
+import shutil
+import subprocess
+import time
+
+process = subprocess.Popen(
+    ["pi", "--mode", "rpc", "--no-extensions", "-e", os.environ["EXTENSION"]],
+    cwd=os.environ["ROOT"], env={**os.environ, "PI_OFFLINE": "1"},
+    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+)
+def send(message):
+    process.stdin.write(json.dumps(message) + "\n")
+    process.stdin.flush()
+def read_until(predicate, timeout=15):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        ready, _, _ = select.select([process.stdout], [], [], 1)
+        if not ready:
+            continue
+        line = process.stdout.readline()
+        if not line:
+            break
+        event = json.loads(line)
+        if predicate(event):
+            return event
+    raise RuntimeError("expected RPC event not observed")
+
+send({"id": "auto", "type": "prompt", "message": "/autoresearch reduce latency"})
+read_until(lambda event: event.get("type") == "extension_ui_request" and event.get("message") == "Autoresearch mode ON")
+if not os.path.isfile(os.path.join(os.environ["WORK"], ".git")):
+    raise RuntimeError("linked Git worktree was not created")
+
+send({"id": "state", "type": "get_state"})
+state = read_until(lambda event: event.get("type") == "response" and event.get("id") == "state")
+if state.get("data", {}).get("sessionName") != "autoresearch: reduce latency":
+    raise RuntimeError("autoresearch session was not named")
+
+auto = os.path.join(os.environ["WORK"], ".auto")
+os.mkdir(auto)
+with open(os.path.join(auto, "config.json"), "w", encoding="utf-8") as file:
+    json.dump({"maxIterations": 5, "metricName": "latency_ms", "direction": "lower"}, file)
+with open(os.path.join(auto, "log.jsonl"), "w", encoding="utf-8") as file:
+    file.write(json.dumps({"status": "baseline", "metric": 10}) + "\n")
+    file.write(json.dumps({"status": "keep", "metric": 8}) + "\n")
+send({"id": "status", "type": "prompt", "message": "/autoresearch status"})
+status = read_until(lambda event: event.get("type") == "extension_ui_request" and "iterations: 2/5" in event.get("message", ""))
+for expected in ["VCS: git", "best latency_ms: 8", "remaining: 3", os.environ["WORK"]]:
+    if expected not in status["message"]:
+        raise RuntimeError(f"status missing {expected}")
+shutil.rmtree(auto)
+
+send({"id": "cleanup", "type": "prompt", "message": "/autoresearch cleanup"})
+confirm = read_until(lambda event: event.get("type") == "extension_ui_request" and event.get("method") == "confirm")
+send({"type": "extension_ui_response", "id": confirm["id"], "confirmed": True})
+read_until(lambda event: event.get("type") == "extension_ui_request" and "Removed Git worktree" in event.get("message", ""))
+process.terminate()
+process.wait(5)
+errors = process.stderr.read()
+if errors:
+    raise RuntimeError(errors)
+if os.path.exists(os.environ["WORK"]):
+    raise RuntimeError("Git cleanup left worktree directory")
+branch = subprocess.run(["git", "-C", os.environ["ROOT"], "branch", "--list", "autoresearch/reduce-latency"], check=True, capture_output=True, text=True).stdout.strip()
+if branch != "autoresearch/reduce-latency":
+    raise RuntimeError("Git cleanup deleted experiment branch")
+PY
 }
 
 test_autoresearch_command_accepts_safe_linked_worktree() {
@@ -237,6 +483,103 @@ if errors:
     raise SystemExit(errors)
 if not found:
     raise SystemExit("safe activation notification not observed")
+PY
+}
+
+test_autoresearch_command_creates_and_enters_safe_jj_workspace() {
+  assert_file_exists "$extension_dir/index.ts"
+  [ -f "$extension_dir/index.ts" ] || return
+  local root="$TEST_TMPDIR/jj-auto-repo" work="$TEST_TMPDIR/autoresearch-reduce-latency"
+  jj git init "$root" >/dev/null
+  jj -R "$root" config set --repo user.name Test
+  jj -R "$root" config set --repo user.email test@example.invalid
+  echo baseline > "$root/input"
+  jj -R "$root" commit -m baseline >/dev/null
+
+  EXTENSION="$extension_dir/index.ts" ROOT="$root" WORK="$work" python3 - <<'PY' || echo '  automatic JJ workspace setup failed' >> "$ERROR_FILE"
+import json
+import os
+import select
+import subprocess
+import time
+
+process = subprocess.Popen(
+    ["pi", "--mode", "rpc", "--no-extensions", "-e", os.environ["EXTENSION"]],
+    cwd=os.environ["ROOT"], env={**os.environ, "PI_OFFLINE": "1"},
+    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+)
+process.stdin.write(json.dumps({"id": "auto", "type": "prompt", "message": "/autoresearch reduce latency"}) + "\n")
+process.stdin.flush()
+found = False
+deadline = time.monotonic() + 15
+while time.monotonic() < deadline:
+    ready, _, _ = select.select([process.stdout], [], [], 1)
+    if not ready:
+        continue
+    line = process.stdout.readline()
+    if not line:
+        break
+    event = json.loads(line)
+    if event.get("type") == "extension_ui_request" and event.get("message") == "Autoresearch mode ON":
+        found = True
+        break
+process.terminate()
+process.wait(5)
+errors = process.stderr.read()
+if errors:
+    raise SystemExit(errors)
+if not found:
+    raise SystemExit("automatic activation notification not observed")
+if not os.path.isdir(os.path.join(os.environ["WORK"], ".jj")):
+    raise SystemExit("dedicated JJ workspace was not created")
+workspace_list = subprocess.run(
+    ["jj", "--no-pager", "--color=never", "-R", os.environ["WORK"], "workspace", "list", "-T", 'name ++ "\\n"'],
+    check=True, capture_output=True, text=True,
+).stdout.splitlines()
+if "autoresearch-reduce-latency" not in workspace_list:
+    raise SystemExit("dedicated JJ workspace name missing")
+PY
+}
+
+test_autoresearch_command_accepts_safe_jj_workspace() {
+  assert_file_exists "$extension_dir/index.ts"
+  [ -f "$extension_dir/index.ts" ] || return
+  local root="$TEST_TMPDIR/jj-rpc-repo" work="$TEST_TMPDIR/jj-rpc-work"
+  jj git init "$root" >/dev/null
+  jj -R "$root" config set --repo user.name Test
+  jj -R "$root" config set --repo user.email test@example.invalid
+  echo baseline > "$root/input"
+  jj -R "$root" commit -m baseline >/dev/null
+  jj --quiet -R "$root" workspace add --name autoresearch-rpc -r @- "$work"
+
+  EXTENSION="$extension_dir/index.ts" WORK="$work" python3 - <<'PY' || echo '  safe JJ activation failed' >> "$ERROR_FILE"
+import json
+import os
+import select
+import subprocess
+import time
+
+process = subprocess.Popen(
+    ["pi", "--mode", "rpc", "--no-session", "--no-extensions", "-e", os.environ["EXTENSION"]],
+    cwd=os.environ["WORK"], env={**os.environ, "PI_OFFLINE": "1"},
+    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+)
+process.stdin.write(json.dumps({"id": "safe", "type": "prompt", "message": "/autoresearch reduce latency"}) + "\n")
+process.stdin.flush()
+found = False
+deadline = time.monotonic() + 10
+while time.monotonic() < deadline:
+    ready, _, _ = select.select([process.stdout], [], [], 1)
+    if not ready:
+        continue
+    event = json.loads(process.stdout.readline())
+    if event.get("type") == "extension_ui_request" and event.get("message") == "Autoresearch mode ON":
+        found = True
+        break
+process.terminate()
+process.wait(5)
+if process.stderr.read() or not found:
+    raise SystemExit("safe JJ activation notification not observed")
 PY
 }
 

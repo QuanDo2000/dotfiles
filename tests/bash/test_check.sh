@@ -39,7 +39,9 @@ test_check_script_runs_repo_verification() {
   assert_contains "$flake_text" "packages.x86_64-linux.pi-extensions = linuxPkgs.pi-extensions"
   assert_contains "$flake_text" "packages.x86_64-linux.codebase-memory-mcp = linuxPkgs.codebase-memory-mcp"
   assert_contains "$flake_text" "devShells.aarch64-darwin.default"
+  assert_contains "$flake_text" "jujutsu"
   assert_contains "$flake_text" "python3"
+  assert_contains "$flake_text" "python-launcher"
   assert_contains "$flake_text" "shellcheck"
 }
 

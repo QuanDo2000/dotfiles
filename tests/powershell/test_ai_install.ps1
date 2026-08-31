@@ -1155,6 +1155,8 @@ function Initialize-TestAutoresearchSource($SeedDir) {
     'runtime' | Set-Content (Join-Path $source 'runtime.ts')
     'safety' | Set-Content (Join-Path $source 'safety.ts')
     'git' | Set-Content (Join-Path $source 'git.ts')
+    'jj' | Set-Content (Join-Path $source 'jj.ts')
+    'vcs' | Set-Content (Join-Path $source 'vcs.ts')
     'metrics' | Set-Content (Join-Path $source 'metrics.ts')
     "---`nname: pi-autoresearch`n---" | Set-Content (Join-Path $source 'skill\SKILL.md')
 }
@@ -1286,6 +1288,8 @@ function test_syncpiconfigs_creates_writable_seed_files {
     $autoresearch = Join-Path $extensionDir 'autoresearch'
     Assert-FileExists (Join-Path $autoresearch 'index.ts')
     Assert-FileExists (Join-Path $autoresearch 'runtime.ts')
+    Assert-FileExists (Join-Path $autoresearch 'jj.ts')
+    Assert-FileExists (Join-Path $autoresearch 'vcs.ts')
     Assert-FileExists (Join-Path $autoresearch 'skill\SKILL.md')
     Assert-False (Test-Path -LiteralPath (Join-Path $autoresearch 'obsolete.ts')) 'Pi autoresearch deployment should remove stale files'
     Assert-False ([bool]((Get-Item $autoresearch -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) 'Pi autoresearch should be a real directory'

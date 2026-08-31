@@ -46,10 +46,12 @@
           cosign
           git
           jq
+          jujutsu
           neovim
           nodejs
           pi-agent
           python3
+          python-launcher
           shellcheck
           tree-sitter
           tmux
@@ -61,6 +63,7 @@
         packages = with pkgs; [
           git
           jq
+          jujutsu
           neovim
           python3
           tree-sitter

@@ -1,10 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { SessionManager, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
-import { commitExperiment, fingerprintWorktree, restoreExperiment, runGit } from "./git.ts";
-import { isImprovement, parseMetrics } from "./metrics.ts";
+import { createAutoresearchWorktree, removeAutoresearchWorktree, rollbackAutoresearchWorktree, type CreatedGitWorktree } from "./git.ts";
+import { createAutoresearchWorkspace, currentWorkspaceName, removeAutoresearchWorkspace, type CreatedJjWorkspace } from "./jj.ts";
+import { formatCompletionSummary, isImprovement, parseMetrics } from "./metrics.ts";
+import { commitExperiment, currentRevision, fingerprintWorktree, restoreExperiment, revisionIdentity, vcsKind } from "./vcs.ts";
 import { isSupportedPlatform, scriptCommand } from "./runtime.ts";
 import { readConfig, validatePilot } from "./safety.ts";
 
@@ -12,8 +14,10 @@ const TOOL_NAMES = ["autoresearch_run", "autoresearch_log"];
 const AUTO_DIR = ".auto";
 const LOG_FILE = "log.jsonl";
 
+type CreatedWorkspace = CreatedGitWorktree | CreatedJjWorkspace;
+
 type RunResult = {
-  commit: string;
+  revision: string;
   tree: string;
   metric: number | null;
   metrics: Record<string, number>;
@@ -42,6 +46,54 @@ function readEntries(cwd: string): Array<Record<string, unknown>> {
 async function requirePilot(ctx: ExtensionContext, requireFiles: boolean, requireClean: boolean): Promise<void> {
   const problem = await validatePilot(ctx.cwd, { requireFiles, requireClean });
   if (problem) throw new Error(problem);
+}
+
+async function statusText(cwd: string, pending: boolean): Promise<string> {
+  const problem = await validatePilot(cwd, { requireFiles: false, requireClean: false });
+  if (problem) throw new Error(problem);
+  const entries = readEntries(cwd);
+  const lines = [
+    `VCS: ${vcsKind(cwd)}`,
+    `workspace: ${path.resolve(cwd)}`,
+    `revision: ${(await currentRevision(cwd)).slice(0, 12)}`,
+  ];
+  const configFile = path.join(cwd, AUTO_DIR, "config.json");
+  if (!fs.existsSync(configFile)) return [...lines, "iterations: 0 (not initialized)", `pending run: ${pending ? "yes" : "no"}`].join("\n");
+  const config = readConfig(cwd);
+  const accepted = entries
+    .filter((entry) => entry.status === "baseline" || entry.status === "keep")
+    .map((entry) => entry.metric)
+    .filter((metric): metric is number => typeof metric === "number" && Number.isFinite(metric));
+  const best = accepted.length === 0 ? "missing" : config.direction === "lower" ? Math.min(...accepted) : Math.max(...accepted);
+  return [
+    ...lines,
+    `iterations: ${entries.length}/${config.maxIterations}`,
+    `remaining: ${Math.max(0, config.maxIterations - entries.length)}`,
+    `best ${config.metricName}: ${best}`,
+    `last status: ${String(entries.at(-1)?.status ?? "none")}`,
+    `pending run: ${pending ? "yes" : "no"}`,
+  ].join("\n");
+}
+
+function persistEmptySession(session: Pick<SessionManager, "getSessionFile" | "getHeader">): string {
+  const sessionFile = session.getSessionFile();
+  if (!sessionFile) throw new Error("autoresearch workspace switching requires a persisted Pi session");
+  if (!fs.existsSync(sessionFile)) {
+    const header = session.getHeader();
+    if (!header) throw new Error("could not create a Pi session header");
+    fs.writeFileSync(sessionFile, `${JSON.stringify(header)}\n`, { flag: "wx", mode: 0o600 });
+  }
+  return sessionFile;
+}
+
+async function removeCreatedWorkspace(repositoryCwd: string, workspace: CreatedWorkspace): Promise<void> {
+  if (workspace.kind === "jj") await removeAutoresearchWorkspace(repositoryCwd, workspace);
+  else await removeAutoresearchWorktree(repositoryCwd, workspace.path);
+}
+
+async function rollbackCreatedWorkspace(repositoryCwd: string, workspace: CreatedWorkspace): Promise<void> {
+  if (workspace.kind === "jj") await removeAutoresearchWorkspace(repositoryCwd, workspace);
+  else await rollbackAutoresearchWorktree(repositoryCwd, workspace);
 }
 
 function setToolsActive(pi: ExtensionAPI, active: boolean): void {
@@ -80,7 +132,7 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
       const hasBaseline = entries.some((entry) => entry.status === "baseline" || entry.status === "keep");
       if (!hasBaseline) await requirePilot(ctx, true, true);
 
-      const commit = await runGit(ctx.cwd, ["rev-parse", "HEAD"], 5000);
+      const revision = await revisionIdentity(ctx.cwd);
       if (!isSupportedPlatform(process.platform)) throw new Error("unsupported autoresearch platform");
       const measureScript = scriptCommand(ctx.cwd, "measure", process.platform, process.env);
       const measure = await pi.exec(measureScript.command, measureScript.args, { cwd: ctx.cwd, signal, timeout: 600000 });
@@ -93,14 +145,14 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
         checksOutput = checks.stdout + checks.stderr;
       }
       const measureOutput = measure.stdout + measure.stderr;
-      if (await runGit(ctx.cwd, ["rev-parse", "HEAD"], 5000) !== commit) {
-        throw new Error("benchmark or checks changed Git HEAD");
+      if (await revisionIdentity(ctx.cwd) !== revision) {
+        throw new Error("benchmark or checks changed the VCS revision");
       }
       const tree = await fingerprintWorktree(ctx.cwd);
       const metrics = parseMetrics(measureOutput);
       const metric = Object.hasOwn(metrics, config.metricName) ? metrics[config.metricName] : null;
       lastRun = {
-        commit,
+        revision,
         tree,
         metric,
         metrics,
@@ -158,8 +210,8 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
           throw new Error(`cannot keep ${lastRun.metric}; best accepted ${config.metricName} is ${best}`);
         }
       }
-      if (await runGit(ctx.cwd, ["rev-parse", "HEAD"], 5000) !== lastRun.commit) {
-        throw new Error("Git HEAD changed after measurement; run autoresearch_run again");
+      if (await revisionIdentity(ctx.cwd) !== lastRun.revision) {
+        throw new Error("VCS revision changed after measurement; run autoresearch_run again");
       }
       if (await fingerprintWorktree(ctx.cwd) !== lastRun.tree) {
         throw new Error("worktree changed after measurement; run autoresearch_run again");
@@ -176,7 +228,8 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
         timestamp: new Date().toISOString(),
         status: params.status,
         description: params.description,
-        sourceCommit: lastRun.commit,
+        vcs: vcsKind(ctx.cwd),
+        sourceRevision: lastRun.revision,
         metric: lastRun.metric,
         metrics: lastRun.metrics,
         measureExit: lastRun.measureExit,
@@ -194,8 +247,14 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
 
       lastRun = null;
       const done = entry.run >= config.maxIterations;
+      const completion = done
+        ? formatCompletionSummary([...entries, entry], config.metricName, config.direction, ctx.cwd)
+        : "";
       return {
-        content: [{ type: "text", text: `${params.status} recorded as run ${entry.run}/${config.maxIterations}${done ? "; stop now" : ""}` }],
+        content: [{
+          type: "text",
+          text: [`${params.status} recorded as run ${entry.run}/${config.maxIterations}`, completion].filter(Boolean).join("\n\n"),
+        }],
         details: { entry, done },
         terminate: done,
       };
@@ -203,7 +262,7 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("autoresearch", {
-    description: "Start or stop a bounded, isolated optimization loop",
+    description: "Start, inspect, stop, or clean up a bounded optimization loop",
     handler: async (args, ctx) => {
       const request = (args ?? "").trim();
       if (request === "off") {
@@ -212,16 +271,131 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
         ctx.ui.notify("Autoresearch mode OFF", "info");
         return;
       }
-      if (!request) {
-        ctx.ui.notify("Usage: /autoresearch <measurable goal> or /autoresearch off", "info");
+      if (request === "status") {
+        try {
+          ctx.ui.notify(await statusText(ctx.cwd, lastRun !== null), "info");
+        } catch (error) {
+          ctx.ui.notify(`Autoresearch status unavailable: ${error instanceof Error ? error.message : String(error)}`, "error");
+        }
         return;
       }
+      if (request === "cleanup") {
+        const problem = await validatePilot(ctx.cwd, { requireFiles: false, requireClean: true });
+        if (problem) {
+          ctx.ui.notify(`Autoresearch cleanup unavailable: ${problem}`, "error");
+          return;
+        }
+        const parentSession = ctx.sessionManager.getHeader()?.parentSession;
+        if (!parentSession || !fs.existsSync(parentSession)) {
+          ctx.ui.notify("Autoresearch cleanup requires the parent session created by automatic workspace setup", "error");
+          return;
+        }
+        const targetCwd = ctx.cwd;
+        const targetSession = ctx.sessionManager.getSessionFile();
+        const kind = vcsKind(targetCwd);
+        const workspace: CreatedWorkspace = kind === "jj"
+          ? { kind, name: await currentWorkspaceName(targetCwd), path: targetCwd }
+          : { kind, name: "", path: targetCwd };
+        if (!await ctx.ui.confirm("Remove autoresearch workspace?", `Preserve committed history and remove ${targetCwd}?`)) return;
+        setMode(false);
+        const switched = await ctx.switchSession(parentSession, {
+          withSession: async (replacementCtx) => {
+            try {
+              await removeCreatedWorkspace(replacementCtx.cwd, workspace);
+              if (targetSession) fs.rmSync(targetSession, { force: true });
+              replacementCtx.ui.notify(
+                kind === "jj" ? `Removed JJ workspace ${workspace.name}` : `Removed Git worktree ${targetCwd}; branch preserved`,
+                "info",
+              );
+            } catch (error) {
+              replacementCtx.ui.notify(`Autoresearch cleanup failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+            }
+          },
+        });
+        if (switched.cancelled) ctx.ui.notify("Autoresearch cleanup cancelled; workspace preserved", "info");
+        return;
+      }
+      if (!request) {
+        ctx.ui.notify("Usage: /autoresearch <goal>|off|status|cleanup", "info");
+        return;
+      }
+
       const problem = await validatePilot(ctx.cwd, { requireFiles: false, requireClean: true });
+      const autoJj = problem?.includes("dedicated autoresearch-* workspace") && fs.existsSync(path.join(ctx.cwd, ".jj"));
+      const gitMarker = path.join(ctx.cwd, ".git");
+      const autoGit = problem?.includes("linked Git worktree") && fs.existsSync(gitMarker) && fs.lstatSync(gitMarker).isDirectory();
+      if (autoJj || autoGit) {
+        let workspace: CreatedWorkspace | null = null;
+        let sessionFile: string | null = null;
+        let entered = false;
+        try {
+          const parentSession = persistEmptySession(ctx.sessionManager);
+          workspace = autoJj
+            ? await createAutoresearchWorkspace(ctx.cwd, request)
+            : await createAutoresearchWorktree(ctx.cwd, request);
+          const workspaceProblem = await validatePilot(workspace.path, { requireFiles: false, requireClean: true });
+          if (workspaceProblem) throw new Error(workspaceProblem);
+          const session = SessionManager.create(workspace.path, undefined, { parentSession });
+          sessionFile = persistEmptySession(session);
+          const switched = await ctx.switchSession(sessionFile, {
+            withSession: async (replacementCtx) => {
+              replacementCtx.ui.notify(`Created ${workspace!.kind === "jj" ? "JJ workspace" : "Git worktree"} ${workspace!.name} at ${workspace!.path}`, "info");
+              try {
+                await replacementCtx.sendUserMessage(`/autoresearch ${request}`, { expandPromptTemplates: true });
+                entered = true;
+              } catch (error) {
+                entered = true;
+                const activationError = error instanceof Error ? error.message : String(error);
+                try {
+                  const returned = await replacementCtx.switchSession(parentSession, {
+                    withSession: async (parentCtx) => {
+                      try {
+                        await rollbackCreatedWorkspace(parentCtx.cwd, workspace!);
+                        fs.rmSync(sessionFile!, { force: true });
+                        parentCtx.ui.notify(`Autoresearch activation failed and workspace was rolled back: ${activationError}`, "error");
+                      } catch (rollbackError) {
+                        parentCtx.ui.notify(
+                          `Autoresearch activation failed: ${activationError}; rollback failed for ${workspace!.path}: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`,
+                          "error",
+                        );
+                      }
+                    },
+                  });
+                  if (returned.cancelled) replacementCtx.ui.notify(`Autoresearch activation failed; workspace remains at ${workspace!.path}`, "error");
+                } catch (rollbackError) {
+                  replacementCtx.ui.notify(
+                    `Autoresearch activation failed: ${activationError}; workspace remains at ${workspace!.path}: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`,
+                    "error",
+                  );
+                }
+              }
+            },
+          });
+          if (switched.cancelled && workspace) {
+            await rollbackCreatedWorkspace(ctx.cwd, workspace);
+            if (sessionFile) fs.rmSync(sessionFile, { force: true });
+            ctx.ui.notify("Session switch cancelled; created workspace rolled back", "info");
+          }
+        } catch (error) {
+          let detail = error instanceof Error ? error.message : String(error);
+          if (workspace && !entered) {
+            try {
+              await rollbackCreatedWorkspace(ctx.cwd, workspace);
+              if (sessionFile) fs.rmSync(sessionFile, { force: true });
+            } catch (rollbackError) {
+              detail += `; rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`;
+            }
+          }
+          if (!entered) ctx.ui.notify(`Autoresearch unavailable: ${detail}`, "error");
+        }
+        return;
+      }
       if (problem) {
         ctx.ui.notify(`Autoresearch unavailable: ${problem}`, "error");
         return;
       }
       setMode(true);
+      pi.setSessionName(`autoresearch: ${request}`);
       const rulesExist = fs.existsSync(path.join(ctx.cwd, AUTO_DIR, "prompt.md"));
       ctx.ui.notify("Autoresearch mode ON", "info");
       pi.sendUserMessage(
