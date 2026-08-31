@@ -972,6 +972,11 @@ function SyncPiConfigs {
         (Join-Path $extensionDir 'autoresearch') `
         @('index.ts', 'runtime.ts', 'safety.ts', 'git.ts', 'metrics.ts', 'skill\SKILL.md') `
         'Pi autoresearch extension'
+    Install-DirectoryWithRollback `
+        (Join-Path $seedDir 'fast-mode') `
+        (Join-Path $extensionDir 'fast-mode') `
+        @('index.ts', 'core.ts') `
+        'Pi fast-mode extension'
     } finally {
         $syncLock.Dispose()
     }

@@ -113,8 +113,8 @@ test_profile_desktop_units_and_nixos_fuse_wrapper() {
 test_evaluated_profile_configures_runtime_files_and_activations() {
   local nixos_files arch_files activations
   nixos_files=$(_profile_files nixos); arch_files=$(_profile_files arch-server)
-  _test_present "$nixos_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/test-driven-development' '.agents/skills/skill-retrospective' '.pi/agent/extensions/autoresearch' '.local/bin/bitwarden-picker' '.local/bin/input-method-status' '.local/bin/hyprsunset-status' '.local/bin/show-keybinds'
-  _test_present "$arch_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/test-driven-development' '.agents/skills/skill-retrospective' '.pi/agent/extensions/autoresearch' '.local/bin/restic-recover'
+  _test_present "$nixos_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/test-driven-development' '.agents/skills/skill-retrospective' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/bitwarden-picker' '.local/bin/input-method-status' '.local/bin/hyprsunset-status' '.local/bin/show-keybinds'
+  _test_present "$arch_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/test-driven-development' '.agents/skills/skill-retrospective' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/restic-recover'
   _test_absent "$nixos_files" '.agents/skills/caveman' '.agents/skills/ponytail'
   local activation
   activation=$(_profile_activation nixos configureCodebaseMemory)
@@ -126,6 +126,8 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
   done
   assert_equals true "$(_profile_file_meta nixos '.pi/agent/extensions/autoresearch' | jq -r .force)"
   assert_equals true "$(_profile_file_meta darwin '.pi/agent/extensions/autoresearch' | jq -r .force)"
+  assert_equals true "$(_profile_file_meta nixos '.pi/agent/extensions/fast-mode' | jq -r .force)"
+  assert_equals true "$(_profile_file_meta darwin '.pi/agent/extensions/fast-mode' | jq -r .force)"
   assert_equals true "$(_profile_file_meta nixos '.hermes/SOUL.md' | jq -r .force)"
   assert_contains "$(_profile_file_meta nixos '.hermes/SOUL.md')" 'SOUL.md'
 }

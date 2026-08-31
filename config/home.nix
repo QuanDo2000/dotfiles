@@ -205,6 +205,7 @@ in
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".pi/agent/extensions/gpg-signing-display" = forceSource ./shared/ai/pi/gpg-signing-display;
     ".pi/agent/extensions/autoresearch" = forceSource ./shared/ai/pi/autoresearch;
+    ".pi/agent/extensions/fast-mode" = forceSource ./shared/ai/pi/fast-mode;
     ".pi/agent/locked-extensions/releases/${piExtensionsReleaseId}" = forceSource pkgs.pi-extensions;
     ".local/bin/dotfile" = {
       text = ''

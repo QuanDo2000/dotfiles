@@ -1159,6 +1159,13 @@ function Initialize-TestAutoresearchSource($SeedDir) {
     "---`nname: pi-autoresearch`n---" | Set-Content (Join-Path $source 'skill\SKILL.md')
 }
 
+function Initialize-TestFastModeSource($SeedDir) {
+    $source = Join-Path $SeedDir 'fast-mode'
+    New-Item -ItemType Directory -Force -Path $source | Out-Null
+    'export default function () {}' | Set-Content (Join-Path $source 'index.ts')
+    'export function isFastModeModel() { return true }' | Set-Content (Join-Path $source 'core.ts')
+}
+
 function Initialize-TestPiConfigSeeds {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
@@ -1172,6 +1179,7 @@ function Initialize-TestPiConfigSeeds {
     '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
+    Initialize-TestFastModeSource $seedDir
 
     return [pscustomobject]@{
         Source = Join-Path $seedDir 'subagent-config.json'
@@ -1238,10 +1246,13 @@ function test_syncpiconfigs_creates_writable_seed_files {
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
+    Initialize-TestFastModeSource $seedDir
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     $staleAutoresearch = Join-Path $extensionDir 'autoresearch'
-    New-Item -ItemType Directory -Force -Path $staleAutoresearch | Out-Null
+    $staleFastMode = Join-Path $extensionDir 'fast-mode'
+    New-Item -ItemType Directory -Force -Path $staleAutoresearch, $staleFastMode | Out-Null
     'obsolete' | Set-Content (Join-Path $staleAutoresearch 'obsolete.ts')
+    'obsolete' | Set-Content (Join-Path $staleFastMode 'obsolete.ts')
 
     SyncPiConfigs
 
@@ -1278,6 +1289,11 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-FileExists (Join-Path $autoresearch 'skill\SKILL.md')
     Assert-False (Test-Path -LiteralPath (Join-Path $autoresearch 'obsolete.ts')) 'Pi autoresearch deployment should remove stale files'
     Assert-False ([bool]((Get-Item $autoresearch -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) 'Pi autoresearch should be a real directory'
+    $fastMode = Join-Path $extensionDir 'fast-mode'
+    Assert-FileExists (Join-Path $fastMode 'index.ts')
+    Assert-FileExists (Join-Path $fastMode 'core.ts')
+    Assert-False (Test-Path -LiteralPath (Join-Path $fastMode 'obsolete.ts')) 'Pi fast-mode deployment should remove stale files'
+    Assert-False ([bool]((Get-Item $fastMode -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) 'Pi fast mode should be a real directory'
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
 }
 
@@ -1456,6 +1472,7 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     'same lsp' | Set-Content -LiteralPath (Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json')
     'linked replacement' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
+    Initialize-TestFastModeSource $seedDir
     $external = Join-Path $script:_TestTmp.FullName 'external-codex-status.js'
     'external' | Set-Content -LiteralPath $external
     New-Item -ItemType SymbolicLink -Path (Join-Path $extensionDir 'codex-status.js') -Target $external | Out-Null
@@ -1508,6 +1525,7 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
     '{"globalConcurrencyLimit":99}' | Set-Content (Join-Path $subagentDir 'config.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
+    Initialize-TestFastModeSource $seedDir
     @'
 {
   "theme": "light",
