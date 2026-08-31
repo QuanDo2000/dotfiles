@@ -82,10 +82,12 @@ run_test_file() {
 
     # Discover test_* functions
     local test_funcs
-    test_funcs="$(compgen -A function test_)" || true
+    test_funcs="$(declare -F | awk '$3 ~ /^test_/ { print $3 }')"
 
     if [ -z "$test_funcs" ]; then
-        echo "  (no test_* functions found)"
+        echo "  FAIL  no test_* functions found"
+        TOTAL=$((TOTAL + 1))
+        FAILED=$((FAILED + 1))
         return
     fi
 

@@ -63,6 +63,22 @@ test_bash_runner_accepts_multiple_test_files() {
   assert_contains "$output" "--- test_two.sh ---"
 }
 
+test_bash_runner_discovers_tests_without_compgen_and_fails_empty_files() {
+  local bash_env="$TEST_TMPDIR/bash-env" fixture="$TEST_TMPDIR/test_fixture.sh" output status=0
+  printf 'enable -n compgen 2>/dev/null || true\n' > "$bash_env"
+  printf 'test_body() { :; }\n' > "$fixture"
+
+  output="$(BASH_ENV="$bash_env" bash "$REPO_DIR/tests/bash/runner.sh" "$fixture" 2>&1)" || status=$?
+  assert_equals 0 "$status"
+  assert_contains "$output" '1 passed, 0 failed, 1 total'
+
+  status=0
+  : > "$fixture"
+  output="$(bash "$REPO_DIR/tests/bash/runner.sh" "$fixture" 2>&1)" || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'FAIL  no test_* functions found'
+}
+
 test_bash_runner_fails_setup_and_teardown_errors() {
   local fixtures="$TEST_TMPDIR/fixtures" output status=0
   mkdir -p "$fixtures"
