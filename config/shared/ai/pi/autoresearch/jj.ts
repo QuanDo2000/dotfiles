@@ -94,6 +94,7 @@ export async function createAutoresearchWorkspace(cwd: string, goal: string): Pr
   if (normalize(root) !== normalize(resolvedCwd)) throw new Error("JJ root must match the Pi working directory");
   const source = await stateAt(resolvedCwd);
   if (source.conflict) throw new Error("cannot create an autoresearch workspace from a conflicted working-copy commit");
+  if (!source.empty) throw new Error("automatic JJ setup requires an empty working-copy commit");
 
   const slug = workspaceSlug(goal);
   const names = await workspaceNames(resolvedCwd);

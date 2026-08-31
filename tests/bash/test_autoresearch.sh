@@ -233,6 +233,11 @@ await rollbackAutoresearchWorktree(gitRoot, gitRollback);
 check(!fs.existsSync(gitRollback.path), "Git rollback kept worktree path");
 check((await runGit(gitRoot, ["branch", "--list", gitRollback.name])) === "", "Git rollback kept newly created branch");
 
+fs.writeFileSync(path.join(jjRoot, "dirty"), "uncommitted\n");
+let nonemptySourceRejected = false;
+try { await createAutoresearchWorkspace(jjRoot, "unsafe"); } catch (error) { nonemptySourceRejected = String(error).includes("empty working-copy commit"); }
+check(nonemptySourceRejected, "nonempty JJ source workspace accepted");
+fs.rmSync(path.join(jjRoot, "dirty"));
 const jjFirst = await createAutoresearchWorkspace(jjRoot, "reduce latency");
 const jjSecond = await createAutoresearchWorkspace(jjRoot, "reduce latency");
 check(jjFirst.name === "autoresearch-reduce-latency-2", "dangling-link JJ collision was not skipped");
