@@ -1,8 +1,0 @@
-{
-  "asyncByDefault": true,
-  "toolDescriptionMode": "compact",
-  "artifactDir": "session",
-  "maxSubagentSpawnsPerRun": 8,
-  "maxActiveAsyncRunsPerSession": 2,
-  "maxSubagentSpawnsPerSession": 16
-}

@@ -33,8 +33,8 @@ test_pi_extension_settings_use_locked_local_release() {
   package="$extension_dir/package.json"
 
   assert_equals "$release_id" "$(_lock_sha256)"
-  assert_equals 4 "$(jq '.packages | length' "$settings")"
-  assert_equals 4 "$(jq '.dependencies | length' "$package")"
+  assert_equals 3 "$(jq '.packages | length' "$settings")"
+  assert_equals 3 "$(jq '.dependencies | length' "$package")"
   assert_equals false "$(jq 'has("overrides")' "$package")"
   assert_equals false "$(jq '.dependencies | has("pi-mcp-extension")' "$package")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("pi-mcp-extension"))] | length' "$settings")"

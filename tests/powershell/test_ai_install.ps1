@@ -1101,34 +1101,19 @@ function test_pi_release_validation_requires_version_and_entry {
     Assert-True (Test-PiRelease $dir $version $lock)
 }
 
-function test_pi_subagents_package_uses_model_tiers_and_provider_scope {
-    $path = Join-Path $script:RepoDir 'config\shared\ai\pi\settings.json'
-    $settings = Get-Content -Raw $path | ConvertFrom-Json
+function test_pi_subagents_are_retired {
+    $settings = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\ai\pi\settings.json') | ConvertFrom-Json
+    $extensionDir = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions'
+    $extensions = Get-Content -Raw (Join-Path $extensionDir 'package.json') | ConvertFrom-Json
+    $lock = Get-Content -Raw (Join-Path $extensionDir 'package-lock.json')
 
-    $extensions = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package.json') | ConvertFrom-Json
-    Assert-True ($extensions.dependencies.'pi-subagents' -match '^\d+\.\d+\.\d+$') 'pi-subagents should use an exact version'
+    Assert-False ($extensions.dependencies.PSObject.Properties.Name -contains 'pi-subagents')
+    Assert-False ($lock -like '*node_modules/pi-subagents*')
+    Assert-False ($settings.PSObject.Properties.Name -contains 'subagents')
+    Assert-False (@($settings.packages | Where-Object { $_ -like '*pi-subagents*' }).Count -gt 0)
+    Assert-False (Test-Path -LiteralPath (Join-Path $script:RepoDir 'config\shared\ai\pi\subagent-config.json'))
     Assert-Equals 'gpt-5.6-sol' $settings.defaultModel
     Assert-Equals 'medium' $settings.defaultThinkingLevel
-    Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.defaultModel
-    Assert-Equals 'medium' $settings.subagents.defaultThinking
-    Assert-True $settings.subagents.modelScope.enforce
-    Assert-Equals 1 @($settings.subagents.modelScope.allow).Count
-    Assert-Equals 'openai-codex/*' @($settings.subagents.modelScope.allow)[0]
-
-    Assert-Equals 'openai-codex/gpt-5.6-sol' $settings.subagents.agentOverrides.oracle.model
-    Assert-Equals 'xhigh' $settings.subagents.agentOverrides.oracle.thinking
-    foreach ($agent in 'advisor', 'context-builder', 'delegate', 'planner') {
-        Assert-True $settings.subagents.agentOverrides.PSObject.Properties[$agent].Value.disabled "$agent should be disabled"
-    }
-    foreach ($agent in 'scout', 'worker') {
-        $override = $settings.subagents.agentOverrides.PSObject.Properties[$agent].Value
-        Assert-Equals 'openai-codex/gpt-5.6-luna' $override.model
-        Assert-Equals 'medium' $override.thinking
-    }
-    Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.agentOverrides.researcher.model
-    Assert-Equals 'high' $settings.subagents.agentOverrides.researcher.thinking
-    Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.agentOverrides.reviewer.model
-    Assert-Equals 'high' $settings.subagents.agentOverrides.reviewer.thinking
 }
 
 function test_pi_lsp_package_is_pinned {
@@ -1172,21 +1157,21 @@ function Initialize-TestPiConfigSeeds {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
     $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
-    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir | Out-Null
+    $mergeDir = Join-Path $script:DotfilesDir 'scripts\seed_merge'
+    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $mergeDir | Out-Null
+    Copy-Item (Join-Path $script:RepoDir 'scripts\seed_merge\*') $mergeDir
     '{}' | Set-Content -LiteralPath (Join-Path $seedDir 'mcp.json')
     foreach ($name in 'settings.json', 'keybindings.json', 'web-search.json') {
         '{}' | Set-Content -LiteralPath (Join-Path $seedDir $name)
     }
-    '{"globalConcurrencyLimit":7}' | Set-Content -LiteralPath (Join-Path $seedDir 'subagent-config.json')
     '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
     Initialize-TestFastModeSource $seedDir
 
     return [pscustomobject]@{
-        Source = Join-Path $seedDir 'subagent-config.json'
-        Target = Join-Path $env:USERPROFILE '.pi\agent\extensions\subagent\config.json'
-        Base = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\subagent-config.json'
+        Source = Join-Path $windowsSeedDir 'pi-lsp.json'
+        Target = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
     }
 }
 
@@ -1244,7 +1229,6 @@ function test_syncpiconfigs_creates_writable_seed_files {
     '{"app.model.cycleForward":[],"app.model.cycleBackward":[]}' | Set-Content (Join-Path $seedDir 'keybindings.json')
     '{"workflow":"none"}' | Set-Content (Join-Path $seedDir 'web-search.json')
     '{"mcpServers":{"unixOnly":{"command":"unix"}}}' | Set-Content (Join-Path $seedDir 'mcp.json')
-    '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
@@ -1252,7 +1236,11 @@ function test_syncpiconfigs_creates_writable_seed_files {
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     $staleAutoresearch = Join-Path $extensionDir 'autoresearch'
     $staleFastMode = Join-Path $extensionDir 'fast-mode'
-    New-Item -ItemType Directory -Force -Path $staleAutoresearch, $staleFastMode | Out-Null
+    $staleSubagent = Join-Path $extensionDir 'subagent'
+    $baseDir = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
+    New-Item -ItemType Directory -Force -Path $staleAutoresearch, $staleFastMode, $staleSubagent, $baseDir | Out-Null
+    '{}' | Set-Content (Join-Path $staleSubagent 'config.json')
+    '{}' | Set-Content (Join-Path $baseDir 'subagent-config.json')
     'obsolete' | Set-Content (Join-Path $staleAutoresearch 'obsolete.ts')
     'obsolete' | Set-Content (Join-Path $staleFastMode 'obsolete.ts')
 
@@ -1265,18 +1253,17 @@ function test_syncpiconfigs_creates_writable_seed_files {
     $subagent = Join-Path $env:USERPROFILE '.pi\agent\extensions\subagent\config.json'
     $lsp = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
-    $baseDir = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
     Assert-FileExists $settings
     Assert-FileExists $keybindings
     Assert-FileExists $webSearch
     Assert-FileExists $mcp
-    Assert-FileExists $subagent
+    Assert-False (Test-Path -LiteralPath $subagent) 'retired subagent config should be removed'
     Assert-FileExists $lsp
     Assert-FileExists (Join-Path $baseDir 'settings.json')
     Assert-FileExists (Join-Path $baseDir 'keybindings.json')
     Assert-FileExists (Join-Path $baseDir 'web-search.json')
     Assert-FileExists (Join-Path $baseDir 'mcp.json')
-    Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'subagent-config.json')) 'subagent config should not create an unused seed baseline'
+    Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'subagent-config.json')) 'retired subagent baseline should be removed'
     $keys = Get-Content -Raw $keybindings | ConvertFrom-Json
     Assert-Equals 0 @($keys.'app.model.cycleForward').Count
     Assert-Equals 0 @($keys.'app.model.cycleBackward').Count
@@ -1299,13 +1286,6 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-False (Test-Path -LiteralPath (Join-Path $fastMode 'obsolete.ts')) 'Pi fast-mode deployment should remove stale files'
     Assert-False ([bool]((Get-Item $fastMode -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) 'Pi fast mode should be a real directory'
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
-}
-
-function Assert-NoPiConfigStagingFiles($Destination) {
-    $parent = Split-Path $Destination -Parent
-    $leaf = Split-Path $Destination -Leaf
-    Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.tmp.*" -Force -ErrorAction SilentlyContinue).Count
-    Assert-Equals 0 @(Get-ChildItem -LiteralPath $parent -Filter "$leaf.backup.*" -Force -ErrorAction SilentlyContinue).Count
 }
 
 function test_syncpiconfigs_rejects_overlapping_sync {
@@ -1339,127 +1319,6 @@ function test_syncpiconfigs_rejects_overlapping_sync {
     Assert-Contains $script:NestedPiConfigSyncFailure $lockPath
 }
 
-function test_syncpiconfigs_subagent_sync_does_not_touch_legacy_baseline {
-    $paths = Initialize-TestPiConfigSeeds
-    $sentinel = Join-Path $paths.Base 'sentinel.txt'
-    New-Item -ItemType Directory -Force -Path $paths.Base | Out-Null
-    'keep' | Set-Content -LiteralPath $sentinel
-
-    SyncPiConfigs
-
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-Equals 'keep' ((Get-Content -Raw -LiteralPath $sentinel).Trim())
-}
-
-function test_syncpiconfigs_rejects_source_change_during_subagent_staging {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    Set-CommandMock 'Copy-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-        if ($LiteralPath -eq $paths.Source -and $Destination -like "$($paths.Target).tmp.*") {
-            '{"globalConcurrencyLimit":8}' | Set-Content -LiteralPath $paths.Source
-        }
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'Pi subagent config copy source changed during staging'
-    Assert-Equals 99 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-NoPiConfigStagingFiles $paths.Target
-}
-
-function test_syncpiconfigs_rejects_destination_change_during_subagent_staging {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-    Set-CommandMock 'Copy-Item' {
-        param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
-        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force -ErrorAction $ErrorAction
-        if ($LiteralPath -eq $paths.Source -and $Destination -like "$($paths.Target).tmp.*") {
-            '{"globalConcurrencyLimit":8}' | Set-Content -LiteralPath $paths.Target
-        }
-    }
-
-    $failure = $null
-    try {
-        SyncPiConfigs
-    } catch {
-        $failure = $_.Exception.Message
-    }
-
-    Assert-Contains $failure 'Pi subagent config copy destination changed during staging'
-    Assert-Equals 8 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-    Assert-NoPiConfigStagingFiles $paths.Target
-}
-
-function test_syncpiconfigs_skips_unchanged_regular_subagent_target {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    Copy-Item -LiteralPath $paths.Source -Destination $paths.Target
-    $script:PiConfigMoves = @()
-    Set-CommandMock 'Move-Item' {
-        param($LiteralPath, $Destination, [switch]$Force)
-        $script:PiConfigMoves += $Destination
-        Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination -Force:$Force
-    }
-
-    SyncPiConfigs
-
-    Assert-False ($script:PiConfigMoves -contains $paths.Target) 'unchanged regular target should not be replaced'
-}
-
-function test_syncpiconfigs_replaces_changed_regular_subagent_target {
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    '{"globalConcurrencyLimit":99}' | Set-Content -LiteralPath $paths.Target
-
-    SyncPiConfigs
-
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-}
-
-function test_syncpiconfigs_creates_missing_subagent_target {
-    $paths = Initialize-TestPiConfigSeeds
-
-    SyncPiConfigs
-
-    Assert-FileExists $paths.Target
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-}
-
-function test_syncpiconfigs_replaces_dangling_subagent_target {
-    if (Try-Skip-If-No-Symlink-Privilege) { return }
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    New-Item -ItemType SymbolicLink -Path $paths.Target -Target (Join-Path $script:_TestTmp.FullName 'missing.json') | Out-Null
-
-    SyncPiConfigs
-
-    Assert-False ([bool](Get-Item -LiteralPath $paths.Target -Force).LinkType) 'dangling target should become a regular file'
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-}
-
-function test_syncpiconfigs_replaces_linked_subagent_target {
-    if (Try-Skip-If-No-Symlink-Privilege) { return }
-    $paths = Initialize-TestPiConfigSeeds
-    New-Item -ItemType Directory -Force -Path (Split-Path $paths.Target -Parent) | Out-Null
-    $externalTarget = Join-Path $script:_TestTmp.FullName 'external-target.json'
-    Copy-Item -LiteralPath $paths.Source -Destination $externalTarget
-    New-Item -ItemType SymbolicLink -Path $paths.Target -Target $externalTarget | Out-Null
-
-    SyncPiConfigs
-
-    Assert-False ([bool](Get-Item -LiteralPath $paths.Target -Force).LinkType) 'linked target should become a regular file'
-    Assert-Equals 7 (Get-Content -Raw -LiteralPath $paths.Target | ConvertFrom-Json).globalConcurrencyLimit
-}
-
 function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     if (Try-Skip-If-No-Symlink-Privilege) { return }
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
@@ -1469,7 +1328,7 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $extensionDir | Out-Null
     '{}' | Set-Content -LiteralPath (Join-Path $seedDir 'mcp.json')
 
-    foreach ($name in 'settings.json', 'keybindings.json', 'web-search.json', 'subagent-config.json') {
+    foreach ($name in 'settings.json', 'keybindings.json', 'web-search.json') {
         '{}' | Set-Content -LiteralPath (Join-Path $seedDir $name)
     }
     'same lsp' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
@@ -1499,50 +1358,29 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     Assert-Equals 'external' ((Get-Content -Raw -LiteralPath $external).Trim())
 }
 
-function test_syncpiconfigs_replaces_stale_live_subagents {
+function test_syncpiconfigs_removes_stale_live_subagents {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
     $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     $mergeDir = Join-Path $script:DotfilesDir 'scripts\seed_merge'
     $targetDir = Join-Path $env:USERPROFILE '.pi\agent'
     $subagentDir = Join-Path $targetDir 'extensions\subagent'
-    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $mergeDir, $targetDir, $subagentDir | Out-Null
+    $baseDir = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
+    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $mergeDir, $targetDir, $subagentDir, $baseDir | Out-Null
     Copy-Item (Join-Path $script:RepoDir 'scripts\seed_merge\*') $mergeDir
 
-    @'
-{
-  "theme": "dark",
-  "subagents": {
-    "defaultModel": "openai-codex/gpt-5.6-terra",
-    "agentOverrides": {
-      "worker": {"model": "openai-codex/gpt-5.6-luna"}
-    }
-  }
-}
-'@ | Set-Content (Join-Path $seedDir 'settings.json')
+    '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
     '{"app.model.cycleForward":[],"app.model.cycleBackward":[]}' | Set-Content (Join-Path $seedDir 'keybindings.json')
     '{"workflow":"none"}' | Set-Content (Join-Path $seedDir 'web-search.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
-    '{"globalConcurrencyLimit":7}' | Set-Content (Join-Path $seedDir 'subagent-config.json')
     '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     '{"servers":{"nil":{"command":["nil"]}}}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
-    '{"globalConcurrencyLimit":99}' | Set-Content (Join-Path $subagentDir 'config.json')
+    '{}' | Set-Content (Join-Path $subagentDir 'config.json')
+    '{}' | Set-Content (Join-Path $baseDir 'subagent-config.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
     Initialize-TestFastModeSource $seedDir
-    @'
-{
-  "theme": "light",
-  "runtimeOnly": true,
-  "subagents": {
-    "defaultModel": "openai-codex/gpt-5.6-luna",
-    "agentOverrides": {
-      "worker": {"model": "openai-codex/gpt-5.6-luna"},
-      "reviewer": {"model": "openai-codex/gpt-5.6-luna"}
-    }
-  }
-}
-'@ | Set-Content (Join-Path $targetDir 'settings.json')
+    '{"theme":"light","runtimeOnly":true,"subagents":{"defaultModel":"old"}}' | Set-Content (Join-Path $targetDir 'settings.json')
 
     $seed = Join-Path $seedDir 'settings.json'
     Set-CommandMock 'py' {
@@ -1556,13 +1394,12 @@ function test_syncpiconfigs_replaces_stale_live_subagents {
         $settings = Get-Content -Raw (Join-Path $targetDir 'settings.json') | ConvertFrom-Json
         Assert-Equals 'dark' $settings.theme
         Assert-True $settings.runtimeOnly 'Live-only unrelated settings should be preserved'
-        Assert-Equals 'openai-codex/gpt-5.6-terra' $settings.subagents.defaultModel
-        Assert-False ($settings.subagents.agentOverrides.PSObject.Properties.Name -contains 'reviewer') 'Removed tracked subagent overrides should stay removed'
+        Assert-False ($settings.PSObject.Properties.Name -contains 'subagents') 'Retired subagent settings should be removed'
         $lsp = Get-Content -Raw (Join-Path $targetDir 'pi-lsp.json') | ConvertFrom-Json
         Assert-True ($lsp.servers.PSObject.Properties.Name -contains 'vtsls') 'Windows LSP config should be copied'
         Assert-False ($lsp.servers.PSObject.Properties.Name -contains 'nil') 'Authoritative Windows LSP config should remove stale servers'
-        $subagent = Get-Content -Raw (Join-Path $subagentDir 'config.json') | ConvertFrom-Json
-        Assert-Equals 7 $subagent.globalConcurrencyLimit
+        Assert-False (Test-Path -LiteralPath (Join-Path $subagentDir 'config.json')) 'Retired subagent config should be removed'
+        Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'subagent-config.json')) 'Retired subagent baseline should be removed'
     } finally {
         (Get-Item $seed).IsReadOnly = $false
     }

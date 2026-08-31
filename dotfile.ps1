@@ -912,11 +912,9 @@ function SyncPiConfigs {
     }
 
     try {
-    foreach ($name in @("settings.json", "keybindings.json", "web-search.json", "mcp.json", "subagent-config.json")) {
+    foreach ($name in @("settings.json", "keybindings.json", "web-search.json", "mcp.json")) {
         $source = Join-Path $seedDir $name
-        $relative = if ($name -eq "subagent-config.json") {
-            "extensions\subagent\config.json"
-        } elseif ($name -eq "web-search.json") {
+        $relative = if ($name -eq "web-search.json") {
             "..\web-search.json"
         } else {
             $name
@@ -924,16 +922,11 @@ function SyncPiConfigs {
         $target = Join-Path $targetDir $relative
         $base = Join-Path $baseDir $name
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
-        $destinations = if ($name -eq "subagent-config.json") { @($target) } else { @($target, $base) }
-        foreach ($destination in $destinations) {
+        foreach ($destination in @($target, $base)) {
             $destinationItem = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
             if ($destinationItem -and $destinationItem.PSIsContainer) {
                 throw "Pi config destination is a directory: $destination"
             }
-        }
-        if ($name -eq "subagent-config.json") {
-            Copy-FileWithRollback $source $target "Pi subagent config copy"
-            continue
         }
         if (-not (Test-Path -LiteralPath $target)) {
             Copy-FileWithRollback $source $target "Pi $name target copy"
@@ -951,6 +944,9 @@ function SyncPiConfigs {
             py -3.14 $mergeScript $target $source $applySeed $base
         }
     }
+
+    Remove-Item -LiteralPath (Join-Path $targetDir 'extensions\subagent\config.json'), (Join-Path $baseDir 'subagent-config.json') -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $targetDir 'extensions\subagent') -Force -ErrorAction SilentlyContinue
 
     $extensionDir = Join-Path $targetDir "extensions"
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null

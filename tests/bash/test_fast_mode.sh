@@ -50,12 +50,3 @@ test_fast_mode_extension_toggles_and_persists_session_state() {
   assert_exit_code 0 jq -e 'select(.type == "entry_appended" and .entry.customType == "fast-mode-state" and .entry.data.enabled == true)' "$output"
   assert_exit_code 0 jq -e 'select(.type == "extension_ui_request" and .method == "notify" and (.message | contains("Fast mode is on")))' "$output"
 }
-
-test_fast_mode_extension_inherits_enabled_state_in_native_children() {
-  local output="$TEST_TMPDIR/child-rpc.jsonl"
-  printf '%s\n' '{"id":"status","type":"prompt","message":"/fast status"}' |
-    env PI_SUBAGENT_CHILD=1 PI_FAST_MODE=1 \
-      pi --mode rpc --no-session --no-extensions -e "$extension_dir/index.ts" >"$output"
-
-  assert_exit_code 0 jq -e 'select(.type == "extension_ui_request" and .method == "notify" and (.message | contains("Fast mode is on")))' "$output"
-}

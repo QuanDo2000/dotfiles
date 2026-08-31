@@ -409,7 +409,7 @@ EOF
   rm -rf "$tmp"
 }
 
-test_pi_seed_merge_keeps_tracked_subagents_authoritative() {
+test_pi_seed_merge_removes_retired_subagents() {
   local tmp script live seed base
   tmp="$(mktemp -d)"
   script="$REPO_DIR/scripts/seed_merge/pi.py"
@@ -417,31 +417,12 @@ test_pi_seed_merge_keeps_tracked_subagents_authoritative() {
   seed="$tmp/seed.json"
   base="$tmp/base.json"
 
-  cat > "$live" <<'EOF'
-{
-  "subagents": {
-    "defaultModel": "openai-codex/gpt-5.6-luna",
-    "agentOverrides": {
-      "worker": {"model": "openai-codex/gpt-5.6-luna"},
-      "reviewer": {"model": "openai-codex/gpt-5.6-luna"}
-    }
-  }
-}
-EOF
-  cat > "$seed" <<'EOF'
-{
-  "subagents": {
-    "defaultModel": "openai-codex/gpt-5.6-terra",
-    "agentOverrides": {
-      "worker": {"model": "openai-codex/gpt-5.6-luna"}
-    }
-  }
-}
-EOF
+  printf '{"theme":"light","subagents":{"defaultModel":"old"}}\n' > "$live"
+  printf '{"theme":"dark"}\n' > "$seed"
 
   python3 "$script" "$live" "$seed" "$seed" "$base" >/dev/null
 
-  assert_equals "openai-codex/gpt-5.6-terra" "$(jq -r '.subagents.defaultModel' "$seed")"
-  assert_equals "false" "$(jq '.subagents.agentOverrides | has("reviewer")' "$seed")"
+  assert_equals "dark" "$(jq -r '.theme' "$seed")"
+  assert_equals "false" "$(jq 'has("subagents")' "$seed")"
   rm -rf "$tmp"
 }

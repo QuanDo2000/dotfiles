@@ -190,64 +190,18 @@ test_pi_lsp_uses_pinned_package_and_nix_servers() {
   fi
 }
 
-test_pi_subagent_tools_exclude_removed_codebase_memory() {
-  local settings
+test_pi_subagents_are_retired() {
+  local lock package settings
+  package="$REPO_DIR/config/shared/ai/pi/extensions/package.json"
+  lock="$REPO_DIR/config/shared/ai/pi/extensions/package-lock.json"
   settings="$REPO_DIR/config/shared/ai/pi/settings.json"
 
-  assert_file_exists "$settings"
-  if [[ -f "$settings" ]]; then
-    assert_exit_code 0 jq -e '
-      .subagents.agentOverrides as $roles |
-      ($roles.reviewer.tools | sort) == ["find", "grep", "ls", "read"] and
-      ($roles.scout.tools | sort) == ["bash", "find", "grep", "ls", "read", "write"] and
-      $roles.reviewer.completionGuard == false and
-      ([$roles.reviewer.tools[], $roles.scout.tools[]] | map(select(startswith("mcp_codebaseMemory_"))) | length) == 0
-    ' "$settings"
-  fi
-}
-
-test_pi_subagent_model_scope_is_strict() {
-  local settings
-  settings="$REPO_DIR/config/shared/ai/pi/settings.json"
-
-  assert_file_exists "$settings"
-  if [[ -f "$settings" ]]; then
-    assert_exit_code 0 jq -e '
-      .subagents.agentOverrides as $roles |
-      .subagents.modelScope.enforce == true and
-      .subagents.modelScope.strict == true and
-      .subagents.modelScope.allow == ["openai-codex/*"] and
-      (.subagents.defaultModel | startswith("openai-codex/")) and
-      ([$roles[] | select(has("model")) | .model | startswith("openai-codex/")] | all) and
-      $roles.oracle.model == "openai-codex/gpt-5.6-sol" and
-      $roles.reviewer.model == "openai-codex/gpt-5.6-terra" and
-      (["advisor", "context-builder", "delegate", "planner"] | all(. as $name | $roles[$name].disabled == true))
-    ' "$settings"
-  fi
-}
-
-test_pi_subagents_configures_workflow_guardrails() {
-  local config
-  config="$REPO_DIR/config/shared/ai/pi/subagent-config.json"
-
-  assert_file_exists "$config"
-  if [[ -f "$config" ]]; then
-    assert_exit_code 0 jq -e '
-      .maxSubagentSpawnsPerRun == 8 and
-      .maxActiveAsyncRunsPerSession == 2 and
-      .maxSubagentSpawnsPerSession == 16 and
-      has("globalConcurrencyLimit") == false and
-      has("parallel") == false
-    ' "$config"
-  fi
-  assert_contains "$HOME_CONFIG" 'if [ "$name" = "subagent-config.json" ]; then'
-  assert_contains "$HOME_CONFIG" 'if ! managed_file_current "$source" "$target"; then'
-  assert_contains "$HOME_CONFIG" 'if ! managed_file_current "$source" "$base"; then'
-  assert_contains "$HOME_CONFIG" 'base_tmp="$(mktemp "$base.tmp.XXXXXX")"'
-  assert_contains "$HOME_CONFIG" '"${pkgs.diffutils}/bin/cmp"'
-  assert_not_contains "$HOME_CONFIG" '"${pkgs.coreutils}/bin/cmp"'
-  assert_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'Tracked runtime limits enforce eight children per workflow and two active async workflows per session.'
-  assert_not_contains "$(<"$REPO_DIR/config/shared/ai/AGENTS.md")" 'native limits are not session-global'
+  assert_exit_code 0 jq -e '.dependencies | has("pi-subagents") | not' "$package"
+  assert_exit_code 0 jq -e 'all(.packages | keys[]; contains("pi-subagents") | not)' "$lock"
+  assert_exit_code 0 jq -e '(has("subagents") | not) and all(.packages[]; contains("pi-subagents") | not)' "$settings"
+  assert_equals "false" "$([[ -e "$REPO_DIR/config/shared/ai/pi/subagent-config.json" ]] && echo true || echo false)"
+  assert_contains "$HOME_CONFIG" 'rm -f "$HOME/.pi/agent/extensions/subagent/config.json"'
+  assert_contains "$HOME_CONFIG" 'rm -f "$HOME/.local/state/dotfiles/pi/subagent-config.json"'
 }
 
 test_agent_policy_keeps_optional_code_search_guidance() {
@@ -360,7 +314,6 @@ test_all_ai_agents_delegate_efficiently() {
   assert_contains "$agents" 'Treat reviewers as static: never ask them to run shell commands, tests, lint, typecheck, builds, or mutations.'
   assert_contains "$agents" 'When a matched reusable skill governs delegated work, pass only that skill explicitly to the child.'
   assert_contains "$agents" 'Normally use one fan-out wave; launch another only for a changed target or unresolved evidence gap.'
-  assert_contains "$agents" 'For read-only Pi scouts and reviewers, set `agentContract: { version: 1 }`, omit `acceptance`'
   assert_contains "$debugging_skill" 'Use the `test-driven-development` skill for writing proper failing tests'
   assert_not_contains "$debugging_skill" 'superpowers:test-driven-development'
   assert_contains "$debugging_skill" 'Follow the global verification policy before claiming success.'

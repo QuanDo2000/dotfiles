@@ -76,10 +76,7 @@ else:
     if "defaultModel" in live:
         resolved["defaultModel"] = copy.deepcopy(live["defaultModel"])
 
-if "subagents" in seed:
-    resolved["subagents"] = copy.deepcopy(seed["subagents"])
-else:
-    resolved.pop("subagents", None)
+resolved.pop("subagents", None)
 
 live_resolved = copy.deepcopy(resolved)
 live_resolved.update(runtime)

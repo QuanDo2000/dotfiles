@@ -2,73 +2,12 @@
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.6-sol",
   "defaultThinkingLevel": "medium",
-  "subagents": {
-    "defaultModel": "openai-codex/gpt-5.6-terra",
-    "defaultThinking": "medium",
-    "modelScope": {
-      "enforce": true,
-      "strict": true,
-      "allow": [
-        "openai-codex/*"
-      ]
-    },
-    "agentOverrides": {
-      "oracle": {
-        "model": "openai-codex/gpt-5.6-sol",
-        "thinking": "xhigh"
-      },
-      "delegate": {
-        "disabled": true
-      },
-      "advisor": {
-        "disabled": true
-      },
-      "planner": {
-        "disabled": true
-      },
-      "context-builder": {
-        "disabled": true
-      },
-      "scout": {
-        "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "medium",
-        "tools": [
-          "read",
-          "grep",
-          "find",
-          "ls",
-          "bash",
-          "write"
-        ]
-      },
-      "worker": {
-        "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "medium"
-      },
-      "researcher": {
-        "model": "openai-codex/gpt-5.6-terra",
-        "thinking": "high"
-      },
-      "reviewer": {
-        "model": "openai-codex/gpt-5.6-terra",
-        "thinking": "high",
-        "completionGuard": false,
-        "tools": [
-          "read",
-          "grep",
-          "find",
-          "ls"
-        ]
-      }
-    }
-  },
   "defaultProjectTrust": "ask",
   "enableInstallTelemetry": false,
   "packages": [
-    "./locked-extensions/releases/7e23f87bcd4f9f30912fb30e1f097f8f8de298923e0cafc13938690901539db5/node_modules/pi-hermes-memory",
-    "./locked-extensions/releases/7e23f87bcd4f9f30912fb30e1f097f8f8de298923e0cafc13938690901539db5/node_modules/@narumitw/pi-lsp",
-    "./locked-extensions/releases/7e23f87bcd4f9f30912fb30e1f097f8f8de298923e0cafc13938690901539db5/node_modules/pi-web-access",
-    "./locked-extensions/releases/7e23f87bcd4f9f30912fb30e1f097f8f8de298923e0cafc13938690901539db5/node_modules/pi-subagents"
+    "./locked-extensions/releases/3d321a53a005189a039ef74eeecbb5738824970febd57c1a745a06f72a0e9483/node_modules/pi-hermes-memory",
+    "./locked-extensions/releases/3d321a53a005189a039ef74eeecbb5738824970febd57c1a745a06f72a0e9483/node_modules/@narumitw/pi-lsp",
+    "./locked-extensions/releases/3d321a53a005189a039ef74eeecbb5738824970febd57c1a745a06f72a0e9483/node_modules/pi-web-access"
   ],
   "theme": "dark",
   "terminal": {

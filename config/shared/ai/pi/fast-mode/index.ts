@@ -37,13 +37,13 @@ export default function registerFastMode(pi: ExtensionAPI): void {
 
   const describe = (ctx: ExtensionContext): string => {
     if (!enabled) return "Fast mode is off.";
-    if (isFastModeModel(ctx.model)) return "Fast mode is on for the current model and eligible native Pi subagents.";
-    return "Fast mode is on for eligible native Pi subagents; the current model is unsupported.";
+    if (isFastModeModel(ctx.model)) return "Fast mode is on for the current model.";
+    return "Fast mode is on, but the current model is unsupported.";
   };
 
   pi.on("session_start", (_event, ctx) => {
     const restored = savedState(ctx);
-    enabled = restored ?? (process.env.PI_SUBAGENT_CHILD ? process.env[ENV_NAME] === "1" : false);
+    enabled = restored ?? false;
     syncEnvironment();
     updateStatus(ctx);
   });
