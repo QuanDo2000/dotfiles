@@ -193,7 +193,7 @@ function Get-RequiredCommands {
     @(
         "git", "gpg", "nvim", "starship", "fd", "rg", "lazygit",
         "fnm", "node", "jj", "zoxide", "codex", "pi",
-        "codebase-memory-mcp", "py", "vtsls",
+        "codebase-memory-mcp", "py",
         "bash-language-server", "shellcheck", "tree-sitter", "clang"
     )
 }
@@ -785,7 +785,6 @@ function InstallPiLanguageServers {
     if ($script:Dry) { return }
 
     $servers = [ordered]@{
-        'vtsls' = '0.3.0'
         'bash-language-server' = '5.6.0'
     }
     $needsInstall = $false
@@ -802,7 +801,7 @@ function InstallPiLanguageServers {
 
     if ($needsInstall) {
         Invoke-NativeChecked "Pi language-server install failed" {
-            npm install --global @vtsls/language-server@0.3.0 bash-language-server@5.6.0
+            npm install --global bash-language-server@5.6.0
         }
     }
     if (-not (Get-Command shellcheck -ErrorAction SilentlyContinue)) {

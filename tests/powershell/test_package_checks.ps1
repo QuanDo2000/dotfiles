@@ -34,9 +34,10 @@ function test_windows_package_manifests_cover_parity_tools {
     foreach ($command in 'fzf', 'jq', 'gh') {
         Assert-False ($commands -contains $command) "Doctor should not require unused Windows command: $command"
     }
-    foreach ($command in 'vtsls', 'bash-language-server', 'shellcheck') {
+    foreach ($command in 'bash-language-server', 'shellcheck') {
         Assert-True ($commands -contains $command) "Doctor should verify Windows LSP dependency: $command"
     }
+    Assert-False ($commands -contains 'vtsls') 'Doctor should not require retired vtsls'
 }
 
 function test_windows_terminal_defaults_to_managed_powershell_profile {

@@ -46,7 +46,7 @@ assert_line_absent() { grep -Fxq "$2" <<< "$1" && echo "  unexpected line presen
 _test_present() { local text="$1" item; shift; for item in "$@"; do assert_line_present "$text" "$item"; done; }
 _test_absent() { local text="$1" item; shift; for item in "$@"; do assert_line_absent "$text" "$item"; done; }
 
-common_packages=(bash-language-server codex codebase-memory-mcp jq nil pi-coding-agent ShellCheck statix vtsls)
+common_packages=(bash-language-server codex codebase-memory-mcp jq nil pi-coding-agent ShellCheck statix)
 desktop_packages=(ghostty google-chrome grim hyprshutdown pavucontrol playerctl rbw slurp thunar wl-clipboard xarchiver)
 personal_packages=(anki-with-addons obsidian webcord)
 sync_packages=(obsidian-headless rclone)
@@ -64,7 +64,7 @@ test_profile_packages_and_services_are_composed_by_role() {
   generic_packages="$(_profile_packages linux)"; arch_packages="$(_profile_packages arch-server)"
   generic_service_names="$(_profile_services linux)"; arch_service_names="$(_profile_services arch-server)"
   _test_present_array "$generic_packages" "${common_packages[@]}"
-  _test_absent_array "$generic_packages" "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}" "${storage_packages[@]}"
+  _test_absent_array "$generic_packages" vtsls "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}" "${storage_packages[@]}"
   _test_present_array "$arch_packages" "${common_packages[@]}" "${arch_sync_packages[@]}" "${storage_packages[@]}"
   _test_absent_array "$arch_packages" "${desktop_packages[@]}" "${personal_packages[@]}"
   _test_absent "$generic_service_names" "${arch_services[@]}" "${desktop_services[@]}"

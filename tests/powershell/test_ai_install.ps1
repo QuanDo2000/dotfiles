@@ -36,7 +36,7 @@ function TestSetup {
 }
 
 function TestTeardown {
-    foreach ($command in 'npm', 'npx', 'pi', 'py', 'Get-Command', 'Get-FileHash', 'Get-Process', 'New-Item', 'Copy-Item', 'Expand-Archive', 'Move-Item', 'Start-Process', 'Stop-Process', 'Wait-Process', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'vtsls', 'bash-language-server', 'shellcheck', 'RepairPiCompactionSteering') {
+    foreach ($command in 'npm', 'npx', 'pi', 'py', 'Get-Command', 'Get-FileHash', 'Get-Process', 'New-Item', 'Copy-Item', 'Expand-Archive', 'Move-Item', 'Start-Process', 'Stop-Process', 'Wait-Process', 'codebase-memory-mcp', 'irm', 'Invoke-RestMethod', 'Invoke-WebRequest', 'tar', 'bash-language-server', 'shellcheck', 'RepairPiCompactionSteering') {
         Clear-CommandMock $command
     }
     Set-FunctionMock 'InstallCodex' $script:OriginalInstallCodex
@@ -906,10 +906,6 @@ function test_ai_installers_do_not_expose_unused_update_switches {
 function test_installpilanguageservers_installs_pinned_npm_servers {
     $script:LspInstalled = $false
     $script:NpmCalls = @()
-    Set-CommandMock 'vtsls' {
-        if ($script:LspInstalled) { '0.3.0' } else { '0.0.0' }
-        $global:LASTEXITCODE = 0
-    }
     Set-CommandMock 'bash-language-server' {
         if ($script:LspInstalled) { '5.6.0' } else { '0.0.0' }
         $global:LASTEXITCODE = 0
@@ -925,13 +921,12 @@ function test_installpilanguageservers_installs_pinned_npm_servers {
 
     $install = $script:NpmCalls -join "`n"
     Assert-Contains $install 'install --global'
-    Assert-Contains $install '@vtsls/language-server@0.3.0'
     Assert-Contains $install 'bash-language-server@5.6.0'
+    Assert-False ($install.Contains('@vtsls/language-server')) 'retired vtsls should not be provisioned'
 }
 
 function test_installpilanguageservers_skips_current_pinned_servers {
     $script:NpmCalls = @()
-    Set-CommandMock 'vtsls' { '0.3.0'; $global:LASTEXITCODE = 0 }
     Set-CommandMock 'bash-language-server' { '5.6.0'; $global:LASTEXITCODE = 0 }
     Set-CommandMock 'shellcheck' { $global:LASTEXITCODE = 0 }
     Set-CommandMock 'npm' { $script:NpmCalls += ,($args -join ' '); $global:LASTEXITCODE = 0 }

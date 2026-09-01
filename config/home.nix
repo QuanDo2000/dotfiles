@@ -138,7 +138,6 @@ let
     pkgs.pi-agent
     shellcheck
     statix
-    vtsls
   ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     gcc
   ];
