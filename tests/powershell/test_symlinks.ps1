@@ -29,6 +29,7 @@ function test_windows_psmux_links_portable_tmux_defaults {
         Assert-Contains $config 'set -g focus-events on'
         Assert-Contains $config 'set -g history-limit 50000'
         Assert-Contains $config 'set -g allow-passthrough on'
+        Assert-Contains $config 'set -g allow-predictions on'
         Assert-Contains $config 'set -g set-clipboard on'
         Assert-Contains $config 'bind R source-file ~/.psmux.conf \; display-message "Sourced psmux.conf!"'
         Assert-Contains $config 'bind h select-pane -L'
