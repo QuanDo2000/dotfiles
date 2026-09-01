@@ -50,33 +50,10 @@ function Set-PSReadLineKeyHandler { param(`$Key, `$Function) "`$Key|`$Function" 
     Assert-Contains $out 'Tab|MenuComplete'
 }
 
-function test_profile_psmux_attach_falls_back_to_main_session {
-    $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
-    $probe = @"
-`$ErrorActionPreference = 'Stop'
-`$env:LOCALAPPDATA = '$localAppData'
-`$env:PATH = ''
-`$script:PsmuxCalls = @()
-function Set-PSReadLineOption { throw 'PSReadLine unsupported' }
-function psmux {
-    `$script:PsmuxCalls += (`$args -join ' ')
-    if (`$args[0] -eq 'attach') { `$global:LASTEXITCODE = 1 } else { `$global:LASTEXITCODE = 0 }
-}
-. '$script:ProfileFile'
-Enter-PsmuxMainSession
-`$script:PsmuxCalls -join '|'
-"@
-    $out = pwsh -NoProfile -Command $probe 2>&1 | Out-String
-    Assert-Contains $out 'attach -t main|new-session -s main'
-}
-
-function test_profile_psmux_autostart_is_guarded {
+function test_profile_does_not_autostart_psmux {
     $profile = Get-Content -Raw $script:ProfileFile
 
-    Assert-Contains $profile '$env:TMUX'
-    Assert-Contains $profile '$env:NO_TMUX'
-    Assert-Contains $profile '[Console]::IsInputRedirected'
-    Assert-Contains $profile "'vscode'"
+    Assert-False ($profile -match '(?i)psmux') 'PowerShell should start directly without psmux'
 }
 
 function test_profile_loads_when_psreadline_options_are_unsupported {

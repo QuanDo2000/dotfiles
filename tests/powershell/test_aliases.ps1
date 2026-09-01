@@ -18,24 +18,7 @@ function test_collisions_removed_and_functions_win {
     Assert-Contains $out 'ga=Function'
 }
 
-function test_ssh_uses_conservative_term_only_inside_psmux {
-    $probe = @"
-function ssh.exe { "inside=`$env:TERM args=`$(`$args -join ',')" }
-. '$script:AliasesFile'
-if ((Get-Command ssh).CommandType -ne 'Function') {
-    'ssh-wrapper-missing'
-} else {
-    `$env:TERM = 'xterm-256color'
-    `$env:PSMUX_ACTIVE = '1'
-    ssh quanarch -v
-    "after=`$env:TERM"
-    Remove-Item Env:\PSMUX_ACTIVE
-    ssh nixos
-}
-"@
-    $out = pwsh -NoProfile -Command $probe | Out-String
-
-    Assert-Contains $out 'inside=screen-256color args=quanarch,-v'
-    Assert-Contains $out 'after=xterm-256color'
-    Assert-Contains $out 'inside=xterm-256color args=nixos'
+function test_aliases_do_not_wrap_ssh_for_psmux {
+    $aliases = Get-Content -Raw -LiteralPath $script:AliasesFile
+    Assert-False ($aliases -match '(?m)^function ssh\s*\{') 'SSH should run directly without a psmux TERM workaround'
 }

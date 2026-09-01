@@ -15,23 +15,6 @@ function la   { Get-ChildItem -Force @args }
 function ll   { Get-ChildItem @args }
 function lsa  { Get-ChildItem -Force @args }
 
-# psmux does not implement xterm's horizontal-margin sequences. Advertise the
-# more conservative screen terminfo only to SSH clients launched inside psmux.
-function ssh {
-    $termWasSet = Test-Path Env:\TERM
-    $previousTerm = $env:TERM
-    try {
-        if ($env:PSMUX_ACTIVE) { $env:TERM = 'screen-256color' }
-        ssh.exe @args
-    } finally {
-        if ($termWasSet) {
-            $env:TERM = $previousTerm
-        } else {
-            Remove-Item Env:\TERM -ErrorAction SilentlyContinue
-        }
-    }
-}
-
 # git aliases — same subset as .zshrc.base.
 Set-Alias g git
 function ga     { git add @args }
