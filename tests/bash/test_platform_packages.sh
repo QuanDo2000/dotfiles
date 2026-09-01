@@ -168,28 +168,6 @@ test_pi_model_cycling_shortcuts_are_disabled() {
   fi
 }
 
-test_pi_lsp_uses_pinned_package_and_nix_servers() {
-  local lsp_config lsp_lock lsp_package lsp_version
-  lsp_config="$REPO_DIR/config/shared/ai/pi/pi-lsp.json"
-  lsp_lock="$REPO_DIR/config/shared/ai/pi/extensions/package-lock.json"
-  lsp_package="$REPO_DIR/config/shared/ai/pi/extensions/package.json"
-  lsp_version="$(jq -r '.dependencies["@narumitw/pi-lsp"]' "$lsp_package")"
-
-  assert_exit_code 0 jq -e '.dependencies["@narumitw/pi-lsp"] | test("^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$")' "$lsp_package"
-  assert_equals "$lsp_version" "$(jq -r '.packages[""].dependencies["@narumitw/pi-lsp"]' "$lsp_lock")"
-  assert_equals "$lsp_version" "$(jq -r '.packages["node_modules/@narumitw/pi-lsp"].version' "$lsp_lock")"
-  assert_file_exists "$lsp_config"
-  if [[ -f "$lsp_config" ]]; then
-    assert_exit_code 0 jq -e '
-      .timeout == 30000 and
-      .servers.vtsls.command == ["vtsls", "--stdio"] and
-      .servers.nil.command == ["nil"] and
-      .servers.nil.pushDiagnosticsGraceMs == 3000 and
-      .servers["bash-language-server"].command == ["bash-language-server", "start"]
-    ' "$lsp_config"
-  fi
-}
-
 test_pi_subagents_are_retired() {
   local lock package settings
   package="$REPO_DIR/config/shared/ai/pi/extensions/package.json"

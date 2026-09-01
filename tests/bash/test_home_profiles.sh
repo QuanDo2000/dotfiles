@@ -121,11 +121,12 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
   assert_contains "$activation" 'config set auto_index true'
   assert_contains "$activation" 'config set auto_watch true'
   activation=$(_profile_activation nixos seedPiConfigs)
-  for seed in 'settings.json' 'keybindings.json' 'web-search.json:../web-search.json' 'mcp.json' 'pi-lsp.json'; do
+  for seed in 'settings.json' 'keybindings.json' 'web-search.json:../web-search.json' 'mcp.json'; do
     assert_contains "$activation" "$seed"
   done
   assert_contains "$activation" 'rm -f "$HOME/.pi/agent/extensions/subagent/config.json"'
   assert_contains "$activation" 'rm -f "$HOME/.local/state/dotfiles/pi/subagent-config.json"'
+  assert_contains "$activation" 'rm -f "$HOME/.pi/agent/pi-lsp.json" "$HOME/.local/state/dotfiles/pi/pi-lsp.json"'
   assert_equals true "$(_profile_file_meta nixos '.pi/agent/extensions/autoresearch' | jq -r .force)"
   assert_equals true "$(_profile_file_meta darwin '.pi/agent/extensions/autoresearch' | jq -r .force)"
   assert_equals true "$(_profile_file_meta nixos '.pi/agent/extensions/fast-mode' | jq -r .force)"

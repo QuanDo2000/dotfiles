@@ -735,7 +735,7 @@ in
   '';
 
   home.activation.seedPiConfigs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    for spec in settings.json keybindings.json web-search.json:../web-search.json mcp.json pi-lsp.json; do
+    for spec in settings.json keybindings.json web-search.json:../web-search.json mcp.json; do
       name="''${spec%%:*}"
       relative="''${spec#*:}"
       if [ "$relative" = "$spec" ]; then
@@ -765,6 +765,7 @@ in
     rm -f "$HOME/.pi/agent/extensions/subagent/config.json"
     rmdir "$HOME/.pi/agent/extensions/subagent" 2>/dev/null || true
     rm -f "$HOME/.local/state/dotfiles/pi/subagent-config.json"
+    rm -f "$HOME/.pi/agent/pi-lsp.json" "$HOME/.local/state/dotfiles/pi/pi-lsp.json"
   '';
 
   home.activation.seedLazyLock = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

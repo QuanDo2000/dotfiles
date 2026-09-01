@@ -5,9 +5,8 @@
   "defaultProjectTrust": "ask",
   "enableInstallTelemetry": false,
   "packages": [
-    "./locked-extensions/releases/3d321a53a005189a039ef74eeecbb5738824970febd57c1a745a06f72a0e9483/node_modules/pi-hermes-memory",
-    "./locked-extensions/releases/3d321a53a005189a039ef74eeecbb5738824970febd57c1a745a06f72a0e9483/node_modules/@narumitw/pi-lsp",
-    "./locked-extensions/releases/3d321a53a005189a039ef74eeecbb5738824970febd57c1a745a06f72a0e9483/node_modules/pi-web-access"
+    "./locked-extensions/releases/de43455225754ba42631cf3dd7e24680b69477c2dd5f016717c473ac42aeaa03/node_modules/pi-hermes-memory",
+    "./locked-extensions/releases/de43455225754ba42631cf3dd7e24680b69477c2dd5f016717c473ac42aeaa03/node_modules/pi-web-access"
   ],
   "theme": "dark",
   "terminal": {

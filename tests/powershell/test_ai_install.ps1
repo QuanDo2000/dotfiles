@@ -1116,23 +1116,6 @@ function test_pi_subagents_are_retired {
     Assert-Equals 'medium' $settings.defaultThinkingLevel
 }
 
-function test_pi_lsp_package_is_pinned {
-    $packagePath = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package.json'
-    $extensions = Get-Content -Raw $packagePath | ConvertFrom-Json
-    $version = $extensions.dependencies.'@narumitw/pi-lsp'
-
-    Assert-True ($version -match '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') 'Pi LSP should use an exact semver pin'
-}
-
-function test_windows_pi_lsp_config_uses_only_supported_servers {
-    $path = Join-Path $script:RepoDir 'config\windows\ai\pi\pi-lsp.json'
-    $config = Get-Content -Raw $path | ConvertFrom-Json
-
-    Assert-Equals 'vtsls' @($config.servers.vtsls.command)[0]
-    Assert-Equals 'bash-language-server' @($config.servers.'bash-language-server'.command)[0]
-    Assert-False ($config.servers.PSObject.Properties.Name -contains 'nil') 'Windows LSP config should not advertise unavailable nil'
-}
-
 function Initialize-TestAutoresearchSource($SeedDir) {
     $source = Join-Path $SeedDir 'autoresearch'
     New-Item -ItemType Directory -Force -Path (Join-Path $source 'skill') | Out-Null
@@ -1156,30 +1139,28 @@ function Initialize-TestFastModeSource($SeedDir) {
 function Initialize-TestPiConfigSeeds {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
-    $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     $mergeDir = Join-Path $script:DotfilesDir 'scripts\seed_merge'
-    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $mergeDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $seedDir, $mergeDir | Out-Null
     Copy-Item (Join-Path $script:RepoDir 'scripts\seed_merge\*') $mergeDir
     '{}' | Set-Content -LiteralPath (Join-Path $seedDir 'mcp.json')
     foreach ($name in 'settings.json', 'keybindings.json', 'web-search.json') {
         '{}' | Set-Content -LiteralPath (Join-Path $seedDir $name)
     }
-    '{}' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
     Initialize-TestFastModeSource $seedDir
 
     return [pscustomobject]@{
-        Source = Join-Path $windowsSeedDir 'pi-lsp.json'
-        Target = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
+        Source = Join-Path $seedDir 'codex-status.js'
+        Target = Join-Path $env:USERPROFILE '.pi\agent\extensions\codex-status.js'
     }
 }
 
 function test_syncpiconfigs_restores_direct_copy_when_staged_replacement_fails {
     Initialize-TestPiConfigSeeds | Out-Null
-    $destination = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
+    $destination = Join-Path $env:USERPROFILE '.pi\agent\extensions\codex-status.js'
     New-Item -ItemType Directory -Force -Path (Split-Path $destination -Parent) | Out-Null
-    'old lsp' | Set-Content -LiteralPath $destination
+    'old extension' | Set-Content -LiteralPath $destination
     $script:DirectCopyDestination = $destination
     Set-CommandMock 'Move-Item' {
         param($LiteralPath, $Destination, [switch]$Force, $ErrorAction)
@@ -1197,14 +1178,14 @@ function test_syncpiconfigs_restores_direct_copy_when_staged_replacement_fails {
     }
 
     Assert-Contains $failure 'simulated direct replacement failure'
-    Assert-Equals 'old lsp' ((Get-Content -Raw -LiteralPath $destination).Trim())
-    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $destination -Parent) -Filter 'pi-lsp.json.tmp.*' -Force).Count
-    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $destination -Parent) -Filter 'pi-lsp.json.backup.*' -Force).Count
+    Assert-Equals 'old extension' ((Get-Content -Raw -LiteralPath $destination).Trim())
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $destination -Parent) -Filter 'codex-status.js.tmp.*' -Force).Count
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath (Split-Path $destination -Parent) -Filter 'codex-status.js.backup.*' -Force).Count
 }
 
 function test_syncpiconfigs_rejects_directory_direct_copy_destination {
     Initialize-TestPiConfigSeeds | Out-Null
-    $destination = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
+    $destination = Join-Path $env:USERPROFILE '.pi\agent\extensions\codex-status.js'
     New-Item -ItemType Directory -Force -Path $destination | Out-Null
 
     $failure = $null
@@ -1217,19 +1198,17 @@ function test_syncpiconfigs_rejects_directory_direct_copy_destination {
     Assert-Contains $failure 'Pi config destination is a directory'
     Assert-Contains $failure $destination
     Assert-True (Test-Path -LiteralPath $destination -PathType Container) 'directory collision should remain'
-    Assert-False (Test-Path -LiteralPath (Join-Path $destination 'pi-lsp.json')) 'source should not be copied inside destination directory'
+    Assert-False (Test-Path -LiteralPath (Join-Path $destination 'codex-status.js')) 'source should not be copied inside destination directory'
 }
 
 function test_syncpiconfigs_creates_writable_seed_files {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
-    $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
-    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $seedDir | Out-Null
     '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
     '{"app.model.cycleForward":[],"app.model.cycleBackward":[]}' | Set-Content (Join-Path $seedDir 'keybindings.json')
     '{"workflow":"none"}' | Set-Content (Join-Path $seedDir 'web-search.json')
     '{"mcpServers":{"unixOnly":{"command":"unix"}}}' | Set-Content (Join-Path $seedDir 'mcp.json')
-    '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
     Initialize-TestFastModeSource $seedDir
@@ -1241,6 +1220,8 @@ function test_syncpiconfigs_creates_writable_seed_files {
     New-Item -ItemType Directory -Force -Path $staleAutoresearch, $staleFastMode, $staleSubagent, $baseDir | Out-Null
     '{}' | Set-Content (Join-Path $staleSubagent 'config.json')
     '{}' | Set-Content (Join-Path $baseDir 'subagent-config.json')
+    '{}' | Set-Content (Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json')
+    '{}' | Set-Content (Join-Path $baseDir 'pi-lsp.json')
     'obsolete' | Set-Content (Join-Path $staleAutoresearch 'obsolete.ts')
     'obsolete' | Set-Content (Join-Path $staleFastMode 'obsolete.ts')
 
@@ -1258,19 +1239,19 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-FileExists $webSearch
     Assert-FileExists $mcp
     Assert-False (Test-Path -LiteralPath $subagent) 'retired subagent config should be removed'
-    Assert-FileExists $lsp
+    Assert-False (Test-Path -LiteralPath $lsp) 'retired Pi LSP config should be removed'
     Assert-FileExists (Join-Path $baseDir 'settings.json')
     Assert-FileExists (Join-Path $baseDir 'keybindings.json')
     Assert-FileExists (Join-Path $baseDir 'web-search.json')
     Assert-FileExists (Join-Path $baseDir 'mcp.json')
     Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'subagent-config.json')) 'retired subagent baseline should be removed'
+    Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'pi-lsp.json')) 'retired Pi LSP baseline should be removed'
     $keys = Get-Content -Raw $keybindings | ConvertFrom-Json
     Assert-Equals 0 @($keys.'app.model.cycleForward').Count
     Assert-Equals 0 @($keys.'app.model.cycleBackward').Count
     Assert-Equals 'none' (Get-Content -Raw $webSearch | ConvertFrom-Json).workflow
     Assert-Contains (Get-Content -Raw $mcp) '"unixOnly"'
     Assert-False ((Get-Content -Raw $mcp) -like '*windowsOnly*') 'Windows should deploy the shared MCP seed'
-    Assert-Contains (Get-Content -Raw $lsp) '"vtsls"'
     Assert-FileExists (Join-Path $extensionDir 'codex-status.js')
     $autoresearch = Join-Path $extensionDir 'autoresearch'
     Assert-FileExists (Join-Path $autoresearch 'index.ts')
@@ -1323,16 +1304,13 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     if (Try-Skip-If-No-Symlink-Privilege) { return }
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
-    $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
-    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $extensionDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $seedDir, $extensionDir | Out-Null
     '{}' | Set-Content -LiteralPath (Join-Path $seedDir 'mcp.json')
 
     foreach ($name in 'settings.json', 'keybindings.json', 'web-search.json') {
         '{}' | Set-Content -LiteralPath (Join-Path $seedDir $name)
     }
-    'same lsp' | Set-Content -LiteralPath (Join-Path $windowsSeedDir 'pi-lsp.json')
-    'same lsp' | Set-Content -LiteralPath (Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json')
     'linked replacement' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
     Initialize-TestFastModeSource $seedDir
@@ -1349,32 +1327,29 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
 
     SyncPiConfigs
 
-    $lsp = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
     $linkedExtension = Join-Path $extensionDir 'codex-status.js'
-    Assert-Equals 0 @($script:PiConfigCopies | Where-Object { $_ -like "$lsp.tmp.*" }).Count
     Assert-Equals 1 @($script:PiConfigCopies | Where-Object { $_ -like "$linkedExtension.tmp.*" }).Count
     Assert-False ([bool](Get-Item -LiteralPath $linkedExtension -Force).LinkType) 'linked extension should become a regular file'
     Assert-Equals 'linked replacement' ((Get-Content -Raw -LiteralPath $linkedExtension).Trim())
     Assert-Equals 'external' ((Get-Content -Raw -LiteralPath $external).Trim())
 }
 
-function test_syncpiconfigs_removes_stale_live_subagents {
+function test_syncpiconfigs_removes_retired_configs {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
-    $windowsSeedDir = Join-Path $script:DotfilesDir 'config\windows\ai\pi'
     $mergeDir = Join-Path $script:DotfilesDir 'scripts\seed_merge'
     $targetDir = Join-Path $env:USERPROFILE '.pi\agent'
     $subagentDir = Join-Path $targetDir 'extensions\subagent'
     $baseDir = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
-    New-Item -ItemType Directory -Force -Path $seedDir, $windowsSeedDir, $mergeDir, $targetDir, $subagentDir, $baseDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $seedDir, $mergeDir, $targetDir, $subagentDir, $baseDir | Out-Null
     Copy-Item (Join-Path $script:RepoDir 'scripts\seed_merge\*') $mergeDir
 
     '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
     '{"app.model.cycleForward":[],"app.model.cycleBackward":[]}' | Set-Content (Join-Path $seedDir 'keybindings.json')
     '{"workflow":"none"}' | Set-Content (Join-Path $seedDir 'web-search.json')
     '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
-    '{"servers":{"vtsls":{"command":["vtsls","--stdio"]}}}' | Set-Content (Join-Path $windowsSeedDir 'pi-lsp.json')
-    '{"servers":{"nil":{"command":["nil"]}}}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
+    '{}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
+    '{}' | Set-Content (Join-Path $baseDir 'pi-lsp.json')
     '{}' | Set-Content (Join-Path $subagentDir 'config.json')
     '{}' | Set-Content (Join-Path $baseDir 'subagent-config.json')
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
@@ -1395,9 +1370,8 @@ function test_syncpiconfigs_removes_stale_live_subagents {
         Assert-Equals 'dark' $settings.theme
         Assert-True $settings.runtimeOnly 'Live-only unrelated settings should be preserved'
         Assert-False ($settings.PSObject.Properties.Name -contains 'subagents') 'Retired subagent settings should be removed'
-        $lsp = Get-Content -Raw (Join-Path $targetDir 'pi-lsp.json') | ConvertFrom-Json
-        Assert-True ($lsp.servers.PSObject.Properties.Name -contains 'vtsls') 'Windows LSP config should be copied'
-        Assert-False ($lsp.servers.PSObject.Properties.Name -contains 'nil') 'Authoritative Windows LSP config should remove stale servers'
+        Assert-False (Test-Path -LiteralPath (Join-Path $targetDir 'pi-lsp.json')) 'Retired Pi LSP config should be removed'
+        Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'pi-lsp.json')) 'Retired Pi LSP baseline should be removed'
         Assert-False (Test-Path -LiteralPath (Join-Path $subagentDir 'config.json')) 'Retired subagent config should be removed'
         Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'subagent-config.json')) 'Retired subagent baseline should be removed'
     } finally {

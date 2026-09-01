@@ -947,14 +947,11 @@ function SyncPiConfigs {
 
     Remove-Item -LiteralPath (Join-Path $targetDir 'extensions\subagent\config.json'), (Join-Path $baseDir 'subagent-config.json') -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath (Join-Path $targetDir 'extensions\subagent') -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $targetDir 'pi-lsp.json'), (Join-Path $baseDir 'pi-lsp.json') -Force -ErrorAction SilentlyContinue
 
     $extensionDir = Join-Path $targetDir "extensions"
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
     $directCopies = @(
-        @{
-            Source = Join-Path $script:DotfilesDir 'config\windows\ai\pi\pi-lsp.json'
-            Destination = Join-Path $targetDir 'pi-lsp.json'
-        }
         @{
             Source = Join-Path $seedDir 'codex-status.js'
             Destination = Join-Path $extensionDir 'codex-status.js'

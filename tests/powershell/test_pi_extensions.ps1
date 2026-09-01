@@ -131,8 +131,11 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
     $lock = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package-lock.json'
 
     Assert-Equals $pins.releaseId (Get-PiExtensionTestSha256 $lock)
-    Assert-Equals 3 @($settings.packages).Count
-    Assert-Equals 3 @($package.dependencies.PSObject.Properties).Count
+    Assert-Equals 2 @($settings.packages).Count
+    Assert-Equals 2 @($package.dependencies.PSObject.Properties).Count
+    Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@narumitw/pi-lsp') 'Pi LSP package should be removed'
+    Assert-False ($settings.packages -like '*@narumitw/pi-lsp*') 'Pi LSP package path should be removed'
+    Assert-False ((Get-Content -Raw $lock) -like '*node_modules/@narumitw/pi-lsp*') 'Pi LSP lock entry should be removed'
     Assert-False ($package.dependencies.PSObject.Properties.Name -contains 'pi-mcp-extension') 'Pi MCP extension should be removed'
     Assert-False ($settings.packages -like '*pi-mcp-extension*') 'Pi MCP package path should be removed'
     Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@ff-labs/pi-fff') 'native FFF MCP should remain absent'
