@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-08-23-neat-crush",
-  "registrySha256": "2e815a5c3211dc13ca29c1ae59ef7044472cd9fcd2d8d97996d2cb925fb65f30",
+  "registryVersion": "2026-08-31-feeble-parade",
+  "registrySha256": "b5971ffd345d55b762902d5b277a8b974d007689214b9a9508eb78c1d1f7ca67",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
