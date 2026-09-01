@@ -51,10 +51,6 @@
         },
         {
             "id": "User.paste",
-            "keys": "ctrl+shift+v"
-        },
-        {
-            "id": "unbound",
             "keys": "ctrl+v"
         },
         {

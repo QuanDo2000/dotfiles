@@ -26,12 +26,10 @@ function test_windows_terminal_does_not_elevate_every_profile {
     Assert-False ($settings.profiles.defaults.elevate -eq $true) 'Windows Terminal profiles should run unelevated by default'
 }
 
-function test_windows_terminal_leaves_ctrl_v_for_visual_block_mode {
+function test_windows_terminal_pastes_with_ctrl_v {
     $settings = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\Terminal\settings.json') | ConvertFrom-Json
     $pasteBinding = $settings.keybindings | Where-Object id -eq 'User.paste'
-    $ctrlVBinding = $settings.keybindings | Where-Object keys -eq 'ctrl+v'
-    Assert-Equals 'ctrl+shift+v' $pasteBinding.keys
-    Assert-Equals 'unbound' $ctrlVBinding.id
+    Assert-Equals 'ctrl+v' $pasteBinding.keys
 }
 
 function test_windows_neovim_bootstraps_lazy_at_reviewed_lock {
