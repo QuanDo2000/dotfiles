@@ -6,6 +6,7 @@ let
   obsidianSync = args.obsidianSync or false;
   googleDriveSync = args.googleDriveSync or false;
   storageOffsiteBackup = args.storageOffsiteBackup or false;
+  systemCompiler = args.systemCompiler or false;
   machine = import ./host.nix;
   nixosSystem = pkgs.stdenv.hostPlatform.isLinux && osConfig != null;
   standaloneLinux = pkgs.stdenv.hostPlatform.isLinux && !nixosSystem;
@@ -137,7 +138,7 @@ let
     pkgs.pi-agent
     shellcheck
     statix
-  ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+  ] ++ lib.optionals (pkgs.stdenv.hostPlatform.isLinux && !systemCompiler) [
     gcc
   ];
   standaloneLinuxPackages = with pkgs; [

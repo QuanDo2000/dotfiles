@@ -118,6 +118,7 @@
           obsidianSync = true;
           googleDriveSync = true;
           storageOffsiteBackup = true;
+          systemCompiler = true;
         };
         modules = [ ./config/home.nix ];
       };
