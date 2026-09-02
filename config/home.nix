@@ -8,6 +8,7 @@ let
   storageOffsiteBackup = args.storageOffsiteBackup or false;
   systemCompiler = args.systemCompiler or false;
   systemFontconfig = args.systemFontconfig or false;
+  systemGit = args.systemGit or false;
   systemJq = args.systemJq or false;
   systemOpenSSH = args.systemOpenSSH or false;
   machine = import ./host.nix;
@@ -390,6 +391,7 @@ in
 
   programs.git = {
     enable = true;
+    package = if systemGit then null else pkgs.git;
     settings = {
       user = {
         name = "Quan Do";

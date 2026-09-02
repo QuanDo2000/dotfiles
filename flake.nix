@@ -119,6 +119,7 @@
           storageOffsiteBackup = true;
           systemCompiler = true;
           systemFontconfig = true;
+          systemGit = true;
           systemJq = true;
           systemOpenSSH = true;
         };
