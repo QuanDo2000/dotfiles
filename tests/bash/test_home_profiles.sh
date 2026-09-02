@@ -46,7 +46,7 @@ assert_line_absent() { grep -Fxq "$2" <<< "$1" && echo "  unexpected line presen
 _test_present() { local text="$1" item; shift; for item in "$@"; do assert_line_present "$text" "$item"; done; }
 _test_absent() { local text="$1" item; shift; for item in "$@"; do assert_line_absent "$text" "$item"; done; }
 
-common_packages=(bash-language-server codex jq nil pi-coding-agent ShellCheck statix)
+common_packages=(bash-language-server codex nil pi-coding-agent ShellCheck statix)
 desktop_packages=(ghostty google-chrome grim hyprshutdown pavucontrol playerctl rbw slurp wl-clipboard)
 system_desktop_packages=(pinentry-gnome3 thunar xarchiver)
 personal_packages=(anki-with-addons obsidian webcord)
@@ -65,10 +65,10 @@ test_profile_packages_and_services_are_composed_by_role() {
   generic_packages="$(_profile_packages linux)"; arch_packages="$(_profile_packages arch-server)"
   generic_service_names="$(_profile_services linux)"; arch_service_names="$(_profile_services arch-server)"
   _test_present_array "$generic_packages" "${common_packages[@]}"
-  _test_present "$generic_packages" gcc-wrapper fontconfig openssh
+  _test_present "$generic_packages" gcc-wrapper fontconfig jq openssh
   _test_absent_array "$generic_packages" vtsls "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}" "${storage_packages[@]}"
   _test_present_array "$arch_packages" "${common_packages[@]}" "${arch_sync_packages[@]}" "${storage_packages[@]}"
-  _test_absent_array "$arch_packages" gcc-wrapper fontconfig openssh "${desktop_packages[@]}" "${personal_packages[@]}"
+  _test_absent_array "$arch_packages" gcc-wrapper fontconfig jq openssh "${desktop_packages[@]}" "${personal_packages[@]}"
   _test_absent "$generic_service_names" "${arch_services[@]}" "${desktop_services[@]}"
   _test_present "$arch_service_names" "${arch_services[@]}"; _test_absent "$arch_service_names" "${desktop_services[@]}"
 }
@@ -77,10 +77,10 @@ test_nixos_and_darwin_packages_and_services_are_composed_by_role() {
   local nixos_packages nixos_services nixos_timers darwin_packages darwin_services darwin_timers
   nixos_packages=$(_profile_packages nixos); nixos_services=$(_profile_services nixos); nixos_timers=$(_profile_timers nixos)
   darwin_packages=$(_profile_packages darwin); darwin_services=$(_profile_services darwin); darwin_timers=$(_profile_timers darwin)
-  _test_present_array "$nixos_packages" "${common_packages[@]}" gcc-wrapper "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}"; _test_absent "$nixos_packages" restic "${system_desktop_packages[@]}"
+  _test_present_array "$nixos_packages" "${common_packages[@]}" gcc-wrapper jq "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}"; _test_absent "$nixos_packages" restic "${system_desktop_packages[@]}"
   _test_present "$nixos_services" obsidian-sync google-drive-mount google-drive-bisync "${desktop_services[@]}"; _test_absent "$nixos_services" google-drive-storage-sync storage-offsite-backup storage-offsite-maintenance
   _test_present "$nixos_timers" google-drive-bisync; _test_absent "$nixos_timers" google-drive-storage-sync storage-offsite-backup storage-offsite-maintenance
-  _test_present "$darwin_packages" "${common_packages[@]}"; _test_absent_array "$darwin_packages" "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}" "${storage_packages[@]}"
+  _test_present "$darwin_packages" "${common_packages[@]}" jq; _test_absent_array "$darwin_packages" "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}" "${storage_packages[@]}"
   _test_absent "$darwin_services" "${arch_services[@]}" "${desktop_services[@]}"; _test_absent "$darwin_timers" "${arch_timers[@]}"
 }
 

@@ -8,6 +8,7 @@ let
   storageOffsiteBackup = args.storageOffsiteBackup or false;
   systemCompiler = args.systemCompiler or false;
   systemFontconfig = args.systemFontconfig or false;
+  systemJq = args.systemJq or false;
   systemOpenSSH = args.systemOpenSSH or false;
   machine = import ./host.nix;
   nixosSystem = pkgs.stdenv.hostPlatform.isLinux && osConfig != null;
@@ -132,14 +133,14 @@ let
   devTerminalPackages = with pkgs; [
     bash-language-server
     codex
-    jq
     nil
     nixfmt
     nodejs
     pkgs.pi-agent
     shellcheck
     statix
-  ] ++ lib.optionals (pkgs.stdenv.hostPlatform.isLinux && !systemCompiler) [
+  ] ++ lib.optionals (!systemJq) [ jq ]
+  ++ lib.optionals (pkgs.stdenv.hostPlatform.isLinux && !systemCompiler) [
     gcc
   ];
   standaloneLinuxPackages = with pkgs; lib.optionals (!systemOpenSSH) [ openssh ]

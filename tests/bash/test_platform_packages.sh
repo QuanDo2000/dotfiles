@@ -94,6 +94,7 @@ test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
   assert_contains "${ARCH_PACKAGES[*]}" "curl"
   assert_contains "${ARCH_PACKAGES[*]}" "git"
+  assert_contains "${ARCH_PACKAGES[*]}" "jq"
   assert_contains "${ARCH_PACKAGES[*]}" "zsh"
   assert_contains "${ARCH_PACKAGES[*]}" "openssh"
   for pkg in neovim starship nodejs tmux lazygit jujutsu ripgrep fd fzf; do
