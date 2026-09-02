@@ -193,7 +193,7 @@ function Get-RequiredCommands {
     @(
         "git", "gpg", "nvim", "starship", "fd", "rg", "lazygit",
         "fnm", "node", "jj", "zoxide", "codex", "pi",
-        "codebase-memory-mcp", "py",
+        "py",
         "bash-language-server", "shellcheck", "tree-sitter", "clang"
     )
 }
@@ -944,258 +944,37 @@ function SyncPiConfigs {
     Success "Finished syncing Pi configuration"
 }
 
-function Get-CodebaseMemoryWindowsArch($Architecture) {
-    switch ([string]$Architecture) {
-        "X64" { return "amd64" }
-        "Arm64" { return "arm64" }
-        default { throw "Unsupported codebase-memory Windows architecture: $Architecture" }
-    }
-}
+function RemoveCodebaseMemory {
+    Info "Removing managed codebase-memory-mcp installation..."
+    if ($script:Dry) { return }
 
-function Get-CodebaseMemoryPathValue($PathValue, $ReleaseDir, $ReleasesRoot, $LegacyRoot) {
-    $releasesNormalized = $ReleasesRoot.TrimEnd([char[]](92, 47))
-    $releaseNormalized = $ReleaseDir.TrimEnd([char[]](92, 47))
-    $legacyNormalized = $LegacyRoot.TrimEnd([char[]](92, 47))
-    $entries = @($PathValue -split ";" | Where-Object {
+    $root = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp'
+    $oldPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $rootNormalized = $root.TrimEnd([char[]](92, 47))
+    $newPath = @($oldPath -split ';' | Where-Object {
         if (-not $_) { return $false }
         $entry = $_.TrimEnd([char[]](92, 47))
-        return $entry -ine $releaseNormalized -and
-            $entry -ine $legacyNormalized -and
-            -not $entry.StartsWith($releasesNormalized + [char]92, [StringComparison]::OrdinalIgnoreCase) -and
-            -not $entry.StartsWith($releasesNormalized + [char]47, [StringComparison]::OrdinalIgnoreCase)
-    })
-    return (@($ReleaseDir) + $entries) -join ";"
-}
+        return $entry -ine $rootNormalized -and
+            -not $entry.StartsWith($rootNormalized + [char]92, [StringComparison]::OrdinalIgnoreCase) -and
+            -not $entry.StartsWith($rootNormalized + [char]47, [StringComparison]::OrdinalIgnoreCase)
+    }) -join ';'
 
-function Test-CodebaseMemoryActivePath($ReleaseDir, $ReleasesRoot, $LegacyRoot) {
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    return (Get-CodebaseMemoryPathValue $userPath $ReleaseDir $ReleasesRoot $LegacyRoot) -ceq $userPath
-}
-
-function Set-CodebaseMemoryActivePath($ReleaseDir, $ReleasesRoot, $LegacyRoot) {
-    $oldUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    try {
-        $newUserPath = Get-CodebaseMemoryPathValue $oldUserPath $ReleaseDir $ReleasesRoot $LegacyRoot
-        [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
-    } catch {
-        [Environment]::SetEnvironmentVariable("Path", $oldUserPath, "User")
-        throw
-    }
-}
-
-function Test-CodebaseMemoryArchive($Archive) {
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $zip = $null
-    try {
-        $zip = [IO.Compression.ZipFile]::OpenRead($Archive)
-        $names = @($zip.Entries | ForEach-Object { $_.FullName })
-        $expected = @("codebase-memory-mcp.exe", "LICENSE", "install.ps1", "THIRD_PARTY_NOTICES.md")
-        if ($names.Count -ne $expected.Count) { return $false }
-        foreach ($name in $expected) {
-            if ($names -cnotcontains $name) { return $false }
-        }
-        return $true
-    } catch {
-        return $false
-    } finally {
-        if ($zip) { $zip.Dispose() }
-    }
-}
-
-function Get-CodebaseMemoryVersionFromOutput($Output) {
-    $match = [regex]::Match(($Output -join " "), "(?:^|\s)(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$")
-    if ($match.Success) { return $match.Groups[1].Value }
-    return ""
-}
-
-function Test-CodebaseMemoryRelease($ReleaseDir, $ExpectedVersion) {
-    $executable = Join-Path $ReleaseDir "codebase-memory-mcp.exe"
-    if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { return $false }
-    if ((Get-Item -LiteralPath $executable -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { return $false }
-    try {
-        $versionOutput = & $executable --version 2>$null
-    } catch {
-        return $false
-    }
-    if ($LASTEXITCODE -ne 0) { return $false }
-    return (Get-CodebaseMemoryVersionFromOutput $versionOutput) -ceq $ExpectedVersion
-}
-
-function Invoke-CodebaseMemoryCommand($Executable, $FailureMessage, [string[]]$Arguments) {
-    & $Executable @Arguments
-    if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
-}
-
-function Stop-CodebaseMemoryProcesses {
     $processes = @(Get-Process -Name 'codebase-memory-mcp' -ErrorAction SilentlyContinue)
-    if ($processes.Count -eq 0) { return }
-    $processes | Stop-Process -Force -ErrorAction SilentlyContinue
-    $processes | Wait-Process -Timeout 5 -ErrorAction SilentlyContinue
-}
-
-function Test-CodebaseMemoryConfigDatabaseAccess($Path) {
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $true }
-    $stream = $null
+    if ($processes.Count -gt 0) {
+        $processes | Stop-Process -Force -ErrorAction SilentlyContinue
+        $processes | Wait-Process -Timeout 5 -ErrorAction SilentlyContinue
+    }
     try {
-        $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::ReadWrite)
-        return $true
-    } catch {
-        $exception = $_.Exception
-        while ($exception) {
-            if ($exception -is [UnauthorizedAccessException]) { return $false }
-            $exception = $exception.InnerException
+        if ($newPath -cne $oldPath) { [Environment]::SetEnvironmentVariable('Path', $newPath, 'User') }
+        if (Test-Path -LiteralPath $root) {
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction Stop
         }
+    } catch {
+        if ($newPath -cne $oldPath) { [Environment]::SetEnvironmentVariable('Path', $oldPath, 'User') }
         throw
-    } finally {
-        if ($stream) { $stream.Dispose() }
-    }
-}
-
-function Test-CodebaseMemoryManagedState($StatePath, $Version, $ReleaseDir, $Executable, $ConfigDatabase, $ReleasesRoot, $LegacyRoot) {
-    if (-not (Test-Path -LiteralPath $StatePath -PathType Leaf)) { return $false }
-    if ((Get-Item -LiteralPath $StatePath -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { return $false }
-    try {
-        $state = Get-Content -Raw -LiteralPath $StatePath | ConvertFrom-Json
-        if ([string]$state.version -cne $Version -or [string]$state.releaseDir -ine $ReleaseDir) { return $false }
-
-        $codexConfig = Join-Path (Get-CodexHome) 'config.toml'
-        if (-not (Test-Path -LiteralPath $codexConfig -PathType Leaf)) { return $false }
-        if ((Get-Item -LiteralPath $codexConfig -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { return $false }
-        if ((Get-FileHash -LiteralPath $codexConfig -Algorithm SHA256).Hash -ine [string]$state.codexConfigSha256) { return $false }
-
-        if (-not (Test-CodebaseMemoryConfigDatabaseAccess $ConfigDatabase)) { return $false }
-        foreach ($key in 'auto_index', 'auto_watch') {
-            $value = @(Invoke-CodebaseMemoryCommand $Executable "codebase-memory-mcp $key query failed" @('config', 'get', $key)) | Select-Object -Last 1
-            if (([string]$value).Trim() -cne 'true') { return $false }
-        }
-        return Test-CodebaseMemoryActivePath $ReleaseDir $ReleasesRoot $LegacyRoot
-    } catch {
-        return $false
-    }
-}
-
-function Repair-CodebaseMemoryConfigDatabase($Path) {
-    $Path = [IO.Path]::GetFullPath($Path)
-    if (Test-CodebaseMemoryConfigDatabaseAccess $Path) { return }
-
-    $escapedPath = $Path.Replace("'", "''")
-    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-    $takeown = (Join-Path $env:SystemRoot 'System32\takeown.exe').Replace("'", "''")
-    $icacls = (Join-Path $env:SystemRoot 'System32\icacls.exe').Replace("'", "''")
-    $command = @(
-        "& '$takeown' /F '$escapedPath' | Out-Null"
-        'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }'
-        "& '$icacls' '$escapedPath' /reset /Q | Out-Null"
-        'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }'
-        "& '$icacls' '$escapedPath' /grant:r '*${sid}:(F)' /Q | Out-Null"
-        'exit $LASTEXITCODE'
-    ) -join '; '
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
-    $elevated = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile', '-EncodedCommand', $encoded) -Verb RunAs -Wait -PassThru
-    if ($elevated.ExitCode -ne 0 -or -not (Test-CodebaseMemoryConfigDatabaseAccess $Path)) {
-        throw "Elevated codebase-memory config database ACL repair failed: $Path"
-    }
-}
-
-function InstallCodebaseMemory {
-    Info "Installing codebase-memory-mcp..."
-    if ($script:Dry) { return }
-    if (-not [Environment]::Is64BitOperatingSystem) { throw "codebase-memory-mcp requires 64-bit Windows" }
-
-    $pinsPath = Join-Path $script:DotfilesDir "packages\codebase-memory-mcp-release.json"
-    if (-not (Test-Path -LiteralPath $pinsPath -PathType Leaf)) { throw "Missing codebase-memory-mcp pin file: $pinsPath" }
-    $pins = Get-Content -Raw -LiteralPath $pinsPath | ConvertFrom-Json
-    $version = [string]$pins.version
-    if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw "Invalid pinned codebase-memory-mcp version: $version" }
-    $architecture = Get-CodebaseMemoryWindowsArch ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture)
-    $asset = $pins.windows.$architecture
-    $expectedHash = [string]$asset.sha256
-    $assetFile = [string]$asset.file
-    if ($expectedHash -notmatch '^[0-9a-f]{64}$') { throw "Invalid pinned codebase-memory-mcp checksum for $architecture" }
-    if ($assetFile -notmatch "^codebase-memory-mcp(?:-ui)?-windows-$architecture\.zip$") { throw "Invalid pinned codebase-memory-mcp asset for $architecture" }
-
-    $legacyRoot = Join-Path $env:LOCALAPPDATA "Programs\codebase-memory-mcp"
-    $releasesRoot = Join-Path $legacyRoot "releases"
-    $releaseDir = Join-Path $releasesRoot "$version-windows-$architecture-$($expectedHash.Substring(0, 12))"
-    $executable = Join-Path $releaseDir "codebase-memory-mcp.exe"
-    New-Item -ItemType Directory -Force -Path $legacyRoot | Out-Null
-    $installLock = [IO.File]::Open((Join-Path $legacyRoot "install.lock"), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-
-    try {
-        if ((Test-Path -LiteralPath $releaseDir) -and -not (Test-CodebaseMemoryRelease $releaseDir $version)) {
-            throw "Pinned codebase-memory-mcp release is incomplete: $releaseDir"
-        }
-        if (-not (Test-Path -LiteralPath $releaseDir)) {
-            New-Item -ItemType Directory -Force -Path $releasesRoot | Out-Null
-            $tempDir = Join-Path ([IO.Path]::GetTempPath()) "codebase-memory-install-$([Guid]::NewGuid().ToString('N'))"
-            $stagingDir = Join-Path $releasesRoot ".staging.$([Guid]::NewGuid().ToString('N'))"
-            $archive = Join-Path $tempDir $assetFile
-            $archiveLock = $null
-            try {
-                New-Item -ItemType Directory -Force -Path $tempDir, $stagingDir | Out-Null
-                $uri = "https://github.com/DeusData/codebase-memory-mcp/releases/download/v$version/$assetFile"
-                Invoke-WebRequest -Uri $uri -OutFile $archive -UseBasicParsing
-                $archiveLock = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-                if ((Get-StreamSha256 $archiveLock) -ne $expectedHash) { throw "codebase-memory-mcp package checksum mismatch" }
-                if (-not (Test-CodebaseMemoryArchive $archive)) { throw "Unexpected codebase-memory-mcp archive layout" }
-                Expand-Archive -LiteralPath $archive -DestinationPath $stagingDir -Force
-                if (-not (Test-CodebaseMemoryRelease $stagingDir $version)) { throw "codebase-memory-mcp package is incomplete or has wrong version" }
-                $archiveLock.Dispose()
-                $archiveLock = $null
-                Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction Stop
-                Move-Item -LiteralPath $stagingDir -Destination $releaseDir
-            } catch {
-                $operationError = $_
-                if ($archiveLock) { $archiveLock.Dispose(); $archiveLock = $null }
-                $cleanupError = $null
-                foreach ($path in $tempDir, $stagingDir) {
-                    try {
-                        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop }
-                    } catch {
-                        if (-not $cleanupError) { $cleanupError = $_.Exception }
-                    }
-                }
-                if ($cleanupError) { throw "codebase-memory cleanup failed after '$($operationError.Exception.Message)': $($cleanupError.Message)" }
-                throw $operationError
-            } finally {
-                if ($archiveLock) { $archiveLock.Dispose() }
-            }
-        }
-
-        if (-not (Test-CodebaseMemoryRelease $releaseDir $version)) { throw "Installed codebase-memory-mcp release verification failed" }
-        $statePath = Join-Path $legacyRoot 'managed-state.json'
-        $configDatabase = Join-Path $env:USERPROFILE '.cache\codebase-memory-mcp\_config.db'
-        if (Test-CodebaseMemoryManagedState $statePath $version $releaseDir $executable $configDatabase $releasesRoot $legacyRoot) {
-            Success "Finished installing codebase-memory-mcp"
-            return
-        }
-
-        Stop-CodebaseMemoryProcesses
-        Repair-CodebaseMemoryConfigDatabase $configDatabase
-        Invoke-CodebaseMemoryCommand $executable "codebase-memory-mcp auto-index configuration failed" @("config", "set", "auto_index", "true")
-        Invoke-CodebaseMemoryCommand $executable "codebase-memory-mcp auto-watch configuration failed" @("config", "set", "auto_watch", "true")
-        Set-CodebaseMemoryActivePath $releaseDir $releasesRoot $legacyRoot
-
-        $codexConfig = Join-Path (Get-CodexHome) 'config.toml'
-        if (Test-Path -LiteralPath $codexConfig -PathType Leaf) {
-            $stateTemp = "$statePath.tmp.$([Guid]::NewGuid().ToString('N'))"
-            try {
-                @{
-                    version = $version
-                    releaseDir = $releaseDir
-                    codexConfigSha256 = (Get-FileHash -LiteralPath $codexConfig -Algorithm SHA256).Hash
-                } | ConvertTo-Json | Set-Content -LiteralPath $stateTemp -Encoding utf8
-                Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue
-                Move-Item -LiteralPath $stateTemp -Destination $statePath
-            } finally {
-                Remove-Item -LiteralPath $stateTemp -Force -ErrorAction SilentlyContinue
-            }
-        }
-    } finally {
-        $installLock.Dispose()
     }
 
-    Success "Finished installing codebase-memory-mcp"
+    Success "Finished removing managed codebase-memory-mcp installation"
 }
 
 function SyncAiInstructions {
@@ -1333,7 +1112,7 @@ function InstallAi {
     InstallCodex
     SyncCodexConfig
 
-    InstallCodebaseMemory
+    RemoveCodebaseMemory
     InstallPi -Update:$Update
     InstallPiLanguageServers
     InstallPiExtensions

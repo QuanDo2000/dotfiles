@@ -60,16 +60,6 @@ test_dependency_publish_rebases_and_pushes_update() {
   assert_equals "upstream" "$(<"$repo/upstream")"
 }
 
-test_codebase_memory_verification_uses_cosign_without_nested_nix() {
-  local source="$REPO_DIR/scripts/update_pins.py"
-  local source_text
-  source_text="$(<"$source")"
-  assert_contains "$source_text" '"cosign", "verify-blob"'
-  assert_contains "$source_text" '"--bundle", str(bundle)'
-  assert_contains "$source_text" '"--certificate-identity", "https://github.com/DeusData/codebase-memory-mcp/.github/workflows/release.yml@refs/heads/main"'
-  assert_contains "$source_text" '"--certificate-oidc-issuer", "https://token.actions.githubusercontent.com"'
-  assert_not_contains "$source_text" '"nix", "develop", f"path:{repo}", "-c", "cosign"'
-}
 
 test_python_pin_batch_uses_one_nix_develop_and_preserves_order() {
   local calls="$TEST_TMPDIR/pin-batch.log"
@@ -79,11 +69,11 @@ test_python_pin_batch_uses_one_nix_develop_and_preserves_order() {
   }
   DRY=false
   _run_python_pin_batch \
-    codebase-memory "codebase-memory release" \
-    pi-extensions "Pi extension closure"
+    pi-extensions "Pi extension closure" \
+    webcord "WebCord release"
 
   assert_equals "1" "$(wc -l < "$calls")"
-  assert_contains "$(<"$calls")" "codebase-memory pi-extensions"
+  assert_contains "$(<"$calls")" "pi-extensions webcord"
   unset -f nix
 }
 
@@ -99,7 +89,7 @@ test_all_dependency_pin_updaters_dry_run_without_network() {
   assert_equals "0" "$status"
   for label in \
     "Lix installer" "Codex package" "Pi package" "Obsidian Headless" \
-    "codebase-memory" "Pi extension closure" "WebCord" "Anki Zoom" \
+    "Pi extension closure" "WebCord" "Anki Zoom" \
     "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
     assert_contains "$output" "$label"
   done

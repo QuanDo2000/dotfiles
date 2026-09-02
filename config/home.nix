@@ -130,7 +130,6 @@ let
   devTerminalPackages = with pkgs; [
     bash-language-server
     codex
-    codebase-memory-mcp
     jq
     nil
     nixfmt
@@ -695,11 +694,6 @@ in
       mkdir -p "$(dirname "$terminfo_target")"
       cp "$terminfo_source" "$terminfo_target"
     fi
-  '';
-
-  home.activation.configureCodebaseMemory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    "${pkgs.codebase-memory-mcp}/bin/codebase-memory-mcp" config set auto_index true
-    "${pkgs.codebase-memory-mcp}/bin/codebase-memory-mcp" config set auto_watch true
   '';
 
   home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

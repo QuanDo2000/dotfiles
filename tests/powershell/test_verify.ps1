@@ -65,19 +65,6 @@ function test_verify_checks_every_managed_link_spec {
     Assert-True $script:VerifyFailed 'matching file contents must not substitute for a managed link'
 }
 
-function test_verify_reports_missing_managed_ai_command {
-    Set-CommandMock 'Get-Command' {
-        param($Name)
-        if ($Name -eq 'codebase-memory-mcp') { return $null }
-        [pscustomobject]@{ Source = "C:\fake\$Name.exe" }
-    }
-
-    $output = Verify 6>&1 | Out-String
-
-    Assert-Contains $output 'codebase-memory-mcp not found'
-    Assert-True $script:VerifyFailed 'missing managed AI command should fail verification'
-}
-
 function test_verify_reports_missing_codex_config {
     $env:CODEX_HOME = Join-Path $env:USERPROFILE 'custom-codex-home'
     $output = Verify 6>&1 | Out-String

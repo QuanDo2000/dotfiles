@@ -145,64 +145,6 @@ def verify_asset(release: dict, name: str, destination: Path, checksum_file: boo
     return actual
 
 
-def update_codebase_memory(repo: Path) -> None:
-    pins_path = repo / "packages/codebase-memory-mcp-release.json"
-    current = json.loads(pins_path.read_text(encoding="utf-8"))
-    release = github_release("DeusData/codebase-memory-mcp")
-    version = release["tag_name"].removeprefix("v")
-    if current["version"] == version:
-        print(f"codebase-memory-mcp {version} already current")
-        return
-
-    names = {
-        ("linux", "amd64"): "codebase-memory-mcp-linux-amd64.tar.gz",
-        ("darwin", "arm64"): "codebase-memory-mcp-darwin-arm64.tar.gz",
-        ("windows", "amd64"): "codebase-memory-mcp-windows-amd64.zip",
-        ("windows", "arm64"): "codebase-memory-mcp-windows-arm64.zip",
-    }
-    with tempfile.TemporaryDirectory(prefix="dotfiles-codebase-memory-") as temporary:
-        root = Path(temporary)
-        checksums = root / "checksums.txt"
-        bundle = root / "checksums.txt.bundle"
-        download(github_asset(release, "checksums.txt")["browser_download_url"], checksums)
-        download(github_asset(release, "checksums.txt.bundle")["browser_download_url"], bundle)
-        run(
-            "cosign", "verify-blob",
-            "--bundle", str(bundle),
-            "--certificate-identity", "https://github.com/DeusData/codebase-memory-mcp/.github/workflows/release.yml@refs/heads/main",
-            "--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
-            str(checksums),
-        )
-        expected = {}
-        for line in checksums.read_text(encoding="utf-8").splitlines():
-            digest, name = line.split(maxsplit=1)
-            expected[name] = digest.lower()
-
-        updated = {"version": version, "linux": {}, "darwin": {}, "windows": {}}
-        for (system, architecture), name in names.items():
-            path = root / name
-            actual = verify_asset(release, name, path)
-            if expected.get(name) != actual:
-                die(f"signed checksum mismatch for {name}")
-            if system == "windows":
-                with zipfile.ZipFile(path) as archive:
-                    members = sorted(info.filename for info in archive.infolist() if not info.is_dir())
-                required = sorted(["codebase-memory-mcp.exe", "LICENSE", "install.ps1", "THIRD_PARTY_NOTICES.md"])
-            else:
-                with tarfile.open(path, "r:gz") as archive:
-                    members = sorted(member.name.removeprefix("./") for member in archive.getmembers() if member.isfile())
-                required = sorted(["codebase-memory-mcp", "LICENSE", "install.sh", "THIRD_PARTY_NOTICES.md"])
-            if members != required:
-                die(f"unexpected archive layout for {name}: {members}")
-            data = {"file": name, "sha256": actual}
-            if system != "windows":
-                data["nixHash"] = nix_hash(path)
-            updated[system][architecture] = data
-
-    atomic_json(pins_path, updated)
-    print(f"updated codebase-memory-mcp to {version}")
-
-
 def locked_node(repo: Path) -> tuple[str, str]:
     expression = (
         f'let f = builtins.getFlake "path:{repo}"; '
@@ -579,7 +521,6 @@ def main() -> int:
     targets, repo_arg = sys.argv[1:-1], sys.argv[-1]
     repo = Path(repo_arg).resolve()
     handlers = {
-        "codebase-memory": update_codebase_memory,
         "pi-extensions": update_pi_extensions,
         "webcord": update_webcord,
         "anki-zoom": update_anki_zoom,

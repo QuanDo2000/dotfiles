@@ -31,7 +31,6 @@ fi
 packages=(
   "$flake#codex"
   "$flake#pi-extensions"
-  "$flake#codebase-memory-mcp"
 )
 if [[ "$(uname -s)" == "Linux" ]]; then
   packages+=("$flake#obsidian-headless" "$flake#pi-agent")

@@ -70,7 +70,6 @@ test_ci_dev_shell_includes_script_dependencies() {
   flake="$(<"$REPO_DIR/flake.nix")"
 
   assert_contains "$flake" "jq"
-  assert_contains "$flake" "cosign"
   assert_contains "$flake" 'LAZY_NVIM_PATH = "${pkgs.vimPlugins.lazy-nvim}";'
   local dev_shell
   dev_shell="$(sed -n '/devShell =/,/^[[:space:]]*};/p' "$REPO_DIR/flake.nix")"
@@ -83,8 +82,6 @@ test_ci_dev_shell_includes_script_dependencies() {
   assert_contains "$ci_shell" 'python3'
   assert_contains "$ci_shell" 'tree-sitter'
   assert_not_contains "$ci_shell" 'pi-agent'
-  assert_contains "$(<"$REPO_DIR/scripts/update_pins.py")" '"cosign", "verify-blob"'
-  assert_not_contains "$(<"$REPO_DIR/scripts/update_pins.py")" '"nix", "develop", f"path:{repo}", "-c", "cosign"'
 }
 
 test_ci_runs_direct_nix_checks() {

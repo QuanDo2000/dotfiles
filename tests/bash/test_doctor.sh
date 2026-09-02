@@ -152,7 +152,7 @@ test_doctor_fails_missing_runtime_health() {
   assert_equals "1" "$errors"
   command() { return 1; }
   _check_managed_commands
-  assert_equals "5" "$errors"
+  assert_equals "4" "$errors"
   unset -f command
 }
 

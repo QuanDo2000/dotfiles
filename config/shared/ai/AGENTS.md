@@ -36,7 +36,7 @@ Normally use one fan-out wave; launch another only for a changed target or unres
 
 ## Code Search
 
-Use codebase-memory first when those tools are available: index once, then prefer `get_architecture`, `search_graph`, `trace_path`, and `get_code_snippet`; run `detect_changes` before finalizing code edits. Use native read-only filename/text search (`rg`, `fd`, `find`, or harness-provided `grep`/`find`) for raw lookup and fallback. Strict-tool subagents without them use their provided `read`, `grep`, `find`, and `ls` tools.
+Use native read-only filename/text search (`rg`, `fd`, `find`, or harness-provided `grep`/`find`). Strict-tool subagents use their provided `read`, `grep`, `find`, and `ls` tools.
 
 ## Unknown Framework Boundaries
 

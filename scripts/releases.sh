@@ -686,7 +686,6 @@ function _update_all_dependency_pins {
   _update_pi_release_package
   _update_obsidian_headless_package
   _run_python_pin_batch \
-    codebase-memory "codebase-memory release" \
     pi-extensions "Pi extension closure" \
     webcord "WebCord release" \
     anki-zoom "Anki Zoom add-on" \

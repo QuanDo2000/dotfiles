@@ -66,7 +66,7 @@ jobs:
           tests_pid=$!
           nix eval --raw .#darwinConfigurations.mac.system.drvPath &
           darwin_pid=$!
-          nix build .#codex .#codebase-memory-mcp .#pi-extensions --no-link &
+          nix build .#codex .#pi-extensions --no-link &
           packages_pid=$!
 
           status=0
@@ -190,4 +190,4 @@ jobs:
           nix eval --raw ".#homeConfigurations.\"$username@arch-server\".activationPackage.drvPath"
 
       - name: Build custom packages
-        run: nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions .#codebase-memory-mcp --no-link
+        run: nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions --no-link

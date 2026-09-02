@@ -17,8 +17,6 @@ test_pin_updater_keeps_security_checks() {
   assert_contains "$updater" 'repeated downloads differ'
   assert_contains "$updater" 'Mason registry GitHub digest mismatch'
   assert_contains "$updater" 'unexpected Mason registry archive entries'
-  assert_contains "$updater" 'signed checksum mismatch'
-  assert_contains "$updater" '"--certificate-identity"'
   assert_contains "$updater" 'member.issym() or member.islnk()'
   assert_contains "$updater" 'unsafe Pi extension lock entries'
   assert_contains "$updater" '"--no-audit"'

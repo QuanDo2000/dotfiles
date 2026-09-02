@@ -46,7 +46,7 @@ assert_line_absent() { grep -Fxq "$2" <<< "$1" && echo "  unexpected line presen
 _test_present() { local text="$1" item; shift; for item in "$@"; do assert_line_present "$text" "$item"; done; }
 _test_absent() { local text="$1" item; shift; for item in "$@"; do assert_line_absent "$text" "$item"; done; }
 
-common_packages=(bash-language-server codex codebase-memory-mcp jq nil pi-coding-agent ShellCheck statix)
+common_packages=(bash-language-server codex jq nil pi-coding-agent ShellCheck statix)
 desktop_packages=(ghostty google-chrome grim hyprshutdown pavucontrol playerctl rbw slurp thunar wl-clipboard xarchiver)
 personal_packages=(anki-with-addons obsidian webcord)
 sync_packages=(obsidian-headless rclone)
@@ -117,9 +117,6 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
   _test_present "$arch_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/test-driven-development' '.agents/skills/skill-retrospective' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/restic-recover'
   _test_absent "$nixos_files" '.agents/skills/caveman' '.agents/skills/ponytail'
   local activation
-  activation=$(_profile_activation nixos configureCodebaseMemory)
-  assert_contains "$activation" 'config set auto_index true'
-  assert_contains "$activation" 'config set auto_watch true'
   activation=$(_profile_activation nixos seedPiConfigs)
   for seed in 'settings.json' 'keybindings.json' 'web-search.json:../web-search.json' 'mcp.json'; do
     assert_contains "$activation" "$seed"

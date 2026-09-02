@@ -246,7 +246,7 @@ test_dry_run_update_command() {
   output=$(bash "$DOTFILE_CMD" --dry update 2>&1)
   assert_checked_flow "$output" true
   assert_contains "$output" "Updating packages"
-  for dependency in "Codex package" "Obsidian Headless" "codebase-memory" "Pi extension closure" "WebCord" "Anki Zoom" "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
+  for dependency in "Codex package" "Obsidian Headless" "Pi extension closure" "WebCord" "Anki Zoom" "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
     assert_contains "$output" "Would update $dependency"
   done
   assert_contains "$output" "Would run full dependency checks before activation"

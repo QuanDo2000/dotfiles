@@ -51,16 +51,6 @@ test_pi_extension_settings_use_locked_local_release() {
   assert_equals false "$(jq '.dependencies | has("pi-hermes-memory")' "$package")"
 }
 
-test_agent_defaults_leave_codebase_memory_disabled() {
-  assert_exit_code 0 jq -e '
-    .settings.toolPrefix == "mcp" and
-    .mcpServers == {} and
-    ([.. | strings | select(test("codebaseMemory|codebase-memory-mcp"))] | length) == 0
-  ' "$REPO_DIR/config/shared/ai/pi/mcp.json"
-  assert_not_contains "$(<"$REPO_DIR/config/shared/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
-  assert_not_contains "$(<"$REPO_DIR/config/windows/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
-  assert_file_exists "$REPO_DIR/packages/codebase-memory-mcp.nix"
-}
 
 test_pi_extension_lock_has_integrity_for_every_tarball() {
   [ -f "$extension_dir/package-lock.json" ] || return

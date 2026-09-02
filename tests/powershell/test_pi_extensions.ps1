@@ -76,7 +76,7 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
 function test_installai_installs_pinned_node_before_ai_tools {
     $script:Dry = $false
     $calls = [Collections.Generic.List[string]]::new()
-    $names = 'InstallFnm', 'InstallCodex', 'InstallCodebaseMemory', 'SyncCodexConfig', 'InstallPi', 'InstallPiLanguageServers', 'InstallPiExtensions', 'SyncPiConfigs', 'SyncAiInstructions', 'InstallAiSkills'
+    $names = 'InstallFnm', 'InstallCodex', 'RemoveCodebaseMemory', 'SyncCodexConfig', 'InstallPi', 'InstallPiLanguageServers', 'InstallPiExtensions', 'SyncPiConfigs', 'SyncAiInstructions', 'InstallAiSkills'
     $original = @{}
     try {
         foreach ($name in $names) {
@@ -85,7 +85,7 @@ function test_installai_installs_pinned_node_before_ai_tools {
         }
         Set-CommandMock 'pi' { $calls.Add('pi update --extensions'); $global:LASTEXITCODE = 0 }
         InstallAi -Update
-        Assert-Equals 'InstallFnm,InstallCodex,SyncCodexConfig,InstallCodebaseMemory,InstallPi,InstallPiLanguageServers,InstallPiExtensions,SyncPiConfigs,pi update --extensions,SyncAiInstructions,InstallAiSkills' ($calls -join ',') 'InstallAi collaborators should run in the safe order'
+        Assert-Equals 'InstallFnm,InstallCodex,SyncCodexConfig,RemoveCodebaseMemory,InstallPi,InstallPiLanguageServers,InstallPiExtensions,SyncPiConfigs,pi update --extensions,SyncAiInstructions,InstallAiSkills' ($calls -join ',') 'InstallAi collaborators should run in the safe order'
     } finally {
         foreach ($name in $names) { Set-FunctionMock $name $original[$name] }
     }

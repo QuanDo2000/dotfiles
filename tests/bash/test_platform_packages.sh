@@ -88,35 +88,7 @@ test_ssh_config_keeps_required_forwarding_without_unused_ports() {
   assert_equals "3" "$(grep -c '^[[:space:]]*ForwardAgent yes$' <<< "$SSH_CONFIG")"
 }
 
-test_codebase_memory_sessions_stop_before_version_upgrade() {
-  local process_state="$TEST_TMPDIR/cbm-processes" process_calls="$TEST_TMPDIR/cbm-process-calls"
-  mkdir -p "$DOTFILES_DIR/packages"
-  printf '{"version":"0.10.5"}\n' > "$DOTFILES_DIR/packages/codebase-memory-mcp-release.json"
-  printf 'running\n' > "$process_state"
 
-  codebase-memory-mcp() { printf 'codebase-memory-mcp 0.10.4\n'; }
-  pgrep() { [[ -e "$process_state" ]] && printf '101\n102\n'; }
-  kill() { printf '%s\n' "$*" >> "$process_calls"; rm -f "$process_state"; }
-  sleep() { :; }
-
-  assert_exit_code 0 _stop_codebase_memory_sessions_if_updating
-  assert_contains "$(<"$process_calls")" "101 102"
-}
-
-test_codebase_memory_sessions_stay_running_without_version_upgrade() {
-  local process_calls="$TEST_TMPDIR/cbm-process-calls"
-  mkdir -p "$DOTFILES_DIR/packages"
-  printf '{"version":"0.10.5"}\n' > "$DOTFILES_DIR/packages/codebase-memory-mcp-release.json"
-
-  codebase-memory-mcp() { printf 'codebase-memory-mcp 0.10.5\n'; }
-  pgrep() { printf '101\n'; }
-  kill() { printf '%s\n' "$*" >> "$process_calls"; }
-
-  assert_exit_code 0 _stop_codebase_memory_sessions_if_updating
-  if [[ -e "$process_calls" ]]; then
-    echo "  FAILED: matching CBM version should not stop active sessions" >> "$ERROR_FILE"
-  fi
-}
 
 test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
@@ -130,21 +102,6 @@ test_arch_packages_are_bootstrap_only() {
   done
 }
 
-test_code_search_stack_uses_current_full_feature_packages() {
-  local codebase codebase_pins pi_extensions
-  codebase="$(<"$REPO_DIR/packages/codebase-memory-mcp.nix")"
-  codebase_pins="$REPO_DIR/packages/codebase-memory-mcp-release.json"
-  pi_extensions="$REPO_DIR/config/shared/ai/pi/extensions/package.json"
-
-  assert_equals "true" "$(jq -r '.version | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")' "$codebase_pins")"
-  assert_contains "$codebase" 'codebase-memory-mcp-release.json'
-  assert_contains "$codebase" '${source.file}'
-  assert_contains "$codebase" 'stdenv.hostPlatform.isLinux'
-  assert_not_contains "$codebase" 'stdenv.isLinux'
-  assert_equals "true" "$(jq -r '.linux.amd64.file | test("^codebase-memory-mcp(-ui)?-linux-amd64.*\\.tar\\.gz$")' "$codebase_pins")"
-  assert_equals "true" "$(jq -r '.windows.amd64.file | test("^codebase-memory-mcp(-ui)?-windows-amd64.*\\.zip$")' "$codebase_pins")"
-  assert_equals "false" "$(jq -r '.dependencies | has("@ff-labs/pi-fff")' "$pi_extensions")"
-}
 
 test_pi_web_access_is_pinned() {
   local config="$REPO_DIR/config/shared/ai/pi/web-search.json"
@@ -182,16 +139,6 @@ test_pi_subagents_are_retired() {
   assert_contains "$HOME_CONFIG" 'rm -f "$HOME/.local/state/dotfiles/pi/subagent-config.json"'
 }
 
-test_agent_policy_keeps_optional_code_search_guidance() {
-  local agents
-  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-
-  assert_not_contains "$(<"$REPO_DIR/config/shared/ai/codex/config.toml")" '[mcp_servers.codebase-memory-mcp]'
-  assert_contains "$agents" 'Use codebase-memory first when those tools are available'
-  assert_contains "$agents" 'Use native read-only filename/text search (`rg`, `fd`, `find`, or harness-provided `grep`/`find`) for raw lookup and fallback.'
-  assert_contains "$agents" 'get_architecture'
-  assert_contains "$agents" 'detect_changes'
-}
 
 
 test_all_ai_agents_start_with_shared_policy() {
@@ -489,7 +436,6 @@ test_install_nixos_wsl_stages_username_change_without_user_sync() {
     esac
   }
   sudo() { printf '%s\n' "$*" >> "$calls"; }
-  _stop_codebase_memory_sessions_if_updating() { return 0; }
   _sync_neovim() { printf 'neovim-sync\n' >> "$calls"; }
   set_zsh_default() { printf 'set-zsh\n' >> "$calls"; }
 
@@ -501,7 +447,7 @@ test_install_nixos_wsl_stages_username_change_without_user_sync() {
   assert_not_contains "$output" "nixos-rebuild switch"
   assert_not_contains "$output" "neovim-sync"
   assert_not_contains "$output" "set-zsh"
-  unset -f is_wsl detect_platform id host_config_value sudo _stop_codebase_memory_sessions_if_updating _sync_neovim set_zsh_default
+  unset -f is_wsl detect_platform id host_config_value sudo _sync_neovim set_zsh_default
 }
 
 
