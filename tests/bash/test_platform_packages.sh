@@ -195,16 +195,19 @@ test_agent_policy_keeps_optional_code_search_guidance() {
 
 
 test_all_ai_agents_start_with_shared_policy() {
-  local agents soul
+  local agents soul guidance
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
   soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
 
-  assert_contains "$agents" 'Apply these fixed rules at every main-agent and subagent startup.'
-  assert_contains "$agents" '**Minimal implementation:**'
-  assert_contains "$agents" '**Terse communication:**'
-  assert_contains "$soul" 'Apply these fixed rules at every main-agent and subagent startup.'
-  assert_contains "$soul" '**Minimal implementation:**'
-  assert_contains "$soul" '**Terse communication:**'
+  for guidance in "$agents" "$soul"; do
+    assert_contains "$guidance" 'Apply these fixed rules at every main-agent and subagent startup.'
+    assert_contains "$guidance" '**Minimal implementation:**'
+    assert_contains "$guidance" 'stop at the first solution that works'
+    assert_contains "$guidance" 'standard-library, native-platform, and installed-dependency solutions'
+    assert_contains "$guidance" 'Prefer deletion and boring code.'
+    assert_contains "$guidance" 'Mark deliberate limitations with a `debt:` comment naming the ceiling and upgrade trigger.'
+    assert_contains "$guidance" '**Terse communication:**'
+  done
 }
 
 
@@ -248,13 +251,17 @@ test_skill_retrospective_is_installed_cross_platform() {
 
 
 test_agents_own_complexity_audit_and_debt_policy() {
-  local agents
+  local agents soul guidance
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+  soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
 
-  assert_contains "$agents" 'For explicit whole-repository complexity or dependency audits'
-  assert_contains "$agents" '`delete`, `stdlib`, `native`, `yagni`, or `shrink`'
-  assert_contains "$agents" 'For debt-ledger requests, search `debt:` comments'
-  assert_contains "$agents" 'tag markers without one as `no-trigger`'
+  for guidance in "$agents" "$soul"; do
+    assert_contains "$guidance" 'For explicit whole-repository complexity or dependency audits'
+    assert_contains "$guidance" 'For explicit diff complexity reviews, inspect changed and impacted code'
+    assert_contains "$guidance" '`delete`, `stdlib`, `native`, `yagni`, or `shrink`'
+    assert_contains "$guidance" 'For debt-ledger requests, search `debt:` comments'
+    assert_contains "$guidance" 'tag markers without one as `no-trigger`'
+  done
   assert_equals "0" "$(grep -RIl --exclude-dir=.git --exclude='test_config_merge.sh' 'ponytail:' "$REPO_DIR/config" "$REPO_DIR/scripts" 2>/dev/null | wc -l)"
 }
 
