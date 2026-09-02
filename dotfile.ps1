@@ -604,27 +604,32 @@ function InstallPiExtensions {
     try {
         if (Test-Path -LiteralPath $release) {
             if (-not (Test-PiExtensionsRelease $release $pins)) { throw "Pinned Pi extension release is incomplete: $release" }
-            return
-        }
-
-        New-Item -ItemType Directory -Force -Path $releases | Out-Null
-        $staging = Join-Path $releases ".staging.$([Guid]::NewGuid().ToString('N'))"
-        try {
-            New-Item -ItemType Directory -Force -Path $staging | Out-Null
-            Copy-Item -LiteralPath (Join-Path $source 'package.json'), $sourceLock -Destination $staging
-            $stagedLock = Join-Path $staging 'package-lock.json'
-            $lockStream = [IO.File]::Open($stagedLock, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        } else {
+            New-Item -ItemType Directory -Force -Path $releases | Out-Null
+            $staging = Join-Path $releases ".staging.$([Guid]::NewGuid().ToString('N'))"
             try {
-                if ((Get-StreamSha256 $lockStream) -ne [string]$pins.releaseId) { throw "Staged Pi extension package lock mismatch" }
-                Invoke-NativeChecked "Pi extension npm ci failed" { npm ci --prefix $staging --omit=dev --ignore-scripts --legacy-peer-deps }
-            } finally { $lockStream.Dispose() }
+                New-Item -ItemType Directory -Force -Path $staging | Out-Null
+                Copy-Item -LiteralPath (Join-Path $source 'package.json'), $sourceLock -Destination $staging
+                $stagedLock = Join-Path $staging 'package-lock.json'
+                $lockStream = [IO.File]::Open($stagedLock, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+                try {
+                    if ((Get-StreamSha256 $lockStream) -ne [string]$pins.releaseId) { throw "Staged Pi extension package lock mismatch" }
+                    Invoke-NativeChecked "Pi extension npm ci failed" { npm ci --prefix $staging --omit=dev --ignore-scripts --legacy-peer-deps }
+                } finally { $lockStream.Dispose() }
 
-            if (-not (Test-PiExtensionsRelease $staging $pins)) { throw "Installed Pi extension release verification failed" }
-            Move-Item -LiteralPath $staging -Destination $release
-        } finally {
-            if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction Stop }
+                if (-not (Test-PiExtensionsRelease $staging $pins)) { throw "Installed Pi extension release verification failed" }
+                Move-Item -LiteralPath $staging -Destination $release
+            } finally {
+                if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction Stop }
+            }
         }
     } finally { $installLock.Dispose() }
+
+    $qmdJs = Join-Path $release 'node_modules\@tobilu\qmd\dist\cli\qmd.js'
+    if (-not (Test-Path -LiteralPath $qmdJs -PathType Leaf)) { throw "Pinned qmd entry point not found: $qmdJs" }
+    $bin = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\bin'
+    New-Item -ItemType Directory -Force -Path $bin | Out-Null
+    "@echo off`r`nnode `"$qmdJs`" %*" | Set-Content -LiteralPath (Join-Path $bin 'qmd.cmd') -Encoding ascii
 
     Success "Finished installing integrity-locked Pi extensions"
 }

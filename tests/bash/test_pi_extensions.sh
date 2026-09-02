@@ -34,7 +34,7 @@ test_pi_extension_settings_use_locked_local_release() {
 
   assert_equals "$release_id" "$(_lock_sha256)"
   assert_equals 2 "$(jq '.packages | length' "$settings")"
-  assert_equals 2 "$(jq '.dependencies | length' "$package")"
+  assert_equals 3 "$(jq '.dependencies | length' "$package")"
   assert_equals false "$(jq '.dependencies | has("@narumitw/pi-lsp")' "$package")"
   assert_equals 0 "$(jq '[.packages[] | select(contains("@narumitw/pi-lsp"))] | length' "$settings")"
   assert_equals 0 "$(jq '[.packages | keys[] | select(contains("@narumitw/pi-lsp"))] | length' "$extension_dir/package-lock.json")"
@@ -48,6 +48,7 @@ test_pi_extension_settings_use_locked_local_release() {
   assert_equals false "$(jq '.dependencies | has("@dietrichgebert/ponytail")' "$package")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@dietrichgebert/ponytail"))] | length' "$settings")"
   assert_equals true "$(jq '.dependencies | has("pi-memory")' "$package")"
+  assert_equals true "$(jq '.dependencies | has("@tobilu/qmd")' "$package")"
   assert_equals false "$(jq '.dependencies | has("pi-hermes-memory")' "$package")"
 }
 
@@ -56,7 +57,7 @@ test_pi_extension_lock_has_integrity_for_every_tarball() {
   [ -f "$extension_dir/package-lock.json" ] || return
 
   assert_equals 0 "$(jq '[.packages | to_entries[] | select(.key != "" and (.value.link != true)) | select((.value.resolved | type) != "string" or (.value.integrity | startswith("sha512-") | not))] | length' "$extension_dir/package-lock.json")"
-  assert_equals 'node_modules/pi-memory' "$(jq -r '[.packages | to_entries[] | select(.value.hasInstallScript == true) | .key] | join(" ")' "$extension_dir/package-lock.json")"
+  assert_equals 'node_modules/node-llama-cpp node_modules/pi-memory node_modules/tree-sitter-go node_modules/tree-sitter-javascript node_modules/tree-sitter-python node_modules/tree-sitter-rust node_modules/tree-sitter-typescript' "$(jq -r '[.packages | to_entries[] | select(.value.hasInstallScript == true) | .key] | sort | join(" ")' "$extension_dir/package-lock.json")"
 }
 
 test_pi_extensions_nix_package_disables_scripts() {
@@ -69,12 +70,14 @@ test_pi_extensions_nix_package_disables_scripts() {
   assert_contains "$package" 'pi-extensions-release.json'
   assert_contains "$package" 'npmDepsHash = "sha256-'
   assert_contains "$package" '"--ignore-scripts"'
+  assert_contains "$package" 'ln -s ../node_modules/.bin/qmd "$out/bin/qmd"'
   assert_not_contains "$package" 'better-sqlite3'
   assert_not_contains "$package" 'pi-mcp-extension'
   assert_not_contains "$package" 'patch_pi_mcp_background.py'
   assert_not_contains "$package" 'patch_pi_memory_untrusted_context'
   assert_equals false "$([[ -f "$REPO_DIR/scripts/patch_pi_mcp_background.py" ]] && echo true || echo false)"
   assert_contains "$home" 'locked-extensions/releases/${piExtensionsReleaseId}'
+  assert_contains "$home" 'pkgs.pi-extensions'
   assert_contains "$flake" 'packages.x86_64-linux.pi-extensions'
   assert_contains "$flake" 'packages.aarch64-darwin.pi-extensions'
   assert_contains "$check" '"$flake#pi-extensions"'

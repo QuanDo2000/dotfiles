@@ -26,9 +26,9 @@ function New-PiExtensionTestFixture($Root, [switch]$WrongLockHash) {
     $source = Join-Path $Root 'config\shared\ai\pi\extensions'
     $packages = Join-Path $Root 'packages'
     New-Item -ItemType Directory -Force -Path $source, $packages | Out-Null
-    '{"name":"fixture","private":true,"version":"1.0.0","dependencies":{"example-extension":"1.2.3","pi-memory":"0.4.2"}}' |
+    '{"name":"fixture","private":true,"version":"1.0.0","dependencies":{"@tobilu/qmd":"2.8.3","example-extension":"1.2.3","pi-memory":"0.4.2"}}' |
         Set-Content -LiteralPath (Join-Path $source 'package.json') -Encoding ascii
-    '{"name":"fixture","lockfileVersion":3,"packages":{"":{"dependencies":{"example-extension":"1.2.3","pi-memory":"0.4.2"}},"node_modules/example-extension":{"version":"1.2.3","resolved":"https://registry.npmjs.org/example-extension/-/example-extension-1.2.3.tgz","integrity":"sha512-test"},"node_modules/pi-memory":{"version":"0.4.2","resolved":"https://registry.npmjs.org/pi-memory/-/pi-memory-0.4.2.tgz","integrity":"sha512-test"}}}' |
+    '{"name":"fixture","lockfileVersion":3,"packages":{"":{"dependencies":{"@tobilu/qmd":"2.8.3","example-extension":"1.2.3","pi-memory":"0.4.2"}},"node_modules/@tobilu/qmd":{"version":"2.8.3","resolved":"https://registry.npmjs.org/@tobilu/qmd/-/qmd-2.8.3.tgz","integrity":"sha512-test"},"node_modules/example-extension":{"version":"1.2.3","resolved":"https://registry.npmjs.org/example-extension/-/example-extension-1.2.3.tgz","integrity":"sha512-test"},"node_modules/pi-memory":{"version":"0.4.2","resolved":"https://registry.npmjs.org/pi-memory/-/pi-memory-0.4.2.tgz","integrity":"sha512-test"}}}' |
         Set-Content -LiteralPath (Join-Path $source 'package-lock.json') -Encoding ascii
     $lockHash = Get-PiExtensionTestSha256 (Join-Path $source 'package-lock.json')
     if ($WrongLockHash) { $lockHash = '0' * 64 }
@@ -46,7 +46,7 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
 
     Assert-Equals $pins.releaseId (Get-PiExtensionTestSha256 $lock)
     Assert-Equals 2 @($settings.packages).Count
-    Assert-Equals 2 @($package.dependencies.PSObject.Properties).Count
+    Assert-Equals 3 @($package.dependencies.PSObject.Properties).Count
     Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@narumitw/pi-lsp') 'Pi LSP package should be removed'
     Assert-False ($settings.packages -like '*@narumitw/pi-lsp*') 'Pi LSP package path should be removed'
     Assert-False ((Get-Content -Raw $lock) -like '*node_modules/@narumitw/pi-lsp*') 'Pi LSP lock entry should be removed'
@@ -60,6 +60,7 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
     }
     Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@dietrichgebert/ponytail') 'Retired Ponytail package should remain absent'
     Assert-True ($package.dependencies.PSObject.Properties.Name -contains 'pi-memory') 'Lightweight Pi memory should be pinned'
+    Assert-True ($package.dependencies.PSObject.Properties.Name -contains '@tobilu/qmd') 'qmd should be pinned for memory search'
     Assert-False ($package.dependencies.PSObject.Properties.Name -contains 'pi-hermes-memory') 'Hermes memory should be removed'
     Assert-False ((Get-Content -Raw (Join-Path $script:RepoDir 'dotfile.ps1')).Contains('patch_pi_memory_untrusted_context')) 'default pi-memory should remain unpatched'
     Assert-Equals 0 @($settings.packages | Where-Object {
@@ -161,9 +162,13 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         $prefix = $args[[Array]::IndexOf($args, '--prefix') + 1]
         $packageDir = Join-Path $prefix 'node_modules\example-extension'
         $memoryDir = Join-Path $prefix 'node_modules\pi-memory'
-        New-Item -ItemType Directory -Force -Path $packageDir, $memoryDir | Out-Null
+        $qmdPackageDir = Join-Path $prefix 'node_modules\@tobilu\qmd'
+        $qmdDir = Join-Path $qmdPackageDir 'dist\cli'
+        New-Item -ItemType Directory -Force -Path $packageDir, $memoryDir, $qmdDir | Out-Null
         '{"name":"example-extension","version":"1.2.3"}' | Set-Content -LiteralPath (Join-Path $packageDir 'package.json') -Encoding ascii
         '{"name":"pi-memory","version":"0.4.2"}' | Set-Content -LiteralPath (Join-Path $memoryDir 'package.json') -Encoding ascii
+        '{"name":"@tobilu/qmd","version":"2.8.3"}' | Set-Content -LiteralPath (Join-Path $qmdPackageDir 'package.json') -Encoding ascii
+        '' | Set-Content -LiteralPath (Join-Path $qmdDir 'qmd.js') -Encoding ascii
         @'
 export default function (pi) {
 	// --- Inject memory context before every agent turn ---
@@ -183,6 +188,10 @@ export default function (pi) {
     Assert-True (Test-PiExtensionsRelease $release $pins) 'immutable extension release should validate'
     $memoryEntry = Join-Path $release 'node_modules\pi-memory\index.ts'
     Assert-True ((Get-Content -Raw $memoryEntry).Contains('before_agent_start')) 'default pi-memory automatic recall should remain intact'
+    $qmdLauncher = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\bin\qmd.cmd'
+    $qmdJs = Join-Path $release 'node_modules\@tobilu\qmd\dist\cli\qmd.js'
+    Assert-True (Test-Path -LiteralPath $qmdLauncher -PathType Leaf) 'qmd should be exposed through the existing Pi bin PATH entry'
+    Assert-True ((Get-Content -Raw $qmdLauncher).Contains($qmdJs)) 'qmd launcher should target the pinned release'
     $installedManifest = Join-Path $release 'node_modules\example-extension\package.json'
     $original = Get-Content -Raw -LiteralPath $installedManifest
     Set-Content -LiteralPath $installedManifest -Value $original.Replace('1.2.3', '9.9.9') -Encoding ascii -NoNewline

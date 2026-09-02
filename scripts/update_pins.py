@@ -200,8 +200,17 @@ def update_pi_extensions(repo: Path) -> None:
             or not str(value.get("integrity", "")).startswith("sha512-")
         )
     ]
+    allowed_install_scripts = {
+        "node_modules/node-llama-cpp",
+        "node_modules/pi-memory",
+        "node_modules/tree-sitter-go",
+        "node_modules/tree-sitter-javascript",
+        "node_modules/tree-sitter-python",
+        "node_modules/tree-sitter-rust",
+        "node_modules/tree-sitter-typescript",
+    }
     install_scripts = [name for name, value in lock["packages"].items() if value.get("hasInstallScript")]
-    unexpected_scripts = [name for name in install_scripts if name != "node_modules/pi-memory"]
+    unexpected_scripts = [name for name in install_scripts if name not in allowed_install_scripts]
     if invalid or unexpected_scripts:
         die(f"unsafe Pi extension lock entries: invalid={invalid}, scripts={unexpected_scripts}")
 

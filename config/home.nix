@@ -134,6 +134,7 @@ let
     nixfmt
     nodejs
     pkgs.pi-agent
+    pkgs.pi-extensions
     shellcheck
     statix
     jq

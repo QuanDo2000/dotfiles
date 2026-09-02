@@ -12,14 +12,15 @@ buildNpmPackage {
   version = builtins.substring 0 12 pins.releaseId;
   src = source;
 
-  npmDepsHash = "sha256-LEse9bv9n2A0B1lDtFOGHizcrldrWfJ1uGdy9DhvtEc=";
+  npmDepsHash = "sha256-AdZ2ggkZd+6ol5cKYxedpe712q5G9yg+nye+LuNRgRU=";
   npmFlags = [ "--omit=dev" "--ignore-scripts" "--legacy-peer-deps" ];
   dontNpmBuild = true;
   installPhase = ''
     runHook preInstall
-    mkdir -p "$out"
+    mkdir -p "$out/bin"
     cp package.json package-lock.json "$out/"
     cp -R node_modules "$out/"
+    ln -s ../node_modules/.bin/qmd "$out/bin/qmd"
     runHook postInstall
   '';
 
@@ -34,6 +35,7 @@ for (const [name, version] of Object.entries(expected)) {
   if (actual !== version) throw new Error(`''${name}: expected ''${version}, got ''${actual}`);
 }
 NODE
+    "$out/bin/qmd" --version | grep -q '^qmd '
   '';
 
   meta = {
