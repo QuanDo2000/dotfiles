@@ -1,8 +1,7 @@
 config:
 let
   packageName = package:
-    if package ? pname then package.pname
-    else (builtins.parseDrvName package.name).name;
+    package.pname or (builtins.parseDrvName package.name).name;
   wantedBy = units:
     builtins.mapAttrs (_: unit: unit.Install.WantedBy or [ ]) units;
 in
