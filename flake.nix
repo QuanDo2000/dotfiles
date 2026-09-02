@@ -118,11 +118,6 @@
           googleDriveSync = true;
           storageOffsiteBackup = true;
           systemCompiler = true;
-          systemFiraCode = true;
-          systemFontconfig = true;
-          systemGit = true;
-          systemJq = true;
-          systemOpenSSH = true;
         };
         modules = [ ./config/home.nix ];
       };

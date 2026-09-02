@@ -7,11 +7,6 @@ let
   googleDriveSync = args.googleDriveSync or false;
   storageOffsiteBackup = args.storageOffsiteBackup or false;
   systemCompiler = args.systemCompiler or false;
-  systemFiraCode = args.systemFiraCode or false;
-  systemFontconfig = args.systemFontconfig or false;
-  systemGit = args.systemGit or false;
-  systemJq = args.systemJq or false;
-  systemOpenSSH = args.systemOpenSSH or false;
   machine = import ./host.nix;
   nixosSystem = pkgs.stdenv.hostPlatform.isLinux && osConfig != null;
   standaloneLinux = pkgs.stdenv.hostPlatform.isLinux && !nixosSystem;
@@ -141,12 +136,12 @@ let
     pkgs.pi-agent
     shellcheck
     statix
-  ] ++ lib.optionals (!systemJq) [ jq ]
+    jq
+  ]
   ++ lib.optionals (pkgs.stdenv.hostPlatform.isLinux && !systemCompiler) [
     gcc
   ];
-  standaloneLinuxPackages = with pkgs; lib.optionals (!systemOpenSSH) [ openssh ]
-    ++ lib.optionals (!systemFontconfig) [ fontconfig ];
+  standaloneLinuxPackages = with pkgs; [ openssh fontconfig ];
   desktopPackages = with pkgs; [
     grim
     rbw
@@ -181,7 +176,7 @@ in
   ];
   home.sessionVariables.PI_MEMORY_EXIT_SUMMARY = "0";
   home.packages = devTerminalPackages
-  ++ lib.optionals (!nixosSystem && !systemFiraCode) [
+  ++ lib.optionals (!nixosSystem) [
     pkgs.nerd-fonts.fira-code
   ]
   ++ lib.optionals standaloneLinux standaloneLinuxPackages
@@ -393,7 +388,6 @@ in
 
   programs.git = {
     enable = true;
-    package = if systemGit then null else pkgs.git;
     settings = {
       user = {
         name = "Quan Do";

@@ -30,7 +30,7 @@ function _update_flake_inputs {
 }
 
 ARCH_PACKAGES=(
-  base-devel curl git zsh fuse3 jq openssh ttf-firacode-nerd
+  base-devel curl git zsh fuse3
 )
 
 function _run_system_package_command {

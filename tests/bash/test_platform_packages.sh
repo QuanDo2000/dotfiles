@@ -94,11 +94,8 @@ test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "base-devel"
   assert_contains "${ARCH_PACKAGES[*]}" "curl"
   assert_contains "${ARCH_PACKAGES[*]}" "git"
-  assert_contains "${ARCH_PACKAGES[*]}" "jq"
   assert_contains "${ARCH_PACKAGES[*]}" "zsh"
-  assert_contains "${ARCH_PACKAGES[*]}" "openssh"
-  assert_contains "${ARCH_PACKAGES[*]}" "ttf-firacode-nerd"
-  for pkg in neovim starship nodejs tmux lazygit jujutsu ripgrep fd fzf; do
+  for pkg in neovim starship nodejs tmux lazygit jujutsu ripgrep fd fzf fontconfig jq openssh ttf-firacode-nerd; do
     if [[ " ${ARCH_PACKAGES[*]} " == *" $pkg "* ]]; then
       echo "  FAILED: Arch pacman packages should not install $pkg; Home Manager owns user tools" >> "$ERROR_FILE"
     fi
