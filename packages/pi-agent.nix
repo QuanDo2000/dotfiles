@@ -15,7 +15,7 @@ buildNpmPackage rec {
   nativeBuildInputs = [ makeWrapper python3 ];
 
   postPatch = ''
-    node -e 'const fs = require("node:fs"); const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8")); delete packageJson.devDependencies; fs.writeFileSync("package.json", JSON.stringify(packageJson));'
+    ${lib.getExe nodejs} -e 'const fs = require("node:fs"); const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8")); delete packageJson.devDependencies; fs.writeFileSync("package.json", JSON.stringify(packageJson));'
     cp ${./pi-agent-npm-shrinkwrap.json} npm-shrinkwrap.json
   '';
 
