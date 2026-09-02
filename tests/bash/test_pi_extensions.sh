@@ -47,6 +47,8 @@ test_pi_extension_settings_use_locked_local_release() {
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(startswith("npm:"))] | length' "$settings")"
   assert_equals false "$(jq '.dependencies | has("@dietrichgebert/ponytail")' "$package")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@dietrichgebert/ponytail"))] | length' "$settings")"
+  assert_equals true "$(jq '.dependencies | has("pi-memory")' "$package")"
+  assert_equals false "$(jq '.dependencies | has("pi-hermes-memory")' "$package")"
 }
 
 test_agent_defaults_leave_codebase_memory_disabled() {
@@ -64,11 +66,10 @@ test_pi_extension_lock_has_integrity_for_every_tarball() {
   [ -f "$extension_dir/package-lock.json" ] || return
 
   assert_equals 0 "$(jq '[.packages | to_entries[] | select(.key != "" and (.value.link != true)) | select((.value.resolved | type) != "string" or (.value.integrity | startswith("sha512-") | not))] | length' "$extension_dir/package-lock.json")"
-  assert_equals '' "$(jq -r '[.packages | to_entries[] | select(.value.hasInstallScript == true) | .key] | join(" ")' "$extension_dir/package-lock.json")"
-  assert_equals "$(jq -r .betterSqlite3.version "$REPO_DIR/packages/pi-extensions-release.json")" "$(jq -r '.packages["node_modules/better-sqlite3"].version' "$extension_dir/package-lock.json")"
+  assert_equals 'node_modules/pi-memory' "$(jq -r '[.packages | to_entries[] | select(.value.hasInstallScript == true) | .key] | join(" ")' "$extension_dir/package-lock.json")"
 }
 
-test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
+test_pi_extensions_nix_package_disables_scripts() {
   local package home flake check
   package="$(<"$REPO_DIR/packages/pi-extensions.nix")"
   home="$(<"$REPO_DIR/config/home.nix")"
@@ -78,12 +79,10 @@ test_pi_extensions_nix_package_disables_scripts_and_pins_native_binary() {
   assert_contains "$package" 'pi-extensions-release.json'
   assert_contains "$package" 'npmDepsHash = "sha256-'
   assert_contains "$package" '"--ignore-scripts"'
-  assert_contains "$package" 'better-sqlite3'
-  assert_contains "$package" 'prebuilds'
-  assert_not_contains "$package" 'github.com/WiseLibs/better-sqlite3/releases'
+  assert_not_contains "$package" 'better-sqlite3'
   assert_not_contains "$package" 'pi-mcp-extension'
   assert_not_contains "$package" 'patch_pi_mcp_background.py'
-  assert_contains "$package" 'python3 ${../scripts/patch_pi_hermes_background_flush.py} node_modules/pi-hermes-memory'
+  assert_not_contains "$package" 'patch_pi_memory_untrusted_context'
   assert_equals false "$([[ -f "$REPO_DIR/scripts/patch_pi_mcp_background.py" ]] && echo true || echo false)"
   assert_contains "$home" 'locked-extensions/releases/${piExtensionsReleaseId}'
   assert_contains "$flake" 'packages.x86_64-linux.pi-extensions'

@@ -1,9 +1,9 @@
 {
   "name": "dotfiles-pi-extensions",
   "private": true,
-  "version": "1.0.5",
+  "version": "1.0.7",
   "dependencies": {
-    "pi-hermes-memory": "0.9.7",
+    "pi-memory": "0.4.2",
     "pi-web-access": "0.27.0"
   }
 }

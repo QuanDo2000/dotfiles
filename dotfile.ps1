@@ -327,7 +327,6 @@ function Get-PiExtensionsPins {
     if ([string]$pins.releaseId -notmatch '^[0-9a-f]{64}$') { throw "Invalid Pi extension release ID" }
     if ([string]$pins.node.version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid Pi extension Node version" }
     if ([string]$pins.node.abi -notmatch '^\d+$') { throw "Invalid Pi extension Node ABI" }
-    if ([string]$pins.betterSqlite3.version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid better-sqlite3 version" }
     return $pins
 }
 
@@ -560,16 +559,6 @@ function Compare-PiPackageLocks($EmbeddedLock, $ReviewedLock, $WorkingDirectory)
     }
 }
 
-function Get-PiExtensionsWindowsArch($Architecture = $env:PROCESSOR_ARCHITECTURE) {
-    switch ([string]$Architecture) {
-        'AMD64' { return 'win32-x64' }
-        'X64' { return 'win32-x64' }
-        'ARM64' { return 'win32-arm64' }
-        'Arm64' { return 'win32-arm64' }
-        default { throw "Unsupported Pi extension Windows architecture: $Architecture" }
-    }
-}
-
 function Test-PiExtensionsRelease($ReleaseDir, $Pins) {
     if (-not (Test-Path -LiteralPath $ReleaseDir -PathType Container)) { return $false }
     $releaseItem = Get-Item -LiteralPath $ReleaseDir -Force
@@ -586,24 +575,7 @@ function Test-PiExtensionsRelease($ReleaseDir, $Pins) {
         try { $installed = Get-Content -Raw -LiteralPath $installedManifest | ConvertFrom-Json } catch { return $false }
         if ([string]$installed.version -ne [string]$dependency.Value) { return $false }
     }
-    $hermesHandlers = Join-Path $nodeModules 'pi-hermes-memory\src\handlers'
-    $hermesSessionFlush = Join-Path $hermesHandlers 'session-flush.ts'
-    $hermesChildProcess = Join-Path $hermesHandlers 'pi-child-process.ts'
-    $hermesWatchdog = Join-Path $hermesHandlers 'child-process-watchdog.mjs'
-    if (-not (Test-Path -LiteralPath $hermesSessionFlush -PathType Leaf) -or
-        -not (Test-Path -LiteralPath $hermesChildProcess -PathType Leaf) -or
-        -not (Test-Path -LiteralPath $hermesWatchdog -PathType Leaf)) { return $false }
-    try {
-        if ((Get-Content -Raw -LiteralPath $hermesSessionFlush) -notlike '*execDetachedChildPrompt*') { return $false }
-        if ((Get-Content -Raw -LiteralPath $hermesChildProcess) -notlike '*"--cleanup-dir"*') { return $false }
-        $watchdogSource = Get-Content -Raw -LiteralPath $hermesWatchdog
-        if ($watchdogSource -notlike '*cleanupPromptDirectory*' -or $watchdogSource -notlike '*windowsHide: true*') { return $false }
-    } catch { return $false }
-    $betterManifest = Join-Path $nodeModules 'better-sqlite3\package.json'
-    $betterBinary = Join-Path $nodeModules "better-sqlite3\prebuilds\$(Get-PiExtensionsWindowsArch).node"
-    if (-not (Test-Path -LiteralPath $betterManifest -PathType Leaf) -or -not (Test-Path -LiteralPath $betterBinary -PathType Leaf)) { return $false }
-    try { $better = Get-Content -Raw -LiteralPath $betterManifest | ConvertFrom-Json } catch { return $false }
-    return [string]$better.version -eq [string]$Pins.betterSqlite3.version
+    return $true
 }
 
 function InstallPiExtensions {
@@ -616,7 +588,7 @@ function InstallPiExtensions {
     if (-not (Test-Path -LiteralPath $sourceLock -PathType Leaf) -or (Get-FileSha256 $sourceLock) -ne [string]$pins.releaseId) {
         throw "Pi extension package lock does not match release pins"
     }
-    foreach ($command in 'node', 'npm', 'py') {
+    foreach ($command in 'node', 'npm') {
         if (-not (Get-Command $command -ErrorAction SilentlyContinue)) { throw "$command command not found for Pi extensions" }
     }
     $nodeVersion = (& node --version 2>$null | Select-Object -Last 1).TrimStart('v')
@@ -645,9 +617,6 @@ function InstallPiExtensions {
             try {
                 if ((Get-StreamSha256 $lockStream) -ne [string]$pins.releaseId) { throw "Staged Pi extension package lock mismatch" }
                 Invoke-NativeChecked "Pi extension npm ci failed" { npm ci --prefix $staging --omit=dev --ignore-scripts --legacy-peer-deps }
-                $hermesPatch = Join-Path $script:DotfilesDir 'scripts\patch_pi_hermes_background_flush.py'
-                $hermesRoot = Join-Path $staging 'node_modules\pi-hermes-memory'
-                Invoke-NativeChecked "Pi Hermes background shutdown flush repair failed" { py -3.14 $hermesPatch $hermesRoot }
             } finally { $lockStream.Dispose() }
 
             if (-not (Test-PiExtensionsRelease $staging $pins)) { throw "Installed Pi extension release verification failed" }

@@ -259,11 +259,12 @@ def update_pi_extensions(repo: Path) -> None:
         )
     ]
     install_scripts = [name for name, value in lock["packages"].items() if value.get("hasInstallScript")]
-    if invalid or install_scripts not in ([], ["node_modules/better-sqlite3"]):
-        die(f"unsafe Pi extension lock entries: invalid={invalid}, scripts={install_scripts}")
+    unexpected_scripts = [name for name in install_scripts if name != "node_modules/pi-memory"]
+    if invalid or unexpected_scripts:
+        die(f"unsafe Pi extension lock entries: invalid={invalid}, scripts={unexpected_scripts}")
 
     release_id = sha256(lock_path)
-    better_version = lock["packages"]["node_modules/better-sqlite3"]["version"]
+
     old = json.loads(release_path.read_text(encoding="utf-8"))
     old_node = old.get("node", {})
     node_version = locked_node_version(repo)
@@ -277,7 +278,6 @@ def update_pi_extensions(repo: Path) -> None:
     updated = {
         "releaseId": release_id,
         "node": {"version": node_version, "abi": abi},
-        "betterSqlite3": {"version": better_version},
     }
     if old == updated:
         print(f"Pi extensions already current (Node {node_version}, ABI {abi})")

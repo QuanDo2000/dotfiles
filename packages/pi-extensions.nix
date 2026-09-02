@@ -1,4 +1,4 @@
-{ buildNpmPackage, lib, nodejs, python3 }:
+{ buildNpmPackage, lib, nodejs }:
 
 let
   pins = builtins.fromJSON (builtins.readFile ./pi-extensions-release.json);
@@ -12,22 +12,14 @@ buildNpmPackage {
   version = builtins.substring 0 12 pins.releaseId;
   src = source;
 
-  npmDepsHash = "sha256-DViDeJOIkS3T2n+Cc1/4htWGpbBQWaqWo9YW9i2nW5A=";
+  npmDepsHash = "sha256-LEse9bv9n2A0B1lDtFOGHizcrldrWfJ1uGdy9DhvtEc=";
   npmFlags = [ "--omit=dev" "--ignore-scripts" "--legacy-peer-deps" ];
   dontNpmBuild = true;
-  nativeBuildInputs = [ python3 ];
-
-  preInstall = ''
-    python3 ${../scripts/patch_pi_hermes_background_flush.py} node_modules/pi-hermes-memory
-  '';
-
   installPhase = ''
     runHook preInstall
     mkdir -p "$out"
     cp package.json package-lock.json "$out/"
     cp -R node_modules "$out/"
-    platform="$(node -p 'process.platform + "-" + process.arch')"
-    test -f "$out/node_modules/better-sqlite3/prebuilds/$platform.node"
     runHook postInstall
   '';
 
@@ -41,10 +33,6 @@ for (const [name, version] of Object.entries(expected)) {
   const actual = require(`''${root}/node_modules/''${name}/package.json`).version;
   if (actual !== version) throw new Error(`''${name}: expected ''${version}, got ''${actual}`);
 }
-const Database = require(`''${root}/node_modules/better-sqlite3`);
-const db = new Database(':memory:');
-db.prepare('select 1').get();
-db.close();
 NODE
   '';
 

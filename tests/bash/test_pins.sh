@@ -175,23 +175,22 @@ update_pins.verify_asset = lambda *args, **kwargs: (_ for _ in ()).throw(Asserti
 
 update_pins.update_pi_extensions(repo)
 current = json.loads(release_path.read_text())
-assert current["betterSqlite3"] == {"version": release["betterSqlite3"]["version"]}
+assert "betterSqlite3" not in current
 assert version_checks == [repo]
 
 lock = json.loads(lock_path.read_text())
-lock["packages"]["node_modules/better-sqlite3"].pop("hasInstallScript", None)
-lock["packages"]["node_modules/better-sqlite3"]["version"] = "13.0.3"
+lock["packages"]["node_modules/pi-memory"]["version"] = "0.4.1"
 lock_path.write_text(json.dumps(lock) + "\n")
 current["releaseId"] = hashlib.sha256(lock_path.read_bytes()).hexdigest()
 release_path.write_text(json.dumps(current) + "\n")
-package["dependencies"]["pi-hermes-memory"] = "0.9.7"
+package["dependencies"]["pi-memory"] = "0.4.1"
 (extensions / "package.json").write_text(json.dumps(package) + "\n")
 update_pins.npm_latest = lambda name: package["dependencies"][name]
 
 update_pins.update_pi_extensions(repo)
 updated = json.loads(release_path.read_text())
 assert version_checks == [repo, repo]
-assert updated["betterSqlite3"] == {"version": "13.0.3"}
+assert "betterSqlite3" not in updated
 PY
 }
 

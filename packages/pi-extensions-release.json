@@ -1,10 +1,7 @@
 {
-  "releaseId": "de43455225754ba42631cf3dd7e24680b69477c2dd5f016717c473ac42aeaa03",
+  "releaseId": "525589bd441c338fa7c0a84a07e2d880e718469ac504072b8c45daecb43268f1",
   "node": {
     "version": "24.19.0",
     "abi": "137"
-  },
-  "betterSqlite3": {
-    "version": "13.0.3"
   }
 }
