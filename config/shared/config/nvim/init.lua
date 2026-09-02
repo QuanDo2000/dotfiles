@@ -170,8 +170,8 @@ map("n", "<leader><tab><tab>", "<cmd>tabnew<cr>", "New Tab")
 map("n", "<leader><tab>d", "<cmd>tabclose<cr>", "Close Tab")
 map("n", "<leader><tab>]", "<cmd>tabnext<cr>", "Next Tab")
 map("n", "<leader><tab>[", "<cmd>tabprevious<cr>", "Previous Tab")
-map("n", "[q", function() if package.loaded.trouble and require("trouble").is_open() then require("trouble").prev({ skip_groups = true, jump = true }) else pcall(vim.cmd.cprev) end end, "Previous Trouble/Quickfix Item")
-map("n", "]q", function() if package.loaded.trouble and require("trouble").is_open() then require("trouble").next({ skip_groups = true, jump = true }) else pcall(vim.cmd.cnext) end end, "Next Trouble/Quickfix Item")
+map("n", "[q", function() pcall(vim.cmd.cprev) end, "Previous Quickfix Item")
+map("n", "]q", function() pcall(vim.cmd.cnext) end, "Next Quickfix Item")
 
 if vim.fn.has("win32") == 1 then
   local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -299,7 +299,6 @@ local plugins = {
       keymap = { preset = "default", ["<C-e>"] = { "cancel", "fallback" } },
     },
   },
-  { "folke/trouble.nvim", cmd = "Trouble", opts = { modes = { lsp = { win = { position = "right" } } } } },
   { "folke/todo-comments.nvim", event = "VeryLazy", opts = {} },
   {
     "mason-org/mason.nvim",
@@ -492,12 +491,6 @@ map("n", "<leader>uC", function() Snacks.picker.colorschemes() end, "Colorscheme
 map("n", "<leader>n", function() Snacks.picker.notifications() end, "Notification History")
 map("n", "<leader>up", function() vim.g.minipairs_disable = not vim.g.minipairs_disable; vim.notify("Mini Pairs " .. (vim.g.minipairs_disable and "disabled" or "enabled")) end, "Toggle Mini Pairs")
 map("n", "<leader>un", function() Snacks.notifier.hide() end, "Dismiss All Notifications")
-map("n", "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>", "Diagnostics (Trouble)")
-map("n", "<leader>xX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", "Buffer Diagnostics (Trouble)")
-map("n", "<leader>cs", "<cmd>Trouble symbols toggle<cr>", "Symbols (Trouble)")
-map("n", "<leader>cS", "<cmd>Trouble lsp toggle<cr>", "LSP references/definitions/... (Trouble)")
-map("n", "<leader>xL", "<cmd>Trouble loclist toggle<cr>", "Location List (Trouble)")
-map("n", "<leader>xQ", "<cmd>Trouble qflist toggle<cr>", "Quickfix List (Trouble)")
 map("n", "]t", function() require("todo-comments").jump_next() end, "Next Todo Comment")
 map("n", "[t", function() require("todo-comments").jump_prev() end, "Previous Todo Comment")
 map("n", "<leader>st", function() Snacks.picker.todo_comments() end, "Todo")

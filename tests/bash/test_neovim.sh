@@ -89,7 +89,7 @@ test_neovim_uses_raw_config() {
   assert_contains "$init" 'version = "1.*"'
   for name in LazyVim neotest dial.nvim flash.nvim friendly-snippets grug-far.nvim lazydev.nvim \
     mason-lspconfig.nvim mini.ai mini.hipatterns noice.nvim nui.nvim nvim-ts-autotag persistence.nvim \
-    render-markdown.nvim ts-comments.nvim yanky.nvim; do
+    render-markdown.nvim trouble.nvim ts-comments.nvim yanky.nvim; do
     assert_not_contains "$lock" "\"$name\""
   done
   for name in LazyVim/LazyVim markdown-toc render-markdown.nvim Snacks.picker.autocmds \

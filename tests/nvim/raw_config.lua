@@ -28,7 +28,6 @@ local expected = {
   [" af"] = "Send File",
   [" at"] = "Send Position",
   [" cf"] = "Format",
-  [" xx"] = "Diagnostics (Trouble)",
   [" st"] = "Todo",
   [" bp"] = "Toggle Pin",
   [" gL"] = "Git Log (cwd)",
@@ -52,6 +51,10 @@ for _, mapping in ipairs({ { "s", "x" }, { "S", "x" }, { "s", "o" }, { "S", "o" 
   assert(vim.fn.maparg(mapping[1], mapping[2]) == "", mapping[1] .. " Flash mapping must stay removed")
 end
 assert(maps["]t"] == "Next Todo Comment" and maps["[t"] == "Previous Todo Comment", "Todo navigation missing")
+assert(maps["]q"] == "Next Quickfix Item" and maps["[q"] == "Previous Quickfix Item", "native quickfix navigation missing")
+for _, lhs in ipairs({ " xx", " xX", " cs", " cS", " xL", " xQ" }) do
+  assert(maps[lhs] == nil, lhs .. " Trouble mapping must stay removed")
+end
 assert(maps["<C-A>"] == nil and maps["<C-X>"] == nil, "native increment mappings must stay unshadowed")
 assert(maps["g<C-A>"] == nil and maps["g<C-X>"] == nil, "Dial sequence mappings must stay removed")
 for _, lhs in ipairs({ "y", "p", "P", "gp", "gP", "]p", "[p", "]P", "[P" }) do
@@ -164,11 +167,10 @@ for _, plugin in ipairs({
   "nvim-treesitter-textobjects",
   "snacks.nvim",
   "todo-comments.nvim",
-  "trouble.nvim",
 }) do
   assert(lazy.plugins[plugin], plugin .. " missing")
 end
-for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "lualine.nvim", "mason-lspconfig.nvim", "mini.ai", "mini.hipatterns", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "ts-comments.nvim", "yanky.nvim" }) do
+for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "lualine.nvim", "mason-lspconfig.nvim", "mini.ai", "mini.hipatterns", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "trouble.nvim", "ts-comments.nvim", "yanky.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
 assert(not lazy.plugins["fff.nvim"], "fff.nvim must stay removed")

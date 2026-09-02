@@ -523,8 +523,9 @@ test_obsidian_uses_native_editor_features() {
   local plugins="$REPO_DIR/config/shared/obsidian/community-plugins.json"
 
   assert_exit_code 0 jq -e '
-    all(.[]; . != "code-block-copy" and . != "url-into-selection" and . != "table-editor-obsidian")
+    all(.[]; . != "code-block-copy" and . != "url-into-selection" and . != "table-editor-obsidian" and . != "pane-relief")
   ' "$plugins"
+  assert_not_contains "$(<"$REPO_DIR/config/shared/obsidian/plugins/obsidian-style-settings/data.json")" "pane-relief@@"
   assert_not_contains "$HOME_CONFIG" 'plugins/table-editor-obsidian/data.json'
   assert_equals false "$([[ -e "$REPO_DIR/config/shared/obsidian/plugins/table-editor-obsidian/data.json" ]] && echo true || echo false)"
 }
