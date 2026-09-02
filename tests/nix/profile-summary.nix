@@ -12,6 +12,7 @@ in
   timers = builtins.attrNames config.systemd.user.timers;
   files = builtins.attrNames config.home.file;
   marker = config.home.file.".config/dotfiles/profile".text;
+  sessionVariables = config.home.sessionVariables;
   serviceWanted = wantedBy config.systemd.user.services;
   timerWanted = wantedBy config.systemd.user.timers;
   xdgFiles = builtins.attrNames config.xdg.configFile;

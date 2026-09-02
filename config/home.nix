@@ -179,6 +179,7 @@ in
   home.sessionPath = [
     "${homeDir}/.local/bin"
   ];
+  home.sessionVariables.PI_MEMORY_EXIT_SUMMARY = "0";
   home.packages = devTerminalPackages
   ++ lib.optionals (!nixosSystem && !systemFiraCode) [
     pkgs.nerd-fonts.fira-code

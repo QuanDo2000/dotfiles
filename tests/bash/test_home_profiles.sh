@@ -96,6 +96,13 @@ test_profile_files_and_markers_are_composed_by_role() {
   for flag in desktop personalApps obsidianSync googleDriveSync storageOffsiteBackup; do assert_contains "$darwin_marker" "$flag=false"; done
 }
 
+test_profile_disables_pi_memory_exit_summary() {
+  local profile
+  for profile in linux arch-server nixos darwin; do
+    assert_equals 0 "$(_profile_summary "$profile" | jq -r '.sessionVariables.PI_MEMORY_EXIT_SUMMARY')"
+  done
+}
+
 test_profile_activation_targets_are_complete() {
   local wanted unit
   for unit in obsidian-sync google-drive-mount; do wanted=$(_profile_wanted arch-server "$unit"); assert_line_present "$wanted" default.target; done
