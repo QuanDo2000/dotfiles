@@ -47,7 +47,8 @@ _test_present() { local text="$1" item; shift; for item in "$@"; do assert_line_
 _test_absent() { local text="$1" item; shift; for item in "$@"; do assert_line_absent "$text" "$item"; done; }
 
 common_packages=(bash-language-server codex jq nil pi-coding-agent ShellCheck statix)
-desktop_packages=(ghostty google-chrome grim hyprshutdown pavucontrol playerctl rbw slurp thunar wl-clipboard xarchiver)
+desktop_packages=(ghostty google-chrome grim hyprshutdown pavucontrol playerctl rbw slurp wl-clipboard)
+system_desktop_packages=(pinentry-gnome3 thunar xarchiver)
 personal_packages=(anki-with-addons obsidian webcord)
 sync_packages=(obsidian-headless rclone)
 arch_sync_packages=(obsidian-headless rclone)
@@ -76,7 +77,7 @@ test_nixos_and_darwin_packages_and_services_are_composed_by_role() {
   local nixos_packages nixos_services nixos_timers darwin_packages darwin_services darwin_timers
   nixos_packages=$(_profile_packages nixos); nixos_services=$(_profile_services nixos); nixos_timers=$(_profile_timers nixos)
   darwin_packages=$(_profile_packages darwin); darwin_services=$(_profile_services darwin); darwin_timers=$(_profile_timers darwin)
-  _test_present_array "$nixos_packages" "${common_packages[@]}" gcc-wrapper "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}"; _test_absent "$nixos_packages" restic
+  _test_present_array "$nixos_packages" "${common_packages[@]}" gcc-wrapper "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}"; _test_absent "$nixos_packages" restic "${system_desktop_packages[@]}"
   _test_present "$nixos_services" obsidian-sync google-drive-mount google-drive-bisync "${desktop_services[@]}"; _test_absent "$nixos_services" google-drive-storage-sync storage-offsite-backup storage-offsite-maintenance
   _test_present "$nixos_timers" google-drive-bisync; _test_absent "$nixos_timers" google-drive-storage-sync storage-offsite-backup storage-offsite-maintenance
   _test_present "$darwin_packages" "${common_packages[@]}"; _test_absent_array "$darwin_packages" "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}" "${storage_packages[@]}"

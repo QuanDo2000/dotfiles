@@ -49,7 +49,6 @@
           nodejs
           pi-agent
           python3
-          python-launcher
           shellcheck
           tree-sitter
           tmux

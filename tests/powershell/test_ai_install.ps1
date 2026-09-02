@@ -14,7 +14,9 @@ function TestSetup {
     $script:OriginalSetCodexActivePath = if ($pathSetter) { $pathSetter.ScriptBlock } else { $null }
     $script:OriginalExpandWindowsTarArchive = if ($windowsTarExpander) { $windowsTarExpander.ScriptBlock } else { $null }
     $script:OriginalCodexHome = $env:CODEX_HOME
-    $script:PythonLauncher = (Get-Command py).Source
+    $pythonLauncher = Get-Command py -ErrorAction SilentlyContinue
+    $script:PythonCommand = if ($pythonLauncher) { $pythonLauncher.Source } else { (Get-Command python3 -ErrorAction Stop).Source }
+    $script:PythonArguments = if ($pythonLauncher) { @('-3.14') } else { @() }
     Set-CommandMock 'RepairPiCompactionSteering' {}
 }
 
@@ -1038,8 +1040,8 @@ function test_syncpiconfigs_removes_retired_configs {
 
     $seed = Join-Path $seedDir 'settings.json'
     Set-CommandMock 'py' {
-        $pythonArgs = @($args)
-        & $script:PythonLauncher -3.14 @($pythonArgs[1..($pythonArgs.Count - 1)])
+        $pythonArgs = @($script:PythonArguments) + @($args[1..($args.Count - 1)])
+        & $script:PythonCommand @pythonArgs
     }
     try {
         (Get-Item $seed).IsReadOnly = $true

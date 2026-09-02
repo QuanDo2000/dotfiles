@@ -1,4 +1,4 @@
-{ lib, buildNpmPackage, fetchurl, jq, makeWrapper, nodejs, python3 }:
+{ lib, buildNpmPackage, fetchurl, makeWrapper, nodejs, python3 }:
 
 buildNpmPackage rec {
   pname = "pi-coding-agent";
@@ -15,8 +15,7 @@ buildNpmPackage rec {
   nativeBuildInputs = [ makeWrapper python3 ];
 
   postPatch = ''
-    ${lib.getExe jq} 'del(.devDependencies)' package.json > package.json.tmp
-    mv package.json.tmp package.json
+    node -e 'const fs = require("node:fs"); const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8")); delete packageJson.devDependencies; fs.writeFileSync("package.json", JSON.stringify(packageJson));'
     cp ${./pi-agent-npm-shrinkwrap.json} npm-shrinkwrap.json
   '';
 

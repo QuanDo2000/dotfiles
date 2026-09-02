@@ -69,6 +69,8 @@ test_pi_package_patches_after_npm_dependency_fetch() {
   pre_install="${package#*preInstall = \'\'}"
 
   assert_contains "$package" "preInstall = ''"
+  assert_not_contains "$package" 'lib.getExe jq'
+  assert_contains "$post_patch" 'delete packageJson.devDependencies'
   assert_not_contains "$post_patch" 'patch_pi_compaction.py'
   assert_contains "$pre_install" "python3 \${../scripts/patch_pi_compaction.py} dist/core/agent-session.js"
 }

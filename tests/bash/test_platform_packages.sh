@@ -518,6 +518,16 @@ test_home_manager_installs_pinned_webcord_release() {
   assert_contains "$(<"$package")" "appimageTools.wrapType2"
 }
 
+test_obsidian_uses_native_editor_features() {
+  local plugins="$REPO_DIR/config/shared/obsidian/community-plugins.json"
+
+  assert_exit_code 0 jq -e '
+    all(.[]; . != "code-block-copy" and . != "url-into-selection" and . != "table-editor-obsidian")
+  ' "$plugins"
+  assert_not_contains "$HOME_CONFIG" 'plugins/table-editor-obsidian/data.json'
+  assert_equals false "$([[ -e "$REPO_DIR/config/shared/obsidian/plugins/table-editor-obsidian/data.json" ]] && echo true || echo false)"
+}
+
 test_obsidian_service_skips_non_vault_directories() {
   assert_contains "$HOME_CONFIG" '[ -d "$vault/.obsidian" ] || continue'
 }

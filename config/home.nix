@@ -80,7 +80,6 @@ let
     "plugins/obsidian-tasks-plugin/data.json"
     "plugins/obsidian-vimrc-support/data.json"
     "plugins/periodic-notes/data.json"
-    "plugins/table-editor-obsidian/data.json"
     "templates.json"
   ];
   obsidianFiles = lib.genAttrs
@@ -147,12 +146,9 @@ let
     ++ lib.optionals (!systemFontconfig) [ fontconfig ];
   desktopPackages = with pkgs; [
     grim
-    pinentry-gnome3
     rbw
     slurp
-    thunar
     wl-clipboard
-    xarchiver
     hyprshutdown
     ghostty
     google-chrome
