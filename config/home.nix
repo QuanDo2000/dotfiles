@@ -7,6 +7,7 @@ let
   googleDriveSync = args.googleDriveSync or false;
   storageOffsiteBackup = args.storageOffsiteBackup or false;
   systemCompiler = args.systemCompiler or false;
+  systemFontconfig = args.systemFontconfig or false;
   machine = import ./host.nix;
   nixosSystem = pkgs.stdenv.hostPlatform.isLinux && osConfig != null;
   standaloneLinux = pkgs.stdenv.hostPlatform.isLinux && !nixosSystem;
@@ -141,10 +142,8 @@ let
   ] ++ lib.optionals (pkgs.stdenv.hostPlatform.isLinux && !systemCompiler) [
     gcc
   ];
-  standaloneLinuxPackages = with pkgs; [
-    fontconfig
-    openssh
-  ];
+  standaloneLinuxPackages = with pkgs; [ openssh ]
+    ++ lib.optionals (!systemFontconfig) [ fontconfig ];
   desktopPackages = with pkgs; [
     grim
     pinentry-gnome3

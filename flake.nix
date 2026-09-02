@@ -119,6 +119,7 @@
           googleDriveSync = true;
           storageOffsiteBackup = true;
           systemCompiler = true;
+          systemFontconfig = true;
         };
         modules = [ ./config/home.nix ];
       };
