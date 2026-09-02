@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-08-31-feeble-parade",
-  "registrySha256": "b5971ffd345d55b762902d5b277a8b974d007689214b9a9508eb78c1d1f7ca67",
+  "registryVersion": "2026-09-02-noble-friday",
+  "registrySha256": "eee76d237d3176dd36539544bb29f06620a30eb1f9868d357c6d46cd205f839e",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
