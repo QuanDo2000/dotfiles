@@ -120,6 +120,7 @@
           storageOffsiteBackup = true;
           systemCompiler = true;
           systemFontconfig = true;
+          systemOpenSSH = true;
         };
         modules = [ ./config/home.nix ];
       };

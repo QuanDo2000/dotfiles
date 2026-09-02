@@ -95,6 +95,7 @@ test_arch_packages_are_bootstrap_only() {
   assert_contains "${ARCH_PACKAGES[*]}" "curl"
   assert_contains "${ARCH_PACKAGES[*]}" "git"
   assert_contains "${ARCH_PACKAGES[*]}" "zsh"
+  assert_contains "${ARCH_PACKAGES[*]}" "openssh"
   for pkg in neovim starship nodejs tmux lazygit jujutsu ripgrep fd fzf; do
     if [[ " ${ARCH_PACKAGES[*]} " == *" $pkg "* ]]; then
       echo "  FAILED: Arch pacman packages should not install $pkg; Home Manager owns user tools" >> "$ERROR_FILE"

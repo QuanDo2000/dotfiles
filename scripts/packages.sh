@@ -30,7 +30,7 @@ function _update_flake_inputs {
 }
 
 ARCH_PACKAGES=(
-  base-devel curl git zsh fuse3
+  base-devel curl git zsh fuse3 openssh
 )
 
 function _run_system_package_command {
