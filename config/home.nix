@@ -7,6 +7,7 @@ let
   googleDriveSync = args.googleDriveSync or false;
   storageOffsiteBackup = args.storageOffsiteBackup or false;
   systemCompiler = args.systemCompiler or false;
+  systemFiraCode = args.systemFiraCode or false;
   systemFontconfig = args.systemFontconfig or false;
   systemGit = args.systemGit or false;
   systemJq = args.systemJq or false;
@@ -179,7 +180,7 @@ in
     "${homeDir}/.local/bin"
   ];
   home.packages = devTerminalPackages
-  ++ lib.optionals (!nixosSystem) [
+  ++ lib.optionals (!nixosSystem && !systemFiraCode) [
     pkgs.nerd-fonts.fira-code
   ]
   ++ lib.optionals standaloneLinux standaloneLinuxPackages
