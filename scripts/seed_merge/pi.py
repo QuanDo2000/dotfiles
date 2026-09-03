@@ -76,8 +76,6 @@ else:
     if "defaultModel" in live:
         resolved["defaultModel"] = copy.deepcopy(live["defaultModel"])
 
-resolved.pop("subagents", None)
-
 live_resolved = copy.deepcopy(resolved)
 live_resolved.update(runtime)
 

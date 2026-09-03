@@ -623,6 +623,14 @@ function InstallPiExtensions {
                 if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction Stop }
             }
         }
+        foreach ($obsolete in Get-ChildItem -LiteralPath $releases -Directory -Force) {
+            if ($obsolete.Name -ceq [string]$pins.releaseId) { continue }
+            if (($obsolete.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                Remove-Item -LiteralPath $obsolete.FullName -Force -ErrorAction Stop
+            } else {
+                Remove-Item -LiteralPath $obsolete.FullName -Recurse -Force -ErrorAction Stop
+            }
+        }
     } finally { $installLock.Dispose() }
 
     $qmdJs = Join-Path $release 'node_modules\@tobilu\qmd\dist\cli\qmd.js'
@@ -930,10 +938,6 @@ function SyncPiConfigs {
         }
     }
 
-    Remove-Item -LiteralPath (Join-Path $targetDir 'extensions\subagent\config.json'), (Join-Path $baseDir 'subagent-config.json') -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath (Join-Path $targetDir 'extensions\subagent') -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath (Join-Path $targetDir 'pi-lsp.json'), (Join-Path $baseDir 'pi-lsp.json') -Force -ErrorAction SilentlyContinue
-
     $extensionDir = Join-Path $targetDir "extensions"
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
     $directCopies = @(
@@ -959,39 +963,6 @@ function SyncPiConfigs {
         $syncLock.Dispose()
     }
     Success "Finished syncing Pi configuration"
-}
-
-function RemoveCodebaseMemory {
-    Info "Removing managed codebase-memory-mcp installation..."
-    if ($script:Dry) { return }
-
-    $root = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp'
-    $oldPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-    $rootNormalized = $root.TrimEnd([char[]](92, 47))
-    $newPath = @($oldPath -split ';' | Where-Object {
-        if (-not $_) { return $false }
-        $entry = $_.TrimEnd([char[]](92, 47))
-        return $entry -ine $rootNormalized -and
-            -not $entry.StartsWith($rootNormalized + [char]92, [StringComparison]::OrdinalIgnoreCase) -and
-            -not $entry.StartsWith($rootNormalized + [char]47, [StringComparison]::OrdinalIgnoreCase)
-    }) -join ';'
-
-    $processes = @(Get-Process -Name 'codebase-memory-mcp' -ErrorAction SilentlyContinue)
-    if ($processes.Count -gt 0) {
-        $processes | Stop-Process -Force -ErrorAction SilentlyContinue
-        $processes | Wait-Process -Timeout 5 -ErrorAction SilentlyContinue
-    }
-    try {
-        if ($newPath -cne $oldPath) { [Environment]::SetEnvironmentVariable('Path', $newPath, 'User') }
-        if (Test-Path -LiteralPath $root) {
-            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction Stop
-        }
-    } catch {
-        if ($newPath -cne $oldPath) { [Environment]::SetEnvironmentVariable('Path', $oldPath, 'User') }
-        throw
-    }
-
-    Success "Finished removing managed codebase-memory-mcp installation"
 }
 
 function SyncAiInstructions {
@@ -1113,10 +1084,6 @@ function InstallAiSkills {
         Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill)
         Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
     }
-    foreach ($skill in @('caveman', 'ponytail', 'ponytail-help', 'diff-review-qa', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-review')) {
-        Remove-Item -LiteralPath (Join-Path $targetRoot $skill) -Recurse -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
-    }
 }
 
 # Install or update agent CLIs and their shared skills.
@@ -1128,8 +1095,6 @@ function InstallAi {
     InstallFnm
     InstallCodex
     SyncCodexConfig
-
-    RemoveCodebaseMemory
     InstallPi -Update:$Update
     InstallPiLanguageServers
     InstallPiExtensions

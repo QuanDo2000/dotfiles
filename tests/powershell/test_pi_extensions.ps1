@@ -45,39 +45,20 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
     $lock = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions\package-lock.json'
 
     Assert-Equals $pins.releaseId (Get-PiExtensionTestSha256 $lock)
-    Assert-Equals 2 @($settings.packages).Count
-    Assert-Equals 3 @($package.dependencies.PSObject.Properties).Count
-    Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@narumitw/pi-lsp') 'Pi LSP package should be removed'
-    Assert-False ($settings.packages -like '*@narumitw/pi-lsp*') 'Pi LSP package path should be removed'
-    Assert-False ((Get-Content -Raw $lock) -like '*node_modules/@narumitw/pi-lsp*') 'Pi LSP lock entry should be removed'
-    Assert-False ($package.dependencies.PSObject.Properties.Name -contains 'pi-mcp-extension') 'Pi MCP extension should be removed'
-    Assert-False ($settings.packages -like '*pi-mcp-extension*') 'Pi MCP package path should be removed'
-    Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@ff-labs/pi-fff') 'native FFF MCP should remain absent'
-    Assert-False ($package.PSObject.Properties.Name -contains 'overrides') 'FFF npm overrides should be removed'
+    Assert-Equals '@tobilu/qmd,pi-memory,pi-web-access' (($package.dependencies.PSObject.Properties.Name | Sort-Object) -join ',')
+    Assert-Equals 'pi-memory,pi-web-access' ((@($settings.packages | ForEach-Object { Split-Path $_ -Leaf }) | Sort-Object) -join ',')
+    Assert-False ($package.PSObject.Properties.Name -contains 'overrides')
     foreach ($entry in $settings.packages) {
         $source = if ($entry -is [string]) { $entry } else { $entry.source }
         Assert-True $source.StartsWith("./locked-extensions/releases/$($pins.releaseId)/node_modules/") 'Pi extension should use locked local release'
     }
-    Assert-False ($package.dependencies.PSObject.Properties.Name -contains '@dietrichgebert/ponytail') 'Retired Ponytail package should remain absent'
-    Assert-True ($package.dependencies.PSObject.Properties.Name -contains 'pi-memory') 'Lightweight Pi memory should be pinned'
-    Assert-True ($package.dependencies.PSObject.Properties.Name -contains '@tobilu/qmd') 'qmd should be pinned for memory search'
-    Assert-False ($package.dependencies.PSObject.Properties.Name -contains 'pi-hermes-memory') 'Hermes memory should be removed'
-    Assert-False ((Get-Content -Raw (Join-Path $script:RepoDir 'dotfile.ps1')).Contains('patch_pi_memory_untrusted_context')) 'default pi-memory should remain unpatched'
-    Assert-Equals 0 @($settings.packages | Where-Object {
-        $source = if ($_ -is [string]) { $_ } else { $_.source }
-        $source -like '*@dietrichgebert/ponytail*'
-    }).Count
-    Assert-Equals 0 @($settings.packages | Where-Object {
-        $source = if ($_ -is [string]) { $_ } else { $_.source }
-        $source -like '*@ff-labs/pi-fff*'
-    }).Count
 }
 
 
 function test_installai_installs_pinned_node_before_ai_tools {
     $script:Dry = $false
     $calls = [Collections.Generic.List[string]]::new()
-    $names = 'InstallFnm', 'InstallCodex', 'RemoveCodebaseMemory', 'SyncCodexConfig', 'InstallPi', 'InstallPiLanguageServers', 'InstallPiExtensions', 'SyncPiConfigs', 'SyncAiInstructions', 'InstallAiSkills'
+    $names = 'InstallFnm', 'InstallCodex', 'SyncCodexConfig', 'InstallPi', 'InstallPiLanguageServers', 'InstallPiExtensions', 'SyncPiConfigs', 'SyncAiInstructions', 'InstallAiSkills'
     $original = @{}
     try {
         foreach ($name in $names) {
@@ -86,7 +67,7 @@ function test_installai_installs_pinned_node_before_ai_tools {
         }
         Set-CommandMock 'pi' { $calls.Add('pi update --extensions'); $global:LASTEXITCODE = 0 }
         InstallAi -Update
-        Assert-Equals 'InstallFnm,InstallCodex,SyncCodexConfig,RemoveCodebaseMemory,InstallPi,InstallPiLanguageServers,InstallPiExtensions,SyncPiConfigs,pi update --extensions,SyncAiInstructions,InstallAiSkills' ($calls -join ',') 'InstallAi collaborators should run in the safe order'
+        Assert-Equals 'InstallFnm,InstallCodex,SyncCodexConfig,InstallPi,InstallPiLanguageServers,InstallPiExtensions,SyncPiConfigs,pi update --extensions,SyncAiInstructions,InstallAiSkills' ($calls -join ',') 'InstallAi collaborators should run in the safe order'
     } finally {
         foreach ($name in $names) { Set-FunctionMock $name $original[$name] }
     }
@@ -145,6 +126,8 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
     $env:PROCESSOR_ARCHITECTURE = 'AMD64'
     $script:NpmArgs = ''
     $pinsPath = Join-Path $script:DotfilesDir 'packages\pi-extensions-release.json'
+    $obsoleteRelease = Join-Path $env:USERPROFILE '.pi\agent\locked-extensions\releases\obsolete'
+    New-Item -ItemType Directory -Force -Path $obsoleteRelease | Out-Null
 
     Set-CommandMock 'Get-Command' {
         param($Name)
@@ -186,6 +169,7 @@ export default function (pi) {
     $pins = Get-Content -Raw $pinsPath | ConvertFrom-Json
     $release = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$($pins.releaseId)"
     Assert-True (Test-PiExtensionsRelease $release $pins) 'immutable extension release should validate'
+    Assert-False (Test-Path -LiteralPath $obsoleteRelease) 'obsolete extension releases should be pruned'
     $memoryEntry = Join-Path $release 'node_modules\pi-memory\index.ts'
     Assert-True ((Get-Content -Raw $memoryEntry).Contains('before_agent_start')) 'default pi-memory automatic recall should remain intact'
     $qmdLauncher = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\bin\qmd.cmd'

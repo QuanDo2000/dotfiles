@@ -122,8 +122,6 @@ function test_windows_codex_seed_contains_only_portable_state {
     foreach ($runtimeState in @(
             'C:\\Users\\',
             'notify =',
-            '[marketplaces.ponytail]',
-            '[plugins."ponytail@ponytail"]',
             'source_type = "git"',
             '[marketplaces.openai-bundled]',
             '[marketplaces.openai-primary-runtime]',
@@ -396,10 +394,6 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     foreach ($skill in $skills) {
         New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") | Out-Null
     }
-    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help', 'diff-review-qa', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-review') {
-        New-Item -ItemType Directory -Force -Path (Join-Path $targetRoot $skill) | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") | Out-Null
-    }
     Set-CommandMock 'npx' { throw 'npx must not install shared skills' }
 
     InstallAiSkills
@@ -412,10 +406,6 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     }
     foreach ($skill in $skills) {
         Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Stale Pi copy remains for $skill"
-    }
-    foreach ($skill in 'caveman', 'ponytail', 'ponytail-help', 'diff-review-qa', 'verification-before-completion', 'efficient-subagent-use', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain', 'ponytail-review') {
-        Assert-False (Test-Path (Join-Path $targetRoot $skill)) "Retired skill remains for $skill"
-        Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Retired Pi skill remains for $skill"
     }
 }
 
@@ -566,26 +556,6 @@ function test_installcodex_stages_verified_package_before_activation {
 function test_ai_installers_do_not_expose_unused_update_switches {
     foreach ($name in 'InstallCodex', 'InstallPiLanguageServers') {
         Assert-False ((Get-Command $name).Parameters.ContainsKey('Update')) "$name should not expose an unused update switch"
-    }
-}
-
-function test_removecodebasememory_removes_only_managed_installation_and_path_entries {
-    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { Skip-Test 'Windows-only cleanup'; return }
-
-    $script:Dry = $false
-    $root = Join-Path $env:LOCALAPPDATA 'Programs\codebase-memory-mcp'
-    New-Item -ItemType Directory -Force -Path (Join-Path $root 'releases\old') | Out-Null
-    $oldPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-    try {
-        [Environment]::SetEnvironmentVariable('Path', "C:\Tools;$root\releases\old;$root;C:\Other", 'User')
-        Set-CommandMock 'Get-Process' { @() }
-
-        RemoveCodebaseMemory 6>&1 | Out-Null
-
-        Assert-False (Test-Path -LiteralPath $root) 'managed installation should be removed'
-        Assert-Equals 'C:\Tools;C:\Other' ([Environment]::GetEnvironmentVariable('Path', 'User'))
-    } finally {
-        [Environment]::SetEnvironmentVariable('Path', $oldPath, 'User')
     }
 }
 
@@ -782,21 +752,6 @@ function test_pi_release_validation_requires_version_and_entry {
     Assert-True (Test-PiRelease $dir $version $lock)
 }
 
-function test_pi_subagents_are_retired {
-    $settings = Get-Content -Raw (Join-Path $script:RepoDir 'config\shared\ai\pi\settings.json') | ConvertFrom-Json
-    $extensionDir = Join-Path $script:RepoDir 'config\shared\ai\pi\extensions'
-    $extensions = Get-Content -Raw (Join-Path $extensionDir 'package.json') | ConvertFrom-Json
-    $lock = Get-Content -Raw (Join-Path $extensionDir 'package-lock.json')
-
-    Assert-False ($extensions.dependencies.PSObject.Properties.Name -contains 'pi-subagents')
-    Assert-False ($lock -like '*node_modules/pi-subagents*')
-    Assert-False ($settings.PSObject.Properties.Name -contains 'subagents')
-    Assert-False (@($settings.packages | Where-Object { $_ -like '*pi-subagents*' }).Count -gt 0)
-    Assert-False (Test-Path -LiteralPath (Join-Path $script:RepoDir 'config\shared\ai\pi\subagent-config.json'))
-    Assert-Equals 'gpt-5.6-sol' $settings.defaultModel
-    Assert-Equals 'medium' $settings.defaultThinkingLevel
-}
-
 function Initialize-TestAutoresearchSource($SeedDir) {
     $source = Join-Path $SeedDir 'autoresearch'
     New-Item -ItemType Directory -Force -Path (Join-Path $source 'skill') | Out-Null
@@ -896,13 +851,8 @@ function test_syncpiconfigs_creates_writable_seed_files {
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     $staleAutoresearch = Join-Path $extensionDir 'autoresearch'
     $staleFastMode = Join-Path $extensionDir 'fast-mode'
-    $staleSubagent = Join-Path $extensionDir 'subagent'
     $baseDir = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
-    New-Item -ItemType Directory -Force -Path $staleAutoresearch, $staleFastMode, $staleSubagent, $baseDir | Out-Null
-    '{}' | Set-Content (Join-Path $staleSubagent 'config.json')
-    '{}' | Set-Content (Join-Path $baseDir 'subagent-config.json')
-    '{}' | Set-Content (Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json')
-    '{}' | Set-Content (Join-Path $baseDir 'pi-lsp.json')
+    New-Item -ItemType Directory -Force -Path $staleAutoresearch, $staleFastMode, $baseDir | Out-Null
     'obsolete' | Set-Content (Join-Path $staleAutoresearch 'obsolete.ts')
     'obsolete' | Set-Content (Join-Path $staleFastMode 'obsolete.ts')
 
@@ -912,21 +862,15 @@ function test_syncpiconfigs_creates_writable_seed_files {
     $keybindings = Join-Path $env:USERPROFILE '.pi\agent\keybindings.json'
     $webSearch = Join-Path $env:USERPROFILE '.pi\web-search.json'
     $mcp = Join-Path $env:USERPROFILE '.pi\agent\mcp.json'
-    $subagent = Join-Path $env:USERPROFILE '.pi\agent\extensions\subagent\config.json'
-    $lsp = Join-Path $env:USERPROFILE '.pi\agent\pi-lsp.json'
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     Assert-FileExists $settings
     Assert-FileExists $keybindings
     Assert-FileExists $webSearch
     Assert-FileExists $mcp
-    Assert-False (Test-Path -LiteralPath $subagent) 'retired subagent config should be removed'
-    Assert-False (Test-Path -LiteralPath $lsp) 'retired Pi LSP config should be removed'
     Assert-FileExists (Join-Path $baseDir 'settings.json')
     Assert-FileExists (Join-Path $baseDir 'keybindings.json')
     Assert-FileExists (Join-Path $baseDir 'web-search.json')
     Assert-FileExists (Join-Path $baseDir 'mcp.json')
-    Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'subagent-config.json')) 'retired subagent baseline should be removed'
-    Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'pi-lsp.json')) 'retired Pi LSP baseline should be removed'
     $keys = Get-Content -Raw $keybindings | ConvertFrom-Json
     Assert-Equals 0 @($keys.'app.model.cycleForward').Count
     Assert-Equals 0 @($keys.'app.model.cycleBackward').Count
@@ -1013,49 +957,4 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     Assert-False ([bool](Get-Item -LiteralPath $linkedExtension -Force).LinkType) 'linked extension should become a regular file'
     Assert-Equals 'linked replacement' ((Get-Content -Raw -LiteralPath $linkedExtension).Trim())
     Assert-Equals 'external' ((Get-Content -Raw -LiteralPath $external).Trim())
-}
-
-function test_syncpiconfigs_removes_retired_configs {
-    $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
-    $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
-    $mergeDir = Join-Path $script:DotfilesDir 'scripts\seed_merge'
-    $targetDir = Join-Path $env:USERPROFILE '.pi\agent'
-    $subagentDir = Join-Path $targetDir 'extensions\subagent'
-    $baseDir = Join-Path $env:LOCALAPPDATA 'dotfiles\pi'
-    New-Item -ItemType Directory -Force -Path $seedDir, $mergeDir, $targetDir, $subagentDir, $baseDir | Out-Null
-    Copy-Item (Join-Path $script:RepoDir 'scripts\seed_merge\*') $mergeDir
-
-    '{"theme":"dark"}' | Set-Content (Join-Path $seedDir 'settings.json')
-    '{"app.model.cycleForward":[],"app.model.cycleBackward":[]}' | Set-Content (Join-Path $seedDir 'keybindings.json')
-    '{"workflow":"none"}' | Set-Content (Join-Path $seedDir 'web-search.json')
-    '{"mcpServers":{}}' | Set-Content (Join-Path $seedDir 'mcp.json')
-    '{}' | Set-Content (Join-Path $targetDir 'pi-lsp.json')
-    '{}' | Set-Content (Join-Path $baseDir 'pi-lsp.json')
-    '{}' | Set-Content (Join-Path $subagentDir 'config.json')
-    '{}' | Set-Content (Join-Path $baseDir 'subagent-config.json')
-    'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
-    Initialize-TestAutoresearchSource $seedDir
-    Initialize-TestFastModeSource $seedDir
-    '{"theme":"light","runtimeOnly":true,"subagents":{"defaultModel":"old"}}' | Set-Content (Join-Path $targetDir 'settings.json')
-
-    $seed = Join-Path $seedDir 'settings.json'
-    Set-CommandMock 'py' {
-        $pythonArgs = @($script:PythonArguments) + @($args[1..($args.Count - 1)])
-        & $script:PythonCommand @pythonArgs
-    }
-    try {
-        (Get-Item $seed).IsReadOnly = $true
-        SyncPiConfigs
-
-        $settings = Get-Content -Raw (Join-Path $targetDir 'settings.json') | ConvertFrom-Json
-        Assert-Equals 'dark' $settings.theme
-        Assert-True $settings.runtimeOnly 'Live-only unrelated settings should be preserved'
-        Assert-False ($settings.PSObject.Properties.Name -contains 'subagents') 'Retired subagent settings should be removed'
-        Assert-False (Test-Path -LiteralPath (Join-Path $targetDir 'pi-lsp.json')) 'Retired Pi LSP config should be removed'
-        Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'pi-lsp.json')) 'Retired Pi LSP baseline should be removed'
-        Assert-False (Test-Path -LiteralPath (Join-Path $subagentDir 'config.json')) 'Retired subagent config should be removed'
-        Assert-False (Test-Path -LiteralPath (Join-Path $baseDir 'subagent-config.json')) 'Retired subagent baseline should be removed'
-    } finally {
-        (Get-Item $seed).IsReadOnly = $false
-    }
 }

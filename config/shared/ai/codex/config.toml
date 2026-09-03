@@ -18,9 +18,6 @@ clear_terminal = []
 "gpt-5.5" = 4
 "gpt-5.6-sol" = 1
 
-[plugins."superpowers@openai-curated"]
-enabled = true
-
 [plugins."sites@openai-bundled"]
 enabled = true
 

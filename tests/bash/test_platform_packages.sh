@@ -125,22 +125,6 @@ test_pi_model_cycling_shortcuts_are_disabled() {
   fi
 }
 
-test_pi_subagents_are_retired() {
-  local lock package settings
-  package="$REPO_DIR/config/shared/ai/pi/extensions/package.json"
-  lock="$REPO_DIR/config/shared/ai/pi/extensions/package-lock.json"
-  settings="$REPO_DIR/config/shared/ai/pi/settings.json"
-
-  assert_exit_code 0 jq -e '.dependencies | has("pi-subagents") | not' "$package"
-  assert_exit_code 0 jq -e 'all(.packages | keys[]; contains("pi-subagents") | not)' "$lock"
-  assert_exit_code 0 jq -e '(has("subagents") | not) and all(.packages[]; contains("pi-subagents") | not)' "$settings"
-  assert_equals "false" "$([[ -e "$REPO_DIR/config/shared/ai/pi/subagent-config.json" ]] && echo true || echo false)"
-  assert_contains "$HOME_CONFIG" 'rm -f "$HOME/.pi/agent/extensions/subagent/config.json"'
-  assert_contains "$HOME_CONFIG" 'rm -f "$HOME/.local/state/dotfiles/pi/subagent-config.json"'
-}
-
-
-
 test_all_ai_agents_start_with_shared_policy() {
   local agents soul guidance
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
@@ -176,10 +160,6 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
   for skill in systematic-debugging test-driven-development; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
-  assert_equals "false" "$(jq 'has("caveman") or has("ponytail")' "$pins")"
-  for skill in diff-review-qa verification-before-completion efficient-subagent-use ponytail-audit ponytail-debt ponytail-gain ponytail-review; do
-    assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md" ]] && echo true || echo false)"
-  done
   assert_not_contains "$windows" 'npx --yes skills add'
 }
 
@@ -209,20 +189,6 @@ test_agents_own_complexity_audit_and_debt_policy() {
     assert_contains "$guidance" 'For debt-ledger requests, search `debt:` comments'
     assert_contains "$guidance" 'tag markers without one as `no-trigger`'
   done
-  assert_equals "0" "$(grep -RIl --exclude-dir=.git --exclude='test_config_merge.sh' 'ponytail:' "$REPO_DIR/config" "$REPO_DIR/scripts" 2>/dev/null | wc -l)"
-}
-
-
-test_codex_seeds_have_no_remote_ponytail_marketplace() {
-  local seed contents
-  for seed in "$REPO_DIR/config/shared/ai/codex/config.toml" "$REPO_DIR/config/windows/ai/codex/config.toml"; do
-    contents="$(<"$seed")"
-    assert_not_contains "$contents" '[marketplaces.ponytail]'
-    assert_not_contains "$contents" '[plugins."ponytail@ponytail"]'
-    assert_not_contains "$contents" 'source_type = "git"'
-    assert_not_contains "$contents" '[marketplaces.'
-    assert_not_contains "$contents" '[projects.'
-  done
 }
 
 
@@ -247,10 +213,7 @@ test_all_ai_agents_delegate_efficiently() {
   assert_contains "$agents" 'When a matched reusable skill governs delegated work, pass only that skill explicitly to the child.'
   assert_contains "$agents" 'Normally use one fan-out wave; launch another only for a changed target or unresolved evidence gap.'
   assert_contains "$debugging_skill" 'Use the `test-driven-development` skill for writing proper failing tests'
-  assert_not_contains "$debugging_skill" 'superpowers:test-driven-development'
   assert_contains "$debugging_skill" 'Follow the global verification policy before claiming success.'
-  assert_not_contains "$debugging_skill" 'superpowers:verification-before-completion'
-  assert_equals "false" "$([[ -f "$REPO_DIR/config/shared/ai/skills/diff-review-qa/SKILL.md" ]] && echo true || echo false)"
   assert_contains "$agents" 'For explicit code reviews, report findings only: severity `P0`–`P3`, confidence, exact `path:line`, concrete failure mode, smallest fix, and residual risk.'
   assert_contains "$agents" 'Reject praise, style-only noise, speculative findings, duplicates, and claims unsupported by source or supplied validation evidence.'
 

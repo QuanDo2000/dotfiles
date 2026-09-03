@@ -751,11 +751,6 @@ in
       fi
       chmod u+w "$target"
     done
-
-    rm -f "$HOME/.pi/agent/extensions/subagent/config.json"
-    rmdir "$HOME/.pi/agent/extensions/subagent" 2>/dev/null || true
-    rm -f "$HOME/.local/state/dotfiles/pi/subagent-config.json"
-    rm -f "$HOME/.pi/agent/pi-lsp.json" "$HOME/.local/state/dotfiles/pi/pi-lsp.json"
   '';
 
   home.activation.seedLazyLock = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

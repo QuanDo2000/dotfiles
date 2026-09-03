@@ -33,23 +33,11 @@ test_pi_extension_settings_use_locked_local_release() {
   package="$extension_dir/package.json"
 
   assert_equals "$release_id" "$(_lock_sha256)"
-  assert_equals 2 "$(jq '.packages | length' "$settings")"
-  assert_equals 3 "$(jq '.dependencies | length' "$package")"
-  assert_equals false "$(jq '.dependencies | has("@narumitw/pi-lsp")' "$package")"
-  assert_equals 0 "$(jq '[.packages[] | select(contains("@narumitw/pi-lsp"))] | length' "$settings")"
-  assert_equals 0 "$(jq '[.packages | keys[] | select(contains("@narumitw/pi-lsp"))] | length' "$extension_dir/package-lock.json")"
+  assert_equals '["@tobilu/qmd","pi-memory","pi-web-access"]' "$(jq -c '.dependencies | keys | sort' "$package")"
+  assert_equals '["pi-memory","pi-web-access"]' "$(jq -c '[.packages[] | split("/")[-1]] | sort' "$settings")"
   assert_equals false "$(jq 'has("overrides")' "$package")"
-  assert_equals false "$(jq '.dependencies | has("pi-mcp-extension")' "$package")"
-  assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("pi-mcp-extension"))] | length' "$settings")"
-  assert_equals false "$(jq '.dependencies | has("@ff-labs/pi-fff")' "$package")"
-  assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@ff-labs/pi-fff"))] | length' "$settings")"
   assert_equals 0 "$(jq --arg id "$release_id" '[.packages[] | (if type == "string" then . else .source end) | select(startswith("./locked-extensions/releases/" + $id + "/node_modules/") | not)] | length' "$settings")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(startswith("npm:"))] | length' "$settings")"
-  assert_equals false "$(jq '.dependencies | has("@dietrichgebert/ponytail")' "$package")"
-  assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("@dietrichgebert/ponytail"))] | length' "$settings")"
-  assert_equals true "$(jq '.dependencies | has("pi-memory")' "$package")"
-  assert_equals true "$(jq '.dependencies | has("@tobilu/qmd")' "$package")"
-  assert_equals false "$(jq '.dependencies | has("pi-hermes-memory")' "$package")"
 }
 
 
@@ -71,11 +59,6 @@ test_pi_extensions_nix_package_disables_scripts() {
   assert_contains "$package" 'npmDepsHash = "sha256-'
   assert_contains "$package" '"--ignore-scripts"'
   assert_contains "$package" 'ln -s ../node_modules/.bin/qmd "$out/bin/qmd"'
-  assert_not_contains "$package" 'better-sqlite3'
-  assert_not_contains "$package" 'pi-mcp-extension'
-  assert_not_contains "$package" 'patch_pi_mcp_background.py'
-  assert_not_contains "$package" 'patch_pi_memory_untrusted_context'
-  assert_equals false "$([[ -f "$REPO_DIR/scripts/patch_pi_mcp_background.py" ]] && echo true || echo false)"
   assert_contains "$home" 'locked-extensions/releases/${piExtensionsReleaseId}'
   assert_contains "$home" 'pkgs.pi-extensions'
   assert_contains "$flake" 'packages.x86_64-linux.pi-extensions'

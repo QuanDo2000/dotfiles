@@ -408,21 +408,3 @@ EOF
   assert_equals "sse" "$(jq -r '.transport' "$seed")"
   rm -rf "$tmp"
 }
-
-test_pi_seed_merge_removes_retired_subagents() {
-  local tmp script live seed base
-  tmp="$(mktemp -d)"
-  script="$REPO_DIR/scripts/seed_merge/pi.py"
-  live="$tmp/live.json"
-  seed="$tmp/seed.json"
-  base="$tmp/base.json"
-
-  printf '{"theme":"light","subagents":{"defaultModel":"old"}}\n' > "$live"
-  printf '{"theme":"dark"}\n' > "$seed"
-
-  python3 "$script" "$live" "$seed" "$seed" "$base" >/dev/null
-
-  assert_equals "dark" "$(jq -r '.theme' "$seed")"
-  assert_equals "false" "$(jq 'has("subagents")' "$seed")"
-  rm -rf "$tmp"
-}
