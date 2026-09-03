@@ -54,6 +54,7 @@ enabled = true
 [features]
 memories = true
 js_repl = false
+multi_agent = false
 
 [windows]
 sandbox = "elevated"
