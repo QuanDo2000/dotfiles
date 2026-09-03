@@ -220,7 +220,6 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "Home Manager owns tracked Obsidian settings"
   assert_contains "$readme_text" 'Home Manager owns the `lazy.nvim` bootstrap package'
   assert_contains "$readme_text" 'Neovim uses Snacks pickers on all'
-  assert_not_contains "$readme_text" '`fff.nvim`'
   assert_contains "$readme_text" 'an existing `home-manager` when available'
   assert_contains "$readme_text" '`~/dotfiles#darwin-rebuild` app'
   assert_contains "$readme_text" "### Windows Commands"
@@ -270,7 +269,6 @@ test_dry_run_update_ai_command_only_updates_ai() {
   assert_contains "$output" "Would update Pi package from the latest npm release"
   assert_contains "$output" "Would update Pi extensions"
   assert_not_contains "$output" "Updating packages"
-  assert_not_contains "$output" "fff.nvim"
 }
 
 test_dry_run_codex_command_updates_release_pin_only() {

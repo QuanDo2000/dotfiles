@@ -33,7 +33,6 @@ test_check_script_runs_repo_verification() {
   assert_contains "$check_text" 'nix build "${packages[@]}" --no-link'
   assert_contains "$check_text" 'run shellcheck'
   assert_contains "$flake_text" "pi-agent = final.callPackage ./packages/pi-agent.nix"
-  assert_not_contains "$flake_text" "fff-nvim-backend"
   assert_contains "$flake_text" "packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent"
   assert_contains "$flake_text" "packages.x86_64-linux.pi-extensions = linuxPkgs.pi-extensions"
   assert_contains "$flake_text" "devShells.aarch64-darwin.default"

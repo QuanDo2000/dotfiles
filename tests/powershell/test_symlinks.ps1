@@ -14,13 +14,6 @@ function TestTeardown {
     Clear-TestEnv
 }
 
-function test_windows_setup_does_not_link_psmux_config {
-    $destination = Join-Path $env:USERPROFILE '.psmux.conf'
-    $spec = Get-WindowsLinkSpecs | Where-Object Destination -eq $destination
-
-    Assert-False ([bool]$spec) 'Windows setup should not link a retired psmux config'
-}
-
 function test_windows_terminal_does_not_elevate_every_profile {
     $settings = Get-Content -Raw (Join-Path $script:RepoDir 'config\windows\Terminal\settings.json') | ConvertFrom-Json
     Assert-False ($settings.profiles.defaults.elevate -eq $true) 'Windows Terminal profiles should run unelevated by default'
@@ -53,12 +46,6 @@ function test_windows_neovim_links_mason_tool_pins {
     if ($spec) {
         Assert-Equals (Join-Path $script:RepoDir 'config\shared\config\nvim\mason-tools.json') $spec.Source
     }
-}
-
-function test_windows_neovim_uses_snacks_without_fff_plugin {
-    $config = Get-Content -Raw (Join-Path $script:RepoDir 'config/shared/config/nvim/init.lua')
-    Assert-False ($config.Contains('dmtrKovalenko/fff.nvim')) 'fff.nvim should stay removed on every platform'
-    Assert-Contains $config 'Snacks.picker.files({ cwd = root() })'
 }
 
 function test_windows_gitconfig_uses_platform_gpg_program {

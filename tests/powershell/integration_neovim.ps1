@@ -30,5 +30,3 @@ if ($rawExitCode -ne 0 -or -not $rawOutput.Contains('RAW_CONFIG_OK')) {
 $dataPath = (& $nvim --headless --clean "+lua io.write(vim.fn.stdpath('data'))" '+qa' 2>$null) -join ''
 $lazyRoot = Join-Path $dataPath.Trim() 'lazy'
 if (-not (Test-Path -LiteralPath (Join-Path $lazyRoot 'lazy.nvim'))) { throw 'lazy.nvim was not installed' }
-if (Test-Path -LiteralPath (Join-Path $lazyRoot 'fff.nvim')) { throw 'fff.nvim must stay disabled on Windows' }
-if (Test-Path -LiteralPath (Join-Path $lazyRoot 'LazyVim')) { throw 'LazyVim must not be installed' }

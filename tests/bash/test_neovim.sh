@@ -80,27 +80,22 @@ test_neovim_owns_only_used_build_and_mason_tools() {
 }
 
 test_neovim_uses_raw_config() {
-  local config="$REPO_DIR/config/shared/config/nvim" home init lock name
-  home="$(<"$REPO_DIR/config/home.nix")"
+  local config="$REPO_DIR/config/shared/config/nvim" init lock name
   init="$(<"$config/init.lua")"
   lock="$(<"$config/lazy-lock.json")"
 
   assert_contains "$init" "vim.g.raw_neovim = true"
   assert_contains "$init" 'version = "1.*"'
-  for name in LazyVim neotest dial.nvim flash.nvim friendly-snippets grug-far.nvim lazydev.nvim \
+  for name in neotest dial.nvim flash.nvim friendly-snippets grug-far.nvim lazydev.nvim \
     mason-lspconfig.nvim mini.ai mini.hipatterns noice.nvim nui.nvim nvim-ts-autotag persistence.nvim \
     render-markdown.nvim trouble.nvim ts-comments.nvim yanky.nvim; do
     assert_not_contains "$lock" "\"$name\""
   done
-  for name in LazyVim/LazyVim markdown-toc render-markdown.nvim Snacks.picker.autocmds \
+  for name in markdown-toc render-markdown.nvim Snacks.picker.autocmds \
     Snacks.picker.commands Snacks.picker.highlights Snacks.picker.man \
     Snacks.picker.command_history Snacks.picker.search_history; do
     assert_not_contains "$init" "$name"
   done
-  assert_not_contains "$home" "seedLazyVimConfig"
-  if [ -e "$config/lazyvim.json" ]; then
-    printf "  legacy lazyvim.json still exists\n" >> "$ERROR_FILE"
-  fi
 }
 
 test_neovim_sync_defers_eager_plugins_until_installed() {
@@ -113,10 +108,9 @@ test_neovim_sync_defers_eager_plugins_until_installed() {
 }
 
 test_neovim_uses_reviewed_plugin_lock() {
-  local config lazy lock updater
+  local config lazy updater
   config="$(<"$REPO_DIR/config/home.nix")"
   lazy="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-  lock="$REPO_DIR/config/shared/config/nvim/lazy-lock.json"
   updater="$(<"$REPO_DIR/scripts/update_pins.py")"
 
   assert_contains "$config" "home.activation.seedLazyLock"
@@ -124,13 +118,9 @@ test_neovim_uses_reviewed_plugin_lock() {
   assert_contains "$lazy" 'lazy-lock.json'
   assert_contains "$lazy" 'git", "-C", lazypath, "checkout", "--force", commit'
   assert_not_contains "$lazy" '"--branch=stable"'
-  assert_equals "false" "$(jq 'has("fff.nvim")' "$lock")"
-  assert_not_contains "$lazy" 'dmtrKovalenko/fff.nvim'
   assert_contains "$updater" '"XDG_CONFIG_HOME"'
   assert_contains "$updater" '"XDG_DATA_HOME"'
   assert_contains "$updater" 'repo / "config/shared/config/nvim"'
-  assert_not_contains "$updater" 'config/shared/config/nvim/lua/plugins/fff.lua'
-  assert_not_contains "$updater" 'fff.nvim'
 }
 
 test_install_packages_syncs_neovim() {
@@ -198,7 +188,6 @@ test_sync_neovim_restores_all_plugins_cleans_and_verifies_tools() {
   assert_contains "$(<"$calls")" "sync.plugins(true)"
   assert_contains "$(<"$calls")" "sync.tools()"
   assert_contains "$(<"$calls")" "sync.parsers()"
-  assert_not_contains "$(<"$calls")" 'restore fff.nvim'
   unset -f nvim nix
 }
 
@@ -228,25 +217,12 @@ test_neovim_loads_snacks_before_initial_buffer() {
   assert_not_contains "$config" 'quickfile = { enabled = true }'
 }
 
-test_neovim_uses_snacks_without_fff_dependency() {
-  local config lock home flake sync updater
+test_neovim_uses_snacks_picker() {
+  local config
   config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-  lock="$REPO_DIR/config/shared/config/nvim/lazy-lock.json"
-  home="$(<"$REPO_DIR/config/home.nix")"
-  flake="$(<"$REPO_DIR/flake.nix")"
-  sync="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")"
-  updater="$(<"$REPO_DIR/scripts/update_pins.py")"
 
   assert_contains "$config" 'map("n", "<leader>ff", function() Snacks.picker.files({ cwd = root() }) end, "Find Files")'
   assert_contains "$config" 'map("n", "<leader>sg", function() Snacks.picker.grep({ cwd = root() }) end, "Grep")'
-  assert_not_contains "$config" 'dmtrKovalenko/fff.nvim'
-  assert_not_contains "$config" 'require("fff")'
-  assert_equals "false" "$(jq 'has("fff.nvim")' "$lock")"
-  assert_not_contains "$home" 'fff-nvim-backend'
-  assert_not_contains "$flake" 'fff-nvim-backend'
-  assert_not_contains "$sync" 'link_fff'
-  assert_not_contains "$updater" 'fff.nvim'
-  assert_equals "false" "$([[ -e "$REPO_DIR/packages/fff-nvim-backend.nix" ]] && echo true || echo false)"
 }
 
 

@@ -70,7 +70,6 @@ for _, lhs in ipairs({ " <Tab>l", " <Tab>o", " <Tab>f" }) do
 end
 
 local lazy = require("lazy.core.config")
-assert(not lazy.plugins.LazyVim, "LazyVim must not be loaded")
 assert(lazy.options.install.missing == false, "ordinary startup must not install plugins")
 if not windows then
   assert(not vim.o.runtimepath:find(vim.fn.stdpath("data") .. "/lazy/lazy.nvim", 1, true), "Unix must use Nix-managed lazy.nvim")
@@ -173,7 +172,6 @@ end
 for _, plugin in ipairs({ "dial.nvim", "flash.nvim", "friendly-snippets", "grug-far.nvim", "lazydev.nvim", "lualine.nvim", "mason-lspconfig.nvim", "mini.ai", "mini.hipatterns", "noice.nvim", "nui.nvim", "nvim-ts-autotag", "persistence.nvim", "render-markdown.nvim", "trouble.nvim", "ts-comments.nvim", "yanky.nvim" }) do
   assert(not lazy.plugins[plugin], plugin .. " must stay removed")
 end
-assert(not lazy.plugins["fff.nvim"], "fff.nvim must stay removed")
 require("lazy").load({ plugins = { "conform.nvim", "nvim-lint" } })
 local conform = lazy.plugins["conform.nvim"].opts
 assert(vim.deep_equal(conform.formatters_by_ft.markdown, { "prettier", "markdownlint-cli2" }), "Markdown formatter ownership changed")

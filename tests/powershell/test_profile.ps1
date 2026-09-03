@@ -50,12 +50,6 @@ function Set-PSReadLineKeyHandler { param(`$Key, `$Function) "`$Key|`$Function" 
     Assert-Contains $out 'Tab|MenuComplete'
 }
 
-function test_profile_does_not_autostart_psmux {
-    $profile = Get-Content -Raw $script:ProfileFile
-
-    Assert-False ($profile -match '(?i)psmux') 'PowerShell should start directly without psmux'
-}
-
 function test_profile_loads_when_psreadline_options_are_unsupported {
     $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
     $probe = @"

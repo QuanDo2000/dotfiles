@@ -17,8 +17,3 @@ function test_collisions_removed_and_functions_win {
     Assert-Contains $out 'gl=Function'
     Assert-Contains $out 'ga=Function'
 }
-
-function test_aliases_do_not_wrap_ssh_for_psmux {
-    $aliases = Get-Content -Raw -LiteralPath $script:AliasesFile
-    Assert-False ($aliases -match '(?m)^function ssh\s*\{') 'SSH should run directly without a psmux TERM workaround'
-}

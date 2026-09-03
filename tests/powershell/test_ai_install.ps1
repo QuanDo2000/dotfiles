@@ -578,7 +578,6 @@ function test_installpilanguageservers_installs_pinned_npm_servers {
     $install = $script:NpmCalls -join "`n"
     Assert-Contains $install 'install --global'
     Assert-Contains $install 'bash-language-server@5.6.0'
-    Assert-False ($install.Contains('@vtsls/language-server')) 'retired vtsls should not be provisioned'
 }
 
 function test_installpilanguageservers_skips_current_pinned_servers {

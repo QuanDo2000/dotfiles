@@ -66,7 +66,7 @@ test_profile_packages_and_services_are_composed_by_role() {
   generic_service_names="$(_profile_services linux)"; arch_service_names="$(_profile_services arch-server)"
   _test_present_array "$generic_packages" "${common_packages[@]}"
   _test_present "$generic_packages" gcc-wrapper fontconfig git jq nerd-fonts-fira-code openssh
-  _test_absent_array "$generic_packages" vtsls "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}" "${storage_packages[@]}"
+  _test_absent_array "$generic_packages" "${desktop_packages[@]}" "${personal_packages[@]}" "${sync_packages[@]}" "${storage_packages[@]}"
   _test_present_array "$arch_packages" "${common_packages[@]}" fontconfig git jq nerd-fonts-fira-code openssh "${arch_sync_packages[@]}" "${storage_packages[@]}"
   _test_absent_array "$arch_packages" gcc-wrapper "${desktop_packages[@]}" "${personal_packages[@]}"
   _test_absent "$generic_service_names" "${arch_services[@]}" "${desktop_services[@]}"

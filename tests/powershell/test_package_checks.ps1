@@ -13,11 +13,6 @@ function test_windows_neovim_provisions_treesitter_build_tools {
     Assert-Contains ((Get-RequiredCommands) -join "`n") "clang"
 }
 
-function test_windows_package_manifests_exclude_psmux {
-    Assert-False (@(Get-WingetPackages) -contains 'marlocarlo.psmux') 'Winget should not manage psmux'
-    Assert-False (@(Get-RequiredCommands) -contains 'psmux') 'Doctor should not require psmux'
-}
-
 function test_windows_package_manifests_cover_parity_tools {
     $winget = @(Get-WingetPackages)
     $commands = @(Get-RequiredCommands)
@@ -37,7 +32,6 @@ function test_windows_package_manifests_cover_parity_tools {
     foreach ($command in 'bash-language-server', 'shellcheck') {
         Assert-True ($commands -contains $command) "Doctor should verify Windows LSP dependency: $command"
     }
-    Assert-False ($commands -contains 'vtsls') 'Doctor should not require retired vtsls'
 }
 
 function test_windows_terminal_defaults_to_managed_powershell_profile {

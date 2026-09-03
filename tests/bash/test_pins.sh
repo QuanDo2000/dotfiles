@@ -20,7 +20,6 @@ test_pin_updater_keeps_security_checks() {
   assert_contains "$updater" 'member.issym() or member.islnk()'
   assert_contains "$updater" 'unsafe Pi extension lock entries'
   assert_contains "$updater" '"--no-audit"'
-  assert_not_contains "$updater" 'fff.nvim'
   assert_not_contains "$updater" 'shell=True'
 }
 

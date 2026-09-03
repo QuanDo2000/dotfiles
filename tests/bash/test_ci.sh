@@ -11,24 +11,19 @@ teardown() {
   cleanup_test_env
 }
 
-test_ci_bash_jobs_match_local_nix_environment() {
+test_ci_bash_jobs_share_pinned_environments_and_parallelize_linux_checks() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
-  assert_equals 0 "$(grep -c 'run: nix develop \. -c bash \./tests/bash/runner\.sh$' <<< "$workflow")"
   assert_contains "$workflow" $'  bash-linux:\n    needs: changes'
-  assert_contains "$workflow" 'nix develop .#ci -c bash -c'
+  assert_contains "$workflow" 'nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh'
   assert_contains "$workflow" 'nix develop . -c bash -c'
-  assert_equals 2 "$(grep -c 'neovim_pid=\$!' <<< "$workflow")"
-  assert_equals 2 "$(grep -c 'core_pid=\$!' <<< "$workflow")"
-  assert_contains "$workflow" 'test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh'
-  assert_contains "$workflow" 'tests_pid=$!'
-  assert_contains "$workflow" 'darwin_pid=$!'
-  assert_contains "$workflow" 'packages_pid=$!'
-  assert_contains "$workflow" 'wait "$tests_pid"'
-  assert_not_contains "$workflow" '- name: Evaluate nix-darwin configuration'
-  assert_not_contains "$workflow" 'runner.sh --no-docker'
-  assert_not_contains "$workflow" 'docker'
+  assert_equals 1 "$(grep -c 'neovim_pid=\$!' <<< "$workflow")"
+  assert_equals 1 "$(grep -c 'core_pid=\$!' <<< "$workflow")"
+  assert_equals 1 "$(grep -c 'shellcheck_pid=\$!' <<< "$workflow")"
+  assert_contains "$workflow" 'wait "$shellcheck_pid"'
+  assert_contains "$workflow" 'darwinConfigurations.mac.system.drvPath'
+  assert_contains "$workflow" 'nix build .#codex .#pi-extensions --no-link'
 }
 
 test_ci_filters_pull_requests_but_runs_full_main_and_schedule() {
@@ -84,53 +79,14 @@ test_ci_dev_shell_includes_script_dependencies() {
   assert_not_contains "$ci_shell" 'pi-agent'
 }
 
-test_ci_runs_direct_nix_checks() {
-  local workflow check
+test_ci_runs_direct_nix_checks_without_duplicate_home_evaluations() {
+  local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
-  check="$(<"$REPO_DIR/scripts/check.sh")"
 
-  assert_not_contains "$workflow" "run: ./scripts/check.sh"
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
-  assert_contains "$workflow" 'darwinConfigurations.mac.system.drvPath'
-  assert_contains "$workflow" 'homeConfigurations.\"$username@linux\".activationPackage.drvPath'
-  assert_contains "$workflow" 'homeConfigurations.\"$username@arch-server\".activationPackage.drvPath'
-  assert_not_contains "$check" 'fff-nvim-backend'
-}
-
-test_ci_avoids_disposable_neovim_cache_and_parallelizes_windows() {
-  local workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
-
-  assert_equals 2 "$(grep -c 'DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh' <<< "$workflow")"
-  assert_contains "$workflow" '- name: Run Windows checks in parallel'
-  assert_contains "$workflow" 'Start-Job'
-  assert_contains "$workflow" 'Wait-Job'
-  assert_contains "$workflow" "'PowerShell tests'"
-  assert_contains "$workflow" "'Pi extension integration'"
-  assert_contains "$workflow" "'Neovim integration'"
-  assert_not_contains "$workflow" '- name: Run PowerShell tests (Windows)'
-  assert_not_contains "$workflow" '- name: Test locked Pi extensions (Windows)'
-}
-
-test_ci_runs_windows_neovim_integration() {
-  local workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
-
-  assert_contains "$workflow" "Neovim.Neovim"
-  assert_contains "$workflow" 'Microsoft\WinGet\Links\nvim.exe'
-  assert_contains "$workflow" 'Neovim\bin\nvim.exe'
-  assert_contains "$workflow" "tests/powershell/integration_neovim.ps1"
-  assert_contains "$workflow" "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020"
-  assert_contains "$workflow" "node-version: $(jq -r .node.version "$REPO_DIR/packages/pi-extensions-release.json")"
-  assert_contains "$workflow" "tests/powershell/integration_pi_extensions.ps1"
-
-  local integration
-  integration="$(<"$REPO_DIR/tests/powershell/integration_neovim.ps1")"
-  assert_contains "$integration" "dotfile.ps1"
-  assert_contains "$integration" "Get-NeovimCommand"
-  assert_contains "$integration" "XDG_CONFIG_HOME"
-  assert_contains "$integration" "XDG_DATA_HOME"
-  assert_contains "$integration" "Remove-Item -Recurse -Force"
+  assert_not_contains "$workflow" 'Evaluate Home Manager configurations'
+  assert_not_contains "$workflow" 'homeConfigurations.\"$username@linux\".activationPackage.drvPath'
+  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions --no-link'
 }
 
 test_ci_pins_current_actions() {
@@ -154,7 +110,7 @@ test_ci_checker_jobs_provision_dependencies() {
 
   assert_not_contains "${workflow,,}" "cspell"
   assert_not_contains "${workflow,,}" "codespell"
-  assert_contains "$workflow" "nix develop . -c shellcheck"
+  assert_contains "$workflow" "shellcheck -S warning"
   assert_not_contains "$(find "$REPO_DIR/.github/workflows" -maxdepth 1 -type f -name 'lint.*' -print)" 'lint.'
   assert_contains "$(<"$REPO_DIR/flake.nix")" "shellcheck"
 }

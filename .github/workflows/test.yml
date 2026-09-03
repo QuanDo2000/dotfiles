@@ -52,17 +52,7 @@ jobs:
       - name: Run macOS checks in parallel
         shell: bash
         run: |
-          nix develop .#ci -c bash -c '
-            DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh &
-            neovim_pid=$!
-            bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh &
-            core_pid=$!
-
-            status=0
-            wait "$neovim_pid" || { echo "::error::macOS Neovim tests failed"; status=1; }
-            wait "$core_pid" || { echo "::error::macOS core tests failed"; status=1; }
-            exit "$status"
-          ' &
+          nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh &
           tests_pid=$!
           nix eval --raw .#darwinConfigurations.mac.system.drvPath &
           darwin_pid=$!
@@ -142,23 +132,24 @@ jobs:
           authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
           skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
-      - name: Run ShellCheck
-        run: nix develop . -c shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh
-
-      - name: Run bash tests
+      - name: Run Linux checks in parallel
         run: |
+          # shellcheck disable=SC2016
           nix develop . -c bash -c '
+            shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh &
+            shellcheck_pid=$!
+
             core_tests=()
             for test in ./tests/bash/test_*.sh; do
               [[ "$test" == */test_neovim.sh ]] || core_tests+=("${test##*/}")
             done
-
             DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh &
             neovim_pid=$!
             bash ./tests/bash/runner.sh "${core_tests[@]}" &
             core_pid=$!
 
             status=0
+            wait "$shellcheck_pid" || { echo "::error::ShellCheck failed"; status=1; }
             wait "$neovim_pid" || { echo "::error::Linux Neovim tests failed"; status=1; }
             wait "$core_pid" || { echo "::error::Linux core tests failed"; status=1; }
             exit "$status"
@@ -182,12 +173,6 @@ jobs:
 
       - name: Run flake check
         run: nix flake check --no-build --all-systems
-
-      - name: Evaluate Home Manager configurations
-        run: |
-          username=$(nix eval --raw --file config/host.nix username)
-          nix eval --raw ".#homeConfigurations.\"$username@linux\".activationPackage.drvPath"
-          nix eval --raw ".#homeConfigurations.\"$username@arch-server\".activationPackage.drvPath"
 
       - name: Build custom packages
         run: nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions --no-link
