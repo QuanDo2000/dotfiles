@@ -79,18 +79,6 @@ test_ci_dev_shell_includes_script_dependencies() {
   assert_not_contains "$ci_shell" 'pi-agent'
 }
 
-test_ci_shards_windows_unit_tests_without_omissions() {
-  local file workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
-
-  assert_equals 3 "$(grep -c "Path = './tests/powershell/runner.ps1'" <<< "$workflow")"
-  assert_contains "$workflow" "Arguments = @('test_ai_install.ps1', 'test_runner.ps1'"
-  for file in "$REPO_DIR"/tests/powershell/test_*.ps1; do
-    assert_equals 1 "$(grep -oF "'${file##*/}'" <<< "$workflow" | wc -l)"
-  done
-  assert_contains "$workflow" '$job.PSEndTime - $job.PSBeginTime'
-}
-
 test_ci_runs_direct_nix_checks_without_duplicate_home_evaluations() {
   local workflow
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"

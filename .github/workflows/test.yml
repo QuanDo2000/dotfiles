@@ -91,41 +91,22 @@ jobs:
         shell: pwsh
         run: |
           $checks = @(
-            [pscustomobject]@{
-              Name = 'PowerShell tests A'
-              Path = './tests/powershell/runner.ps1'
-              Arguments = @('test_ai_install.ps1', 'test_runner.ps1', 'test_dry_installers.ps1', 'test_package_checks.ps1', 'test_usage.ps1')
-            }
-            [pscustomobject]@{
-              Name = 'PowerShell tests B'
-              Path = './tests/powershell/runner.ps1'
-              Arguments = @('test_extras.ps1', 'test_profile.ps1', 'test_update_packages.ps1')
-            }
-            [pscustomobject]@{
-              Name = 'PowerShell tests C'
-              Path = './tests/powershell/runner.ps1'
-              Arguments = @(
-                'test_addtopath.ps1', 'test_aliases.ps1', 'test_args.ps1', 'test_link_branches.ps1', 'test_neovim.ps1',
-                'test_pi_extensions.ps1', 'test_repo.ps1', 'test_setupdotfiles.ps1', 'test_symlinks.ps1', 'test_verify.ps1'
-              )
-            }
-            [pscustomobject]@{ Name = 'Pi extension integration'; Path = './tests/powershell/integration_pi_extensions.ps1'; Arguments = @() }
-            [pscustomobject]@{ Name = 'Neovim integration'; Path = './tests/powershell/integration_neovim.ps1'; Arguments = @() }
+            [pscustomobject]@{ Name = 'PowerShell tests'; Path = './tests/powershell/runner.ps1' }
+            [pscustomobject]@{ Name = 'Pi extension integration'; Path = './tests/powershell/integration_pi_extensions.ps1' }
+            [pscustomobject]@{ Name = 'Neovim integration'; Path = './tests/powershell/integration_neovim.ps1' }
           )
           $jobs = foreach ($check in $checks) {
-            Start-Job -Name $check.Name -WorkingDirectory $PWD -ArgumentList (,$check) -ScriptBlock {
-              param($check)
-              $arguments = @($check.Arguments)
-              & $check.Path @arguments
-              if ($LASTEXITCODE -ne 0) { throw "$($check.Path) exited with code $LASTEXITCODE" }
+            Start-Job -Name $check.Name -WorkingDirectory $PWD -ArgumentList $check.Path -ScriptBlock {
+              param($path)
+              & $path
+              if ($LASTEXITCODE -ne 0) { throw "$path exited with code $LASTEXITCODE" }
             }
           }
 
           Wait-Job -Job $jobs | Out-Null
           $status = 0
           foreach ($job in $jobs) {
-            $duration = $job.PSEndTime - $job.PSBeginTime
-            Write-Host "--- $($job.Name) ($($duration.TotalSeconds.ToString('F1')))s ---"
+            Write-Host "--- $($job.Name) ---"
             Receive-Job -Job $job -ErrorAction Continue
             if ($job.State -ne 'Completed') {
               Write-Error "::error::$($job.Name) failed: $($job.ChildJobs[0].JobStateInfo.Reason.Message)" -ErrorAction Continue
