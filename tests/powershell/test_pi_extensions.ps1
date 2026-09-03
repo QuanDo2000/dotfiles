@@ -192,6 +192,8 @@ export default function (pi) {
     $qmdJs = Join-Path $release 'node_modules\@tobilu\qmd\dist\cli\qmd.js'
     Assert-True (Test-Path -LiteralPath $qmdLauncher -PathType Leaf) 'qmd should be exposed through the existing Pi bin PATH entry'
     Assert-True ((Get-Content -Raw $qmdLauncher).Contains($qmdJs)) 'qmd launcher should target the pinned release'
+    $qmdResolverEntry = Join-Path (Split-Path $qmdLauncher -Parent) 'node_modules\@tobilu\qmd\dist\cli\qmd.js'
+    Assert-True (Test-Path -LiteralPath $qmdResolverEntry -PathType Leaf) 'pi-memory should resolve the pinned qmd entry from the Pi bin PATH entry'
     $installedManifest = Join-Path $release 'node_modules\example-extension\package.json'
     $original = Get-Content -Raw -LiteralPath $installedManifest
     Set-Content -LiteralPath $installedManifest -Value $original.Replace('1.2.3', '9.9.9') -Encoding ascii -NoNewline

@@ -631,6 +631,18 @@ function InstallPiExtensions {
     New-Item -ItemType Directory -Force -Path $bin | Out-Null
     "@echo off`r`nnode `"$qmdJs`" %*" | Set-Content -LiteralPath (Join-Path $bin 'qmd.cmd') -Encoding ascii
 
+    $resolverModules = Join-Path $bin 'node_modules'
+    $releaseModules = Join-Path $release 'node_modules'
+    $existingResolverModules = Get-Item -LiteralPath $resolverModules -Force -ErrorAction SilentlyContinue
+    if ($existingResolverModules) {
+        if (($existingResolverModules.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+            throw "Refusing to replace non-link Pi qmd resolver directory: $resolverModules"
+        }
+        Remove-Item -LiteralPath $resolverModules -Force
+    }
+    $resolverLinkType = if ($PSVersionTable.PSEdition -eq 'Desktop' -or $IsWindows) { 'Junction' } else { 'SymbolicLink' }
+    New-Item -ItemType $resolverLinkType -Path $resolverModules -Target $releaseModules | Out-Null
+
     Success "Finished installing integrity-locked Pi extensions"
 }
 
