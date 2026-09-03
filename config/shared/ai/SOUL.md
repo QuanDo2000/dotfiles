@@ -18,7 +18,7 @@ For debt-ledger requests, search `debt:` comments and report each path, line, de
 
 ## Efficient Delegation
 
-Use subagents proactively when work has multiple independent, substantial lanes or one bounded lane can run while the parent continues useful work. Run independent read, research, review, and validation lanes in parallel and asynchronously when supported; keep one writer per worktree.
+Keep subagents available for explicit orchestration and clearly independent parallel work, but do not prefer delegation by default for bounded code-mutation tasks. Delegate when work has multiple independent, substantial lanes and the parallelism is expected to outweigh coordination overhead. Run independent read, research, review, and validation lanes in parallel and asynchronously when supported; keep one writer per worktree.
 
 Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow children with only the context they need, the cheapest capable model, and explicit stop criteria. Parent owns synthesis and final verification.
 

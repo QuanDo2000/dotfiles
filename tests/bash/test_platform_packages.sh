@@ -212,6 +212,7 @@ test_all_ai_agents_delegate_efficiently() {
   assert_contains "$agents" 'Treat reviewers as static: never ask them to run shell commands, tests, lint, typecheck, builds, or mutations.'
   assert_contains "$agents" 'When a matched reusable skill governs delegated work, pass only that skill explicitly to the child.'
   assert_contains "$agents" 'Normally use one fan-out wave; launch another only for a changed target or unresolved evidence gap.'
+  assert_contains "$soul" 'do not prefer delegation by default for bounded code-mutation tasks.'
   assert_contains "$debugging_skill" 'Use the `test-driven-development` skill for writing proper failing tests'
   assert_contains "$debugging_skill" 'Follow the global verification policy before claiming success.'
   assert_contains "$agents" 'For explicit code reviews, report findings only: severity `P0`–`P3`, confidence, exact `path:line`, concrete failure mode, smallest fix, and residual risk.'
