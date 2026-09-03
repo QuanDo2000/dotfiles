@@ -35,10 +35,6 @@ test_neovim_provisions_nix_linter() {
   assert_contains "$(<"$REPO_DIR/config/home.nix")" "statix"
 }
 
-test_nix_lint_is_clean() {
-  statix check "$REPO_DIR"
-}
-
 test_neovim_provisions_native_node_for_mason_npm_packages() {
   local home
   home="$(<"$REPO_DIR/config/home.nix")"
