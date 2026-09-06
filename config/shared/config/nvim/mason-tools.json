@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-09-02-noble-friday",
-  "registrySha256": "eee76d237d3176dd36539544bb29f06620a30eb1f9868d357c6d46cd205f839e",
+  "registryVersion": "2026-09-06-puffy-sunday",
+  "registrySha256": "f50bde7652792ad4da1aca98ec8e5230b783b34b1f6936d44ed1e0074eb59026",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
