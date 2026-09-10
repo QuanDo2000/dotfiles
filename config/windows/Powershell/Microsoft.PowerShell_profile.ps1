@@ -1,3 +1,5 @@
+$env:PI_MEMORY_EXIT_SUMMARY = '0'
+
 if (Get-Command starship -ErrorAction SilentlyContinue) {
     Invoke-Expression (&starship init powershell)
 }

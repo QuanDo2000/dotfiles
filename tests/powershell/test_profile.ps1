@@ -19,6 +19,20 @@ if (`$env:COMPLETE -ne 'keep') { throw "COMPLETE leaked: `$env:COMPLETE" }
     }
 }
 
+function test_profile_disables_pi_memory_exit_summary {
+    $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
+    $probe = @"
+`$ErrorActionPreference = 'Stop'
+`$env:LOCALAPPDATA = '$localAppData'
+`$env:PATH = ''
+function Set-PSReadLineOption { throw 'PSReadLine unsupported' }
+. '$script:ProfileFile'
+`$env:PI_MEMORY_EXIT_SUMMARY
+"@
+    $out = pwsh -NoProfile -Command $probe 2>&1 | Out-String
+    Assert-Equals '0' $out.Trim()
+}
+
 function test_profile_keeps_managed_pi_ahead_of_fnm_shims {
     $localAppData = Join-Path ([IO.Path]::GetTempPath()) 'dotfile-profile-test-local'
     $managedPi = Join-Path $localAppData 'dotfiles\pi\bin'
