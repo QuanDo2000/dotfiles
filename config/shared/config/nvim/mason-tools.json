@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-09-06-puffy-sunday",
-  "registrySha256": "f50bde7652792ad4da1aca98ec8e5230b783b34b1f6936d44ed1e0074eb59026",
+  "registryVersion": "2026-09-10-tan-hawk",
+  "registrySha256": "9c6759f588af327c92e9dc452d44421d5ebdb37b014b809a77aeee787974f32a",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
