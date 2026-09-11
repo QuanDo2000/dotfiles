@@ -778,24 +778,16 @@ function InstallPiLanguageServers {
     Info "Installing Pi language servers..."
     if ($script:Dry) { return }
 
-    $servers = [ordered]@{
-        'bash-language-server' = '5.6.0'
-    }
-    $needsInstall = $false
-    foreach ($name in $servers.Keys) {
-        if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
-            $needsInstall = $true
-            continue
-        }
-        $version = & $name --version 2>$null | Select-Object -Last 1
-        if ($LASTEXITCODE -ne 0 -or -not $version -or $version.Trim() -ne $servers[$name]) {
-            $needsInstall = $true
-        }
+    $expectedVersion = '5.6.0'
+    $needsInstall = $true
+    if (Get-Command bash-language-server -ErrorAction SilentlyContinue) {
+        $version = & bash-language-server --version 2>$null | Select-Object -Last 1
+        $needsInstall = $LASTEXITCODE -ne 0 -or -not $version -or $version.Trim() -ne $expectedVersion
     }
 
     if ($needsInstall) {
         Invoke-NativeChecked "Pi language-server install failed" {
-            npm install --global bash-language-server@5.6.0
+            npm install --global "bash-language-server@$expectedVersion"
         }
     }
     if (-not (Get-Command shellcheck -ErrorAction SilentlyContinue)) {
@@ -803,11 +795,9 @@ function InstallPiLanguageServers {
     }
     Refresh-ProcessPath
 
-    foreach ($name in $servers.Keys) {
-        $version = & $name --version 2>$null | Select-Object -Last 1
-        if ($LASTEXITCODE -ne 0 -or -not $version -or $version.Trim() -ne $servers[$name]) {
-            throw "$name $($servers[$name]) not found after installation"
-        }
+    $version = & bash-language-server --version 2>$null | Select-Object -Last 1
+    if ($LASTEXITCODE -ne 0 -or -not $version -or $version.Trim() -ne $expectedVersion) {
+        throw "bash-language-server $expectedVersion not found after installation"
     }
     if (-not (Get-Command shellcheck -ErrorAction SilentlyContinue)) {
         throw "shellcheck not found after installation"
@@ -940,15 +930,9 @@ function SyncPiConfigs {
 
     $extensionDir = Join-Path $targetDir "extensions"
     New-Item -ItemType Directory -Force -Path $extensionDir | Out-Null
-    $directCopies = @(
-        @{
-            Source = Join-Path $seedDir 'codex-status.js'
-            Destination = Join-Path $extensionDir 'codex-status.js'
-        }
-    )
-    foreach ($copy in $directCopies) {
-        Copy-FileWithRollback $copy.Source $copy.Destination 'Pi direct config copy'
-    }
+    Copy-FileWithRollback `
+        (Join-Path $seedDir 'codex-status.js') `
+        (Join-Path $extensionDir 'codex-status.js') 'Pi direct config copy'
     Install-DirectoryWithRollback `
         (Join-Path $seedDir 'autoresearch') `
         (Join-Path $extensionDir 'autoresearch') `
@@ -1143,19 +1127,11 @@ function Sync-NeovimPlugins {
         $env:DOTFILE_NVIM_SYNC = '0'
         $probe = (& $nvim --headless "+lua if require('config.sync').runtime_complete() then print('RAW_NEOVIM_SYNC_CURRENT') end" "+qa" 2>&1) -join "`n"
         $probeExitCode = $LASTEXITCODE
-    } finally {
-        if ($null -eq $previousSync) {
-            Remove-Item Env:DOTFILE_NVIM_SYNC -ErrorAction SilentlyContinue
-        } else {
-            $env:DOTFILE_NVIM_SYNC = $previousSync
+        if ($probeExitCode -eq 0 -and $probe.Contains('RAW_NEOVIM_SYNC_CURRENT')) {
+            Info "Neovim plugins and tools already current"
+            return
         }
-    }
-    if ($probeExitCode -eq 0 -and $probe.Contains('RAW_NEOVIM_SYNC_CURRENT')) {
-        Info "Neovim plugins and tools already current"
-        return
-    }
 
-    try {
         $env:DOTFILE_NVIM_SYNC = '1'
         $output = (& $nvim --headless "+lua local sync = require('config.sync'); sync.plugins(false); sync.tools(); sync.parsers(); print('RAW_NEOVIM_SYNC_OK')" "+qa" 2>&1) -join "`n"
         $exitCode = $LASTEXITCODE
