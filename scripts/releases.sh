@@ -988,7 +988,7 @@ function _validate_dependency_update {
 function _approve_dependency_update {
   [[ "$DRY" == "true" ]] && return
   _dependency_git_repository || fail "Dependency update requires a Git repository"
-  local status untracked untracked_list diff_status answer
+  local status untracked untracked_list diff_status
   status="$(git -C "$DOTFILES_DIR" status --porcelain)" \
     || fail "Failed to inspect dependency repository"
   [[ -n "$status" ]] || return
@@ -1010,14 +1010,7 @@ function _approve_dependency_update {
     fi
   done < "$untracked_list"
   rm -f "$untracked_list"
-  if [[ "$FORCE" == "true" ]]; then
-    info "Activating reviewed dependency changes because --force was supplied"
-    return
-  fi
-  [[ -t 0 ]] || fail "Dependency pins changed; review the diff, then rerun with --force to activate"
-  printf '  [ ?? ] Activate these dependency changes? [y/N] ' >&2
-  read -r answer
-  [[ "$answer" =~ ^[Yy]$ ]] || fail "Dependency activation cancelled; changes remain for review"
+  info "Automatically approving validated dependency changes"
 }
 
 function update_lix_installer_pins {

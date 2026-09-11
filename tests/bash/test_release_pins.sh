@@ -444,6 +444,27 @@ test_dependency_approval_shows_full_diff_before_activation() {
   assert_contains "$releases" 'git -C "$DOTFILES_DIR" ls-files --others --exclude-standard'
 }
 
+test_dependency_approval_is_automatic_after_validation() {
+  local repo="$TEST_TMPDIR/repo" output status=0
+  git init -q "$repo"
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  printf 'old\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm initial
+  printf 'new\n' > "$repo/managed"
+  DOTFILES_DIR="$repo"
+  DRY=false
+  FORCE=false
+
+  output="$(_approve_dependency_update </dev/null 2>&1)" || status=$?
+
+  assert_equals "0" "$status"
+  assert_contains "$output" '+new'
+  assert_contains "$output" 'Automatically approving validated dependency changes'
+  assert_not_contains "$output" 'Activate these dependency changes?'
+}
+
 test_npm_prefetch_uses_repo_locked_nixpkgs() {
   local releases flake
   releases="$(<"$REPO_DIR/scripts/releases.sh")"

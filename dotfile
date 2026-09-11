@@ -119,7 +119,7 @@ Commands:
 
 Options:
   -d, --dry     Dry run (no changes made)
-  -f, --force   Overwrite files and approve dependency activation
+  -f, --force   Overwrite existing files
   -q, --quiet   Only show errors
   -h, --help    Show this help message
 EOF
