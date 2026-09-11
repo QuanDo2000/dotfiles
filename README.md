@@ -91,7 +91,7 @@ Commands:
 
 Options:
   -d, --dry   Dry run (no changes made)
-  -f, --force Overwrite files and approve validated dependency activation
+  -f, --force Overwrite existing files
   -q, --quiet Only show errors
   -h, --help  Show this help message
 ```
@@ -186,19 +186,19 @@ sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
 
 After provisioning, use `dotfile update` to update managed dependencies. On Unix,
 it refreshes every repository-managed pin, runs full checks, shows the resulting
-uncommitted diff, and requires confirmation before activation; non-interactive
-runs must pass `--force`. After successful activation, it commits the reviewed
-changes, fetches and rebases if the upstream advanced, and pushes the current
-branch. Existing unpublished commits stop publication. Windows pulls and activates
-those published reviewed pins instead of installing an unreviewed latest release;
-it reports when npm has a newer Pi release awaiting publication.
+uncommitted diff, then automatically approves and activates validated changes.
+After successful activation, it commits the validated changes, fetches and rebases
+if the upstream advanced, and pushes the current branch. Existing unpublished
+commits stop publication. Windows pulls and activates those published validated
+pins instead of installing an unvalidated latest release; it reports when npm has
+a newer Pi release awaiting publication.
 Full updates install missing native prerequisites for the detected platform
 before activating its configured profile; installed-state detection does not
 select dependencies.
 Use `dotfile update ai` to update only AI tools and configs. On Unix this
 refreshes Codex and Pi release pins, managed AI packages, and Pi extensions with
-the same isolated validation, diff review, and approval boundary. On Windows it
-activates their published reviewed pins. On NixOS the full update ends with:
+the same isolated validation, diff display, and automatic approval. On Windows it
+activates their published validated pins. On NixOS the full update ends with:
 
 ```bash
 nix flake update --flake ~/dotfiles
