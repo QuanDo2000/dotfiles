@@ -212,8 +212,8 @@ function _latest_npm_package_version {
   package="$1"
   metadata="$(curl -fsSL "https://registry.npmjs.org/$package/latest")" \
     || fail "Failed to check latest $package release"
-  version="$(printf '%s\n' "$metadata" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-  [[ -n "$version" ]] || fail "Failed to parse latest $package version"
+  version="$(jq -er '.version | strings | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"))' <<< "$metadata")" \
+    || fail "Failed to parse latest $package version"
   printf '%s\n' "$version"
 }
 
@@ -229,10 +229,6 @@ function _prefetch_release_source_hash {
   store_path="$(jq -r '.storePath // empty' <<< "$output")"
   [[ -n "$hash" && -f "$store_path" ]] || fail "Failed to parse $label archive prefetch"
   printf '%s\t%s\n' "$hash" "$store_path"
-}
-
-function _prefetch_pi_src_hash {
-  _prefetch_release_source_hash "Pi" "$(_pi_archive_url "$1")"
 }
 
 function _download_pi_package_lock {
@@ -267,29 +263,16 @@ function _prefetch_release_npm_deps_hash {
     || fail "Failed to prefetch $label npm deps"
 }
 
-function _prefetch_pi_npm_deps_hash {
-  _prefetch_release_npm_deps_hash "Pi" "$1"
-}
-
 function _write_release_package {
-  local label="$1" package_file="$2" version="$3" src_hash="$4" deps_hash="$5" output_file tmp
-  output_file="${6:-$package_file}"
+  local label="$1" package_file="$2" version="$3" src_hash="$4" deps_hash="$5" output_file="${6:-}"
   [[ -f "$package_file" ]] || fail "Missing $label package file: $package_file"
-  tmp="$output_file"
-  [[ "$output_file" != "$package_file" ]] || tmp="$(mktemp)"
+  [[ -n "$output_file" && "$output_file" != "$package_file" ]] || fail "Separate staging output required for $label"
   sed -E \
     -e 's#version = "[^"]+";#version = "'"$version"'";#' \
     -e 's#^([[:space:]]*hash = ")[^"]+(";)$#\1'"$src_hash"'\2#' \
     -e 's#npmDepsHash = "[^"]+";#npmDepsHash = "'"$deps_hash"'";#' \
-    "$package_file" > "$tmp" \
+    "$package_file" > "$output_file" \
     || fail "Failed to update $label package file"
-  [[ "$tmp" == "$output_file" ]] \
-    || mv "$tmp" "$package_file" \
-    || fail "Failed to update $label package file"
-}
-
-function _write_pi_package {
-  _write_release_package "Pi" "$DOTFILES_DIR/packages/pi-agent.nix" "$1" "$2" "$3" "${4:-$DOTFILES_DIR/packages/pi-agent.nix}"
 }
 
 function _validate_release_files {
@@ -535,10 +518,6 @@ function _obsidian_headless_archive_url {
   printf 'https://registry.npmjs.org/obsidian-headless/-/obsidian-headless-%s.tgz\n' "$1"
 }
 
-function _prefetch_obsidian_headless_src_hash {
-  _prefetch_release_source_hash "Obsidian Headless" "$(_obsidian_headless_archive_url "$1")"
-}
-
 function _download_obsidian_headless_package_lock {
   local version url lock_file tmp_dir tarball
   version="$1"
@@ -561,14 +540,6 @@ function _download_obsidian_headless_package_lock {
       || { rm -rf "$tmp_dir"; fail "Failed to stage Obsidian Headless package lock"; }
   fi
   rm -rf "$tmp_dir"
-}
-
-function _prefetch_obsidian_headless_npm_deps_hash {
-  _prefetch_release_npm_deps_hash "Obsidian Headless" "${1:-$DOTFILES_DIR/packages/obsidian-headless-package-lock.json}"
-}
-
-function _write_obsidian_headless_package {
-  _write_release_package "Obsidian Headless" "$DOTFILES_DIR/packages/obsidian-headless.nix" "$1" "$2" "$3" "${4:-$DOTFILES_DIR/packages/obsidian-headless.nix}"
 }
 
 function _update_obsidian_headless_package { _update_npm_release_package obsidian_headless; }
@@ -626,17 +597,17 @@ function _update_npm_release_package {
       && cp -p "$lock_file" "$tmp_lock" \
       || fail "Failed to stage $label package files"
 
-    if ! prefetched="$("_prefetch_${name}_src_hash" "$version")"; then
+    if ! prefetched="$(_prefetch_release_source_hash "$label" "$("_${name}_archive_url" "$version")")"; then
       printf '%s\n' "$prefetched"
       return 1
     fi
     IFS=$'\t' read -r src_hash archive <<< "$prefetched"
     "_download_${name}_package_lock" "$version" "$tmp_lock" "$archive" || return $?
-    if ! deps_hash="$("_prefetch_${name}_npm_deps_hash" "$tmp_lock")"; then
+    if ! deps_hash="$(_prefetch_release_npm_deps_hash "$label" "$tmp_lock")"; then
       printf '%s\n' "$deps_hash"
       return 1
     fi
-    "_write_${name}_package" "$version" "$src_hash" "$deps_hash" "$tmp_package" || return $?
+    _write_release_package "$label" "$package_file" "$version" "$src_hash" "$deps_hash" "$tmp_package" || return $?
     _validate_release_files "$label" "$tmp_package" "$tmp_lock" "$version" "$src_hash" "$deps_hash" || return $?
     _install_release_file_pair "$tmp_package" "$package_file" "$tmp_lock" "$lock_file" "$label package" "$transaction_dir"
   )

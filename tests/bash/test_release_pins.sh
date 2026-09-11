@@ -3,6 +3,46 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
+test_npm_version_reads_root_field_not_lifecycle_script() {
+  curl() { printf '%s\n' '{"version":"1.2.3","scripts":{"version":"node build.js"}}'; }
+  assert_equals '1.2.3' "$(_latest_npm_package_version fixture)"
+}
+
+test_npm_version_preserves_prerelease_and_build_suffixes() {
+  curl() { printf '%s\n' '{"version":"1.2.3-rc.1+build.42"}'; }
+  assert_equals '1.2.3-rc.1+build.42' "$(_latest_npm_package_version fixture)"
+}
+
+test_npm_version_rejects_invalid_metadata() {
+  local response output status
+  curl() { printf '%s\n' "$response"; }
+  for response in \
+    '{"scripts":{"version":"1.2.3"}}' \
+    '{"version":null}' \
+    '{"version":123}' \
+    '{"version":""}' \
+    '{"version":"node build.js"}' \
+    '{"version":"1.2.3/../../other"}' \
+    '{"version":"1.2.3"'; do
+    status=0
+    output="$(_latest_npm_package_version fixture 2>&1)" || status=$?
+    assert_equals 1 "$status"
+    assert_contains "$output" 'Failed to parse latest fixture version'
+  done
+}
+
+test_release_writer_requires_separate_staging_output() {
+  local package_file="$TEST_TMPDIR/package.nix" destination output status
+  for destination in '' "$package_file"; do
+    printf '{ version = "1.0.0"; }\n' > "$package_file"
+    status=0
+    output="$(_write_release_package fixture "$package_file" 2.0.0 sha256-src sha256-deps "$destination" 2>&1)" || status=$?
+    assert_equals 1 "$status"
+    assert_contains "$output" 'Separate staging output required'
+    assert_equals '{ version = "1.0.0"; }' "$(<"$package_file")"
+  done
+}
+
 test_update_all_dependency_pins_runs_every_managed_updater() {
   local calls="$TEST_TMPDIR/calls.log" name
   for name in \
