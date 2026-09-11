@@ -26,6 +26,13 @@ test_installer_places_exact_service_state_backup_files_in_sandbox() {
 }
 
 
+test_backup_no_longer_depends_on_retired_homeserver() {
+  if grep -q homeserver "$service_state_dir/homelab-service-state-backup"; then
+    echo "  retired homeserver still referenced by service-state backup" >> "$ERROR_FILE"
+  fi
+}
+
+
 test_arch_install_flow_installs_system_backup_after_home_manager_activation() {
   source_scripts utils.sh packages.sh
   local calls="$TEST_TMPDIR/calls"

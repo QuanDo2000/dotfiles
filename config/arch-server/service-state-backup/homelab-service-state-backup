@@ -138,8 +138,6 @@ preflight() {
   require_path /home/quando/services/servarr/compose.yml
   require_path /home/quando/services/qbittorrent/compose.yml
   require_path /home/quando/services/forgejo/compose.yml
-  require_path /etc/homeserver/docker-compose.yml
-  require_path /var/lib/homeserver
   require_path /etc/navidrome
   require_path /var/lib/navidrome
   require_path /etc/jellyfin
@@ -149,7 +147,6 @@ preflight() {
   docker compose -f /home/quando/services/servarr/compose.yml config --quiet
   docker compose -f /home/quando/services/qbittorrent/compose.yml config --quiet
   docker compose -f /home/quando/services/forgejo/compose.yml config --quiet
-  docker compose -f /etc/homeserver/docker-compose.yml config --quiet
 }
 
 require_root
@@ -177,9 +174,6 @@ backup_compose_project servarr /home/quando/services/servarr/compose.yml \
 backup_compose_project qbittorrent /home/quando/services/qbittorrent/compose.yml \
   -C / home/quando/services/qbittorrent home/quando/.config/protonvpn/proton.conf
 
-backup_compose_project homeserver /etc/homeserver/docker-compose.yml \
-  -C / etc/homeserver var/lib/homeserver
-
 backup_native_service jellyfin jellyfin.service \
   -C / etc/jellyfin var/lib/jellyfin
 
@@ -193,7 +187,7 @@ backup_native_service navidrome navidrome.service \
   printf 'kernel=%s\n' "$(uname -r)"
   printf '\ncontainer_images:\n'
   docker inspect --format '{{.Name}} {{.Config.Image}} {{.Image}}' \
-    forgejo prowlarr radarr lidarr sonarr protonvpn qbittorrent homeserver
+    forgejo prowlarr radarr lidarr sonarr protonvpn qbittorrent
   printf '\nnative_packages:\n'
   pacman -Q jellyfin-server navidrome
 } >"$STAGING/metadata.txt"
