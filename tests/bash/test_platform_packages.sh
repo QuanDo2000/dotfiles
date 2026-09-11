@@ -589,6 +589,12 @@ test_waybar_shows_hyprsunset_status() {
   assert_not_contains "$(jq -r .text <<<"$night")" ":"
   assert_contains "$(jq -r .tooltip <<<"$day")" "20:00"
   assert_contains "$(jq -r .tooltip <<<"$night")" "07:00"
+
+  local temperature=$'45"00\\\b'
+  mkdir -p "$HOME/.config/hypr"
+  printf 'time = 07:00\ntime = 20:00\ntemperature = %s\n' "$temperature" > "$HOME/.config/hypr/hyprsunset.conf"
+  night="$(XDG_CONFIG_HOME="$HOME/.config" HYPRSUNSET_RUNNING=true "$REPO_DIR/scripts/hyprsunset-status.sh" 21:00)"
+  assert_equals "$(printf 'Night light: %sK\nNormal colors at 07:00' "$temperature")" "$(jq -r .tooltip <<<"$night")"
 }
 
 test_waybar_shows_input_method() {

@@ -35,14 +35,5 @@ else
   class="inactive"
 fi
 
-json_escape() {
-  local value=$1
-  value=${value//\\/\\\\}
-  value=${value//\"/\\\"}
-  value=${value//$'\n'/\\n}
-  value=${value//$'\r'/\\r}
-  value=${value//$'\t'/\\t}
-  printf '%s' "$value"
-}
-printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' \
-  "$(json_escape "$text")" "$(json_escape "$tooltip")" "$(json_escape "$class")"
+jq -cn --arg text "$text" --arg tooltip "$tooltip" --arg class "$class" \
+  '{text: $text, tooltip: $tooltip, class: $class}'
