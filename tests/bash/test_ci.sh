@@ -16,7 +16,7 @@ test_ci_bash_jobs_share_pinned_environments_and_parallelize_linux_checks() {
   workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
 
   assert_contains "$workflow" $'  bash-linux:\n    needs: changes'
-  assert_contains "$workflow" 'nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh'
+  assert_contains "$workflow" 'nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh test_release_pins.sh'
   assert_contains "$workflow" 'nix develop . -c bash -c'
   assert_equals 1 "$(grep -c 'neovim_pid=\$!' <<< "$workflow")"
   assert_equals 1 "$(grep -c 'core_pid=\$!' <<< "$workflow")"
@@ -52,6 +52,8 @@ test_ci_filters_pull_requests_but_runs_full_main_and_schedule() {
   assert_equals $'linux=true\nmacos=false\nwindows=true\nnix=false' "$output"
   output="$(printf '%s\n' config/darwin.nix | bash "$filter")"
   assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=true' "$output"
+  output="$(printf '%s\n' tests/bash/test_release_pins.sh | bash "$filter")"
+  assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=false' "$output"
   output="$(printf '%s\n' config/nixos-wsl/configuration.nix | bash "$filter")"
   assert_equals $'linux=true\nmacos=false\nwindows=false\nnix=true' "$output"
   output="$(printf '%s\n' config/shared/ai/AGENTS.md | bash "$filter")"

@@ -26,7 +26,23 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
   unset -f _run_python_pin_batch
 }
 
-test_dependency_publish_rebases_and_pushes_update() {
+test_dependency_refresh_stops_after_failed_release() {
+  local calls="$TEST_TMPDIR/calls" status=0
+  _update_lix_installer_pins() { :; }
+  _update_codex_release_package() { return 42; }
+  _update_pi_release_package() { echo pi >> "$calls"; }
+  _update_obsidian_headless_package() { echo obsidian >> "$calls"; }
+  _run_python_pin_batch() { echo batch >> "$calls"; }
+
+  _update_all_dependency_pins || status=$?
+  assert_equals 42 "$status"
+  status=0
+  _refresh_ai_dependency_set || status=$?
+  assert_equals 42 "$status"
+  [[ ! -e "$calls" ]] || echo '  refresh continued after failed release' >> "$ERROR_FILE"
+}
+
+prepare_dependency_publication() {
   local remote="$TEST_TMPDIR/remote.git" repo="$TEST_TMPDIR/repo" other="$TEST_TMPDIR/other"
   git init -q --bare "$remote"
   git clone -q "$remote" "$repo"
@@ -52,14 +68,37 @@ test_dependency_publish_rebases_and_pushes_update() {
   DOTFILES_DIR="$repo"
   DRY=false
   _dependency_update_fingerprint > "$(_dependency_update_marker full)"
+}
+
+test_dependency_publish_rebases_and_pushes_update() {
+  prepare_dependency_publication
+  local repo="$DOTFILES_DIR" remote="$TEST_TMPDIR/remote.git"
+  _validate_dependency_update() {
+    git -C "$DOTFILES_DIR" rev-parse HEAD > "$TEST_TMPDIR/validated-head"
+  }
   _publish_dependency_update full
 
+  assert_file_exists "$TEST_TMPDIR/validated-head"
+  assert_equals "$(git -C "$repo" rev-parse HEAD)" "$(cat "$TEST_TMPDIR/validated-head" 2>/dev/null || true)"
   assert_equals "" "$(git -C "$repo" status --short)"
   assert_equals "chore: update dependencies" "$(git -C "$repo" log -1 --format=%s)"
   assert_equals "$(git -C "$repo" rev-parse HEAD)" "$(git --git-dir="$remote" rev-parse main)"
   assert_equals "upstream" "$(<"$repo/upstream")"
 }
 
+
+test_dependency_publish_does_not_push_failed_rebase_validation() {
+  prepare_dependency_publication
+  local remote="$TEST_TMPDIR/remote.git" before output status=0
+  before="$(git --git-dir="$remote" rev-parse main)"
+  _validate_dependency_update() { return 1; }
+
+  output="$(_publish_dependency_update full 2>&1)" || status=$?
+
+  assert_equals 1 "$status"
+  assert_equals "$before" "$(git --git-dir="$remote" rev-parse main)"
+  assert_contains "$output" 'refusing publication'
+}
 
 test_python_pin_batch_uses_one_nix_develop_and_preserves_order() {
   local calls="$TEST_TMPDIR/pin-batch.log"
@@ -265,6 +304,114 @@ test_dependency_update_lock_rejects_live_owner() {
   _release_dependency_update_lock "$lock"
   DEPENDENCY_UPDATE_LOCK=
   DOTFILES_DIR="$old_dotfiles"
+}
+
+test_dependency_stale_lock_cannot_be_stolen_from_new_owner() {
+  RELEASE_SCRIPT="$REPO_DIR/scripts/releases.sh" LOCK_ROOT="$TEST_TMPDIR" python3 - <<'PY'
+import os
+from pathlib import Path
+import select
+import subprocess
+
+root = Path(os.environ['LOCK_ROOT'])
+lock = root / 'dotfile-dependency-update.lock'
+owner = root / (lock.name + '.owner.stale')
+owner.mkdir()
+(owner / 'pid').write_text('99999999|dead\n')
+lock.symlink_to(owner.name)
+base = '''source "$RELEASE_SCRIPT"
+_dependency_git_common_dir() { printf '%s\\n' "$LOCK_ROOT"; }
+'''
+# Pause the old check-then-rename takeover precisely at its race window.
+pause = '''mv() {
+  if [[ "$1" == "$LOCK_ROOT/dotfile-dependency-update.lock" ]]; then
+    echo TAKEOVER
+    read -r _
+  fi
+  command mv "$@"
+}
+'''
+acquire = '''if _acquire_dependency_update_lock; then
+  echo ACQUIRED
+  read -r _
+  _release_dependency_update_lock
+else
+  echo DENIED
+fi
+'''
+def start(script):
+    return subprocess.Popen(['bash', '-c', base + script + acquire],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+def line(process):
+    assert select.select([process.stdout], [], [], 10)[0], 'lock operation timed out'
+    return process.stdout.readline().strip()
+processes = []
+try:
+    slow = start(pause)
+    processes.append(slow)
+    first = line(slow)
+    assert first in ('TAKEOVER', 'ACQUIRED'), first
+    fast = start('')
+    processes.append(fast)
+    second = line(fast)
+    if first == 'TAKEOVER':
+        assert second == 'ACQUIRED', second
+        slow.stdin.write('continue\n')
+        slow.stdin.flush()
+        assert line(slow) == 'DENIED', 'stale takeover stole a live owner lock'
+    else:
+        assert second == 'DENIED', 'two live processes acquired the same lock'
+finally:
+    for process in processes:
+        process.communicate('release\n', timeout=10)
+PY
+}
+
+test_update_locks_survive_contention_and_release_after_process_death() {
+  RELEASE_SCRIPT="$REPO_DIR/scripts/releases.sh" LOCK_ROOT="$TEST_TMPDIR" python3 - <<'PY'
+import os
+from pathlib import Path
+import select
+import subprocess
+
+root = Path(os.environ['LOCK_ROOT'])
+base = '''source "$RELEASE_SCRIPT"
+fail() { printf '%s\\n' "$*" >&2; exit 1; }
+_dependency_git_common_dir() { printf '%s\\n' "$LOCK_ROOT"; }
+'''
+for kind in ('dependency', 'release'):
+    if kind == 'dependency':
+        acquire = '_acquire_dependency_update_lock || exit 1\n'
+        lock = root / 'dotfile-dependency-update.flock'
+        prepare = ''
+    else:
+        (root / 'package').write_text('old package')
+        (root / 'lock').write_text('old lock')
+        acquire = '_acquire_release_transaction "$LOCK_ROOT/transaction" "$LOCK_ROOT/package" "$LOCK_ROOT/lock" fixture\n'
+        lock = root / 'transaction.flock'
+        prepare = '''cp "$LOCK_ROOT/package" "$LOCK_ROOT/transaction/package.backup"
+cp "$LOCK_ROOT/lock" "$LOCK_ROOT/transaction/lock.backup"
+echo prepared > "$LOCK_ROOT/transaction/state"
+echo partial > "$LOCK_ROOT/package"
+'''
+    owner = subprocess.Popen(['bash', '-c', base + acquire + prepare + 'echo HELD; read -r _'],
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    try:
+        assert select.select([owner.stdout], [], [], 10)[0], 'acquisition timed out'
+        assert owner.stdout.readline().strip() == 'HELD'
+        inode = lock.stat().st_ino
+        contender = subprocess.run(['bash', '-c', base + acquire], capture_output=True, timeout=10)
+        assert contender.returncode != 0, f'{kind}: admitted concurrent owner'
+    finally:
+        owner.kill()
+        owner.communicate(timeout=10)
+    successor = subprocess.run(['bash', '-c', base + acquire], capture_output=True, timeout=10)
+    assert successor.returncode == 0, successor.stderr
+    assert lock.stat().st_ino == inode, 'stable lock file was replaced'
+    if kind == 'release':
+        assert (root / 'package').read_text() == 'old package'
+        assert (root / 'lock').read_text() == 'old lock'
+PY
 }
 
 test_dependency_marker_rejects_opposite_scope() {
@@ -716,6 +863,26 @@ test_release_transaction_rejects_live_owner() {
   assert_equals "1" "$exit_code"
   assert_contains "$output" "test release update already running"
   _release_release_transaction "$transaction_dir"
+}
+
+test_release_transaction_cleans_completed_journal_and_closes_lock() {
+  local package_file="$TEST_TMPDIR/package.nix" lock_file="$TEST_TMPDIR/package-lock.json"
+  local transaction_dir="$TEST_TMPDIR/release.transaction"
+  printf 'package\n' > "$package_file"
+  printf 'lock\n' > "$lock_file"
+  _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" fixture
+
+  _release_release_transaction "$transaction_dir"
+
+  [[ ! -e "$transaction_dir" && ! -L "$transaction_dir" ]] \
+    || echo '  completed transaction journal was not removed' >> "$ERROR_FILE"
+  assert_equals '' "${RELEASE_TRANSACTION_LOCK:-}"
+  python3 - "$transaction_dir.flock" <<'PY'
+import fcntl
+import sys
+with open(sys.argv[1], 'a') as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+PY
 }
 
 test_release_transaction_recovers_orphaned_recovery_journal() {

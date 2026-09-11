@@ -32,7 +32,7 @@ restart_compose() {
   local -a services
   read -r -a services <<<"$names"
   log "Restarting Docker services from $compose: ${services[*]}"
-  docker compose -f "$compose" start "${services[@]}"
+  docker compose -f "$compose" start "${services[@]}" || return $?
   unset 'COMPOSE_RUNNING[$compose]'
 }
 
@@ -75,13 +75,14 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 stop_compose() {
-  local compose=$1
+  local compose=$1 output
   local -a running=()
-  mapfile -t running < <(docker compose -f "$compose" ps --services --filter status=running)
-  if ((${#running[@]} == 0)); then
+  output=$(docker compose -f "$compose" ps --services --filter status=running) || return $?
+  if [[ -z $output ]]; then
     log "No running services in $compose"
     return 0
   fi
+  mapfile -t running <<<"$output"
 
   COMPOSE_RUNNING["$compose"]="${running[*]}"
   STOPPED_COMPOSE+=("$compose")
@@ -112,7 +113,7 @@ archive() {
 backup_compose_project() {
   local name=$1 compose=$2
   shift 2
-  stop_compose "$compose"
+  stop_compose "$compose" || return $?
   archive "$name" "$@"
   restart_compose "$compose"
 }

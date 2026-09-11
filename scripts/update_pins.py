@@ -128,23 +128,6 @@ def github_asset(release: dict, name: str) -> dict:
     return matches[0]
 
 
-def verify_asset(release: dict, name: str, destination: Path, checksum_file: bool = False) -> str:
-    asset = github_asset(release, name)
-    download(asset["browser_download_url"], destination)
-    actual = sha256(destination)
-    digest = asset.get("digest")
-    if digest and digest != f"sha256:{actual}":
-        die(f"GitHub digest mismatch for {name}")
-    if checksum_file:
-        checksum_asset = github_asset(release, name + ".sha256")
-        checksum_path = destination.with_name(destination.name + ".sha256")
-        download(checksum_asset["browser_download_url"], checksum_path)
-        expected = checksum_path.read_text(encoding="utf-8").split()[0].lower()
-        if not re.fullmatch(r"[0-9a-f]{64}", expected) or expected != actual:
-            die(f"upstream checksum mismatch for {name}")
-    return actual
-
-
 def locked_node(repo: Path) -> tuple[str, str]:
     expression = (
         f'let f = builtins.getFlake "path:{repo}"; '

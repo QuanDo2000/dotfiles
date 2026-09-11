@@ -26,6 +26,46 @@ test_installer_places_exact_service_state_backup_files_in_sandbox() {
 }
 
 
+# Load function definitions only; never run the root backup against this host.
+load_backup_functions() {
+  source <(awk '/^require_root$/ { exit } { sub(/^declare -/, "declare -g"); print }' "$service_state_dir/homelab-service-state-backup")
+  trap - EXIT INT TERM
+}
+
+test_backup_aborts_when_docker_inventory_fails() {
+  local output status=0
+  output="$(
+    load_backup_functions
+    docker() { return 42; }
+    archive() { echo ARCHIVED; }
+    backup_compose_project example /fixture/compose.yml
+  )" || status=$?
+  assert_equals 42 "$status"
+  assert_not_contains "$output" ARCHIVED
+}
+
+test_backup_cleanup_reports_failed_restart() {
+  local output status=0
+  output="$(
+    load_backup_functions
+    docker() { return 42; }
+    COMPOSE_RUNNING[/fixture/compose.yml]=app
+    STOPPED_COMPOSE=(/fixture/compose.yml)
+    cleanup
+  )" 2>/dev/null || status=$?
+  assert_equals 1 "$status"
+}
+
+test_backup_retains_record_when_restart_fails() {
+  load_backup_functions
+  docker() { return 42; }
+  COMPOSE_RUNNING[/fixture/compose.yml]=app
+  local status=0
+  restart_compose /fixture/compose.yml || status=$?
+  assert_equals 42 "$status"
+  assert_equals app "${COMPOSE_RUNNING[/fixture/compose.yml]:-}"
+}
+
 test_backup_no_longer_depends_on_retired_homeserver() {
   if grep -q homeserver "$service_state_dir/homelab-service-state-backup"; then
     echo "  retired homeserver still referenced by service-state backup" >> "$ERROR_FILE"

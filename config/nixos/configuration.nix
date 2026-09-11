@@ -12,27 +12,15 @@ let
 in
 {
   imports = [
+    ./common.nix
     ../hardware-configuration.nix
   ];
 
   # --- System core ---------------------------------------------------------
-  system.stateVersion = machine.stateVersion;
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  nixpkgs.config.allowUnfree = true;   # Home Manager uses google-chrome.
-  # Keep /nix/store bounded: dedup identical files and prune old generations.
-  nix.settings.auto-optimise-store = true;
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 30d";
-  };
-  time.timeZone = machine.timeZone;
-  i18n.defaultLocale = "en_US.UTF-8";
   console = {
     font = "ter-v32n";
     packages = [ pkgs.terminus_font ];
   };
-  networking.hostName = machine.hostName;
   networking.networkmanager.enable = true;
 
   services.openssh = {
@@ -49,34 +37,15 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
 
   # --- User ----------------------------------------------------------------
-  programs.zsh.enable = true;
   services.gnome.gnome-keyring.enable = true;
-  security.sudo.extraConfig = ''
-    Defaults timestamp_timeout=30
-  '';
-  programs.gnupg.agent = {
-    enable = true;
-    pinentryPackage = pkgs.pinentry-gnome3;
-    settings = {
-      default-cache-ttl = 28800; # 8 hours
-      max-cache-ttl = 86400;     # 24 hours
-    };
-  };
-  users.users.${machine.username} = {
-    isNormalUser = true;
-    extraGroups = [ "wheel" "networkmanager" "video" ];
-    shell = pkgs.zsh;
-  };
-
-  home-manager.useGlobalPkgs = true;
-  home-manager.useUserPackages = true;
+  programs.gnupg.agent.pinentryPackage = pkgs.pinentry-gnome3;
+  users.users.${machine.username}.extraGroups = [ "wheel" "networkmanager" "video" ];
   home-manager.extraSpecialArgs = {
     desktop = true;
     personalApps = true;
     obsidianSync = true;
     googleDriveSync = true;
   };
-  home-manager.users.${machine.username} = import ../home.nix;
 
   # --- Desktop: Hyprland + greetd login ------------------------------------
   hardware.graphics.enable = true;

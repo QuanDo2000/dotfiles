@@ -20,3 +20,4 @@ config/shared/ai/codex/tmp/
 config/unix/config/fcitx5/conf/cached_layouts
 
 result
+packages/.*-update.transaction.flock

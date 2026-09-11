@@ -304,6 +304,23 @@ function _validate_release_files {
     || fail "Staged $label package does not contain expected pins"
 }
 
+# flock is tied to the inherited open file description: Python can acquire it,
+# then exit while Bash keeps it held. Close the Bash FD to release; never unlink
+# the stable lock file or explicitly unlock a descriptor shared with children.
+# debt: local Unix checkouts only; revisit locking before supporting network filesystems.
+function _lock_fd {
+  python3 - "$1" <<'PY'
+import fcntl
+import sys
+
+try:
+    fcntl.flock(int(sys.argv[1]), fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    sys.exit(1)
+PY
+}
+
+# Retained for fail-closed migration of journals written by older updaters.
 function _release_process_start {
   local pid="$1" stat rest
   if [[ -r "/proc/$pid/stat" ]]; then
@@ -408,8 +425,8 @@ function _cleanup_orphaned_release_claims {
 }
 
 function _recover_orphaned_release_journal {
-  local transaction_dir="$1" package_file="$2" lock_file="$3" label="$4" identity="$5"
-  local journal="" candidate claim owner new_claim new_journal
+  local transaction_dir="$1" package_file="$2" lock_file="$3" label="$4"
+  local journal="" candidate claim owner
   for candidate in "${transaction_dir}.claim."*.journal; do
     [[ -d "$candidate" || -L "$candidate" ]] || continue
     [[ -z "$journal" ]] || fail "Multiple interrupted $label recovery journals found"
@@ -424,64 +441,44 @@ function _recover_orphaned_release_journal {
   _release_owner_is_live "$owner" \
     && fail "$label update recovery already running"
 
-  new_claim="$(mktemp "${transaction_dir}.claim.XXXXXX")" \
-    || fail "Failed to prepare interrupted $label recovery claim"
-  printf '%s\n' "$identity" > "$new_claim" \
-    && _sync_paths "$new_claim" "${new_claim%/*}" \
-    || { rm -f "$new_claim"; fail "Failed to prepare interrupted $label recovery claim"; }
-  new_journal="$new_claim.journal"
-  mv "$journal" "$new_journal" 2>/dev/null \
-    || { rm -f "$new_claim"; fail "$label recovery journal changed"; }
-  rm -f "$claim"
-  _recover_release_transaction "$new_journal" "$package_file" "$lock_file" "$transaction_dir" \
-    || fail "Failed to recover interrupted $label update"
-  _remove_release_journal "$new_journal" "$transaction_dir" \
-    || fail "Failed to clean recovered $label journal"
-  rm -f "$new_claim"
-}
-
-function _acquire_release_transaction {
-  local transaction_dir="$1" package_file="$2" lock_file="$3" label="$4"
-  local pid identity owner claim journal owner_dir
-  pid="${BASHPID:-$$}"
-  identity="$(_release_owner_identity "$pid")" || fail "Failed to identify $label update process"
-  _cleanup_orphaned_release_claims "$transaction_dir"
-  _recover_orphaned_release_journal "$transaction_dir" "$package_file" "$lock_file" "$label" "$identity"
-
-  if [[ ! -e "$transaction_dir" && ! -L "$transaction_dir" ]]; then
-    owner_dir="$(mktemp -d "${transaction_dir}.owner.XXXXXX")" \
-      || fail "Failed to create $label update owner"
-    printf '%s\n' "$identity" > "$owner_dir/pid" \
-      && _sync_paths "$owner_dir/pid" "$owner_dir" \
-      || { rm -rf "$owner_dir"; fail "Failed to initialize $label update lock"; }
-    ln -s "$(basename "$owner_dir")" "$transaction_dir" 2>/dev/null \
-      || { rm -rf "$owner_dir"; fail "Failed to publish $label update lock"; }
-    _recover_orphaned_release_journal "$transaction_dir" "$package_file" "$lock_file" "$label" "$identity"
-    return
-  fi
-
-  owner_dir="$(_release_journal_owner_dir "$transaction_dir" "$transaction_dir")" \
-    || fail "$label update owner directory is invalid"
-  owner="$(cat "$owner_dir/pid" 2>/dev/null || true)"
-  _release_owner_identity_valid "$owner" \
-    || fail "$label update lock owner is incomplete"
-  _release_owner_is_live "$owner" \
-    && fail "$label update already running"
-
-  claim="$(mktemp "${transaction_dir}.claim.XXXXXX")" \
-    || fail "Failed to prepare interrupted $label recovery claim"
-  printf '%s\n' "$identity" > "$claim" \
-    && _sync_paths "$claim" "${claim%/*}" \
-    || { rm -f "$claim"; fail "Failed to prepare interrupted $label recovery claim"; }
-  journal="$claim.journal"
-  mv "$transaction_dir" "$journal" 2>/dev/null \
-    || { rm -f "$claim"; fail "$label update lock changed"; }
   _recover_release_transaction "$journal" "$package_file" "$lock_file" "$transaction_dir" \
     || fail "Failed to recover interrupted $label update"
   _remove_release_journal "$journal" "$transaction_dir" \
     || fail "Failed to clean recovered $label journal"
   rm -f "$claim"
-  _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "$label"
+}
+
+function _acquire_release_transaction {
+  local transaction_dir="$1" package_file="$2" lock_file="$3" label="$4"
+  local identity owner owner_dir pid="${BASHPID:-$$}"
+  [[ -z "${RELEASE_TRANSACTION_LOCK:-}" ]] || fail "$label update already running"
+  [[ ! -L "$transaction_dir.flock" ]] || fail "$label lock file is a symlink"
+  exec 9>> "$transaction_dir.flock" || fail "Failed to open $label lock file"
+  _lock_fd 9 || fail "$label update already running"
+  RELEASE_TRANSACTION_LOCK="$transaction_dir"
+  identity="$(_release_owner_identity "$pid")" || fail "Failed to identify $label update process"
+  _cleanup_orphaned_release_claims "$transaction_dir"
+  _recover_orphaned_release_journal "$transaction_dir" "$package_file" "$lock_file" "$label"
+
+  if [[ -e "$transaction_dir" || -L "$transaction_dir" ]]; then
+    owner_dir="$(_release_journal_owner_dir "$transaction_dir" "$transaction_dir")" \
+      || fail "$label update owner directory is invalid"
+    owner="$(cat "$owner_dir/pid" 2>/dev/null || true)"
+    _release_owner_identity_valid "$owner" || fail "$label update lock owner is incomplete"
+    _release_owner_is_live "$owner" && fail "$label update already running"
+    _recover_release_transaction "$transaction_dir" "$package_file" "$lock_file" "$transaction_dir" \
+      || fail "Failed to recover interrupted $label update"
+    _remove_release_journal "$transaction_dir" "$transaction_dir" \
+      || fail "Failed to clean recovered $label journal"
+  fi
+
+  owner_dir="$(mktemp -d "${transaction_dir}.owner.XXXXXX")" \
+    || fail "Failed to create $label update owner"
+  printf '%s\n' "$identity" > "$owner_dir/pid" \
+    && _sync_paths "$owner_dir/pid" "$owner_dir" \
+    || { rm -rf "$owner_dir"; fail "Failed to initialize $label update lock"; }
+  ln -s "$(basename "$owner_dir")" "$transaction_dir" 2>/dev/null \
+    || { rm -rf "$owner_dir"; fail "Failed to publish $label update lock"; }
 }
 
 function _release_release_transaction {
@@ -492,8 +489,12 @@ function _release_release_transaction {
   owner_dir="$(_release_journal_owner_dir "$transaction_dir" "$transaction_dir")" || return 0
   owner="$(cat "$owner_dir/pid" 2>/dev/null || true)"
   state="$(cat "$owner_dir/state" 2>/dev/null || true)"
-  [[ "$owner" == "$identity" && "$state" != "prepared" ]] || return 0
-  _remove_release_journal "$transaction_dir" "$transaction_dir"
+  [[ "$owner" == "$identity" ]] || return 0
+  if [[ "$state" != prepared ]]; then
+    _remove_release_journal "$transaction_dir" "$transaction_dir" || return 1
+  fi
+  RELEASE_TRANSACTION_LOCK=
+  exec 9>&-
 }
 
 function _install_release_file_pair {
@@ -528,58 +529,7 @@ function _install_release_file_pair {
     || fail "Failed to clean up $label backups"
 }
 
-function _update_pi_release_package {
-  if [[ "$DRY" == "true" ]]; then
-    info "Would update Pi package from the latest npm release"
-    return
-  fi
-
-  local package_file="$DOTFILES_DIR/packages/pi-agent.nix"
-  local lock_file="$DOTFILES_DIR/packages/pi-agent-npm-shrinkwrap.json"
-  [[ -f "$package_file" ]] || fail "Missing Pi package file: $package_file"
-  [[ -f "$lock_file" ]] || fail "Missing Pi package lock: $lock_file"
-  (
-    local transaction_dir="$DOTFILES_DIR/packages/.pi-update.transaction"
-    local stage_dir="" version current_version tmp_package tmp_lock prefetched src_hash archive deps_hash
-    if ! _release_transaction_pending "$transaction_dir"; then
-      version="$(_latest_npm_package_version @earendil-works/pi-coding-agent)"
-      current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
-      if [[ "$current_version" == "$version" ]]; then
-        info "Pi package already at $version"
-        return
-      fi
-    fi
-    trap '[[ -z "$stage_dir" ]] || rm -rf "$stage_dir"; _release_release_transaction "$transaction_dir"' EXIT
-    trap 'exit 130' INT
-    trap 'exit 143' TERM
-    _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "Pi package"
-
-    version="$(_latest_npm_package_version @earendil-works/pi-coding-agent)"
-    current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
-    if [[ "$current_version" == "$version" ]]; then
-      info "Pi package already at $version"
-      return
-    fi
-
-    info "Updating Pi package to $version..."
-    _ensure_nix
-    stage_dir="$transaction_dir/stage"
-    mkdir "$stage_dir" || fail "Failed to create Pi staging directory"
-    tmp_package="$stage_dir/pi-agent.nix"
-    tmp_lock="$stage_dir/pi-agent-npm-shrinkwrap.json"
-    cp -p "$package_file" "$tmp_package" \
-      && cp -p "$lock_file" "$tmp_lock" \
-      || fail "Failed to stage Pi package files"
-
-    prefetched="$(_prefetch_pi_src_hash "$version")"
-    IFS=$'\t' read -r src_hash archive <<< "$prefetched"
-    _download_pi_package_lock "$version" "$tmp_lock" "$archive"
-    deps_hash="$(_prefetch_pi_npm_deps_hash "$tmp_lock")"
-    _write_pi_package "$version" "$src_hash" "$deps_hash" "$tmp_package"
-    _validate_release_files "Pi" "$tmp_package" "$tmp_lock" "$version" "$src_hash" "$deps_hash"
-    _install_release_file_pair "$tmp_package" "$package_file" "$tmp_lock" "$lock_file" "Pi package" "$transaction_dir"
-  )
-}
+function _update_pi_release_package { _update_npm_release_package pi; }
 
 function _obsidian_headless_archive_url {
   printf 'https://registry.npmjs.org/obsidian-headless/-/obsidian-headless-%s.tgz\n' "$1"
@@ -621,70 +571,82 @@ function _write_obsidian_headless_package {
   _write_release_package "Obsidian Headless" "$DOTFILES_DIR/packages/obsidian-headless.nix" "$1" "$2" "$3" "${4:-$DOTFILES_DIR/packages/obsidian-headless.nix}"
 }
 
-function _update_obsidian_headless_package {
+function _update_obsidian_headless_package { _update_npm_release_package obsidian_headless; }
+
+function _update_npm_release_package {
+  local name="$1" label npm_package package_name lock_name transaction
+  case "$name" in
+    pi)
+      label=Pi npm_package=@earendil-works/pi-coding-agent
+      package_name=pi-agent.nix lock_name=pi-agent-npm-shrinkwrap.json transaction=pi ;;
+    obsidian_headless)
+      label="Obsidian Headless" npm_package=obsidian-headless
+      package_name=obsidian-headless.nix lock_name=obsidian-headless-package-lock.json transaction=obsidian ;;
+    *) fail "Unknown npm release: $name" ;;
+  esac
   if [[ "$DRY" == "true" ]]; then
-    info "Would update Obsidian Headless package from the latest npm release"
+    info "Would update $label package from the latest npm release"
     return
   fi
 
-  local package_file="$DOTFILES_DIR/packages/obsidian-headless.nix"
-  local lock_file="$DOTFILES_DIR/packages/obsidian-headless-package-lock.json"
-  [[ -f "$package_file" ]] || fail "Missing Obsidian Headless package file: $package_file"
-  [[ -f "$lock_file" ]] || fail "Missing Obsidian Headless package lock: $lock_file"
+  local package_file="$DOTFILES_DIR/packages/$package_name"
+  local lock_file="$DOTFILES_DIR/packages/$lock_name"
+  [[ -f "$package_file" ]] || fail "Missing $label package file: $package_file"
+  [[ -f "$lock_file" ]] || fail "Missing $label package lock: $lock_file"
   (
-    local transaction_dir="$DOTFILES_DIR/packages/.obsidian-update.transaction"
+    local transaction_dir="$DOTFILES_DIR/packages/.$transaction-update.transaction"
     local stage_dir="" version current_version tmp_package tmp_lock prefetched src_hash archive deps_hash
     if ! _release_transaction_pending "$transaction_dir"; then
-      version="$(_latest_npm_package_version obsidian-headless)"
+      version="$(_latest_npm_package_version "$npm_package")" || return 1
       current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
       if [[ "$current_version" == "$version" ]]; then
-        info "Obsidian Headless package already at $version"
+        info "$label package already at $version"
         return
       fi
     fi
     trap '[[ -z "$stage_dir" ]] || rm -rf "$stage_dir"; _release_release_transaction "$transaction_dir"' EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
-    _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "Obsidian Headless package"
+    _acquire_release_transaction "$transaction_dir" "$package_file" "$lock_file" "$label package" || return $?
 
-    version="$(_latest_npm_package_version obsidian-headless)"
+    version="$(_latest_npm_package_version "$npm_package")" || return 1
     current_version="$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";.*/\1/p' "$package_file")"
     if [[ "$current_version" == "$version" ]]; then
-      info "Obsidian Headless package already at $version"
+      info "$label package already at $version"
       return
     fi
 
-    info "Updating Obsidian Headless package to $version..."
+    info "Updating $label package to $version..."
     _ensure_nix
     stage_dir="$transaction_dir/stage"
-    mkdir "$stage_dir" || fail "Failed to create Obsidian Headless staging directory"
-    tmp_package="$stage_dir/obsidian-headless.nix"
-    tmp_lock="$stage_dir/obsidian-headless-package-lock.json"
+    mkdir "$stage_dir" || fail "Failed to create $label staging directory"
+    tmp_package="$stage_dir/$package_name"
+    tmp_lock="$stage_dir/$lock_name"
     cp -p "$package_file" "$tmp_package" \
       && cp -p "$lock_file" "$tmp_lock" \
-      || fail "Failed to stage Obsidian Headless package files"
+      || fail "Failed to stage $label package files"
 
-    if ! prefetched="$(_prefetch_obsidian_headless_src_hash "$version")"; then
+    if ! prefetched="$("_prefetch_${name}_src_hash" "$version")"; then
       printf '%s\n' "$prefetched"
       return 1
     fi
     IFS=$'\t' read -r src_hash archive <<< "$prefetched"
-    _download_obsidian_headless_package_lock "$version" "$tmp_lock" "$archive"
-    if ! deps_hash="$(_prefetch_obsidian_headless_npm_deps_hash "$tmp_lock")"; then
+    "_download_${name}_package_lock" "$version" "$tmp_lock" "$archive" || return $?
+    if ! deps_hash="$("_prefetch_${name}_npm_deps_hash" "$tmp_lock")"; then
       printf '%s\n' "$deps_hash"
       return 1
     fi
-    _write_obsidian_headless_package "$version" "$src_hash" "$deps_hash" "$tmp_package"
-    _validate_release_files "Obsidian Headless" "$tmp_package" "$tmp_lock" "$version" "$src_hash" "$deps_hash"
-    _install_release_file_pair "$tmp_package" "$package_file" "$tmp_lock" "$lock_file" "Obsidian Headless package" "$transaction_dir"
+    "_write_${name}_package" "$version" "$src_hash" "$deps_hash" "$tmp_package" || return $?
+    _validate_release_files "$label" "$tmp_package" "$tmp_lock" "$version" "$src_hash" "$deps_hash" || return $?
+    _install_release_file_pair "$tmp_package" "$package_file" "$tmp_lock" "$lock_file" "$label package" "$transaction_dir"
   )
 }
 
 function _update_all_dependency_pins {
-  _update_lix_installer_pins
-  _update_codex_release_package
-  _update_pi_release_package
-  _update_obsidian_headless_package
+  _update_lix_installer_pins || return $?
+  _update_codex_release_package || return $?
+  _update_pi_release_package || return $?
+  _update_obsidian_headless_package || return $?
   _run_python_pin_batch \
     pi-extensions "Pi extension closure" \
     webcord "WebCord release" \
@@ -695,12 +657,12 @@ function _update_all_dependency_pins {
 }
 
 function _refresh_all_dependency_set {
-  _update_flake_inputs
+  _update_flake_inputs || return $?
   _update_all_dependency_pins
 }
 
 function _refresh_ai_dependency_set {
-  _update_codex_release_package
+  _update_codex_release_package || return $?
   _update_pi_release_package
 }
 
@@ -729,47 +691,34 @@ function _dependency_git_common_dir {
 }
 
 function _acquire_dependency_update_lock {
-  local common lock identity owner owner_dir claim journal pid="${BASHPID:-$$}"
+  local common legacy owner owner_dir
+  [[ -z "${DEPENDENCY_UPDATE_LOCK:-}" ]] || return 1
   common="$(_dependency_git_common_dir)" || return 1
-  lock="$common/dotfile-dependency-update.lock"
-  identity="$(_release_owner_identity "$pid")" || return 1
+  [[ ! -L "$common/dotfile-dependency-update.flock" ]] || return 1
+  exec 8>> "$common/dotfile-dependency-update.flock" || return 1
+  _lock_fd 8 || { exec 8>&-; return 1; }
 
-  if [[ ! -e "$lock" && ! -L "$lock" ]]; then
-    owner_dir="$(mktemp -d "${lock}.owner.XXXXXX")" || return 1
-    printf '%s\n' "$identity" > "$owner_dir/pid" \
-      || { rm -rf "$owner_dir"; return 1; }
-    if ln -s "$(basename "$owner_dir")" "$lock" 2>/dev/null; then
-      DEPENDENCY_UPDATE_LOCK="$lock"
-      return 0
+  # Migrate stale legacy ownership only while holding the new stable lock.
+  legacy="$common/dotfile-dependency-update.lock"
+  if [[ -e "$legacy" || -L "$legacy" ]]; then
+    if ! owner_dir="$(_release_journal_owner_dir "$legacy" "$legacy")" \
+      || ! owner="$(cat "$owner_dir/pid" 2>/dev/null)" \
+      || ! _release_owner_identity_valid "$owner" \
+      || _release_owner_is_live "$owner"; then
+      exec 8>&-
+      return 1
     fi
-    rm -rf "$owner_dir"
+    _remove_release_journal "$legacy" "$legacy" || { exec 8>&-; return 1; }
   fi
-
-  owner_dir="$(_release_journal_owner_dir "$lock" "$lock")" || return 1
-  owner="$(cat "$owner_dir/pid" 2>/dev/null)" || return 1
-  _release_owner_identity_valid "$owner" || return 1
-  _release_owner_is_live "$owner" && return 1
-
-  claim="$(mktemp "${lock}.claim.XXXXXX")" || return 1
-  printf '%s\n' "$identity" > "$claim" || { rm -f "$claim"; return 1; }
-  journal="$claim.journal"
-  mv "$lock" "$journal" 2>/dev/null || { rm -f "$claim"; return 1; }
-  owner_dir="$(_release_journal_owner_dir "$journal" "$lock")" \
-    || { rm -f "$journal" "$claim"; return 1; }
-  rm -f "$journal" "$claim"
-  rm -rf "$owner_dir"
-  _acquire_dependency_update_lock
+  DEPENDENCY_UPDATE_LOCK="$common/dotfile-dependency-update.flock"
 }
 
 function _release_dependency_update_lock {
-  local lock="${1:-${DEPENDENCY_UPDATE_LOCK:-}}" owner identity owner_dir pid="${BASHPID:-$$}"
-  [[ -n "$lock" && -L "$lock" ]] || return 0
-  owner_dir="$(_release_journal_owner_dir "$lock" "$lock")" || return 1
-  owner="$(cat "$owner_dir/pid" 2>/dev/null)" || return 1
-  identity="$(_release_owner_identity "$pid")" || return 1
-  [[ "$owner" == "$identity" ]] || return 1
-  rm -f "$lock" || return 1
-  rm -rf "$owner_dir"
+  local lock="${1:-${DEPENDENCY_UPDATE_LOCK:-}}"
+  [[ -n "$lock" ]] || return 0
+  [[ "$lock" == "${DEPENDENCY_UPDATE_LOCK:-}" ]] || return 1
+  DEPENDENCY_UPDATE_LOCK=
+  exec 8>&-
 }
 
 function _begin_dependency_update {
@@ -963,6 +912,8 @@ function _publish_dependency_update {
   if (( behind > 0 )); then
     git -C "$DOTFILES_DIR" rebase "$upstream" \
       || fail "Dependency update rebase needs manual conflict resolution"
+    _validate_dependency_update \
+      || fail "Rebased dependency checks failed; refusing publication"
   fi
   git -C "$DOTFILES_DIR" push "$remote" "HEAD:${merge#refs/heads/}" \
     || fail "Failed to push dependency update"

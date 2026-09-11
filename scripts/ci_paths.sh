@@ -14,7 +14,7 @@ while IFS= read -r path; do
   esac
 
   case "$path" in
-    .github/workflows/* | .gitattributes | AGENTS.md | README.md | dotfile | flake.nix | flake.lock | packages/* | scripts/* | tests/bash/helpers.sh | tests/bash/runner.sh | tests/bash/test_ci.sh | tests/bash/test_cli.sh | tests/bash/test_doctor.sh | tests/bash/test_mac_install.sh | tests/bash/test_neovim.sh | tests/bash/test_tmux.sh | tests/nvim/* | config/darwin.nix | config/home.nix | config/host.nix | config/shared/* | config/unix/* | config/mac/*)
+    .github/workflows/* | .gitattributes | AGENTS.md | README.md | dotfile | flake.nix | flake.lock | packages/* | scripts/* | tests/bash/helpers.sh | tests/bash/runner.sh | tests/bash/test_ci.sh | tests/bash/test_cli.sh | tests/bash/test_doctor.sh | tests/bash/test_mac_install.sh | tests/bash/test_neovim.sh | tests/bash/test_tmux.sh | tests/bash/test_release_pins.sh | tests/nvim/* | config/darwin.nix | config/home.nix | config/host.nix | config/shared/* | config/unix/* | config/mac/*)
       macos=true
       ;;
   esac

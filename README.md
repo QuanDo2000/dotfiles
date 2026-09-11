@@ -173,7 +173,9 @@ nix-shell -p git --run 'git clone https://github.com/QuanDo2000/dotfiles.git ~/d
 Per-machine values live in tracked `config/host.nix`; hardware settings live in
 tracked `config/hardware-configuration.nix`. Edit those files before the first
 rebuild if the username, hostname, timezone, NixOS stateVersion, disks, or CPU
-settings differ. The package command performs initial NixOS activation and Home Manager setup.
+settings differ. Shared NixOS/WSL core settings live in `config/nixos/common.nix`;
+hardware, desktop, and WSL-specific settings remain in their platform modules.
+The package command performs initial NixOS activation and Home Manager setup.
 The NixOS flake target is `#${hostName}` from `config/host.nix`; the current
 tracked host uses `#nixos`.
 
@@ -188,7 +190,8 @@ After provisioning, use `dotfile update` to update managed dependencies. On Unix
 it refreshes every repository-managed pin, runs full checks, shows the resulting
 uncommitted diff, then automatically approves and activates validated changes.
 After successful activation, it commits the validated changes, fetches and rebases
-if the upstream advanced, and pushes the current branch. Existing unpublished
+if the upstream advanced, reruns checks on the rebased tree, and pushes the current
+branch only if those checks pass. Existing unpublished
 commits stop publication. Windows pulls and activates those published validated
 pins instead of installing an unvalidated latest release; it reports when npm has
 a newer Pi release awaiting publication.
