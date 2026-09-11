@@ -113,6 +113,27 @@ test_pi_web_access_is_pinned() {
   fi
 }
 
+test_pi_defaults_to_astra_with_medium_thinking() {
+  local settings="$REPO_DIR/config/shared/ai/pi/settings.json"
+
+  assert_exit_code 0 jq -e '
+    .defaultProvider == "openai-codex" and
+    .defaultModel == "gpt-6-astra" and
+    .defaultThinkingLevel == "medium"
+  ' "$settings"
+}
+
+test_codex_defaults_to_astra_with_medium_reasoning() {
+  local config
+
+  for config in \
+    "$REPO_DIR/config/shared/ai/codex/config.toml" \
+    "$REPO_DIR/config/windows/ai/codex/config.toml"; do
+    assert_contains "$(<"$config")" 'model = "gpt-6-astra"'
+    assert_contains "$(<"$config")" 'model_reasoning_effort = "medium"'
+  done
+}
+
 test_pi_model_cycling_shortcuts_are_disabled() {
   local keybindings="$REPO_DIR/config/shared/ai/pi/keybindings.json"
 

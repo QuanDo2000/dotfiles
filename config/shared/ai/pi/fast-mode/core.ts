@@ -4,6 +4,7 @@ export interface FastModeModel {
 }
 
 const SUPPORTED_MODELS = new Set([
+  "openai-codex/gpt-6-astra",
   "openai-codex/gpt-5.6-luna",
   "openai-codex/gpt-5.6-sol",
 ]);

@@ -20,14 +20,15 @@ test_fast_mode_rewrites_only_supported_openai_codex_requests() {
   CORE="file://$extension_dir/core.ts" assert_exit_code 0 node --input-type=module - <<'JS'
 const { isFastModeModel, rewriteFastModeProviderRequest } = await import(process.env.CORE);
 const check = (condition, message) => { if (!condition) throw new Error(message); };
-const payload = { model: "gpt-5.6-sol", stream: true };
+const payload = { model: "gpt-6-astra", stream: true };
+check(isFastModeModel({ provider: "openai-codex", id: "gpt-6-astra" }), "Astra rejected");
 check(isFastModeModel({ provider: "openai-codex", id: "gpt-5.6-sol" }), "Sol rejected");
 check(isFastModeModel({ provider: "openai-codex", id: "gpt-5.6-luna" }), "Luna rejected");
 check(!isFastModeModel({ provider: "openai-codex", id: "gpt-5.6-terra" }), "Terra accepted");
-check(!isFastModeModel({ provider: "openai", id: "gpt-5.6-sol" }), "wrong provider accepted");
-const rewritten = rewriteFastModeProviderRequest(payload, true, { provider: "openai-codex", id: "gpt-5.6-sol" });
+check(!isFastModeModel({ provider: "openai", id: "gpt-6-astra" }), "wrong provider accepted");
+const rewritten = rewriteFastModeProviderRequest(payload, true, { provider: "openai-codex", id: "gpt-6-astra" });
 check(rewritten !== payload && rewritten.service_tier === "priority", "supported request not rewritten");
-check(rewriteFastModeProviderRequest(payload, false, { provider: "openai-codex", id: "gpt-5.6-sol" }) === payload, "disabled request changed");
+check(rewriteFastModeProviderRequest(payload, false, { provider: "openai-codex", id: "gpt-6-astra" }) === payload, "disabled request changed");
 check(rewriteFastModeProviderRequest(payload, true, { provider: "openai-codex", id: "gpt-5.6-terra" }) === payload, "unsupported request changed");
 JS
 }
