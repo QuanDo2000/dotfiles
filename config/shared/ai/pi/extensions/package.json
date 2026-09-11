@@ -5,6 +5,6 @@
   "dependencies": {
     "@tobilu/qmd": "2.8.3",
     "pi-memory": "0.4.2",
-    "pi-web-access": "0.28.0"
+    "pi-web-access": "0.29.0"
   }
 }

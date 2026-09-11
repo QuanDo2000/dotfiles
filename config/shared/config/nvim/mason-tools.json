@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-09-10-tan-hawk",
-  "registrySha256": "9c6759f588af327c92e9dc452d44421d5ebdb37b014b809a77aeee787974f32a",
+  "registryVersion": "2026-09-11-sparse-hub",
+  "registrySha256": "9602a200a0f7197f75642267b13e92703f3171886114e3c4aadd5aefd18651d5",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
