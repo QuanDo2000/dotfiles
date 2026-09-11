@@ -129,10 +129,11 @@ let
   '';
   devTerminalPackages = with pkgs; [
     bash-language-server
+    bun
     codex
     nil
     nixfmt
-    nodejs
+    nodejs_26
     pkgs.pi-agent
     pkgs.pi-extensions
     shellcheck

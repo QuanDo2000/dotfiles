@@ -39,7 +39,7 @@ test_neovim_provisions_native_node_for_mason_npm_packages() {
   local home
   home="$(<"$REPO_DIR/config/home.nix")"
 
-  assert_contains "$home" $'    nodejs\n'
+  assert_contains "$home" $'    nodejs_26\n'
 }
 
 test_neovim_provisions_configured_formatters() {

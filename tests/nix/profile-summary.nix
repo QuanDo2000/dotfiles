@@ -7,6 +7,7 @@ let
 in
 {
   packages = map packageName config.home.packages;
+  nodeVersions = map (package: package.version) (builtins.filter (package: packageName package == "nodejs") config.home.packages);
   services = builtins.attrNames config.systemd.user.services;
   timers = builtins.attrNames config.systemd.user.timers;
   files = builtins.attrNames config.home.file;

@@ -15,60 +15,24 @@ SUNSET_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
 INPUT_METHOD_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/input-method-status.sh")"
 SSH_CONFIG="$(<"$REPO_DIR/config/shared/.ssh/config")"
 
-test_nvm_numeric_default_selects_matching_version() {
-  local nvm_root="$TEST_TMPDIR/nvm-home" nvm_home output
-  nvm_home="$nvm_root/.nvm"
-  mkdir -p "$nvm_home/versions/node/v10.2.0/bin" "$nvm_home/versions/node/v10.24.1/bin" "$nvm_home/versions/node/v20.19.0/bin"
-  printf 'ready\n' > "$nvm_home/nvm.sh"
-  touch "$nvm_home/versions/node/v10.2.0/bin/node" "$nvm_home/versions/node/v10.24.1/bin/node" "$nvm_home/versions/node/v20.19.0/bin/node"
-  chmod +x "$nvm_home/versions/node"/v*/bin/node
-  mkdir -p "$nvm_home/alias"
-  printf '10\n' > "$nvm_home/alias/default"
-  output=$(HOME="$nvm_root" zsh -f -c 'source "$1"; print -r -- $path[1]' zsh "$REPO_DIR/config/unix/.zshrc.base")
-  assert_contains ":$output:" ":$nvm_home/versions/node/v10.24.1/bin:"
-  assert_not_contains "$output" "$nvm_home/versions/node/v20.19.0/bin"
-}
-
-test_nvm_numeric_default_does_not_select_unrelated_major() {
-  local nvm_root="$TEST_TMPDIR/nvm-unmatched" nvm_home output
-  nvm_home="$nvm_root/.nvm"
-  mkdir -p "$nvm_home/versions/node/v20.19.0/bin" "$nvm_home/alias"
-  printf 'ready\n' > "$nvm_home/nvm.sh"
-  printf '10\n' > "$nvm_home/alias/default"
-  touch "$nvm_home/versions/node/v20.19.0/bin/node"
-  chmod +x "$nvm_home/versions/node/v20.19.0/bin/node"
-  output=$(HOME="$nvm_root" zsh -f -c 'source "$1"; print -r -- $path[1]' zsh "$REPO_DIR/config/unix/.zshrc.base")
-  assert_not_contains "$output" "$nvm_home/versions/node/v20.19.0/bin"
-}
-
-test_nvm_fallback_uses_portable_zsh_selection() {
-  local zshrc
-  zshrc="$(<"$REPO_DIR/config/unix/.zshrc.base")"
-  assert_not_contains "$zshrc" 'sort -V'
-  assert_not_contains "$zshrc" 'find "$NVM_DIR/versions/node"'
-  assert_contains "$zshrc" 'NVM_DIR/versions/node/'
-  assert_contains "$zshrc" 'setopt localoptions numericglobsort'
-}
-
-test_nvm_resolves_chained_alias_and_numeric_fallback() {
-  local chain_home="$TEST_TMPDIR/chain-home" fallback_home="$TEST_TMPDIR/fallback-home"
-  mkdir -p "$chain_home/.nvm/versions/node/v18.2.0/bin" "$chain_home/.nvm/alias"
-  printf 'ready\n' > "$chain_home/.nvm/nvm.sh"
-  printf 'lts\n' > "$chain_home/.nvm/alias/default"
-  printf 'v18.2.0\n' > "$chain_home/.nvm/alias/lts"
-  touch "$chain_home/.nvm/versions/node/v18.2.0/bin/node"
-  chmod +x "$chain_home/.nvm/versions/node/v18.2.0/bin/node"
-  local chained
-  chained="$(HOME="$chain_home" zsh -f -c 'source "$1"; print -r -- $path[1]' zsh "$REPO_DIR/config/unix/.zshrc.base")"
-  assert_equals "$chain_home/.nvm/versions/node/v18.2.0/bin" "$chained"
-
-  mkdir -p "$fallback_home/.nvm/versions/node/v2.9.0/bin" "$fallback_home/.nvm/versions/node/v10.1.0/bin"
-  printf 'ready\n' > "$fallback_home/.nvm/nvm.sh"
-  touch "$fallback_home/.nvm/versions/node/v2.9.0/bin/node" "$fallback_home/.nvm/versions/node/v10.1.0/bin/node"
-  chmod +x "$fallback_home/.nvm"/versions/node/*/bin/node
-  local newest
-  newest="$(HOME="$fallback_home" zsh -f -c 'source "$1"; print -r -- $path[1]' zsh "$REPO_DIR/config/unix/.zshrc.base")"
-  assert_equals "$fallback_home/.nvm/versions/node/v10.1.0/bin" "$newest"
+test_zsh_keeps_profile_node_with_nvm_installed() {
+  local shell_home="$TEST_TMPDIR/node-home" output
+  local nvm_bin="$TEST_TMPDIR/node-home/.nvm/versions/node/v26.5.1/bin"
+  local profile_bin="$TEST_TMPDIR/node-home/.nix-profile/bin"
+  mkdir -p "$nvm_bin" "$profile_bin" "$shell_home/.nvm/alias"
+  printf '26\n' > "$shell_home/.nvm/alias/default"
+  printf 'return 97\n' > "$shell_home/.nvm/nvm.sh"
+  touch "$nvm_bin/node" "$profile_bin/node"
+  chmod +x "$nvm_bin/node" "$profile_bin/node"
+  output=$(HOME="$shell_home" PATH="$profile_bin:$PATH" zsh -f -c '
+    source "$1"
+    command -v node
+    (( $+functions[nvm] )) && print nvm-loader-present
+    print -r -- "$PATH"
+  ' zsh "$REPO_DIR/config/unix/.zshrc.base")
+  assert_equals "$profile_bin/node" "${output%%$'\n'*}"
+  assert_not_contains "$output" "$nvm_bin"
+  assert_not_contains "$output" 'nvm-loader-present'
 }
 
 test_hyprsunset_status_uses_defaults_when_installed_config_missing() {

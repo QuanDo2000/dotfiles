@@ -96,6 +96,15 @@ test_profile_files_and_markers_are_composed_by_role() {
   for flag in desktop personalApps obsidianSync googleDriveSync storageOffsiteBackup; do assert_contains "$darwin_marker" "$flag=false"; done
 }
 
+test_unix_profiles_provide_node26_and_bun() {
+  local profile summary
+  for profile in linux arch-server nixos darwin; do
+    summary="$(_profile_summary "$profile")"
+    assert_equals '["26"]' "$(jq -c '.nodeVersions | map(split(".")[0])' <<< "$summary")"
+    assert_line_present "$(jq -r '.packages[]' <<< "$summary")" bun
+  done
+}
+
 test_profile_disables_pi_memory_exit_summary() {
   local profile
   for profile in linux arch-server nixos darwin; do
