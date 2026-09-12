@@ -146,6 +146,17 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
   assert_contains "$(_profile_file_meta nixos '.hermes/SOUL.md')" 'SOUL.md'
 }
 
+test_hermes_security_reference_patch_is_deployed_without_replacing_the_skill() {
+  local profile activation
+  for profile in linux arch-server nixos darwin; do
+    activation=$(_profile_activation "$profile" patchHermesSecurityReference)
+    assert_contains "$activation" 'apply_hermes_skill_fixes.sh'
+    assert_contains "$activation" 'security-privacy.patch'
+    assert_contains "$activation" '/bin/patch'
+    assert_line_absent "$(_profile_files "$profile")" '.hermes/skills/autonomous-ai-agents/hermes-agent'
+  done
+}
+
 test_hermes_workflow_skills_are_separate_and_non_destructive() {
   local profile name target meta files category
   for profile in linux arch-server nixos darwin; do

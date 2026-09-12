@@ -703,6 +703,12 @@ in
     fi
   '';
 
+  # A narrow upstream-compatible patch preserves all independently updated assets.
+  home.activation.patchHermesSecurityReference = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    "${pkgs.bash}/bin/bash" "${../scripts/apply_hermes_skill_fixes.sh}" \
+      "${./shared/ai/hermes/security-privacy.patch}" "${pkgs.patch}/bin/patch"
+  '';
+
   home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     target="$HOME/.codex/config.toml"
     source="${./shared/ai/codex/config.toml}"

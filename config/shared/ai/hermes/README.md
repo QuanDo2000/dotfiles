@@ -60,6 +60,67 @@ checks, investigation-only prohibitions, data-flow tracing, and a measured
 performance loop. Its trim removes repeated persuasion, fixed-attempt rhetoric,
 and unattributed performance claims, not those locally learned safeguards.
 
+## Security reference correction (default profile, Unix)
+
+`security-privacy.patch` owns the correction to the bundled `hermes-agent`
+reference. It is an upstream-compatible, single-hunk patch against
+`skills/autonomous-ai-agents/hermes-agent/references/security-privacy.md` at
+NousResearch/hermes-agent revision `284d220ba48e25f2e3623b3afe72db8f24a4c2db`
+(MIT; original skill attribution remains installed). No complete upstream skill
+is duplicated or replaced: every other reference, template, and local addition
+stays in place. The owning deployment path is `config/home.nix` activation
+`patchHermesSecurityReference` → `scripts/apply_hermes_skill_fixes.sh`.
+
+The helper uses Nix's GNU patch, accepts an already-applied patch, rejects source
+drift and symlinked skill/reference targets, and leaves a missing installation
+alone. Back up the complete skill before first application. If Hermes is installed
+or its skills are first seeded **after** Home Manager, re-run the normal profile
+activation. Windows and non-default Hermes profiles are intentionally unmanaged.
+The patch changes documentation only, never approval policy or Hermes core.
+
+The reference distinguishes routine command approval from per-operation protected
+instruction-file approval, including non-interactive worker denial that can be
+misreported as a human rejection. After denial/timeout, stop; only renewed user
+authorization permits retry through the same normal gate. Never change protection
+or an allowlist to get past denial. Implementation sources:
+`tools/file_tools_write_guards.py:208-288` and `tools/delegate_tool_config.py:35-59`.
+The [official security documentation](https://hermes-agent.nousresearch.com/docs/user-guide/security/)
+still omits this project-instruction gate in its file-write overview; installed
+source is the evidence for this correction.
+
+Ordinary bundled sync recognizes the changed complete-directory hash and preserves
+**the entire skill**, not just this reference. Thus future upstream skill updates
+require review, just as with the full-directory adaptations above. Existing/fresh
+origin manifests and changed upstream revisions must be tested in temporary
+fixtures when changing the patch. Hashless/rebaselined origins, forced resets,
+upstream convergence to identical content, and future updater behavior remain
+outside this guarantee; never use reset/rebaseline to silence update notices.
+Once upstream incorporates the correction, review and retire the patch deliberately.
+
+## Nix trust warning: investigated, intentionally not suppressed
+
+`tools/skills_tool.py:505-517` resolves skill symlinks before comparing trusted
+roots. Home Manager targets consequently load but warn as outside the profile's
+skills directory. The documented `skills.external_dirs` setting resolves exact
+paths and can remove this warning without disabling content-pattern scanning.
+However, it is **discovery and ownership configuration, not a trust-only switch**.
+No separate supported resolved-symlink trust list was found in this runtime.
+
+An isolated real-runtime probe with the seven exact managed skill paths removed
+all seven outside-root warnings, but reproduced an updater failure when a bundled
+revision matches an externally indexed managed skill. In
+`tools/skills_sync.py:262-272`, `_defer_to_external` tries to remove the local shadow;
+`_rmtree_writable` at lines 419-432 then refuses its resolved external target as
+not strictly under the local skills root. The scope guard correctly prevents
+deletion, but `sync_skills` raises `ValueError`. Do not weaken that guard.
+The [external-directory documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills/#external-skill-directories)
+also describes ownership implications; it is not an approval setting.
+
+The existing warning is therefore retained pending an upstream-supported trust-only
+solution or separately authorized ownership migration/core work. No trust for
+`/nix/store`, extra search roots, scanner exclusions, approval changes, or other
+profile settings are installed by this correction.
+
 ## Provenance
 
 The skill frontmatter credits Hermes Agent, obra/superpowers, and MorAlekss as

@@ -1,0 +1,72 @@
+--- a/skills/autonomous-ai-agents/hermes-agent/references/security-privacy.md
++++ b/skills/autonomous-ai-agents/hermes-agent/references/security-privacy.md
+@@ -32,24 +32,50 @@
+-
++
+ - `smart` — auto-approve a low-risk command once, deny high-risk commands, and prompt when uncertain (default)
+ - `manual` — always prompt
+-- `off` — skip all approval prompts (equivalent to `--yolo`)
++- `off` — skips routine command approvals; it is not a universal write permission
+-
++
+-```bash
+-hermes config set approvals.mode smart       # recommended middle ground
+-hermes config set approvals.mode off         # bypass everything (not recommended)
+-```
++Keep `approvals.mode: smart` for normal use. Command approval policy and secret
++redaction are independent. Neither command allowlists nor `--yolo` grant approval
++for protected instruction-file writes.
+-
++
+-Per-invocation bypass without changing config:
+-- `hermes --yolo …`
+-- `export HERMES_YOLO_MODE=1`
++### File writes and protected agent instructions
+-
++
+-Note: YOLO / `approvals.mode: off` does NOT turn off secret redaction. They are independent.
++File writes are not universally prompt-free. `write_file` and `patch` enforce
++hard-denied paths and optional write restrictions. Some paths (for example SSH
++config) use routine write approval. With the default protected-instruction guard,
++project-local `AGENTS.md`, `CLAUDE.md`, `SOUL.md`, `.cursorrules`, configured extra
++basename patterns, and immediate children of project-local `.hermes/` require
++**one-operation approval every time**. The active Hermes home has separate guards;
++do not confuse its configuration and skill-write policy with the project gate.
++
++One protected target gates an entire multi-file patch, all-or-nothing. The
++protected gate offers no session or permanent grant, persists no approval scope,
++and is not bypassed by command auto-approval, command allowlists, or YOLO.
++
++In an interactive main session, the normal file tool routes the request to the
++CLI callback or the session's gateway approval channel. Without a human approval
++channel it fails closed. Timeout is not consent.
++
++Delegated workers may instead have a **non-interactive denial callback**. Its
++`deny` response can surface as "denied by the user" even though no human saw a
++prompt; that text alone does not prove the user rejected the edit. Delegate
++inspection, not approval-dependent writes. Have the foreground main session
++perform authorized writes through the normal per-operation approval gate. After
++a denial or timeout, stop and report the blocker; renewed user authorization is
++required before retrying through that same gate. Never reroute the edit through
++terminal, another writer, or a disabled guard, and never change delegation
++approval settings or allowlists to evade a protected-write denial.
++
++Implementation reference: `tools/file_tools_write_guards.py`,
++`_request_protected_instruction_approval` and `_check_protected_instruction_write`;
++worker callback: `tools/delegate_tool_config.py`. Check the installed source when
++surface behavior differs from the [security docs](https://hermes-agent.nousresearch.com/docs/user-guide/security/).
+-
++
+ ### "Reset permissions" / "make Hermes ask again"
+-
++
+-The user usually means: wipe the accumulated "Always allow" state — NOT yolo
+-mode, and NOT a per-edit diff prompt (which doesn't exist; file writes never
+-go through the approval prompt, only shell commands do). Two stores hold it:
++Clarify whether the user means accumulated command "Always allow" state or a
++protected file write. Protected instruction-file approval is already per-operation;
++there is no persisted approval to clear. For routine command permission resets:
+-
++
+ 1. Shell-command allowlist: `hermes config set command_allowlist '[]'`
+ 2. Shell-hook consent (only if present): `rm -f ~/.hermes/shell-hooks-allowlist.json`
