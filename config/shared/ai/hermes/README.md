@@ -2,18 +2,20 @@
 
 These are the approved local Hermes adaptations of `requesting-code-review`,
 `subagent-driven-development`, `writing-plans`, `plan`,
-`test-driven-development`, and `systematic-debugging`, including all three
-referenced documents. Their frontmatter attribution and reference-level provenance
-are retained unchanged.
-The source snapshot is the default profile's `skills/software-development/`
-tree, after the workflow simplification; it is not an unmodified upstream release.
+`test-driven-development`, `systematic-debugging`, and `multi-agent-orchestration`,
+including their complete reference trees. Their frontmatter attribution and
+reference-level provenance are retained unchanged.
+The source snapshot is the default profile's `skills/software-development/` and
+`skills/autonomous-ai-agents/` trees, after the workflow simplification; it is not
+an unmodified upstream release.
 No machine-specific absolute paths were present in that snapshot.
 
 ## Ownership and deployment
 
 `config/home.nix` links each complete directory into
-`~/.hermes/skills/software-development/<name>` on Unix. Only the default Hermes
-profile is managed. No Windows installer or other Hermes profile is changed.
+`~/.hermes/skills/software-development/<name>` on Unix, except orchestration at
+`~/.hermes/skills/autonomous-ai-agents/multi-agent-orchestration`. Only the default
+Hermes profile is managed. No Windows installer or other Hermes profile is changed.
 The distinct shared Codex/Pi TDD adaptation under `../skills/` remains separate;
 do not install both adaptations into the same runtime or add this tree to Pi's
 skill search paths.

@@ -147,11 +147,16 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
 }
 
 test_hermes_workflow_skills_are_separate_and_non_destructive() {
-  local profile name target meta files
+  local profile name target meta files category
   for profile in linux arch-server nixos darwin; do
     files=$(_profile_files "$profile")
-    for name in requesting-code-review subagent-driven-development writing-plans plan test-driven-development systematic-debugging; do
-      target=".hermes/skills/software-development/$name"
+    for name in requesting-code-review subagent-driven-development writing-plans plan test-driven-development systematic-debugging multi-agent-orchestration; do
+      category=software-development
+      if [[ "$name" == multi-agent-orchestration ]]; then
+        category=autonomous-ai-agents
+        assert_line_absent "$files" ".hermes/skills/software-development/$name"
+      fi
+      target=".hermes/skills/$category/$name"
       assert_line_present "$files" "$target"
       meta=$(_profile_file_meta "$profile" "$target")
       assert_equals false "$(jq -r .force <<< "$meta")"

@@ -197,6 +197,7 @@ in
     ".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;
     # Hermes adaptations stay separate from the shared Codex/Pi skills.
     # Refuse unmanaged collisions; back up existing local directories first.
+    ".hermes/skills/autonomous-ai-agents/multi-agent-orchestration".source = ./shared/ai/hermes/skills/multi-agent-orchestration;
     ".hermes/skills/software-development/requesting-code-review".source = ./shared/ai/hermes/skills/requesting-code-review;
     ".hermes/skills/software-development/subagent-driven-development".source = ./shared/ai/hermes/skills/subagent-driven-development;
     ".hermes/skills/software-development/writing-plans".source = ./shared/ai/hermes/skills/writing-plans;
