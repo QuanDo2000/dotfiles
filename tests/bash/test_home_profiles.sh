@@ -150,14 +150,14 @@ test_hermes_workflow_skills_are_separate_and_non_destructive() {
   local profile name target meta files
   for profile in linux arch-server nixos darwin; do
     files=$(_profile_files "$profile")
-    for name in requesting-code-review subagent-driven-development writing-plans plan test-driven-development; do
+    for name in requesting-code-review subagent-driven-development writing-plans plan test-driven-development systematic-debugging; do
       target=".hermes/skills/software-development/$name"
       assert_line_present "$files" "$target"
       meta=$(_profile_file_meta "$profile" "$target")
       assert_equals false "$(jq -r .force <<< "$meta")"
       assert_contains "$meta" "hermes/skills/$name"
       assert_line_absent "$files" ".hermes/skills/$name"
-      if [[ "$name" != test-driven-development ]]; then
+      if [[ "$name" != test-driven-development && "$name" != systematic-debugging ]]; then
         assert_line_absent "$files" ".agents/skills/$name"
       fi
     done

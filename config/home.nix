@@ -201,6 +201,7 @@ in
     ".hermes/skills/software-development/subagent-driven-development".source = ./shared/ai/hermes/skills/subagent-driven-development;
     ".hermes/skills/software-development/writing-plans".source = ./shared/ai/hermes/skills/writing-plans;
     ".hermes/skills/software-development/plan".source = ./shared/ai/hermes/skills/plan;
+    ".hermes/skills/software-development/systematic-debugging".source = ./shared/ai/hermes/skills/systematic-debugging;
     ".hermes/skills/software-development/test-driven-development".source = ./shared/ai/hermes/skills/test-driven-development;
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
     ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;

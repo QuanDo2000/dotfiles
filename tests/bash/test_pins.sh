@@ -218,6 +218,38 @@ update_pins.update_skills(repo)
 PY
 }
 
+test_adapted_skill_pins_are_manual_and_preserve_all_bytes() {
+  PYTHONPATH="$REPO_DIR/scripts" REPO_ROOT="$REPO_DIR" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
+import json
+import os
+import shutil
+from pathlib import Path
+import update_pins
+
+repo = Path(os.environ["TEST_TMPDIR"]) / "adapted-repo"
+skills = repo / "config/shared/ai/skills"
+shutil.copytree(Path(os.environ["REPO_ROOT"]) / "config/shared/ai/skills", skills)
+# Local/unmanaged additions must survive even when an upstream revision changes.
+(skills / "local-note.txt").write_text("keep me\n")
+before = {str(p.relative_to(skills)): p.read_bytes() for p in skills.rglob("*") if p.is_file()}
+update_pins.git_head = lambda _: "f" * 40
+update_pins.download_twice = lambda *_: (_ for _ in ()).throw(AssertionError("adapted skills must not auto-download or replace"))
+update_pins.update_skills(repo)
+assert before == {str(p.relative_to(skills)): p.read_bytes() for p in skills.rglob("*") if p.is_file()}
+metadata = json.loads((skills / "sources.json").read_text())
+assert metadata["superpowers"]["updateMode"] == "manual"
+# A typo must fail closed, not silently re-enable destructive refresh.
+metadata["superpowers"]["updateMode"] = "manul"
+(skills / "sources.json").write_text(json.dumps(metadata))
+try:
+    update_pins.update_skills(repo)
+except RuntimeError:
+    pass
+else:
+    raise AssertionError("unknown skill update mode accepted")
+PY
+}
+
 test_pin_updater_removes_excluded_skill_paths() {
   PYTHONPATH="$REPO_DIR/scripts" TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
 import os

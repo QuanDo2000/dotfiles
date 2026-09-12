@@ -359,6 +359,12 @@ def update_skills(repo: Path) -> None:
     for name, source in metadata.items():
         if name == "schemaVersion":
             continue
+        mode = source.get("updateMode", "upstream")
+        if mode == "manual":
+            print(f"keeping locally adapted skills from {name}: manual upstream review required")
+            continue
+        if mode != "upstream":
+            die(f"unknown skill update mode for {name}: {mode}")
         repository = source["repository"].removeprefix("https://github.com/").removesuffix(".git")
         commit = git_head(repository)
         if commit != source["commit"]:
