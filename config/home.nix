@@ -195,6 +195,13 @@ in
     ".codex/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;
+    # Hermes adaptations stay separate from the shared Codex/Pi skills.
+    # Refuse unmanaged collisions; back up existing local directories first.
+    ".hermes/skills/software-development/requesting-code-review".source = ./shared/ai/hermes/skills/requesting-code-review;
+    ".hermes/skills/software-development/subagent-driven-development".source = ./shared/ai/hermes/skills/subagent-driven-development;
+    ".hermes/skills/software-development/writing-plans".source = ./shared/ai/hermes/skills/writing-plans;
+    ".hermes/skills/software-development/plan".source = ./shared/ai/hermes/skills/plan;
+    ".hermes/skills/software-development/test-driven-development".source = ./shared/ai/hermes/skills/test-driven-development;
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
     ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;
     ".agents/skills/skill-retrospective" = forceSource ./shared/ai/skills/skill-retrospective;

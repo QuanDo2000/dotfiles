@@ -146,6 +146,25 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
   assert_contains "$(_profile_file_meta nixos '.hermes/SOUL.md')" 'SOUL.md'
 }
 
+test_hermes_workflow_skills_are_separate_and_non_destructive() {
+  local profile name target meta files
+  for profile in linux arch-server nixos darwin; do
+    files=$(_profile_files "$profile")
+    for name in requesting-code-review subagent-driven-development writing-plans plan test-driven-development; do
+      target=".hermes/skills/software-development/$name"
+      assert_line_present "$files" "$target"
+      meta=$(_profile_file_meta "$profile" "$target")
+      assert_equals false "$(jq -r .force <<< "$meta")"
+      assert_contains "$meta" "hermes/skills/$name"
+      assert_line_absent "$files" ".hermes/skills/$name"
+      if [[ "$name" != test-driven-development ]]; then
+        assert_line_absent "$files" ".agents/skills/$name"
+      fi
+    done
+    assert_contains "$(_profile_file_meta "$profile" '.agents/skills/test-driven-development')" 'ai/skills/test-driven-development'
+  done
+}
+
 test_evaluated_profile_configures_desktop_and_storage_settings() {
   local nixos arch generic
   nixos=$(_profile_summary nixos); arch=$(_profile_summary arch-server); generic=$(_profile_summary linux)
