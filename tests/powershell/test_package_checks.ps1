@@ -5,6 +5,11 @@ function TestTeardown {
 
 
 
+function test_windows_provisions_odin {
+    Assert-True (@(Get-WingetPackages) -contains 'odin-lang.Odin') 'Winget should manage Odin'
+    Assert-True (@(Get-RequiredCommands) -contains 'odin') 'Verify should require Odin on PATH'
+}
+
 function test_windows_neovim_provisions_treesitter_build_tools {
     $packages = @(Get-WingetPackages)
     Assert-Contains ($packages -join "`n") "tree-sitter.tree-sitter-cli"
