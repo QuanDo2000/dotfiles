@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Use for behavior-changing code or bug fixes; prove one focused regression RED, then GREEN
+description: Use for behavior-changing code or bug fixes.
 ---
 
 # Test-Driven Development

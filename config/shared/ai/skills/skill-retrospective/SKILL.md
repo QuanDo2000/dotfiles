@@ -1,6 +1,6 @@
 ---
 name: skill-retrospective
-description: Use when the user asks to audit installed agent skills against past conversations, identify which skills are working, or propose evidence-backed skill improvements
+description: Use when auditing skills against conversation evidence.
 ---
 
 # Skill Retrospective

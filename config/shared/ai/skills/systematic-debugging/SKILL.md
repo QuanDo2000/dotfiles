@@ -1,6 +1,6 @@
 ---
 name: systematic-debugging
-description: Use when a bug, test failure, or unexpected behavior needs root-cause diagnosis before a fix
+description: Use when diagnosing bugs, test failures, or unexpected behavior.
 ---
 
 # Systematic Debugging
