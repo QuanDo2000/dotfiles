@@ -14,10 +14,10 @@ metadata:
 # Writing Implementation Plans
 
 Use when a requested plan or a consequential handoff needs implementation detail; do not require a plan for every edit.
-Inspect the relevant current code, requirements, and constraints before proposing changes.
+Inspect the relevant current code, requirements, and constraints before proposing changes; reference the existing spec or requirement source when one exists.
 State the goal, exclusions, assumptions, and unresolved decisions.
 Split work into independently verifiable outcomes with dependencies; do not impose fixed durations.
-For each outcome, name exact target paths, the intended behavior, and the smallest authoritative verification command.
+For each outcome, name exact target paths, the intended behavior, and the smallest authoritative verification command. Before handing off, check that every in-scope requirement maps to an outcome and that shared interfaces agree; expose gaps instead of inventing decisions.
 Label expected results as expectations, not observed output. Do not invent exact pass counts.
 Include code only when it resolves a non-obvious interface or algorithm; do not pre-implement the whole change in prose.
 Preserve security, data-loss, concurrency, and migration constraints next to the affected step.

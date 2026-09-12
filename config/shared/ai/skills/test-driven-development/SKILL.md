@@ -19,7 +19,7 @@ Do not write implementation first, test mocks instead of behavior, or broaden sc
 - Use real code. Mock only unavoidable external boundaries.
 - Run only the focused test.
 - Confirm it fails—not errors—because the behavior is missing or wrong.
-- If it passes immediately, improve the test; it proves no regression.
+- If it passes immediately, check it against the revision without the fix while preserving existing work. Change the test only if it does not check the intended behavior; report when RED cannot be established safely.
 
 A bug fix requires a reproducer for the original symptom. A configuration-only change may use the repository's smallest existing validation/assertion instead of inventing a unit framework.
 
@@ -42,4 +42,4 @@ Before completion, verify:
 - relevant existing tests pass;
 - no unrelated production change was bundled.
 
-Exploration is allowed when the interface is unknown, but discard exploratory production changes before the RED/GREEN cycle.
+Exploration is allowed when the interface is unknown. Remove only your own throwaway exploratory changes before RED/GREEN; never delete pre-existing work to enforce test ordering.
