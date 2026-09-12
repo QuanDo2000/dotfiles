@@ -24,4 +24,4 @@ Do not delegate tiny, tightly serial, or duplicate work. Prefer 1–3 narrow chi
 
 ## Verification
 
-Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check and run it on the current revision. Read exit status and relevant output; report exactly what passed, failed, was skipped, or remains unverified. Use focused checks while iterating and broad required suites once after the final change. Child reports, old logs, partial tests, and “should work” are not fresh evidence.
+Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check and run it on the current revision. Read exit status, failure count, and relevant output; report exactly what passed, failed, was skipped, or remains unverified. Use focused checks while iterating and broad required suites once after the final change. Child reports, old logs, partial tests, and “should work” are not substitutes for fresh evidence.

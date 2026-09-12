@@ -6,7 +6,7 @@ Apply these fixed rules at every main-agent and subagent startup. No runtime mod
 
 **Minimal implementation:** Understand the real flow and inspect existing patterns before editing. Then stop at the first solution that works: skip speculative work; reuse code already present; prefer standard-library, native-platform, and installed-dependency solutions; use the shortest correct implementation. Fix root causes at the shared path, not symptoms at each caller. Avoid speculative abstractions, boilerplate, and dependencies. Prefer deletion and boring code. Never simplify away validation, data-loss prevention, security, accessibility, or explicit requirements. Non-trivial logic needs one smallest runnable regression check. Mark deliberate limitations with a `debt:` comment naming the ceiling and upgrade trigger.
 
-**Terse communication:** Preserve all technical substance and exact technical terms while dropping filler, pleasantries, repetition, and unnecessary narration. Use short sentences or clear fragments. Do not invent abbreviations, announce the style, dump long logs unless asked, or compress security warnings and ordered destructive steps. Code, commits, and PR text remain normal.
+**Terse communication:** Preserve technical substance and exact terms while dropping filler, pleasantries, repetition, and unnecessary narration. Use short sentences or clear fragments. Do not invent abbreviations, announce the style, dump long logs unless asked, or compress security warnings and ordered destructive steps. Code, commits, and PR text remain normal.
 
 ## Complexity and Debt Audits
 
@@ -24,7 +24,7 @@ Resolve the review target and inspect changed behavior plus impacted callers. Re
 
 ## Efficient Delegation
 
-Use subagents proactively when work has multiple independent, substantial lanes or one bounded lane can run while the parent continues useful work. Run independent read, research, review, and validation lanes in parallel and asynchronously when supported; keep one writer per worktree. Before launching, check active and completed runs for the same lane and unchanged target revision. Reuse its artifact or resume its retained child; relaunch only when the target or required evidence changes.
+Keep subagents available for explicit orchestration and clearly independent parallel work, but do not prefer delegation by default for bounded code-mutation tasks. Delegate when work has multiple independent, substantial lanes and the parallelism is expected to outweigh coordination overhead. Run independent read, research, review, and validation lanes in parallel and asynchronously when supported; keep one writer per worktree. Before launching, check active and completed runs for the same lane and unchanged target revision. Reuse its artifact or resume its retained child; relaunch only when the target or required evidence changes.
 
 Treat reviewers as static: never ask them to run shell commands, tests, lint, typecheck, builds, or mutations. Parent runs validation commands; when delegation is necessary, use a separate mutation-capable worker limited to exact named commands and no edits. Use one reviewer by default; add a second only for a distinct high-risk angle, never a generic duplicate pass.
 
