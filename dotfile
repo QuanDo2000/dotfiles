@@ -54,6 +54,15 @@ function update_repo {
   success "Finished updating repo"
 }
 
+function _ensure_update_environment {
+  [[ "$DRY" == "false" ]] || return 0
+  if [[ "${DOTFILE_UPDATE_ENV:-}" != true ]]; then
+    DOTFILE_UPDATE_ENV=true exec nix develop "path:$DOTFILES_DIR" -c \
+      bash "$DOTFILES_DIR/dotfile" "${ORIGINAL_ARGS[@]}"
+  fi
+  command -v python3 >/dev/null || fail "Pinned update environment is missing python3"
+}
+
 function run_checked_flow {
   local pull_repo="$1"
   local precheck="$2"
@@ -86,6 +95,9 @@ function run_checked_flow {
       update_repo
     fi
   fi
+  case "$operation" in
+    update_packages|update_ai) _ensure_update_environment ;;
+  esac
   "$operation" "$@"
   DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
 }
@@ -186,14 +198,17 @@ obsidian)
   ;;
 codex)
   [[ $# -eq 1 ]] || fail "Unexpected codex argument: ${2:-}"
+  _ensure_update_environment
   update_codex_release
   ;;
 lix-installer)
   [[ $# -eq 1 ]] || fail "Unexpected lix-installer argument: ${2:-}"
+  _ensure_update_environment
   update_lix_installer_pins
   ;;
 obsidian-headless)
   [[ $# -eq 1 ]] || fail "Unexpected obsidian-headless argument: ${2:-}"
+  _ensure_update_environment
   update_obsidian_headless_release
   ;;
 check)

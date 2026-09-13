@@ -15,6 +15,12 @@ SUNSET_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
 INPUT_METHOD_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/input-method-status.sh")"
 SSH_CONFIG="$(<"$REPO_DIR/config/shared/.ssh/config")"
 
+test_shared_profile_keeps_update_python_scoped_to_nix_shell() {
+  local packages="${HOME_CONFIG#*devTerminalPackages = with pkgs; [}"
+  packages="${packages%%]*}"
+  assert_not_contains "$packages" '    python3'
+}
+
 test_zsh_keeps_profile_node_with_nvm_installed() {
   local shell_home="$TEST_TMPDIR/node-home" output
   local nvm_bin="$TEST_TMPDIR/node-home/.nvm/versions/node/v26.5.1/bin"

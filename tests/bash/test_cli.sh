@@ -346,7 +346,15 @@ update_packages() { printf 'fresh:%s:%s\n' "$FORCE" "$QUIET" >> "$DOTFILES_DIR/o
 SCRIPT
 fi
 EOF
-  chmod +x "$bin/git"
+  cat > "$bin/nix" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+[[ "$1" == develop && "$2" == "path:$DOTFILES_DIR" && "$3" == -c ]]
+[[ -s "$DOTFILES_DIR/git.calls" ]]
+shift 3
+exec "$@"
+EOF
+  chmod +x "$bin/git" "$bin/nix"
   local output status=0
   output=$(DOTFILE_REEXEC=false DOTFILES_DIR="$root" PATH="$bin:$PATH" bash "$DOTFILE_CMD" --force --quiet update 2>&1) || status=$?
   if [[ "$status" != 0 ]]; then printf 'reexec output: %s\n' "$output" >> "$ERROR_FILE"; fi
@@ -517,6 +525,70 @@ EOF
     assert_equals "1" "$status"
     assert_contains "$output" "Pending dependency update"
     assert_not_contains "$output" "Installing packages"
+  done
+}
+
+test_updates_enter_pinned_shell_before_python_operations() {
+  local root="$TEST_HOME/update checkout" bin="$TEST_HOME/update-bin" command output status
+  mkdir -p "$root/scripts" "$bin"
+  cp "$DOTFILE_CMD" "$root/dotfile"
+  cp "$REPO_DIR/scripts/releases.sh" "$root/scripts/releases.sh"
+  for module in platform packages pins doctor obsidian; do
+    printf ':\n' > "$root/scripts/$module.sh"
+  done
+  cat > "$root/scripts/utils.sh" <<'EOF'
+info() { :; }
+success() { :; }
+fail() { printf '%s\n' "$*" >&2; exit 1; }
+doctor() { :; }
+EOF
+  cat > "$root/scripts/obsidian.sh" <<'EOF'
+_dependency_update_markers_conflict() { return 1; }
+_dependency_update_pending() { return 0; }
+probe() {
+  [[ "$FORCE" == true && "$QUIET" == true ]] || return 1
+  exec 9>> "$DOTFILES_DIR/probe.lock"
+  _lock_fd 9
+  _sync_paths "$DOTFILES_DIR/probe.lock" "$DOTFILES_DIR"
+  printf 'operation completed\n'
+}
+update_packages() { probe; }
+update_ai() { probe; }
+update_codex_release() { probe; }
+update_lix_installer_pins() { probe; }
+update_obsidian_headless_release() { probe; }
+EOF
+  cat > "$bin/nix" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+[[ -z "${TEST_UPDATE_SHELL:-}" ]]
+[[ "$1" == develop && "$2" == "path:$DOTFILES_DIR" && "$3" == -c ]]
+shift 3
+export TEST_UPDATE_SHELL=true
+printf 'entered pinned shell\n'
+exec "$@"
+EOF
+  cat > "$bin/python3" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${TEST_UPDATE_SHELL:-}" != true ]]; then
+  echo 'python3: command not found' >&2
+  exit 127
+fi
+exec "$TEST_REAL_PYTHON" "$@"
+EOF
+  chmod +x "$bin/nix" "$bin/python3"
+  local real_python
+  real_python="$(command -v python3)"
+  for command in update ai codex lix-installer obsidian-headless; do
+    local args=("$command")
+    [[ "$command" != ai ]] || args=(update ai)
+    status=0
+    output=$(DOTFILES_DIR="$root" TEST_REAL_PYTHON="$real_python" PATH="$bin:$PATH" \
+      bash "$root/dotfile" --force --quiet "${args[@]}" 2>&1) || status=$?
+    assert_equals 0 "$status"
+    assert_contains "$output" 'entered pinned shell'
+    assert_contains "$output" 'operation completed'
+    assert_not_contains "$output" 'python3: command not found'
   done
 }
 
