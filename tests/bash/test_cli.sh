@@ -583,7 +583,7 @@ EOF
     local args=("$command")
     [[ "$command" != ai ]] || args=(update ai)
     status=0
-    output=$(DOTFILES_DIR="$root" TEST_REAL_PYTHON="$real_python" PATH="$bin:$PATH" \
+    output=$(DOTFILE_UPDATE_ENV='' DOTFILES_DIR="$root" TEST_REAL_PYTHON="$real_python" PATH="$bin:$PATH" \
       bash "$root/dotfile" --force --quiet "${args[@]}" 2>&1) || status=$?
     assert_equals 0 "$status"
     assert_contains "$output" 'entered pinned shell'
