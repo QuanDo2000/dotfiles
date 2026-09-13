@@ -23,8 +23,7 @@ test_tmux_uses_native_clipboard_bindings_without_yank_plugin() {
   assert_contains "$tmux_config" 'bind -T copy-mode-vi Enter send-keys -X copy-pipe'
   assert_not_contains "$tmux_config" 'bind -T copy-mode-vi Enter send-keys -X copy-pipe-and-cancel'
   assert_contains "$tmux_config" 'bind -T copy-mode-vi Y send-keys -X copy-selection-and-cancel \; paste-buffer -p'
-  assert_contains "$tmux_config" 'bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-selection'
-  assert_not_contains "$tmux_config" 'bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-selection-and-cancel'
+  assert_contains "$tmux_config" "bind -T copy-mode-vi MouseDragEnd1Pane if-shell -F '#{>:#{scroll_position},0}' 'send-keys -X copy-selection' 'send-keys -X copy-selection-and-cancel'"
 }
 
 test_tmux_owns_catppuccin_theme_without_plugin() {
