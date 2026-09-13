@@ -70,12 +70,14 @@ test_check_prereqs_succeeds_with_all_tools() {
 
 test_setup_obsidian_dry_run_does_not_require_ob_or_probe_vaults() {
   export DRY=true
-  export PATH="$FAKE_BIN:/usr/bin:/bin"
   mkdir -p "$HOME/Documents/existing-vault"
   printf 'should not be probed\n' > "$HOME/Documents/existing-vault/sentinel"
+  # Keep path validation utilities available without exposing the installed ob.
+  ln -s "$(command -v dirname)" "$FAKE_BIN/dirname"
+  ln -s "$(command -v basename)" "$FAKE_BIN/basename"
 
   local output exit_code=0
-  output=$(setup_obsidian 2>&1) || exit_code=$?
+  output=$(PATH="$FAKE_BIN" setup_obsidian 2>&1) || exit_code=$?
 
   assert_equals "0" "$exit_code"
   assert_contains "$output" "Would run: ob login (interactive)"
