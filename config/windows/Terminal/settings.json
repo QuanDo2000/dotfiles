@@ -100,7 +100,7 @@
             },
             {
                 "commandline": "wsl.exe --distribution NixOS",
-                "elevate": true,
+                "elevate": false,
                 "guid": "{ecad4efc-9fd9-4803-a510-43173ead1833}",
                 "hidden": false,
                 "name": "NixOS",
