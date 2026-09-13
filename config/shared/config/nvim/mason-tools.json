@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-09-11-sparse-hub",
-  "registrySha256": "9602a200a0f7197f75642267b13e92703f3171886114e3c4aadd5aefd18651d5",
+  "registryVersion": "2026-09-13-prime-temper",
+  "registrySha256": "cfb8ac4912612f72d4ea905902f60688310df55a1a465b5222c5425ca519db19",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
