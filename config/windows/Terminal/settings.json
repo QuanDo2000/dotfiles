@@ -97,6 +97,15 @@
                 "hidden": false,
                 "name": "PowerShell 7",
                 "source": "Windows.Terminal.PowershellCore"
+            },
+            {
+                "commandline": "wsl.exe --distribution NixOS",
+                "elevate": true,
+                "guid": "{ecad4efc-9fd9-4803-a510-43173ead1833}",
+                "hidden": false,
+                "name": "NixOS",
+                "pathTranslationStyle": "wsl",
+                "startingDirectory": "~"
             }
         ]
     },
