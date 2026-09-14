@@ -52,8 +52,18 @@ function upgrade_system_packages {
       _run_system_package_command sudo apt-get upgrade -y
       ;;
     mac)
-      _run_system_package_command brew update
-      _run_system_package_command brew upgrade --greedy
+      local brew=brew
+      if [[ "$DRY" != "true" ]] && ! brew="$(command -v brew)"; then
+        if test -x /opt/homebrew/bin/brew; then
+          brew=/opt/homebrew/bin/brew
+        elif test -x /usr/local/bin/brew; then
+          brew=/usr/local/bin/brew
+        else
+          fail "Homebrew not found; install Homebrew to upgrade native macOS packages"
+        fi
+      fi
+      _run_system_package_command "$brew" update
+      _run_system_package_command "$brew" upgrade --greedy
       ;;
     nixos)
       fail "NixOS packages are managed declaratively; use dotfile update"

@@ -90,6 +90,44 @@ test_upgrade_system_packages_mac_dry_run() {
   assert_contains "$output" "brew upgrade --greedy"
 }
 
+test_upgrade_system_packages_mac_resolves_homebrew() {
+  source_scripts packages.sh
+  mock_uname Darwin
+
+  local available output status
+  for available in /custom/bin/brew /opt/homebrew/bin/brew /usr/local/bin/brew missing; do
+    status=0
+    output=$(
+      command() {
+        if [[ "$*" == '-v brew' ]]; then
+          [[ "$available" == /custom/bin/brew ]] || return 1
+          printf '%s\n' "$available"
+        else
+          builtin command "$@"
+        fi
+      }
+      test() {
+        if [[ "$1" == -x && "$2" == */bin/brew ]]; then
+          [[ "$2" == "$available" ]]
+        else
+          builtin test "$@"
+        fi
+      }
+      _run_system_package_command() { printf 'RUN %s\n' "$*"; }
+      DRY=false upgrade_system_packages
+    ) || status=$?
+    if [[ "$available" == missing ]]; then
+      assert_equals 1 "$status"
+      assert_contains "$output" 'Homebrew not found'
+      assert_not_contains "$output" 'RUN '
+    else
+      assert_equals 0 "$status"
+      assert_contains "$output" "RUN $available update"
+      assert_contains "$output" "RUN $available upgrade --greedy"
+    fi
+  done
+}
+
 test_upgrade_system_packages_nixos_uses_managed_update() {
   source_scripts packages.sh
   mock_uname Linux
