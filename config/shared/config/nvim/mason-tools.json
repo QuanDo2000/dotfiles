@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-09-13-prime-temper",
-  "registrySha256": "cfb8ac4912612f72d4ea905902f60688310df55a1a465b5222c5425ca519db19",
+  "registryVersion": "2026-09-14-needy-baker",
+  "registrySha256": "d4e56d2101ceb24a9fd7d971fbf335b5757875c534b41b5962082d3fd774fd45",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
