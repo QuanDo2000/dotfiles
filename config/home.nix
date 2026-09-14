@@ -607,7 +607,8 @@ in
         "RESTIC_CACHE_DIR=${homeDir}/.cache/restic"
       ];
       # debt: one lock serializes backup and maintenance; split only if maintenance blocks required backup throughput.
-      ExecStart = "${pkgs.util-linux}/bin/flock --no-fork %t/storage-offsite-backup.lock ${pkgs.restic}/bin/restic backup --tag storage-offsite --exclude-caches --iexclude-file=${homeDir}/.config/restic/storage-offsite-excludes /mnt/storage/Storage/Documents /mnt/storage/Storage/Book /mnt/storage/Storage/Music";
+      # Case-sensitive machine-local patterns stay user-owned; a missing file fails the job.
+      ExecStart = "${pkgs.util-linux}/bin/flock --no-fork %t/storage-offsite-backup.lock ${pkgs.restic}/bin/restic backup --tag storage-offsite --exclude-caches --iexclude-file=${homeDir}/.config/restic/storage-offsite-excludes --exclude-file=${homeDir}/.config/restic/storage-offsite-local-excludes /mnt/storage/Storage/Documents /mnt/storage/Storage/Book /mnt/storage/Storage/Music";
       TimeoutStartSec = "infinity";
     };
   };
@@ -675,6 +676,16 @@ in
 
     Install.WantedBy = [ "default.target" ];
   };
+
+  # Seed an empty local policy on first activation; never replace user content or symlinks.
+  home.activation.seedStorageOffsiteLocalExcludes = lib.mkIf storageOffsiteBackup
+    (lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      localExcludes="$HOME/.config/restic/storage-offsite-local-excludes"
+      if [[ ! -e "$localExcludes" && ! -L "$localExcludes" ]]; then
+        run ${pkgs.coreutils}/bin/mkdir -p "$HOME/.config/restic"
+        run ${pkgs.bash}/bin/bash -c 'set -o noclobber; umask 077; : > "$1"' -- "$localExcludes"
+      fi
+    '');
 
   home.activation.guardStorageOffsiteProfile = lib.mkIf (pkgs.stdenv.hostPlatform.isLinux && !googleDriveSync && !storageOffsiteBackup)
     (lib.hm.dag.entryBefore [ "writeBoundary" ] ''

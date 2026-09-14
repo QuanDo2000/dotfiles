@@ -258,3 +258,32 @@ test_platform_profiles_have_expected_ghostty_config() {
   generic_files=$(_profile_files linux); arch_files=$(_profile_files arch-server); nixos_config=$(_profile_xdg_files nixos); darwin_config=$(_profile_xdg_files darwin)
   _test_absent "$generic_files" '.config/ghostty/config'; _test_absent "$arch_files" '.config/ghostty/config'; assert_line_present "$nixos_config" ghostty/config; assert_line_present "$darwin_config" ghostty/config
 }
+
+# Local case-sensitive patterns remain writable and outside the managed baseline.
+test_offsite_local_exclusions_are_seeded_without_overwriting() {
+  local command activation target
+  command=$(_profile_service arch-server storage-offsite-backup | jq -r '.execStart[]')
+  assert_contains "$command" 'restic backup --tag storage-offsite --exclude-caches --iexclude-file='
+  assert_contains "$command" '/.config/restic/storage-offsite-excludes --exclude-file='
+  assert_equals '/mnt/storage/Storage/Documents /mnt/storage/Storage/Book /mnt/storage/Storage/Music' "${command##*storage-offsite-local-excludes }"
+  assert_equals '' "$(printf '%s\n' "$command" | tr ' ' '\n' | grep '^--exclude=' || true)"
+  assert_line_absent "$(_profile_files arch-server)" '.config/restic/storage-offsite-local-excludes'
+  assert_equals null "$(_profile_activation linux seedStorageOffsiteLocalExcludes)"
+  activation=$(_profile_activation arch-server seedStorageOffsiteLocalExcludes)
+  assert_contains "$activation" 'noclobber'
+  target="$HOME/.config/restic/storage-offsite-local-excludes"
+  run() { "$@"; }
+  if [[ "$activation" == null ]]; then return; fi
+  eval "$activation"
+  assert_file_exists "$target"
+  assert_equals '' "$(<"$target")"
+  printf '%s\n' '/example/ClosedArchive' > "$target"
+  eval "$activation"
+  assert_equals '/example/ClosedArchive' "$(<"$target")"
+  rm "$target"
+  ln -s "$HOME/absent-local-excludes" "$target"
+  eval "$activation"
+  assert_symlink "$target" "$HOME/absent-local-excludes"
+  [[ ! -e "$HOME/absent-local-excludes" ]] || echo '  dangling symlink target was created' >> "$ERROR_FILE"
+  unset -f run
+}
