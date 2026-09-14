@@ -18,6 +18,16 @@ PAIRS = (
 REMOTE_BACKUP = "gdrive:.Storage-sync-backup"
 STORAGE_BACKUP = Path("/mnt/storage/Storage/.Drive-sync-backup")
 RETENTION_DAYS = 30
+# Private maintenance staging only; encrypted Restic coverage is independent.
+EXCLUDED_DIRS = {
+    "Documents": (
+        "HomelabBackups/forgejo-maintenance.7SR3ro7H",
+        "HomelabBackups/navidrome-config.N6HKWeW8",
+        "HomelabBackups/navidrome-maintenance.xUgm9QdL/final.cnPaS5qX",
+        "HomelabBackups/navidrome-maintenance.xUgm9QdL/restore-test",
+        "HomelabBackups/servarr-refresh-20260914",
+    ),
+}
 
 
 def rclone(*args, capture=False):
@@ -45,8 +55,10 @@ def parse_inventory(items, root):
     return dirs, files
 
 
-def inventory(root):
-    items = json.loads(rclone("lsjson", root, "--recursive", "--no-mimetype", capture=True).stdout)
+def inventory(root, excluded_dirs=()):
+    # Anchored directory rules prune traversal before permission checks.
+    filters = [arg for path in excluded_dirs for arg in ("--exclude", f"/{path}/**")]
+    items = json.loads(rclone("lsjson", root, "--recursive", "--no-mimetype", *filters, capture=True).stdout)
     return parse_inventory(items, root)
 
 
@@ -76,14 +88,15 @@ def matching_hashes(remote_root, storage_root, paths):
     }
 
 
-def make_plan(remote_dirs, remote_files, storage_dirs, storage_files, same_hashes=frozenset()):
+def make_plan(remote_dirs, remote_files, storage_dirs, storage_files, same_hashes=frozenset(), excluded_dirs=()):
     common_dirs = remote_dirs & storage_dirs
 
     # debt: fixed policy filter; add configuration only when another policy exists.
     def allowed(path):
         name = posixpath.basename(path)
         return not (
-            any(part.casefold() == "recovery" for part in posixpath.dirname(path).split("/"))
+            any(path == directory or path.startswith(directory + "/") for directory in excluded_dirs)
+            or any(part.casefold() == "recovery" for part in posixpath.dirname(path).split("/"))
             or name.startswith("._")
             or name == ".DS_Store"
             or name.lower().endswith((".iso", ".pfx"))
@@ -170,14 +183,15 @@ def parse_backup_time(name, cutoff):
 
 
 def sync_pair(name, remote_root, storage_root, stamp, dry_run):
-    remote_dirs, remote_files = inventory(remote_root)
-    storage_dirs, storage_files = inventory(storage_root)
+    excluded_dirs = EXCLUDED_DIRS.get(name, ())
+    remote_dirs, remote_files = inventory(remote_root, excluded_dirs)
+    storage_dirs, storage_files = inventory(storage_root, excluded_dirs)
     hash_candidates = {
         path for path in remote_files.keys() & storage_files.keys()
         if remote_files[path][0] == storage_files[path][0]
     }
     same_hashes = matching_hashes(remote_root, storage_root, hash_candidates)
-    plan = make_plan(remote_dirs, remote_files, storage_dirs, storage_files, same_hashes)
+    plan = make_plan(remote_dirs, remote_files, storage_dirs, storage_files, same_hashes, excluded_dirs)
     print(
         f"{name}: common_dirs={plan['common_dirs']} down={len(plan['down'])} "
         f"down_bytes={plan['down_bytes']} up={len(plan['up'])} up_bytes={plan['up_bytes']} "
@@ -255,6 +269,28 @@ def self_test():
         assert "duplicate paths" in str(error)
     else:
         raise AssertionError("duplicate paths must fail")
+    # Exercise real rclone traversal: an unreadable excluded subtree must not
+    # fail inventory, while siblings (including prefix lookalikes) remain covered.
+    excluded = ("HomelabBackups/private",)
+    with tempfile.TemporaryDirectory() as root:
+        denied = Path(root) / excluded[0]
+        denied.mkdir(parents=True)
+        (denied / "secret").write_text("private")
+        kept = "HomelabBackups/private-other/keep"
+        (Path(root) / kept).parent.mkdir()
+        (Path(root) / kept).write_text("keep")
+        denied.chmod(0)
+        try:
+            dirs, files = inventory(root, excluded)
+            assert excluded[0] not in dirs and set(files) == {kept}
+        finally:
+            denied.chmod(0o700)  # Only this disposable test fixture.
+        private = excluded[0] + "/secret"
+        dirs.add(excluded[0])
+        for remote, storage in (({private: (1, new), kept: (1, new)}, {}),
+                                ({}, {private: (1, new), kept: (1, new)})):
+            filtered = make_plan(dirs, remote, dirs, storage, excluded_dirs=excluded)
+            assert filtered["down"] | filtered["up"] == {kept}
     print("SELF_TEST_OK")
 
 
