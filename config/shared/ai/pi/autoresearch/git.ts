@@ -48,7 +48,7 @@ function pathEntryExists(value: string): boolean {
 }
 
 function canonical(value: string): string {
-  const resolved = path.resolve(value);
+  const resolved = fs.realpathSync(value);
   return process.platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 

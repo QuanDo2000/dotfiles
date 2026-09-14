@@ -87,11 +87,15 @@ async function workspaceNames(cwd: string): Promise<Set<string>> {
   return new Set(output.split("\n").filter(Boolean));
 }
 
+function canonical(value: string): string {
+  const resolved = fs.realpathSync(value);
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
 export async function createAutoresearchWorkspace(cwd: string, goal: string): Promise<CreatedJjWorkspace> {
   const root = await runJj(cwd, ["root"]);
   const resolvedCwd = path.resolve(cwd);
-  const normalize = (value: string) => process.platform === "win32" ? path.resolve(value).toLowerCase() : path.resolve(value);
-  if (normalize(root) !== normalize(resolvedCwd)) throw new Error("JJ root must match the Pi working directory");
+  if (canonical(root) !== canonical(resolvedCwd)) throw new Error("JJ root must match the Pi working directory");
   const source = await stateAt(resolvedCwd);
   if (source.conflict) throw new Error("cannot create an autoresearch workspace from a conflicted working-copy commit");
   if (!source.empty) throw new Error("automatic JJ setup requires an empty working-copy commit");
@@ -126,7 +130,7 @@ export async function removeAutoresearchWorkspace(repositoryCwd: string, workspa
   }
   const root = await runJj(resolved, ["root"]);
   const state = await stateAt(resolved);
-  if ((process.platform === "win32" ? root.toLowerCase() : root) !== (process.platform === "win32" ? resolved.toLowerCase() : resolved)) {
+  if (canonical(root) !== canonical(resolved)) {
     throw new Error("refusing to remove a nested JJ path");
   }
   if (state.conflict || !state.empty) throw new Error("refusing to remove a nonempty or conflicted JJ workspace");

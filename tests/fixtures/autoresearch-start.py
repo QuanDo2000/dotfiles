@@ -91,7 +91,7 @@ for kind, scenario in [("git", "clean"), ("jj", "clean"), ("git", "dirty"), ("jj
             assert kickoff["kickoff"] == "/skill:pi-autoresearch " + goal, kickoff
             after = probe()
             work = Path(after["cwd"])
-            assert work != root and work.parent == directory
+            assert work.resolve() != root.resolve() and work.resolve().parent == directory.resolve()
             assert after["parent"] == before["session"]
             assert set(["autoresearch_start", "autoresearch_run", "autoresearch_log"]) <= set(after["active"])
             assert not (work / ".auto").exists(), "test accidentally started an experiment"
@@ -109,7 +109,7 @@ for kind, scenario in [("git", "clean"), ("jj", "clean"), ("git", "dirty"), ("jj
         else:
             expected = "Autoresearch unavailable:" if scenario == "dirty" else "Session switch cancelled; created workspace rolled back"
             until(lambda e: e.get("type") == "extension_ui_request" and e.get("message", "").startswith(expected))
-            assert probe()["cwd"] == str(root)
+            assert Path(probe()["cwd"]).resolve() == root.resolve()
             assert list(directory.iterdir()) == [root], "failed startup left a workspace"
             if scenario == "dirty":
                 assert (root / "dirty").read_text() == "preserve\n"

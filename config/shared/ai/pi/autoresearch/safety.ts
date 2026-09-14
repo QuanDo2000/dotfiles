@@ -21,7 +21,7 @@ export interface PilotValidationOptions {
 }
 
 function canonical(value: string, platform: SupportedPlatform): string {
-  const resolved = path.resolve(value);
+  const resolved = fs.realpathSync(value);
   return platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 

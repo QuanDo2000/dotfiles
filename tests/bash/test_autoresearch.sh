@@ -5,6 +5,15 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
 extension_dir="$REPO_DIR/config/shared/ai/pi/autoresearch"
 
+test_autoresearch_workspace_checks_accept_symlinked_parent() (
+  mkdir "$TEST_TMPDIR/physical"
+  ln -s "$TEST_TMPDIR/physical" "$TEST_TMPDIR/alias"
+  TEST_TMPDIR="$TEST_TMPDIR/alias"
+  test_autoresearch_guard_rejects_unsafe_and_accepts_bounded_worktree
+  test_autoresearch_jj_guard_accepts_only_dedicated_empty_workspace
+  test_autoresearch_workspace_helpers_create_suffix_and_remove
+)
+
 test_autoresearch_metric_parser_accepts_only_structured_finite_numbers() {
   assert_file_exists "$extension_dir/metrics.ts"
   [ -f "$extension_dir/metrics.ts" ] || return
