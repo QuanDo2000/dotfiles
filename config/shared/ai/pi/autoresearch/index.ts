@@ -119,6 +119,30 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
   }));
 
   pi.registerTool({
+    name: "autoresearch_start",
+    label: "Start autoresearch",
+    description: "Start a user-approved bounded optimization loop in a disposable workspace. Queues the existing /autoresearch command; does not report setup as completed. Include the approved goal, iteration limit, metric, scope, and correctness constraints.",
+    promptSnippet: "Start an explicitly approved bounded autoresearch workflow",
+    promptGuidelines: ["Call autoresearch_start only with explicit user approval, and call it alone. Stop work in the parent session after the startup request is queued."],
+    parameters: Type.Object({ goal: Type.String({ minLength: 1 }) }),
+    async execute(_id, params, signal) {
+      signal?.throwIfAborted();
+      const goal = params.goal.trim();
+      if (!goal || ["off", "status", "cleanup"].includes(goal)) {
+        throw new Error("Provide an optimization goal, not an autoresearch control command");
+      }
+      // Tools lack session-switch APIs. Explicit expansion dispatches the command,
+      // whose idle barrier keeps setup out of the active tool batch.
+      pi.sendUserMessage(`/autoresearch ${goal}`, { deliverAs: "followUp", expandPromptTemplates: true });
+      return {
+        content: [{ type: "text", text: "Autoresearch startup queued. Stop work here; the command will validate safety and enter the isolated session, or report why setup was refused." }],
+        details: { queued: true },
+        terminate: true,
+      };
+    },
+  });
+
+  pi.registerTool({
     name: "autoresearch_run",
     label: "Run autoresearch benchmark",
     description: "Run the bounded autoresearch benchmark and mandatory correctness checks",
@@ -320,6 +344,9 @@ export default function autoresearchExtension(pi: ExtensionAPI) {
         return;
       }
 
+      // Extension commands dispatch immediately even with deliverAs: "followUp".
+      // Wait for the calling tool result and the entire agent run before switching.
+      await ctx.waitForIdle();
       const problem = await validatePilot(ctx.cwd, { requireFiles: false, requireClean: true });
       const autoJj = problem?.includes("dedicated autoresearch-* workspace") && fs.existsSync(path.join(ctx.cwd, ".jj"));
       const gitMarker = path.join(ctx.cwd, ".git");

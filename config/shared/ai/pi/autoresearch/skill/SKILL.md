@@ -7,6 +7,10 @@ description: Run a bounded optimization loop in a disposable Git worktree or JJ 
 
 Optimize one measurable target through finite, reversible experiments.
 
+## Start
+
+After explicit user approval, call `autoresearch_start` alone with a `goal` containing the approved target, iteration limit, primary metric, scope, constraints, and correctness checks. It queues the same setup as `/autoresearch <goal>` through Pi's command context. Stop work in the parent session: a queued result does not mean setup succeeded. The command waits for the agent to finish, then either enters the isolated session or reports a safety/setup failure. Never start merely because this skill is loaded.
+
 ## Setup
 
 1. Confirm the goal, primary metric, direction, files in scope, constraints, and authoritative correctness checks.
