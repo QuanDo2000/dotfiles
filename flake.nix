@@ -49,6 +49,7 @@
           nodejs
           pi-agent
           python3
+          rclone
           shellcheck
           tree-sitter
           tmux
