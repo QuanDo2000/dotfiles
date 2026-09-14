@@ -21,16 +21,18 @@ Write the test first. Watch it fail. Write minimal code to pass.
 
 ## When to Use
 
-**Always:**
+**Default for important behavior changes:**
 - New features
 - Bug fixes
 - Refactoring
 - Behavior changes
 
-**Exceptions (ask the user first):**
+**Use existing validation or a representative smoke check when sufficient:**
 - Throwaway prototypes
 - Generated code
 - Configuration files
+
+Keep verification proportionate and risk-based: test important behavior and credible failure paths, not exhaustive low-value cases. Reuse existing checks; avoid elaborate one-off test harnesses. Preserve security, data-loss prevention, rollback, explicit acceptance criteria, and actual execution. Documentation-only edits need existing policy checks and diff review, not a new unit framework.
 
 ## Test-first evidence
 
@@ -133,14 +135,14 @@ We'll fix it in REFACTOR.
 # Run the specific test
 pytest tests/test_feature.py::test_specific_behavior -v
 
-# At the final boundary, run the required broader suite
+# Only when material risk or an explicit requirement warrants the full suite
 pytest tests/ -q
 ```
 
 Confirm:
 - Test passes
-- Other tests still pass
-- Output pristine (no errors, warnings)
+- Impacted tests pass
+- Investigate relevant errors or warnings; do not chase unrelated output cleanup
 
 **Test fails?** Fix the code, not the test.
 
@@ -215,7 +217,7 @@ Never fix bugs without a test.
 
 - **Testing mock behavior instead of real behavior** — mocks should verify interactions, not replace the system under test
 - **Testing implementation details** — test behavior/results, not internal method calls
-- **Happy path only** — always test edge cases, errors, and boundaries
+- **Ignoring material failure paths** — test edge cases, errors, and boundaries with credible security, data-loss, rollback, or user-visible impact, not every imaginable case
 - **Brittle tests** — tests should verify behavior, not structure; refactoring shouldn't break them
 
 Report RED/GREEN evidence and any unverified behavior; do not claim TDD solely because tests exist.

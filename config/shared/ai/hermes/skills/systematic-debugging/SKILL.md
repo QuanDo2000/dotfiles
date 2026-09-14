@@ -226,7 +226,7 @@ Never combine optimizations before measuring each one. Correctness checks run be
 # Run the specific regression test
 pytest tests/test_module.py::test_regression -v
 
-# Run full suite — no regressions
+# Run the full suite only for material risk or an explicit requirement
 pytest tests/ -q
 ```
 
@@ -244,7 +244,7 @@ If safe diagnosis requires broader scope or mutation authority, stop and ask; a 
 | **1. Root Cause** | Read errors, reproduce, check changes, gather evidence, trace data flow | Understand WHAT and WHY |
 | **2. Pattern** | Find working examples, compare, identify differences | Know what's different |
 | **3. Hypothesis** | Form theory, test minimally, one variable at a time | Confirmed or new hypothesis |
-| **4. Implementation** | Create regression test, fix root cause, verify | Bug resolved, all tests pass |
+| **4. Implementation** | Create regression test, fix root cause, verify | Bug resolved, impacted and explicitly required tests pass |
 
 ## Hermes Agent Integration
 

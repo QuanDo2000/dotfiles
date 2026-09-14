@@ -5,7 +5,9 @@ description: Use for behavior-changing code or bug fixes.
 
 # Test-Driven Development
 
-For each changed behavior:
+Use proportionate, risk-based verification: cover important changed behavior and credible failure paths, not exhaustive low-value cases. Reuse existing checks; avoid elaborate one-off test harnesses. Preserve security, data-loss prevention, rollback, explicit acceptance criteria, and actual execution.
+
+For each important changed behavior:
 
 1. **RED:** write the smallest test that exercises the real public boundary and fails for the intended reason.
 2. **GREEN:** add the least production code that passes it.

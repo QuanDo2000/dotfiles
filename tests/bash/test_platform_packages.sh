@@ -211,7 +211,8 @@ test_all_ai_agents_delegate_efficiently() {
 
   for guidance in "$agents" "$soul"; do
     assert_contains "$guidance" 'Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check'
-    assert_contains "$guidance" 'Use focused checks while iterating and broad required suites once after the final change.'
+    assert_contains "$guidance" 'Use proportionate, risk-based verification: test important behavior and credible failure modes'
+    assert_contains "$guidance" 'Preserve security, data-loss prevention, rollback checks, and explicit acceptance criteria.'
   done
 }
 
