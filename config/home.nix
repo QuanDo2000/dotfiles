@@ -134,6 +134,7 @@ let
     nil
     nixfmt
     nodejs_26
+    odin
     pkgs.pi-agent
     pkgs.pi-extensions
     shellcheck
