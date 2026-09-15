@@ -260,30 +260,55 @@ test_platform_profiles_have_expected_ghostty_config() {
 }
 
 # Local case-sensitive patterns remain writable and outside the managed baseline.
-test_offsite_local_exclusions_are_seeded_without_overwriting() {
-  local command activation target
+test_offsite_local_exclusions_fail_closed_without_overwriting() {
+  local command activation target profile output status guard
   command=$(_profile_service arch-server storage-offsite-backup | jq -r '.execStart[]')
   assert_contains "$command" 'restic backup --tag storage-offsite --exclude-caches --iexclude-file='
   assert_contains "$command" '/.config/restic/storage-offsite-excludes --exclude-file='
   assert_equals '/mnt/storage/Storage/Documents /mnt/storage/Storage/Book /mnt/storage/Storage/Music' "${command##*storage-offsite-local-excludes }"
   assert_equals '' "$(printf '%s\n' "$command" | tr ' ' '\n' | grep '^--exclude=' || true)"
   assert_line_absent "$(_profile_files arch-server)" '.config/restic/storage-offsite-local-excludes'
-  assert_equals null "$(_profile_activation linux seedStorageOffsiteLocalExcludes)"
-  activation=$(_profile_activation arch-server seedStorageOffsiteLocalExcludes)
-  assert_contains "$activation" 'noclobber'
+  for profile in linux nixos darwin; do
+    assert_equals null "$(_profile_activation "$profile" checkStorageOffsiteLocalExcludes)"
+  done
+  guard=$(nix eval --json "path:$REPO_DIR#$(_profile_expr arch-server).home.activation.checkStorageOffsiteLocalExcludes")
+  assert_contains "$(jq -r '.before[]' <<< "$guard")" writeBoundary
+  activation=$(_profile_activation arch-server checkStorageOffsiteLocalExcludes)
+  assert_not_contains "$activation" 'mkdir'
+  assert_not_contains "$activation" 'noclobber'
   target="$HOME/.config/restic/storage-offsite-local-excludes"
-  run() { "$@"; }
-  if [[ "$activation" == null ]]; then return; fi
-  eval "$activation"
-  assert_file_exists "$target"
-  assert_equals '' "$(<"$target")"
+  status=0
+  output=$(bash -c "$activation" 2>&1) || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'Restore the reviewed policy'
+  [[ ! -e "$target" && ! -L "$target" ]] || echo '  missing policy was recreated' >> "$ERROR_FILE"
+  assert_exit_code 1 env DRY_RUN=1 bash -c "$activation"
+  [[ ! -e "$HOME/.config/restic" ]] || echo '  preflight created policy directory' >> "$ERROR_FILE"
+  mkdir -p "$(dirname "$target")"
   printf '%s\n' '/example/ClosedArchive' > "$target"
-  eval "$activation"
+  assert_exit_code 0 bash -c "$activation"
+  assert_exit_code 0 env DRY_RUN=1 bash -c "$activation"
   assert_equals '/example/ClosedArchive' "$(<"$target")"
   rm "$target"
-  ln -s "$HOME/absent-local-excludes" "$target"
-  eval "$activation"
-  assert_symlink "$target" "$HOME/absent-local-excludes"
-  [[ ! -e "$HOME/absent-local-excludes" ]] || echo '  dangling symlink target was created' >> "$ERROR_FILE"
-  unset -f run
+  assert_exit_code 1 bash -c "$activation"
+  [[ ! -e "$target" && ! -L "$target" ]] || echo '  lost policy was recreated' >> "$ERROR_FILE"
+  printf '%s\n' '/example/ClosedArchive' > "$HOME/reviewed-policy"
+  ln -s "$HOME/reviewed-policy" "$target"
+  assert_exit_code 0 bash -c "$activation"
+  assert_symlink "$target" "$HOME/reviewed-policy"
+  assert_equals '/example/ClosedArchive' "$(<"$HOME/reviewed-policy")"
+  chmod 000 "$HOME/reviewed-policy"
+  assert_exit_code 1 bash -c "$activation"
+  chmod 600 "$HOME/reviewed-policy"
+  rm "$HOME/reviewed-policy"
+  assert_exit_code 1 bash -c "$activation"
+  assert_symlink "$target" "$HOME/reviewed-policy"
+  [[ ! -e "$HOME/reviewed-policy" ]] || echo '  dangling symlink target was created' >> "$ERROR_FILE"
+  rm "$target"
+  mkdir "$target"
+  assert_exit_code 1 bash -c "$activation"
+  [[ -d "$target" ]] || echo '  policy directory was replaced' >> "$ERROR_FILE"
+  rmdir "$target"
+  : > "$target" # Explicitly intentional empty policy is allowed.
+  assert_exit_code 0 bash -c "$activation"
 }

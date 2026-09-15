@@ -677,13 +677,13 @@ in
     Install.WantedBy = [ "default.target" ];
   };
 
-  # Seed an empty local policy on first activation; never replace user content or symlinks.
-  home.activation.seedStorageOffsiteLocalExcludes = lib.mkIf storageOffsiteBackup
-    (lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+  # Local policy is an explicit prerequisite, including on first activation and dry-run.
+  home.activation.checkStorageOffsiteLocalExcludes = lib.mkIf storageOffsiteBackup
+    (lib.hm.dag.entryBefore [ "writeBoundary" ] ''
       localExcludes="$HOME/.config/restic/storage-offsite-local-excludes"
-      if [[ ! -e "$localExcludes" && ! -L "$localExcludes" ]]; then
-        run ${pkgs.coreutils}/bin/mkdir -p "$HOME/.config/restic"
-        run ${pkgs.bash}/bin/bash -c 'set -o noclobber; umask 077; : > "$1"' -- "$localExcludes"
+      if [[ ! -f "$localExcludes" || ! -r "$localExcludes" ]]; then
+        echo "Refusing storage backup activation: $localExcludes must be a readable regular file (or a symlink to one). Restore the reviewed policy; on first use, explicitly create reviewed exclusions or an intentionally empty policy. See docs/restic-local-policy.md. No policy was created or changed." >&2
+        exit 1
       fi
     '');
 
