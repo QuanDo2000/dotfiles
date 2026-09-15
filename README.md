@@ -121,6 +121,19 @@ Options:
   -h, --help  Show this help message
 ```
 
+Windows `all`, `packages`, and full `update` manage Anki through WinGet and
+install Pass/Fail 2 and Zoom from `config/windows/anki-addons.json`. Close Anki
+before running them. Add-on downloads are SHA-256 checked; refresh their pins
+manually when adopting a new release. Anki's automatic updates are disabled for
+these two add-ons so it cannot replace the pinned code.
+
+Managed settings use the existing Windows preferences captured in
+`config/windows/anki-addons.json`, including Zoom's custom zoom levels, rather
+than the Unix defaults. Other settings and `user_files` are preserved; decks, profiles, and
+unrelated add-ons are untouched. Previous managed add-on directories are retained
+under `%APPDATA%\Anki2\dotfile-addons-backups`. Only the default
+`%APPDATA%\Anki2\addons21` location is managed.
+
 Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` is generated from `config/unix/.zshrc.base`.
 
 Run `./scripts/check.sh` from the repo root before pushing changes.
