@@ -1,5 +1,27 @@
 [
   {
+    "id": "2055492159",
+    "name": "AnkiConnect",
+    "url": "https://ankiweb.net/shared/download/2055492159?v=2.1&p=2509004",
+    "sha256": "665d9534654469b7e4708b4df235d43cf3770ff85b23b9ff5eb36f9b7b4133cf",
+    "config": {
+      "webBindAddress": "127.0.0.1",
+      "webBindPort": 8765,
+      "webCorsOriginList": [
+        "http://localhost"
+      ],
+      "ignoreOriginList": []
+    },
+    "files": {
+      "__init__.py": "629566e8eea59f3d67abf1b2339d5c0c621b2d894139e8335db030d022582873",
+      "config.json": "696e9c384e062e60e4a9cab2e58da6616a16d4955bb3d6404c75347022303cb5",
+      "config.md": "85c0f3491685de970757d0ee33d9ae4be805d18a6033295b3c32e577b6632036",
+      "edit.py": "4196d9efc37f4906ea5caf712ac45c04c22fdb822e57c3b8d4e0ea26b022d214",
+      "util.py": "059b4c6170bdb40286a040e4a7950bccd69259ad5c8dd16e2f0fa2587766b18d",
+      "web.py": "69b122ba110ab60af40406d21ce1459f834f972bdaedbef58578a28c3b5c5421"
+    }
+  },
+  {
     "id": "876946123",
     "name": "Pass/Fail 2",
     "url": "https://ankiweb.net/shared/download/876946123?v=2.1&p=2509004",
@@ -10,6 +32,16 @@
       "good_button_name": "Pass",
       "again_button_textcolor": "#000000",
       "good_button_textcolor": "#000000"
+    },
+    "files": {
+      "__init__.py": "994394c8f83508f37228a19b50fb5a4fa93be8c7ab42403799b3b45e241632bd",
+      "build_info.py": "8998805f6a43b6e306db57a543965b7445b2b77edbdb0451f65e04f2babcc12e",
+      "config.json": "2112407e70bc56bdbce28ce64f964e8cd359964b89e3db5bf416d24fda41439c",
+      "config.py": "2dfabc0f9f7ed9afb809eda3e3c008f70cadaa8ca1c9d4ac74cdc2f4aa4fcdcf",
+      "configuration_menu.py": "d7c85f194b25d50f0f6aaf1b6b24d583560ec413e907688238bd3ba775cd3077",
+      "logger.py": "863280f7adf76e20de84c04a274e5007b090935cf60af9089e2ee86cb66e6923",
+      "manifest.json": "2dc6ac9d378ee316e5517cbab7d810b6ae5612eb85e1990f3e70c5b8041f91fa",
+      "passfail2.py": "5d9200ea6925dabac8ef723176c85182c5a4f3b2beedff6f47f3b9cc3d6156ba"
     }
   },
   {
@@ -34,6 +66,36 @@
       "answer_zoom": 2.700000025331969,
       "editor_zoom": 1.0,
       "stats_zoom": 1.0
+    },
+    "files": {
+      "LICENSE": "539bd1e8c6753faccb5dda90c67f6fd4b116737f66e2acf6d65aa1e736688a79",
+      "Patreon_banner.jpg": "d0c2c2a1cce364ea6b709104dcb4ff76a8198ceec5e05b5387e84c4f461a1417",
+      "__init__.py": "229eddf123071bfe43ff6df46f37d884308d69db34bab2bc58c28cdd22cd7add",
+      "banner.jpg": "6c408fc002b738ef3f48f4b8931e49e5c32fd23e52c352fdda9912cf884c5db2",
+      "config.json": "86cf77cf9fac66b37a638e603c4d31cd89e5b65f44f1b11732b65f1d5a946fd4",
+      "icon.png": "6be0d8fee66d9ae23116adcbe46155732211341d78cfd0cb5643dfd764c87076",
+      "main.py": "c2a5a98539d1dd9e7ea9102733c37b904d961198f183512746c6685d0bf1ad2e",
+      "manifest.json": "be3dc71e05af27e0ada346788b64dff9da50e6d7aa38b444e14990c5526408af",
+      "old_main.py": "ee05e5be19dfcb8d805e361fe3280f72928bce7583213031018542a4119f532c",
+      "path_manager.py": "0f23a63b7800f2e4b4fe311b97d1352ddc719417eab7e05e77ead402f6e82729",
+      "popup_shige.png": "0b7f32b5a2f0cdfce544ccf4240f27eab90a879c174c2f47b782779a6e8a33bc",
+      "shige_pop/button_manager.py": "545e2264ecff4537488f9d2836766ed68905397e763f8ed6804c35d5354ce9e9",
+      "shige_pop/change_log.py": "5311701b574f2a8624495333c4a13af0ef5caabedbcc7ab9f3da9e77c6c28584",
+      "shige_pop/endroll/Space.gif": "db4e573caeb6ad6641fec1cb72e40f8be55e6ea52280d9dae5e3f9d4563bddd0",
+      "shige_pop/endroll/Space.png": "5748e25d1d9a9166681c1adb58409dd3e52a449850def30419bedfb945e9daca",
+      "shige_pop/endroll/endroll.py": "48aabf27fdd675dc2a68a0cbc47210c1986f2ccbb597bd4b8b0aae02ca2468ef",
+      "shige_pop/endroll/listOfSupportedPatrons.py": "ae77524ea80a5a153c7b772a92d9aff215ad1c60dda18d738229232a011482d0",
+      "shige_pop/patrons_list.py": "d624739707bdec77d5a33cb2a2fa0c7fa4f75ff82cdb039bc7d25456890341bc",
+      "shige_pop/popup_config_v2.py": "7e15f0071440baaae3e52635d4670478ef13cf3513b438758f1b556fb7e790bd",
+      "shige_pop/popup_icon.png": "9441ed45fa2a5a13c6db14947d286d215d311fd8ed99a6111ed029e4e0f60671",
+      "shige_pop/popup_shige.png": "23eb2a5699a08b1a5aebea836032c351cb776d868d80d7d66cccabadc2e7cd0f",
+      "shige_pop/shige_addons.py": "cc2dcd2bb377dd991ae5b11a9371635ec039d1adcf2b526b57e362c03b908ee0",
+      "shige_pop/thumbnail_Leaderboard_plus.webp": "7614584b2f368f4705b04f23591c23d7f8f69729d5e30d806baa12e613fd9d73",
+      "shige_pop/thumbnail_ankiarcade.webp": "5e412ce292a37292b1b1b06158b34511cc075a2e864a1c95ac8af405848861a0",
+      "shige_pop/thumbnail_chunk_progressbar.webp": "0b6d2dda31df7e5d7d97c0d5130fb64a410feb2b0aba022cbe5399e75158568c",
+      "shige_pop/thumbnail_new_card_farm.webp": "9689a6fa83ceb4be162d829aa9850ac47020df5d5be74c2ccd1be6629a8602ff",
+      "zoom_config.py": "e867734e4298e3cb4d620a0ccac14a0c39e04fcd7313c51f4b9a9c83278cd822",
+      "zoom_editor.py": "23b20f8ccbe5ecec1db839d78ba2b6597b4d72e38b0dcce1dcce1b530706e465"
     }
   }
 ]

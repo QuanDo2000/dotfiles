@@ -168,7 +168,7 @@ test_all_dependency_pin_updaters_dry_run_without_network() {
   assert_equals "0" "$status"
   for label in \
     "Lix installer" "Codex package" "Pi package" "Obsidian Headless" \
-    "Pi extension closure" "WebCord" "Anki Zoom" \
+    "Pi extension closure" "WebCord" "Anki Zoom" "Windows Anki add-ons" \
     "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
     assert_contains "$output" "$label"
   done

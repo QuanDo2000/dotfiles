@@ -3,6 +3,11 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
+test_windows_anki_pin_refresher() {
+  python3 "$REPO_DIR/tests/python/test_anki_pins.py" 2>&1
+  assert_equals "0" "$?" "Anki pin refresher tests should pass"
+}
+
 test_pin_updater_python_is_syntax_valid() {
   PYTHONPYCACHEPREFIX="$TEST_TMPDIR/pycache" python3 -m py_compile "$REPO_DIR/scripts/update_pins.py" 2>>"$ERROR_FILE"
 }

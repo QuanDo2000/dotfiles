@@ -3,7 +3,7 @@ function TestSetup {
     $script:AnkiOriginalDir = $script:DotfilesDir
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'repo'
     $script:AnkiMocks = @{}
-    foreach ($name in 'InstallPackages', 'InstallFiraCodeNerdFont', 'InstallAi') {
+    foreach ($name in 'InstallPackages', 'InstallFiraCodeNerdFont', 'InstallAi', 'Sync-ObsidianSettings') {
         $script:AnkiMocks[$name] = (Get-Command $name).ScriptBlock
         Set-FunctionMock $name { }
     }
@@ -21,7 +21,7 @@ function TestSetup {
     }
     $script:AnkiPins = Join-Path $script:DotfilesDir 'config/windows/anki-addons.json'
     New-Item -ItemType Directory -Force -Path (Split-Path $script:AnkiPins) | Out-Null
-    ConvertTo-Json -Depth 10 -InputObject @(@{ id = '876946123'; name = 'Pass/Fail 2'; url = 'https://ankiweb.net/fixture'; sha256 = (Get-FileHash $script:AnkiZip).Hash; config = @{ good_button_name = 'Pass' } }) |
+    ConvertTo-Json -Depth 10 -InputObject @(@{ id = '876946123'; name = 'Pass/Fail 2'; url = 'https://ankiweb.net/fixture'; sha256 = (Get-FileHash $script:AnkiZip).Hash; config = @{ good_button_name = 'Pass'; webCorsOriginList = @('http://localhost') }; files = @{ '__init__.py' = (Get-FileHash (Join-Path $source '__init__.py')).Hash } }) |
         Set-Content $script:AnkiPins
     $script:AnkiRoot = Join-Path $env:APPDATA 'Anki2/addons21'
 }
@@ -31,6 +31,44 @@ function TestTeardown {
     foreach ($name in 'Get-Process', 'Invoke-WebRequest', 'Move-Item', 'winget') { Clear-CommandMock $name }
     $script:DotfilesDir = $script:AnkiOriginalDir
     Clear-TestEnv
+}
+
+function test_anki_doctor_reports_settings_drift {
+    InstallManagedPackages
+    foreach ($name in 'Get-RequiredCommands', 'Get-InstalledWingetPackages', 'Get-WindowsLinkSpecs', 'Get-CodexHome') {
+        $script:AnkiMocks[$name] = (Get-Command $name).ScriptBlock
+    }
+    Set-FunctionMock 'Get-RequiredCommands' { @() }
+    Set-FunctionMock 'Get-WindowsLinkSpecs' { @() }
+    Set-FunctionMock 'Get-InstalledWingetPackages' { Get-WingetPackages }
+    Set-FunctionMock 'Get-CodexHome' { Join-Path $env:USERPROFILE '.codex' }
+    New-Item -ItemType Directory -Force -Path "$env:LOCALAPPDATA/nvim", "$env:USERPROFILE/.codex" | Out-Null
+    '' | Set-Content "$env:LOCALAPPDATA/nvim/init.lua"
+    '' | Set-Content "$env:USERPROFILE/.codex/config.toml"
+    Verify 6>&1 | Out-Null
+    Assert-False $script:VerifyFailed
+    $metaPath = "$script:AnkiRoot/876946123/meta.json"
+    $meta = Get-Content $metaPath -Raw | ConvertFrom-Json
+    $meta.config.good_button_name = 'unexpected'
+    $meta | ConvertTo-Json -Depth 10 | Set-Content $metaPath
+    $output = Verify 6>&1 | Out-String
+    Assert-True $script:VerifyFailed 'doctor must fail on Anki settings drift'
+    Assert-Contains $output 'good_button_name'
+    InstallManagedPackages
+    '# changed code' | Set-Content "$script:AnkiRoot/876946123/__init__.py"
+    $output = Verify 6>&1 | Out-String
+    Assert-True $script:VerifyFailed 'doctor must fail on Anki code drift'
+    Assert-Contains $output 'file hash differs'
+    InstallManagedPackages
+    Verify 6>&1 | Out-Null
+    Assert-False $script:VerifyFailed
+}
+
+function test_anki_pin_refresher {
+    $python = Get-Command py, python3 -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $python) { Skip-Test 'Python unavailable'; return }
+    & $python.Source (Join-Path $script:RepoDir 'tests/python/test_anki_pins.py')
+    Assert-Equals 0 $LASTEXITCODE
 }
 
 function test_anki_is_a_managed_winget_package {
@@ -48,7 +86,7 @@ function test_anki_addons_preserve_existing_data {
     'keep' | Set-Content "$addon/user_files/data.txt"
     'old' | Set-Content "$addon/old.py"
     'unrelated' | Set-Content "$script:AnkiRoot/other/__init__.py"
-    '{"config":{"custom":42,"good_button_name":"Good"},"disabled":true}' | Set-Content "$addon/meta.json"
+    '{"config":{"custom":42,"good_button_name":"Good","apiKey":"local-test-secret"},"disabled":true}' | Set-Content "$addon/meta.json"
     InstallManagedPackages
     Assert-FileExists "$addon/__init__.py"
     Assert-Equals 'keep' (Get-Content "$addon/user_files/data.txt")
@@ -56,6 +94,7 @@ function test_anki_addons_preserve_existing_data {
     $meta = Get-Content "$addon/meta.json" -Raw | ConvertFrom-Json
     Assert-Equals 'Pass' $meta.config.good_button_name
     Assert-Equals 42 $meta.config.custom
+    Assert-Equals 'local-test-secret' $meta.config.apiKey
     Assert-False $meta.disabled
     Assert-False $meta.update_enabled
     Assert-False (Test-Path "$addon/old.py")

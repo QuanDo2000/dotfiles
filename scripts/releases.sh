@@ -622,6 +622,7 @@ function _update_all_dependency_pins {
     pi-extensions "Pi extension closure" \
     webcord "WebCord release" \
     anki-zoom "Anki Zoom add-on" \
+    anki-addons "Windows Anki add-ons" \
     firacode "FiraCode Nerd Font" \
     skills "vendored agent skills" \
     neovim "Neovim plugins"

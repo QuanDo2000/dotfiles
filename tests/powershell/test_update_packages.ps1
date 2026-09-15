@@ -2,6 +2,10 @@
 
 function TestSetup {
     Initialize-TestEnv | Out-Null
+    Set-CommandMock 'Get-Process' {
+        param($Name, $Id)
+        if ($Id) { Microsoft.PowerShell.Management\Get-Process -Id $Id }
+    }
     $script:OriginalProgramFiles = $env:ProgramFiles
     $env:ProgramFiles = Join-Path $env:USERPROFILE 'Program Files'
     $script:OriginalGetInstalledWingetPackages = (Get-Command Get-InstalledWingetPackages).ScriptBlock
@@ -11,6 +15,7 @@ function TestSetup {
 
 function TestTeardown {
     Clear-CommandMock 'winget'
+    Clear-CommandMock 'Get-Process'
     Set-FunctionMock 'Get-InstalledWingetPackages' $script:OriginalGetInstalledWingetPackages
     Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
     if ($null -eq $script:OriginalProgramFiles) { Remove-Item Env:ProgramFiles -ErrorAction SilentlyContinue }

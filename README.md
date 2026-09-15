@@ -121,18 +121,48 @@ Options:
   -h, --help  Show this help message
 ```
 
-Windows `all`, `packages`, and full `update` manage Anki through WinGet and
-install Pass/Fail 2 and Zoom from `config/windows/anki-addons.json`. Close Anki
-before running them. Add-on downloads are SHA-256 checked; refresh their pins
-manually when adopting a new release. Anki's automatic updates are disabled for
-these two add-ons so it cannot replace the pinned code.
+Windows `all`, `packages`, and full `update` manage Anki and Obsidian through
+WinGet. Close both apps before running these commands.
+
+AnkiConnect, Pass/Fail 2, and Zoom are pinned in `config/windows/anki-addons.json`.
+Downloads are SHA-256 checked. Anki's automatic updates are disabled for these
+add-ons so it cannot replace the pinned code. `dotfile doctor` checks installed
+pin markers, individual distribution file hashes, enabled/update flags, and
+managed settings. It reports drift without changing anything.
+
+Refresh the Anki pins without installing them:
+
+```powershell
+py -3.14 scripts/update_pins.py anki-addons .
+git diff -- config/windows/anki-addons.json
+```
+
+The refresher downloads each archive twice, validates paths and the entry point,
+and writes pins only after all archives pass. Review changes before installation;
+matching downloads are not a security audit of new add-on code. The Unix full
+pin-refresh workflow also refreshes these Windows pins.
 
 Managed settings use the existing Windows preferences captured in
 `config/windows/anki-addons.json`, including Zoom's custom zoom levels, rather
 than the Unix defaults. Other settings and `user_files` are preserved; decks, profiles, and
 unrelated add-ons are untouched. Previous managed add-on directories are retained
 under `%APPDATA%\Anki2\dotfile-addons-backups`. Only the default
-`%APPDATA%\Anki2\addons21` location is managed.
+`%APPDATA%\Anki2\addons21` location is managed. AnkiConnect stays bound to
+`127.0.0.1:8765` with a localhost-only CORS allowlist. Existing API keys remain
+local and are preserved; they are never included in the tracked configuration.
+
+Obsidian uses its single registered vault. If there are multiple vaults, set
+`DOTFILE_OBSIDIAN_VAULT` to the existing vault's absolute path. With no registered
+vault, open/create the intended vault in Obsidian once, close the app, then retry.
+Dotfile never starts vault synchronization or chooses among multiple vaults.
+
+Only the selected top-level settings and plugin `data.json` files are copied as
+writable files. Existing Windows preferences were captured: matching files reuse
+`config/shared/obsidian/`, while differences live in `config/windows/obsidian/`.
+Notes, workspaces, login credentials, Sync state, and unlisted settings are left
+alone. Changed files get a sibling `.backup.<id>` copy. Plugin binaries and themes
+remain managed through Obsidian; on a new vault, install the desired plugins and
+theme there before using their settings. `update ai` does not touch either app.
 
 Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` is generated from `config/unix/.zshrc.base`.
 

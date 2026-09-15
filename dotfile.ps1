@@ -153,6 +153,7 @@ function LinkPath($source, $destination, [bool]$isDirectory = $false) {
 
 function Invoke-Winget($FailureMessage, [string[]]$Arguments) {
     if ($Arguments -contains 'Anki.Anki') { Assert-AnkiClosed }
+    if ($Arguments -contains 'Obsidian.Obsidian') { Assert-ObsidianClosed }
     winget @Arguments --disable-interactivity --accept-package-agreements --accept-source-agreements
     # WinGet reports an already-current package as APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE.
     if ($Arguments[0] -eq 'upgrade' -and $LASTEXITCODE -eq -1978335189) { return }
@@ -186,7 +187,7 @@ function Get-WingetPackages {
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd",
         "tree-sitter.tree-sitter-cli", "LLVM.LLVM", "odin-lang.Odin",
         "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide",
-        "Python.Python.3.14", "Notepad++.Notepad++", "koalaman.shellcheck", "Anki.Anki"
+        "Python.Python.3.14", "Notepad++.Notepad++", "koalaman.shellcheck", "Anki.Anki", "Obsidian.Obsidian"
     )
 }
 
@@ -358,11 +359,30 @@ function Assert-AnkiClosed {
     }
 }
 
+function Assert-AnkiAddonState($Pin) {
+    if ($Pin.id -notmatch '^\d+$') { throw 'Invalid Anki add-on ID' }
+    $target = Join-Path $env:APPDATA "Anki2/addons21/$($Pin.id)"
+    $meta = Get-Content -Raw -LiteralPath (Join-Path $target 'meta.json') | ConvertFrom-Json
+    if ($meta.dotfile_sha256 -ne $Pin.sha256) { throw "Anki add-on $($Pin.id): installed pin differs" }
+    if (-not (Test-Path -LiteralPath (Join-Path $target '__init__.py') -PathType Leaf)) { throw "Anki add-on $($Pin.id): missing __init__.py" }
+    if ($meta.disabled -ne $false -or $meta.update_enabled -ne $false) { throw "Anki add-on $($Pin.id): must be enabled with automatic updates disabled" }
+    foreach ($property in $Pin.config.PSObject.Properties) {
+        $actual = ConvertTo-Json -InputObject $meta.config.($property.Name) -Depth 100 -Compress
+        $expected = ConvertTo-Json -InputObject $property.Value -Depth 100 -Compress
+        if ($actual -cne $expected) { throw "Anki add-on $($Pin.id): settings drift at $($property.Name)" }
+    }
+    foreach ($file in $Pin.files.PSObject.Properties) {
+        if ($file.Name -match '(^[/\\]|:|(^|[/\\])\.\.([/\\]|$))' -or $file.Value -notmatch '^[a-fA-F0-9]{64}$') { throw 'Invalid Anki file hash pin' }
+        $path = Join-Path $target $file.Name
+        Assert-NoReparsePointPath $path 'Anki add-on'
+        if ((Get-FileSha256 $path) -ne $file.Value) { throw "Anki add-on $($Pin.id): file hash differs: $($file.Name)" }
+    }
+}
+
 function InstallAnkiAddons {
     Info 'Installing managed Anki add-ons...'
     if ($script:Dry) { return }
     Assert-AnkiClosed
-    # debt: Windows add-on archive pins are refreshed manually; integrate with update_pins.py when automated Windows pin refresh is needed.
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $pins = Get-Content -Raw -LiteralPath (Join-Path $script:DotfilesDir 'config/windows/anki-addons.json') | ConvertFrom-Json
     $base = Join-Path $env:APPDATA 'Anki2'
@@ -377,19 +397,15 @@ function InstallAnkiAddons {
                 throw "Refusing linked Anki directory: $path"
             }
         }
+        try { Assert-AnkiAddonState $pin; continue } catch { }
         $metaPath = Join-Path $target 'meta.json'
         $meta = if (Test-Path -LiteralPath $metaPath) { Get-Content -Raw -LiteralPath $metaPath | ConvertFrom-Json } else { [pscustomobject]@{} }
         if ($meta -isnot [pscustomobject]) { throw "Invalid Anki metadata: $metaPath" }
         if (-not $meta.PSObject.Properties['config']) { $meta | Add-Member -NotePropertyName config -NotePropertyValue ([pscustomobject]@{}) }
         if ($meta.config -isnot [pscustomobject]) { throw "Invalid Anki config: $metaPath" }
-        $current = $meta.dotfile_sha256 -eq $pin.sha256 -and (Test-Path -LiteralPath (Join-Path $target '__init__.py')) -and
-            $meta.disabled -eq $false -and $meta.update_enabled -eq $false
         foreach ($property in $pin.config.PSObject.Properties) {
-            $key = $property.Name
-            if (-not $meta.config.PSObject.Properties[$key] -or $meta.config.$key -cne $property.Value) { $current = $false }
-            $meta.config | Add-Member -NotePropertyName $key -NotePropertyValue $property.Value -Force
+            $meta.config | Add-Member -NotePropertyName $property.Name -NotePropertyValue $property.Value -Force
         }
-        if ($current) { continue }
         if (Test-Path -LiteralPath $target) {
             if (Get-ChildItem -LiteralPath $target -Recurse -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
                 throw "Refusing linked files inside Anki add-on: $target"
@@ -441,9 +457,71 @@ function InstallAnkiAddons {
     Success 'Finished installing managed Anki add-ons'
 }
 
+function Assert-ObsidianClosed {
+    if (Get-Process -Name Obsidian -ErrorAction SilentlyContinue) {
+        throw 'Close Obsidian before updating its application or settings, then retry.'
+    }
+}
+
+function Get-ObsidianVaultPath {
+    if ($env:DOTFILE_OBSIDIAN_VAULT) {
+        if (-not [IO.Path]::IsPathRooted($env:DOTFILE_OBSIDIAN_VAULT)) { throw 'DOTFILE_OBSIDIAN_VAULT must be an absolute path' }
+        $vault = $env:DOTFILE_OBSIDIAN_VAULT
+    } else {
+        $registry = Join-Path $env:APPDATA 'obsidian/obsidian.json'
+        $vaults = @()
+        if (Test-Path -LiteralPath $registry) {
+            $settings = Get-Content -Raw -LiteralPath $registry | ConvertFrom-Json
+            $vaults = @($settings.vaults.PSObject.Properties | ForEach-Object { $_.Value.path })
+        }
+        if ($vaults.Count -ne 1) { throw 'Open one vault in Obsidian first, or set DOTFILE_OBSIDIAN_VAULT to select the existing vault to manage.' }
+        $vault = $vaults[0]
+    }
+    if (-not (Test-Path -LiteralPath $vault -PathType Container)) { throw "Obsidian vault unavailable: $vault" }
+    return $vault
+}
+
+function Get-ObsidianSettings {
+    # debt: owns settings, not plugin/theme binaries; add reviewed release pins if fresh-vault runtime provisioning is required.
+    $files = @('app.json', 'appearance.json', 'community-plugins.json', 'core-plugins.json', 'daily-notes.json', 'hotkeys.json', 'templates.json')
+    $files += @('calendar', 'dataview', 'obsidian-linter', 'obsidian-minimal-settings', 'obsidian-style-settings', 'obsidian-tasks-plugin', 'obsidian-vimrc-support', 'periodic-notes') |
+        ForEach-Object { "plugins/$_/data.json" }
+    foreach ($relative in $files) {
+        $source = Join-Path $script:DotfilesDir "config/windows/obsidian/$relative"
+        if (-not (Test-Path -LiteralPath $source)) { $source = Join-Path $script:DotfilesDir "config/shared/obsidian/$relative" }
+        [pscustomobject]@{ RelativePath = $relative; Source = $source }
+    }
+}
+
+function Sync-ObsidianSettings {
+    Info 'Syncing selected Obsidian settings...'
+    if ($script:Dry) { return }
+    Assert-ObsidianClosed
+    $root = Join-Path (Get-ObsidianVaultPath) '.obsidian'
+    $files = @(Get-ObsidianSettings)
+    foreach ($file in $files) {
+        # Obsidian settings can contain empty JSON keys, which PSCustomObject cannot represent.
+        $json = Get-Content -Raw -LiteralPath $file.Source -Encoding UTF8
+        if ($PSVersionTable.PSVersion.Major -ge 6) { $null = ConvertFrom-Json -InputObject $json -AsHashtable }
+        else {
+            Add-Type -AssemblyName System.Web.Extensions
+            $null = [Web.Script.Serialization.JavaScriptSerializer]::new().DeserializeObject($json)
+        }
+        Assert-NoReparsePointPath (Join-Path $root $file.RelativePath) 'Obsidian settings'
+    }
+    foreach ($file in $files) {
+        $target = Join-Path $root $file.RelativePath
+        New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+        Assert-ObsidianClosed
+        Copy-FileWithRollback $file.Source $target 'Obsidian settings copy' -KeepBackup
+    }
+    Success 'Finished syncing selected Obsidian settings'
+}
+
 function InstallManagedPackages {
     InstallPackages
     InstallAnkiAddons
+    Sync-ObsidianSettings
     InstallFiraCodeNerdFont
     InstallAi
 }
@@ -896,7 +974,7 @@ function InstallPiLanguageServers {
     Success "Finished installing Pi language servers"
 }
 
-function Copy-FileWithRollback($Source, $Destination, $Label) {
+function Copy-FileWithRollback($Source, $Destination, $Label, [switch]$KeepBackup) {
     $sourceHash = Get-FileSha256 $Source
     $destinationItem = Get-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
     if ($destinationItem -and $destinationItem.PSIsContainer) {
@@ -961,7 +1039,8 @@ function Copy-FileWithRollback($Source, $Destination, $Label) {
         throw $operationError
     }
 
-    if ($backedUp) {
+    if ($backedUp -and $KeepBackup) { Info "Previous $Label retained at $backup" }
+    if ($backedUp -and -not $KeepBackup) {
         try {
             Remove-Item -LiteralPath $backup -Force -ErrorAction Stop
         } catch {
@@ -1285,6 +1364,7 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
     } else {
         InstallPackages -Update
         InstallAnkiAddons
+        Sync-ObsidianSettings
         InstallFiraCodeNerdFont
         InstallAi -Update
         SetupSymlinks
@@ -1462,6 +1542,17 @@ function Verify {
             $errors++
         }
     }
+
+    Info 'Verifying managed Anki add-ons...'
+    try {
+        $pins = Get-Content -Raw -LiteralPath (Join-Path $script:DotfilesDir 'config/windows/anki-addons.json') | ConvertFrom-Json
+        foreach ($pin in $pins) {
+            try {
+                Assert-AnkiAddonState $pin
+                Success "Anki add-on: $($pin.name)"
+            } catch { FailSoft $_.Exception.Message; $errors++ }
+        }
+    } catch { FailSoft $_.Exception.Message; $errors++ }
 
     Info "Verifying PowerShell modules..."
     if (Get-Module -ListAvailable -Name PSReadLine) {

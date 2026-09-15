@@ -255,6 +255,40 @@ def update_webcord(repo: Path) -> None:
     print(f"updated WebCord to {version}")
 
 
+def update_anki_addons(repo: Path) -> None:
+    path = repo / "config/windows/anki-addons.json"
+    pins = json.loads(path.read_text(encoding="utf-8"))
+    with tempfile.TemporaryDirectory(prefix="dotfiles-anki-") as temporary:
+        for pin in pins:
+            if not re.fullmatch(r"\d+", pin["id"]) or not pin["url"].startswith(
+                f'https://ankiweb.net/shared/download/{pin["id"]}?'
+            ):
+                die("invalid Anki add-on pin")
+            archive = Path(temporary) / f'{pin["id"]}.zip'
+            download_twice(pin["url"], archive)
+            files = {}
+            seen = set()
+            with zipfile.ZipFile(archive) as source:
+                for entry in source.infolist():
+                    name = entry.filename
+                    parts = name.rstrip("/").split("/")
+                    if (entry.orig_filename != name or any(part in ("", ".", "..") for part in parts)
+                            or ":" in name or "\\" in name
+                            or (entry.external_attr >> 16) & 0xF000 == 0xA000
+                            or name.casefold() in seen):
+                        die(f"unsafe Anki add-on archive entry: {name}")
+                    seen.add(name.casefold())
+                    if not entry.is_dir() and name != "meta.json" and parts[0] != "user_files":
+                        files[name] = hashlib.sha256(source.read(entry)).hexdigest()
+            if "__init__.py" not in files:
+                die("Anki add-on archive missing __init__.py")
+            pin["sha256"] = sha256(archive)
+            pin["files"] = dict(sorted(files.items()))
+    # Write only after every archive passes; do not install or auto-approve new code.
+    atomic_json(path, pins)
+    print(f"refreshed {len(pins)} Anki add-on pins; review the diff before installing")
+
+
 def update_anki_zoom(repo: Path) -> None:
     url = "https://ankiweb.net/shared/download/1923741581?v=2.1&p=2509004"
     home = repo / "config/home.nix"
@@ -519,6 +553,7 @@ def main() -> int:
         "pi-extensions": update_pi_extensions,
         "webcord": update_webcord,
         "anki-zoom": update_anki_zoom,
+        "anki-addons": update_anki_addons,
         "firacode": update_firacode,
         "skills": update_skills,
         "neovim": update_neovim,
