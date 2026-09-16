@@ -142,6 +142,9 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
   assert_equals true "$(_profile_file_meta darwin '.pi/agent/extensions/autoresearch' | jq -r .force)"
   assert_equals true "$(_profile_file_meta nixos '.pi/agent/extensions/fast-mode' | jq -r .force)"
   assert_equals true "$(_profile_file_meta darwin '.pi/agent/extensions/fast-mode' | jq -r .force)"
+  assert_equals true "$(_profile_file_meta nixos '.pi/agent/extensions/review' | jq -r .force)"
+  assert_equals true "$(_profile_file_meta arch-server '.pi/agent/extensions/review' | jq -r .force)"
+  assert_equals true "$(_profile_file_meta darwin '.pi/agent/extensions/review' | jq -r .force)"
   assert_equals true "$(_profile_file_meta nixos '.hermes/SOUL.md' | jq -r .force)"
   assert_contains "$(_profile_file_meta nixos '.hermes/SOUL.md')" 'SOUL.md'
 }
