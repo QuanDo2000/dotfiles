@@ -5,6 +5,10 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
 extension_dir="$REPO_DIR/config/shared/ai/pi/autoresearch"
 
+test_autoresearch_rpc_reader_consumes_coalesced_events() {
+  assert_exit_code 0 python3 "$REPO_DIR/tests/python/test_rpc_reader.py"
+}
+
 test_autoresearch_workspace_checks_accept_symlinked_parent() (
   mkdir "$TEST_TMPDIR/physical"
   ln -s "$TEST_TMPDIR/physical" "$TEST_TMPDIR/alias"
@@ -371,13 +375,12 @@ test_autoresearch_command_creates_names_reports_and_cleans_git_worktree() {
   git -C "$root" add input
   git -C "$root" commit -qm baseline
 
-  EXTENSION="$extension_dir/index.ts" ROOT="$root" WORK="$work" python3 - <<'PY' || echo '  automatic Git worktree QOL flow failed' >> "$ERROR_FILE"
+  PYTHONPATH="$REPO_DIR/tests/fixtures" EXTENSION="$extension_dir/index.ts" ROOT="$root" WORK="$work" python3 - <<'PY' || echo '  automatic Git worktree QOL flow failed' >> "$ERROR_FILE"
 import json
 import os
-import select
 import shutil
 import subprocess
-import time
+from rpc_reader import RpcReader
 
 process = subprocess.Popen(
     ["pi", "--mode", "rpc", "--no-extensions", "-e", os.environ["EXTENSION"]],
@@ -387,19 +390,7 @@ process = subprocess.Popen(
 def send(message):
     process.stdin.write(json.dumps(message) + "\n")
     process.stdin.flush()
-def read_until(predicate, timeout=15):
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        ready, _, _ = select.select([process.stdout], [], [], 1)
-        if not ready:
-            continue
-        line = process.stdout.readline()
-        if not line:
-            break
-        event = json.loads(line)
-        if predicate(event):
-            return event
-    raise RuntimeError("expected RPC event not observed")
+read_until = RpcReader(process.stdout).read_until
 
 send({"id": "auto", "type": "prompt", "message": "/autoresearch reduce latency"})
 read_until(lambda event: event.get("type") == "extension_ui_request" and event.get("message") == "Autoresearch mode ON")
@@ -455,12 +446,11 @@ test_autoresearch_command_accepts_safe_linked_worktree() {
   git -C "$root" commit -qm baseline
   git -C "$root" worktree add -q -b autoresearch/rpc "$work"
 
-  EXTENSION="$extension_dir/index.ts" WORK="$work" python3 - <<'PY' || echo '  safe activation failed' >> "$ERROR_FILE"
+  PYTHONPATH="$REPO_DIR/tests/fixtures" EXTENSION="$extension_dir/index.ts" WORK="$work" python3 - <<'PY' || echo '  safe activation failed' >> "$ERROR_FILE"
 import json
 import os
-import select
 import subprocess
-import time
+from rpc_reader import RpcReader
 
 process = subprocess.Popen(
     ["pi", "--mode", "rpc", "--no-session", "--no-extensions", "-e", os.environ["EXTENSION"]],
@@ -474,18 +464,11 @@ process = subprocess.Popen(
 process.stdin.write(json.dumps({"id": "safe", "type": "prompt", "message": "/autoresearch reduce latency"}) + "\n")
 process.stdin.flush()
 found = False
-deadline = time.monotonic() + 10
-while time.monotonic() < deadline:
-    ready, _, _ = select.select([process.stdout], [], [], 1)
-    if not ready:
-        continue
-    line = process.stdout.readline()
-    if not line:
-        break
-    event = json.loads(line)
-    if event.get("type") == "extension_ui_request" and event.get("method") == "notify" and event.get("message") == "Autoresearch mode ON":
-        found = True
-        break
+try:
+    RpcReader(process.stdout).read_until(lambda event: event.get("type") == "extension_ui_request" and event.get("method") == "notify" and event.get("message") == "Autoresearch mode ON", timeout=10)
+    found = True
+except RuntimeError:
+    pass
 process.terminate()
 try:
     process.wait(5)
@@ -510,12 +493,11 @@ test_autoresearch_command_creates_and_enters_safe_jj_workspace() {
   echo baseline > "$root/input"
   jj -R "$root" commit -m baseline >/dev/null
 
-  EXTENSION="$extension_dir/index.ts" ROOT="$root" WORK="$work" python3 - <<'PY' || echo '  automatic JJ workspace setup failed' >> "$ERROR_FILE"
+  PYTHONPATH="$REPO_DIR/tests/fixtures" EXTENSION="$extension_dir/index.ts" ROOT="$root" WORK="$work" python3 - <<'PY' || echo '  automatic JJ workspace setup failed' >> "$ERROR_FILE"
 import json
 import os
-import select
 import subprocess
-import time
+from rpc_reader import RpcReader
 
 process = subprocess.Popen(
     ["pi", "--mode", "rpc", "--no-extensions", "-e", os.environ["EXTENSION"]],
@@ -525,18 +507,11 @@ process = subprocess.Popen(
 process.stdin.write(json.dumps({"id": "auto", "type": "prompt", "message": "/autoresearch reduce latency"}) + "\n")
 process.stdin.flush()
 found = False
-deadline = time.monotonic() + 15
-while time.monotonic() < deadline:
-    ready, _, _ = select.select([process.stdout], [], [], 1)
-    if not ready:
-        continue
-    line = process.stdout.readline()
-    if not line:
-        break
-    event = json.loads(line)
-    if event.get("type") == "extension_ui_request" and event.get("message") == "Autoresearch mode ON":
-        found = True
-        break
+try:
+    RpcReader(process.stdout).read_until(lambda event: event.get("type") == "extension_ui_request" and event.get("message") == "Autoresearch mode ON")
+    found = True
+except RuntimeError:
+    pass
 process.terminate()
 process.wait(5)
 errors = process.stderr.read()
@@ -566,12 +541,11 @@ test_autoresearch_command_accepts_safe_jj_workspace() {
   jj -R "$root" commit -m baseline >/dev/null
   jj --quiet -R "$root" workspace add --name autoresearch-rpc -r @- "$work"
 
-  EXTENSION="$extension_dir/index.ts" WORK="$work" python3 - <<'PY' || echo '  safe JJ activation failed' >> "$ERROR_FILE"
+  PYTHONPATH="$REPO_DIR/tests/fixtures" EXTENSION="$extension_dir/index.ts" WORK="$work" python3 - <<'PY' || echo '  safe JJ activation failed' >> "$ERROR_FILE"
 import json
 import os
-import select
 import subprocess
-import time
+from rpc_reader import RpcReader
 
 process = subprocess.Popen(
     ["pi", "--mode", "rpc", "--no-session", "--no-extensions", "-e", os.environ["EXTENSION"]],
@@ -581,15 +555,11 @@ process = subprocess.Popen(
 process.stdin.write(json.dumps({"id": "safe", "type": "prompt", "message": "/autoresearch reduce latency"}) + "\n")
 process.stdin.flush()
 found = False
-deadline = time.monotonic() + 10
-while time.monotonic() < deadline:
-    ready, _, _ = select.select([process.stdout], [], [], 1)
-    if not ready:
-        continue
-    event = json.loads(process.stdout.readline())
-    if event.get("type") == "extension_ui_request" and event.get("message") == "Autoresearch mode ON":
-        found = True
-        break
+try:
+    RpcReader(process.stdout).read_until(lambda event: event.get("type") == "extension_ui_request" and event.get("message") == "Autoresearch mode ON", timeout=10)
+    found = True
+except RuntimeError:
+    pass
 process.terminate()
 process.wait(5)
 if process.stderr.read() or not found:
