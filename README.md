@@ -58,6 +58,43 @@ an existing `home-manager` when available, and falls back to the pinned
 are used only after their tracked SHA-256 matches; review changes from
 `dotfile lix-installer` before committing updated installer pins.
 
+#### Activate an existing Arch server setup from Bash
+
+For the Arch-server role only (Obsidian Sync, Google Drive, and storage backup,
+not a generic Linux or desktop profile), with native prerequisites, Nix, and the
+repo's guarded `home-manager` already installed: run this only from an external
+user terminal after approval. Adjust the checkout path if needed.
+
+```bash
+/usr/bin/bash --noprofile --norc -euo pipefail -c '
+  export DOTFILES_DIR="$HOME/dotfiles"
+  export DOTFILE_FLAKE_REF="path:$DOTFILES_DIR"
+  export DRY=false QUIET=false FORCE=false
+  source "$DOTFILES_DIR/scripts/utils.sh"
+  source "$DOTFILES_DIR/scripts/platform.sh"
+  source "$DOTFILES_DIR/scripts/packages.sh"
+  _home_manager_switch arch-server
+'
+```
+
+Use this standalone native Bash invocation even from zsh: the helpers use a
+local `status` variable, which is read-only in zsh. `packages.sh` loads
+`host_config.sh`; `host_config_value username` reads `config/host.nix` (falling
+back to `nix eval` if needed), not the login username. The current value is
+`quando`, so the target is `path:<checkout>#quando@arch-server`.
+
+This activates the existing pins, rather than refreshing pins with `dotfile
+update` or bootstrapping packages with `dotfile packages`. The `path:` reference
+includes current local checkout content, including uncommitted changes; it does
+not guarantee an unchanged package closure. Activation can change packages,
+configuration, and user services.
+
+Keep the installed `home-manager` profile guard on PATH and never bypass it or
+remove its initialization markers: `config/home.nix` rejects switches away from
+`arch-server` when Google Drive or storage initialization markers exist. Stop
+and investigate any refusal. A helper preview with `DRY=true` only prints the
+target command; it does not exercise the installed profile guard or activation.
+
 ### Windows
 
 Run the following in PowerShell as Administrator:
