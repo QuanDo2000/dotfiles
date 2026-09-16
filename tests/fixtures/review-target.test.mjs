@@ -35,5 +35,25 @@ test('review binds a clean checkout to exact commits without executing diff help
     git('restore', 'code.txt');
     writeFileSync(join(cwd, 'untracked.txt'), 'new');
     await assert.rejects(prepareReview(cwd, base, head), /clean/i);
+    rmSync(join(cwd, 'untracked.txt'));
+
+    // Submodule ignore settings must not hide changed pointers or dirty evidence.
+    git('init', '-q', 'sub');
+    git('-C', 'sub', 'config', 'user.name', 'Test');
+    git('-C', 'sub', 'config', 'user.email', 'test@example.invalid');
+    git('-C', 'sub', 'config', 'commit.gpgsign', 'false');
+    writeFileSync(join(cwd, 'sub/evidence.txt'), 'one\n');
+    git('-C', 'sub', 'add', '.'); git('-C', 'sub', 'commit', '-qm', 'one');
+    writeFileSync(join(cwd, '.gitmodules'), '[submodule "sub"]\npath = sub\nurl = ./sub\n');
+    git('add', '.gitmodules', 'sub'); git('commit', '-qm', 'add submodule');
+    const subBase = git('rev-parse', 'HEAD');
+    writeFileSync(join(cwd, 'sub/evidence.txt'), 'two\n');
+    git('-C', 'sub', 'commit', '-qam', 'two');
+    git('add', 'sub'); git('commit', '-qm', 'advance submodule');
+    git('config', 'submodule.sub.ignore', 'all');
+    const subReview = await prepareReview(cwd, subBase, git('rev-parse', 'HEAD'));
+    assert.match(subReview.diff, /Subproject commit/);
+    writeFileSync(join(cwd, 'sub/evidence.txt'), 'dirty\n');
+    await assert.rejects(verifyReview(subReview), /clean/i);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

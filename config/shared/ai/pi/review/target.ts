@@ -19,7 +19,7 @@ export async function verifyReview(target: ReviewTarget, signal?: AbortSignal): 
   if ((await git(target.cwd, ["rev-parse", "HEAD"], signal)).trim() !== target.head) {
     throw new Error("Review requires the requested head to remain checked out at HEAD.");
   }
-  if ((await git(target.cwd, ["status", "--porcelain=v1", "--untracked-files=all"], signal)).trim()) {
+  if ((await git(target.cwd, ["status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=none"], signal)).trim()) {
     throw new Error("Review requires a clean checkout, including staged, unstaged and untracked files.");
   }
 }
@@ -39,7 +39,7 @@ export async function prepareReview(cwd: string, base: string, head: string, sig
   }
   const target = { cwd: root, base, head, diff: "" };
   await verifyReview(target, signal);
-  target.diff = await git(root, ["diff", "--no-ext-diff", "--no-textconv", "--no-color", base, head, "--"], signal);
+  target.diff = await git(root, ["diff", "--no-ext-diff", "--no-textconv", "--no-color", "--ignore-submodules=none", base, head, "--"], signal);
   if (!target.diff.trim()) throw new Error("Review diff is empty; refusing to switch scope.");
   // debt: 200 KB diff ceiling; add bounded diff paging if real reviews exceed this limit.
   if (Buffer.byteLength(target.diff) > 200_000) throw new Error("Review diff exceeds the 200 KB limit.");
