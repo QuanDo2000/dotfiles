@@ -64,6 +64,22 @@ Recommend promotion when a Hermes-generated skill is useful across machines or p
 
 Promote only after explicit user approval. Sanitize machine-specific paths, secrets, and assumptions before copying, then copy the complete skill directory, including referenced scripts and assets. Add Unix ownership in `config/home.nix`, add the name to Windows `InstallAiSkills`, and update focused installation tests. Preserve upstream provenance metadata when applicable. Verify discovery in every intended harness; if a harness does not consume `~/.agents/skills`, keep or add its native installation. Avoid duplicate discovery: remove the Hermes copy only after tracked installation is verified on the current machine.
 
+## Automatic Delivery
+
+For authorized implementation tasks, use an isolated task branch/worktree or equivalent Jujutsu workspace, with one writer. After proportionate focused tests and all applicable required checks pass, automatically commit only the task's reviewed changes and push its task branch to the verified intended remote without per-action confirmation. Preserve unrelated/pre-existing changes; explicit task-level no-commit/no-push restrictions remain binding. Propagate this standing authorization and its limits to delegated implementation owners.
+
+Merge policy is per project. Automatically merge only the exact repositories listed below after independent review finds no unresolved blocking findings and required tests/CI pass for the exact final head. Refresh affected review and checks after any head change. Missing, pending, failed or unverifiable required checks block merging. New, unlisted or identity-ambiguous projects require explicit merge confirmation until individually opted in.
+
+Current auto-merge repository identities (transport-equivalent URLs identify the same repository; forks do not):
+- `github.com/QuanDo2000/dotfiles`
+- `github.com/QuanDo2000/zmk-config`
+- `github.com/QuanDo2000/chrome-puzzle-solver`
+- `ssh://git@192.168.1.200:2222/quando/silly-cavern-odin.git`
+
+Current local-only project `~/Documents/insta-image-backup` permits reviewed local branch merges under the same review/test gates, but has no approved publish destination: do not push or create a remote without approval. `~/Documents/celeste-tas-ai` and `~/Documents/cn-novel-converter` have no established repository identity; any future repositories require merge confirmation. This inventory is finite, not an owner wildcard or permission to register future projects automatically.
+
+Never push directly to default/protected branches, force-push, bypass signing or branch protections, or overwrite upstream changes. Fetch and compare before pushing; integrate remote changes safely and rerun affected checks. Use native JJ operations in JJ workspaces. Verify the exact published head and final merge state by readback. Preserve separate approvals for destructive actions, deployments, credentials and spending. This authorizes delivery of the current implementation task, not bulk publication of existing dirty projects, starting recommended work, or widening an active task.
+
 ## Version Control
 
 Default to Jujutsu (`jj`) for new or otherwise uninitialized projects. If a project already uses Git and is not a Jujutsu workspace, keep using Git rather than converting it; when both are present, prefer Jujutsu. Fall back to Git when Jujutsu is unavailable or a required integration supports only Git.
