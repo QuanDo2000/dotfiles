@@ -23,7 +23,7 @@ Use one read-only reviewer for spec, correctness, and security. Add another only
 Pass reviewers the requirements, complete diff, relevant source, and validation evidence; do not ask static reviewers to run commands.
 Confirmed findings go back to the implementation owner. The parent may make a small authorized repair directly.
 Run focused checks during iteration and required integration checks on the final revision.
-Do not stage, commit, push, or broaden the write scope without authorization.
+Use the global delivery policy as standing authorization for scoped commits and task-branch pushes; propagate it explicitly to the implementation owner. Never broaden the write scope or override an explicit task prohibition.
 Use `multi-agent-orchestration` for runtime selection, recovery, model routing, and durable-worker requirements.
 
 ## Further reading (load when relevant)

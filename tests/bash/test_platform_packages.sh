@@ -133,6 +133,27 @@ test_all_ai_agents_start_with_shared_policy() {
 }
 
 
+test_ai_delivery_policy_is_shared_and_finite() {
+  local agents soul identity
+  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+  soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
+  agents="${agents#*## Automatic Delivery}"
+  soul="${soul#*## Automatic Delivery}"
+  agents="${agents%%## *}"
+  soul="${soul%%## *}"
+  assert_equals "$agents" "$soul"
+  assert_contains "$agents" 'without per-action confirmation'
+  assert_contains "$agents" 'New, unlisted or identity-ambiguous projects require explicit merge confirmation'
+  assert_contains "$agents" 'independent review'
+  assert_contains "$agents" 'required tests/CI pass for the exact final head'
+  assert_contains "$agents" 'Never push directly to default/protected branches'
+  assert_contains "$agents" 'explicit task-level no-commit/no-push restrictions remain binding'
+  assert_contains "$agents" 'has no approved publish destination'
+  for identity in github.com/QuanDo2000/dotfiles github.com/QuanDo2000/zmk-config github.com/QuanDo2000/chrome-puzzle-solver ssh://git@192.168.1.200:2222/quando/silly-cavern-odin.git; do
+    assert_contains "$agents" "\`$identity\`"
+  done
+}
+
 test_pi_uses_upstream_quit_command() {
   local package
   package="$(<"$REPO_DIR/packages/pi-agent.nix")"
