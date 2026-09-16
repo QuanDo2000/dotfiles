@@ -50,9 +50,7 @@
     "url": "https://ankiweb.net/shared/download/1923741581?v=2.1&p=2509004",
     "sha256": "3eb29dc0471d2dcfe359bebd9096cb485aef09c64d306c58699c693a19324c8a",
     "config": {
-      "overview_zoom": 2.80000002682208,
       "overview_zoom_default": 1.0,
-      "review_zoom": 4.900000058114517,
       "review_zoom_default": 1.0,
       "zoom_in_shortcut": "Ctrl+Shift++",
       "zoom_out_shortcut": "Ctrl+Shift+-",
@@ -61,11 +59,7 @@
       "different_zoom_question_and_answer": false,
       "is_rate_this": true,
       "is_change_log_2024_2_21": true,
-      "is_change_log": "2024-08-31",
-      "question_zoom": 2.9000000283122014,
-      "answer_zoom": 2.700000025331969,
-      "editor_zoom": 1.0,
-      "stats_zoom": 1.0
+      "is_change_log": "2024-08-31"
     },
     "files": {
       "LICENSE": "539bd1e8c6753faccb5dda90c67f6fd4b116737f66e2acf6d65aa1e736688a79",

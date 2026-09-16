@@ -64,6 +64,37 @@ function test_anki_doctor_reports_settings_drift {
     Assert-False $script:VerifyFailed
 }
 
+function test_anki_zoom_state_is_not_managed {
+    $pin = Get-Content -Raw (Join-Path $script:AnkiOriginalDir 'config/windows/anki-addons.json') |
+        ConvertFrom-Json | Where-Object id -eq '1923741581'
+    # Use the real managed settings with the local archive fixture.
+    $pin.sha256 = (Get-FileHash $script:AnkiZip).Hash
+    $pin.files = [pscustomobject]@{ '__init__.py' = (Get-FileHash (Join-Path $env:USERPROFILE 'source/__init__.py')).Hash }
+    ConvertTo-Json -InputObject @($pin) -Depth 100 | Set-Content $script:AnkiPins
+    InstallAnkiAddons
+    $metaPath = "$script:AnkiRoot/1923741581/meta.json"
+    $meta = Get-Content -Raw $metaPath | ConvertFrom-Json
+    $zoomKeys = @('overview_zoom', 'review_zoom', 'question_zoom', 'answer_zoom', 'editor_zoom', 'stats_zoom')
+    foreach ($key in $zoomKeys) {
+        $meta.config | Add-Member -NotePropertyName $key -NotePropertyValue 3.1000000312924283 -Force
+    }
+    $meta | ConvertTo-Json -Depth 100 | Set-Content $metaPath
+    Assert-AnkiAddonState $pin
+    InstallAnkiAddons
+    Assert-Equals 1 $script:AnkiDownloads 'saved zoom must not trigger a reinstall'
+    # Managed default drift still requires repair; repair must preserve saved zoom.
+    $meta.config.review_zoom_default = 2.0
+    $meta | ConvertTo-Json -Depth 100 | Set-Content $metaPath
+    Assert-Throws { Assert-AnkiAddonState $pin }
+    InstallAnkiAddons
+    Assert-AnkiAddonState $pin
+    $meta = Get-Content -Raw $metaPath | ConvertFrom-Json
+    Assert-Equals 1.0 $meta.config.review_zoom_default
+    foreach ($key in $zoomKeys) {
+        Assert-Equals 3.1000000312924283 $meta.config.$key "$key must survive repair"
+    }
+}
+
 function test_anki_pin_refresher {
     $python = Get-Command py, python3 -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $python) { Skip-Test 'Python unavailable'; return }
