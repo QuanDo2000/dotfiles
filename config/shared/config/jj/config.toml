@@ -2,5 +2,8 @@
 name = "Quan Do"
 email = "minhquand3@gmail.com"
 
+[signing]
+backend = "gpg"
+
 [ui]
 editor = "nvim"
