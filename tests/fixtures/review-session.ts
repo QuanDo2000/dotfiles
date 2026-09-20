@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createAssistantMessageEventStream } from '@earendil-works/pi-ai';
+import * as piAI from '@earendil-works/pi-ai';
 import { ModelRuntime, type ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { runReviewer } from '../../config/shared/ai/pi/review/session.ts';
 
@@ -24,16 +24,19 @@ export default function (pi: ExtensionAPI) {
           streamSimple(model, context) {
             calls++;
             cancel?.abort(new Error('fixture cancellation'));
-            assert.deepEqual(context.tools?.map(t => t.name).sort(), ['find', 'grep', 'ls', 'read']);
-            assert.match(context.systemPrompt, /untrusted/i);
-            assert.doesNotMatch(context.systemPrompt, /PARENT_SECRET|INHERITED_PROJECT/);
+            // Pi 0.86+ puts prompt/tool state in system transcript messages.
+            const tools = context.tools ?? piAI.getCurrentTools(context.messages);
+            const systemPrompt = context.systemPrompt ?? piAI.getCurrentSystemPrompt(context.messages);
+            assert.deepEqual(tools.map(t => t.name).sort(), ['find', 'grep', 'ls', 'read']);
+            assert.match(systemPrompt, /untrusted/i);
+            assert.doesNotMatch(systemPrompt, /PARENT_SECRET|INHERITED_PROJECT/);
             const toolResult = context.messages.find(m => m.role === 'toolResult');
             if (!toolResult) {
-              assert.equal(context.messages.length, 1, 'no parent history');
+              assert.deepEqual(context.messages.filter(m => m.role !== 'system').map(m => m.role), ['user'], 'no parent history');
             } else {
               assert.match(JSON.stringify(toolResult), /source evidence/);
             }
-            const stream = createAssistantMessageEventStream();
+            const stream = piAI.createAssistantMessageEventStream();
             const done = toolResult && mode !== 'loop';
             const reason = mode === 'error' ? 'error' : done ? 'stop' : 'toolUse';
             const message = {
