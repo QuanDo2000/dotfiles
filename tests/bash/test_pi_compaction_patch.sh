@@ -205,3 +205,76 @@ test_pi_compaction_patch_rejects_source_drift() {
   assert_contains "$(<"$TEST_TMPDIR/patch-error")" 'Pi compaction patch source drift'
   assert_equals "$before" "$(sha256sum "$target")"
 }
+
+# Minimal executable excerpts of the 0.86.1 event and prompt boundaries.
+write_086_fixture() {
+  cat > "$1" <<'EOF'
+class Session {
+    agent = { state: { isStreaming: false } };
+    isStreaming = true;
+    async waitForIdle() { this.isStreaming = false; }
+    async _runInputHandlers(text) { return { text }; }
+    _emit() {
+        if (this._autoCompactionAbortController !== undefined) {
+            throw new Error("compaction_end still sees compaction active");
+        }
+    }
+    compact(fail) {
+        const reason = "threshold", result = {}, willRetry = false;
+        this._autoCompactionAbortController = new AbortController();
+        if (!fail) {
+            this._emit({ type: "compaction_end", reason, result, aborted: false, willRetry });
+        } else {
+            const aborted = fail === "cancel", errorMessage = undefined;
+                this._emit({
+                    type: "compaction_end",
+                    reason,
+                    result: undefined,
+                    aborted,
+                    willRetry: false,
+                    errorMessage,
+                });
+        }
+    }
+    async prompt(text) {
+            const processedInput = await this._runInputHandlers(text);
+            const { text: currentText, images: currentImages } = processedInput;
+            // Expand skill commands (/skill:name args) and prompt templates (/template args)
+            return this.isStreaming ? "queued" : "sent";
+    }
+}
+const session = new Session();
+for (const fail of [false, "error", "cancel"]) session.compact(fail);
+console.log(await session.prompt("change direction"));
+EOF
+}
+
+test_pi_compaction_patch_supports_086_lifecycle() {
+  local target="$TEST_TMPDIR/agent-session.mjs" status=0 before output
+  write_086_fixture "$target"
+  python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$target" 2>>"$ERROR_FILE" || status=$?
+  assert_equals 0 "$status"
+  if [[ "$status" != 0 ]]; then return; fi
+  output="$(node "$target" 2>>"$ERROR_FILE")"
+  assert_equals "sent" "$output"
+  before="$(sha256sum "$target")"
+  python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$target" 2>>"$ERROR_FILE"
+  assert_equals "$before" "$(sha256sum "$target")"
+}
+
+test_pi_compaction_patch_rejects_partial_086_source() {
+  local target="$TEST_TMPDIR/agent-session.mjs" status=0 before
+  write_086_fixture "$target"
+  # An unrecognized change to the consolidated error event must fail atomically.
+  python3 - "$target" <<'PYTHON'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text(path.read_text().replace("                    aborted,", "                    aborted: changed,"))
+PYTHON
+  before="$(sha256sum "$target")"
+  python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$target" 2>"$TEST_TMPDIR/patch-error" || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$(<"$TEST_TMPDIR/patch-error")" 'Pi compaction patch source drift'
+  assert_equals "$before" "$(sha256sum "$target")"
+}

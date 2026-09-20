@@ -47,9 +47,31 @@ LATE_STEERING_PATCHED = """                if (inputResult.action === "transform
             }
             // Expand skill commands (/skill:name args) and prompt templates (/template args)"""
 PATCHES = (CANCEL_EMIT, ABORT_EMIT, SUCCESS_EMIT, ERROR_EMIT)
-REPLACEMENTS = tuple(
-    (emit, f"{emit[: len(emit) - len(emit.lstrip())]}{CLEAR}\n{emit}") for emit in PATCHES
-) + ((LATE_STEERING, LATE_STEERING_PATCHED),)
+LATE_STEERING_086 = """            const { text: currentText, images: currentImages } = processedInput;
+            // Expand skill commands (/skill:name args) and prompt templates (/template args)"""
+LATE_STEERING_086_PATCHED = LATE_STEERING_086.replace(
+    "            // Expand skill commands",
+    """            // Input hooks can outlive the core agent run while session post-run work is still settling.
+            // Wait before classifying delivery so late steering starts a new run instead of stranding.
+            if (this.isStreaming && !this.agent.state.isStreaming) {
+                await this.waitForIdle();
+            }
+            // Expand skill commands""",
+)
+
+
+def replacements(emits, late_input):
+    return tuple(
+        (emit, f"{emit[: len(emit) - len(emit.lstrip())]}{CLEAR}\n{emit}") for emit in emits
+    ) + (late_input,)
+
+
+REPLACEMENTS = replacements(PATCHES, (LATE_STEERING, LATE_STEERING_PATCHED))
+# 0.86.1 consolidates cancellation, abort, and error into a single catch event.
+REPLACEMENTS_086 = replacements(
+    (SUCCESS_EMIT, ERROR_EMIT.replace("aborted: false,", "aborted,")),
+    (LATE_STEERING_086, LATE_STEERING_086_PATCHED),
+)
 
 
 def main() -> int:
@@ -64,8 +86,12 @@ def main() -> int:
         print(f"Failed to read {path}: {exc}", file=sys.stderr)
         return 1
 
+    selected = REPLACEMENTS_086 if LATE_STEERING_086 in source else REPLACEMENTS
+    # The patched input block no longer contains the original adjacent lines.
+    if LATE_STEERING_086_PATCHED in source:
+        selected = REPLACEMENTS_086
     states = []
-    for original, replacement in REPLACEMENTS:
+    for original, replacement in selected:
         if source.count(replacement) == 1:
             states.append("patched")
         elif source.count(replacement) == 0 and source.count(original) == 1:
@@ -75,13 +101,17 @@ def main() -> int:
 
     if all(state == "patched" for state in states):
         return 0
-    upgrade = all(state == "patched" for state in states[:-1]) and states[-1] == "original"
+    upgrade = (
+        selected is REPLACEMENTS
+        and all(state == "patched" for state in states[:-1])
+        and states[-1] == "original"
+    )
     if not (all(state == "original" for state in states) or upgrade):
         print(f"Pi compaction patch source drift in {path}", file=sys.stderr)
         return 1
 
     result = source
-    for state, (original, replacement) in zip(states, REPLACEMENTS):
+    for state, (original, replacement) in zip(states, selected):
         if state == "original":
             result = result.replace(original, replacement)
 
