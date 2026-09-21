@@ -1,12 +1,12 @@
 {
-  "registryVersion": "2026-09-14-needy-baker",
-  "registrySha256": "d4e56d2101ceb24a9fd7d971fbf335b5757875c534b41b5962082d3fd774fd45",
+  "registryVersion": "2026-09-20-measly-course",
+  "registrySha256": "67a5ea51234155d87acbdaf9e489943a7ea33609a3f2ba077f21dcf4fac3887e",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
     "markdownlint-cli2": "0.23.2",
     "marksman": "2026-02-08",
-    "prettier": "3.9.6",
+    "prettier": "3.9.7",
     "stylua": "v2.5.2",
     "taplo": "0.10.0",
     "yaml-language-server": "1.24.0"
