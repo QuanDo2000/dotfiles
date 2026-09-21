@@ -61,8 +61,10 @@ alias gstp='git stash pop'
 # (or create) the "main" session. Replaces the omz tmux plugin. Not exec'd, so
 # exiting tmux drops back to this shell (old ZSH_TMUX_AUTOQUIT=false). Guards
 # avoid nested tmux and embedded shells (VS Code, Emacs, Vim). NO_TMUX is an
-# explicit client opt-out for small terminals such as Termux.
+# explicit client opt-out for small terminals such as Termux. On macOS,
+# autostart only in Ghostty; other platforms keep the same behavior.
 if [[ -t 0 && -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" && -z "$NO_TMUX" \
+      && ( "$OSTYPE" != darwin* || "$TERM_PROGRAM" == "ghostty" ) \
       && "$TERM_PROGRAM" != "vscode" && -z "$INSIDE_EMACS" && -z "$VIMRUNTIME" ]] \
    && command -v tmux >/dev/null 2>&1; then
   export ZSH_TMUX_STARTED=1
