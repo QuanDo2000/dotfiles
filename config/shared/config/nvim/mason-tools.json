@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-09-21-future-potato",
-  "registrySha256": "342997ad391cf35b928623a32549de123efce3bb7914c09ed3d0cc8d762474cb",
+  "registryVersion": "2026-09-21-last-mile",
+  "registrySha256": "72d01445667ce4cdcc9e13d05b202e26cd66e133ada54463bd1218c80e02d4da",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",

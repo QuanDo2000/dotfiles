@@ -1,20 +1,30 @@
 {
-  "defaultProvider": "openai-codex",
+  "collapseChangelog": true,
   "defaultModel": "gpt-6-astra",
-  "defaultThinkingLevel": "low",
   "defaultProjectTrust": "ask",
+  "defaultProvider": "openai-codex",
+  "defaultThinkingLevel": "low",
   "enableInstallTelemetry": false,
+  "enabledModels": [
+    "openai-codex/gpt-6-astra",
+    "openrouter/deepseek/deepseek-v4-flash-0731:free",
+    "openrouter/deepseek/deepseek-v4-flash-0731",
+    "openrouter/z-ai/glm-5.3-flash",
+    "openrouter/deepseek/deepseek-v4.1-flash",
+    "vercel-ai-gateway/deepseek/deepseek-v4-flash-0731",
+    "vercel-ai-gateway/zai/glm-5.3-flash",
+    "vercel-ai-gateway/deepseek/deepseek-v4.1-flash"
+  ],
+  "followUpMode": "all",
+  "hideThinkingBlock": true,
   "packages": [
     "./locked-extensions/releases/c112cde17a67489adb34d322eedc645a54d4e50a53ea968932f428fef355a7be/node_modules/pi-memory",
     "./locked-extensions/releases/c112cde17a67489adb34d322eedc645a54d4e50a53ea968932f428fef355a7be/node_modules/pi-web-access"
   ],
-  "theme": "dark",
+  "steeringMode": "all",
   "terminal": {
     "showTerminalProgress": true,
     "clearOnShrink": false
   },
-  "steeringMode": "all",
-  "followUpMode": "all",
-  "hideThinkingBlock": true,
-  "collapseChangelog": true
+  "theme": "dark"
 }
