@@ -13,52 +13,10 @@ metadata:
 
 # Plan Mode
 
-Use this skill when the user wants a plan instead of execution.
+Plan only. Inspect with read-only tools; do not implement, run mutating commands, commit, push, or take external actions. The only permitted project write is the requested plan markdown file.
 
-## Core behavior
+Use `writing-plans` for the content: goal, exclusions, assumptions, approach, exact target paths, independently verifiable steps/dependencies, validation, risks, and open decisions as relevant. Do not pre-implement the task in prose.
 
-For this turn, you are planning only.
+Save with `write_file` to the explicit user-requested path, or the runtime's designated path when the user supplied none. Otherwise use `.hermes/plans/YYYY-MM-DD_HHMMSS-<slug>.md` relative to the active backend workspace (local or remote). The default directory never overrides an explicit user path. Keep the planning-only write boundary regardless of location.
 
-- Do not implement code.
-- Do not edit project files except the plan markdown file.
-- Do not run mutating terminal commands, commit, push, or perform external actions.
-- You may inspect the repo or other context with read-only commands/tools when needed.
-- Your deliverable is a markdown plan saved inside the active workspace under `.hermes/plans/`.
-
-## Output requirements
-
-Write a markdown plan that is concrete and actionable.
-
-Include, when relevant:
-- Goal
-- Current context / assumptions
-- Proposed approach
-- Step-by-step plan
-- Files likely to change
-- Tests / validation
-- Risks, tradeoffs, and open questions
-
-If the task is code-related, include exact file paths, likely test targets, and verification steps.
-
-## Save location
-
-Save the plan with `write_file` under:
-- `.hermes/plans/YYYY-MM-DD_HHMMSS-<slug>.md`
-
-Treat that as relative to the active working directory / backend workspace. Hermes file tools are backend-aware, so using this relative path keeps the plan with the workspace on local, docker, ssh, modal, and daytona backends.
-
-If the runtime provides a specific target path, use that exact path.
-If not, create a sensible timestamped filename yourself under `.hermes/plans/`.
-
-## Interaction style
-
-- If the request is clear enough, write the plan directly.
-- If no explicit instruction accompanies `/plan`, infer the task from the current conversation context.
-- If it is genuinely underspecified, ask a brief clarifying question instead of guessing.
-- After saving the plan, reply briefly with what you planned and the saved path.
-
----
-
-## Plan detail
-
-Use `writing-plans` for consequential implementation handoffs. The planning-only boundary and save location above take precedence; do not execute or commit the plan.
+Infer a bare `/plan` request from the current conversation; ask briefly only if genuinely ambiguous. Reply with a concise summary and saved path, then stop without executing or committing the plan.

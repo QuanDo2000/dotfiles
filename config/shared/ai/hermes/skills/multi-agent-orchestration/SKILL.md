@@ -11,101 +11,36 @@ metadata:
 
 # Multi-Agent Orchestration
 
-Use this skill to choose between inline work, Hermes delegation, Pi/Codex-native subagents, external agent processes, and durable workers; to design bounded fan-outs; and to diagnose timeout or missing-summary failures.
-
-## Selection ladder
-
-Stop at the first mechanism that fits:
-
-1. **Main agent:** tiny, serial, or tightly coupled work.
-2. **`execute_code`:** mechanical inventory, counting, filtering, schema extraction, or bulk reduction that does not need judgment.
-3. **Hermes `delegate_task`:** one bounded reasoning lane that benefits from isolated context and can return a concise summary.
-4. **Pi native subagents:** structured coding/research fan-outs, chains, steering, worktrees, and inspectable async artifacts inside Pi.
-5. **Codex native subagents:** code-centered exploration, implementation, review, and monitor roles inside Codex.
-6. **Background CLI process:** a long Pi/Codex/Hermes mission that should be tracked independently from the current agent turn.
-7. **Kanban or cron:** durable work that must survive session/process loss, coordinate writers, retry, or deliver later.
-
-Do not delegate work merely to appear parallel. Independent substantial lanes justify fan-out; tiny, duplicate, or strictly serial tasks do not.
+Choose the simplest supported mechanism by ownership and lifecycle. Use `references/runtime-routing.md` for the selection table and live checks; never assume a runtime or extension is installed. Mechanical counting/filtering belongs in local tools, not reasoning children.
 
 ## Dispatch contract
 
-Every child receives only what it needs:
+Give each child one independent substantial outcome, exact workspace/sources, necessary observed state, exclusions, writable root (if any), stop criteria/budget, and output/evidence requirements. Precompute shared inventories once. Do not split by arbitrary file ranges or delegate tiny, duplicate, or serial tasks.
 
-- one outcome-oriented goal;
-- exact workspace and source paths;
-- relevant observed errors/state, because children know no parent history;
-- one reasoning lane, not an exhaustive whole-system audit;
-- explicit exclusions and side-effect boundary, including the only writable root;
-- stop criteria or a practical call/turn ceiling;
-- exact output shape and evidence requirements.
+One writer per worktree; readers may share. Prefer the cheapest capable model and asynchronous work when the parent has useful independent work. Parent owns synthesis and verifies source, tests, external changes, IDs/URLs, and process state rather than trusting summaries.
 
-When a child may inspect a live repository but must write elsewhere, record the repository's pre-dispatch status and tell it that the live tree is read-only. Recheck status while it runs and after completion. A prose boundary is not verification: if the child writes outside its assigned root, stop using its side effects, preserve only useful evidence, and restore only changes attributable to that child. Never merge incidental fixes into the requested task merely because they appear reasonable.
+Before dispatch, check active/completed runs for the same target. Reuse artifacts or recover the existing child instead of duplicating work. For a child writing elsewhere while inspecting a live tree, record and recheck the live tree's status. If it writes outside its assigned root, stop using those side effects and restore only clearly attributable changes; preserve unrelated work and ask when attribution is uncertain.
 
-For read-only reviewers—especially those without shell/Git tools—include the changed-file list, complete diff or readable diff artifact, deleted-file contents needed for parity review, and validation evidence in the initial dispatch. If they request missing evidence through supervisor intercom, reply to and recover the same detached run; do not launch a replacement while it remains recoverable. See `references/reviewer-evidence-handoffs.md`.
+Static reviewers receive complete evidence up front and never run commands. Use one reviewer by default; another needs a distinct risk. See `references/reviewer-evidence-handoffs.md` for evidence packets and recovery.
 
-For a broad investigation, let the parent mechanically precompute inventories, then delegate narrow runtime, algorithm, review, or validation lanes. The parent owns synthesis and verifies file writes, external changes, URLs, IDs, tests, and process state.
+## Recover by lifecycle, not guesswork
 
-## Parallel safety
+Distinguish a child run deadline, parent wait timeout, iteration/tool budget, stalled provider/tool call, and owner-process loss. Inspect live state and durable artifacts before retrying. A wait timeout does not prove termination, and recent activity at a fixed cutoff suggests a deadline rather than a hang. Salvage evidence once, then narrow only the missing work.
 
-- One writer per worktree. Parallel readers may share a workspace; parallel writers may not.
-- Split by independent evidence source or ownership boundary, not arbitrary file ranges.
-- Do not make two children rediscover the same inventory, reload the same large logs, or both synthesize the final answer.
-- Use the cheapest capable child model; reserve stronger models for ambiguous strategy, adversarial review, or synthesis.
-- Prefer async/background launches when the parent can continue useful work. Wait only when the current step truly depends on the child result.
+For Hermes timeout diagnosis, use `references/delegation-timeout-diagnosis.md`. Keep cost limits intentional; do not change policy merely to hide an over-scoped child. Background processes are not durable queues; use persisted scheduling only when retry/survival/delivery requirements justify it.
 
-## Timeout diagnosis
+## Cross-runtime installation boundary
 
-Treat these as distinct:
+Evaluation is not installation approval. Before adding a bridge, explain package/dependency execution, directionality, fresh versus existing session semantics, network/auth exposure, lifecycle/reload effects, workspace authority, and native alternatives. Obtain informed approval before installing. If corrected after a side effect, stop, disclose exact state, and wait rather than continuing or silently rolling back. Use `references/a2a-cross-runtime-setup.md` for staging and bidirectional verification.
 
-1. **Run wall-clock timeout:** kills the child and can discard an otherwise useful final summary.
-2. **Wait timeout:** stops waiting while background work continues.
-3. **Iteration/tool/usage budget:** bounds work units and should encourage a final summary before exhaustion.
-4. **Provider request timeout or stalled call:** one API request stopped progressing.
-5. **Process/session lifetime:** parent reset or process exit may orphan or cancel non-durable work.
+## Conditional references
 
-A child with successful tool activity immediately before a fixed-duration cutoff was not hung; the wall-clock policy was wrong for the task. Inspect live transcripts and durable artifacts before re-dispatching or declaring the child useless. Salvage evidence once, then narrow the next task.
+- `references/hermes-model-routing.md`: main, child, auxiliary, and fallback routing.
+- `references/pi-model-routing.md`: effective role precedence, availability, auth, and managed state.
+- `references/pi-concurrency-and-model-scope.md`: concurrency lifetimes and scope enforcement; version-specific claims require installed-source verification.
+- `references/pi-tmux-agent-operations.md`: discover, inspect, and steer the correct existing pane.
+- `references/subagent-portfolio-audit.md`: bounded evidence before disabling roles; diagnose orchestration waste first.
 
-For Hermes delegation, prefer the current no-hard-cap default and heartbeat/iteration controls. A positive `delegation.child_timeout_seconds` is an intentional unattended-cost control, not a general reliability default. See `references/delegation-timeout-diagnosis.md`.
+## Verify the changed contract
 
-## Runtime boundaries
-
-- **Hermes:** general tools and fresh isolated reasoning; only final summaries enter the parent context. Live transcripts are the failure-recovery record. `delegate_task` is unavailable inside Hermes' Codex app-server runtime because it requires Hermes agent-loop state.
-- **Pi:** its subagent extension owns agent profiles, async lifecycle, wait semantics, chains, worktrees, and artifacts. A wait timeout must not be mistaken for child termination.
-- **Codex:** native multi-agent roles are separate from Hermes delegation. Verify live feature/config state before assuming custom roles, model routing, concurrency, or timeout behavior.
-- **External processes:** use tracked background processes for long bounded CLI missions; use Kanban/cron when execution itself must be durable.
-
-### Third-party runtime bridges
-
-Before installing an agent bridge or protocol extension, explain the candidate package, directionality, real session semantics, dependency/code-execution footprint, network exposure and authentication, lifecycle/reload impact, workspace/write authority, and simpler native alternatives. Then obtain explicit informed approval for installation. A request to evaluate or understand packages is not installation approval; do not race ahead while presenting the review. If a sequencing correction arrives after a side effect, stop immediately, disclose the exact current state, and wait before either continuing or rolling back.
-
-For cross-runtime A2A, distinguish calling the visible interactive session from spawning an isolated agent session. Same-machine work should normally use native delegation or supervised tmux unless process/framework isolation is the actual requirement. See `references/a2a-cross-runtime-setup.md`.
-
-See `references/runtime-routing.md` for the compact comparison and live verification commands.
-
-## Conditional investigations
-
-For model/provider changes, load `references/hermes-model-routing.md` or `references/pi-model-routing.md`; inspect main, child, auxiliary, and fallback routing separately.
-For Pi concurrency or scope enforcement, load `references/pi-concurrency-and-model-scope.md`; distinguish declarations from observed runtime limits.
-For failed batches, use `references/delegation-timeout-diagnosis.md` for counts, last activity, scope, and evidence-versus-handoff utility.
-For role removal, use `references/subagent-portfolio-audit.md` for transcript analysis, reversible changes, and re-measurement.
-Use one reviewer by default; add another only for a named distinct risk. Diagnose orchestration waste before removing a useful role.
-
-## Verification checklist
-
-Before declaring orchestration healthy:
-
-1. Run one small bounded smoke child with exact sources and output shape.
-2. Confirm it obeyed scope and produced the requested summary.
-3. Confirm runtime configuration resolves to the intended timeout/budget policy.
-4. For async work, verify the completion artifact and notification, not merely process disappearance.
-5. For edits, inspect the diff and run the smallest relevant check.
-6. For durable workflows, verify ownership, retry state, and final delivery.
-
-## References
-
-- `references/delegation-timeout-diagnosis.md` — transcript-led timeout triage and the 600-second watchdog case.
-- `references/runtime-routing.md` — Hermes vs Pi vs Codex vs durable-worker selection and live checks.
-- `references/hermes-model-routing.md` — layered Hermes model selection, fallback-auth audit, CLI changes, and verification.
-- `references/pi-model-routing.md` — Pi main/subagent precedence, provider scope, model availability, auth, and managed-state verification.
-- `references/a2a-cross-runtime-setup.md` — informed package review, runtime semantics, secure staging, and bidirectional verification for A2A bridges.
-- `references/reviewer-evidence-handoffs.md` — evidence packets and recovery for restricted read-only reviewers.
+Run one bounded smoke child with exact sources/output, confirm scope and summary, and inspect resolved budget/routing. For async work, verify artifacts and completion notification, not process disappearance. For mutations inspect the diff and authoritative checks; for durable work verify ownership, retry state, and final delivery. Report untested runtime boundaries explicitly.

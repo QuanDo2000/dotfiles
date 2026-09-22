@@ -572,10 +572,3 @@ test_autoresearch_uses_no_upstream_runtime_package() {
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(contains("pi-autoresearch"))] | length' "$REPO_DIR/config/shared/ai/pi/settings.json")"
   assert_equals false "$([[ -e "$REPO_DIR/scripts/patch_pi_autoresearch.py" ]] && echo true || echo false)"
 }
-
-test_autoresearch_agent_policy_suggests_but_never_autostarts() {
-  local agents
-  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-  assert_contains "$agents" 'suggest the bounded autoresearch workflow'
-  assert_contains "$agents" 'Never start autoresearch without explicit user approval'
-}

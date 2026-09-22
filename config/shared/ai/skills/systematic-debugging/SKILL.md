@@ -16,7 +16,7 @@ description: Use when diagnosing bugs, test failures, or unexpected behavior.
 5. Trace the value/state backward through callers and component boundaries until the first wrong assumption or transition is found.
 6. Find one nearby working path and compare only relevant differences.
 
-For multi-component flows, record input/output/state at each boundary once. Do not add broad logging everywhere.
+For multi-component flows, record input/output/state at the suspected boundary; expand only when evidence requires it. Do not add broad logging everywhere. For deep tracing, validation placement, or flaky waits, load `troubleshooting.md`.
 
 ## 2. Test one hypothesis
 

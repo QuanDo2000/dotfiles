@@ -1,92 +1,49 @@
-# AGENTS.md
+# Dotfiles Agent Guide
 
-This file provides guidance to coding agents when working with code in this repository.
+Personal Linux/macOS/Windows provisioning. Unix uses Nix/Home Manager; Windows uses `dotfile.ps1`.
 
-## Overview
+## Commands
 
-Personal dotfiles repo for provisioning new Linux/macOS/Windows machines. The Unix installer clones this repo to `~/dotfiles` and runs Nix-managed package updates; Home Manager owns Unix links and shell/tool extras.
+- `dotfile`: full setup; `packages`: prerequisites; `upgrade`: native package upgrades.
+- `dotfile update`: routine refresh of all pins, native prerequisites, and profile activation; `update ai`: AI-only update.
+- `dotfile doctor`: health checks; `obsidian`: Sync bootstrap; `codex` / `obsidian-headless`: respective pinned-release updates.
+- `dotfile -d <command>`: dry run; `-f`: force overwrite.
+- Windows retains its own `verify` command and runs symlink/extra setup inside `all`.
 
-## Key Commands
+If signing hangs/fails for a passphrase, never bypass signing by default. Ask the user to run `printf test | gpg --clearsign >/dev/null`, then retry after confirmation.
 
-```bash
-dotfile                      # Full setup
-dotfile packages             # Install system packages only
-dotfile upgrade              # Upgrade native system packages
-dotfile doctor               # Detect dotfile and Nix issues
-dotfile update               # Refresh all pins, install native prerequisites, activate profile
-dotfile update ai            # Update only AI tools and configs
-dotfile obsidian             # Bootstrap Obsidian Sync login and vault setup
-dotfile codex                # Update pinned Codex release package
-dotfile obsidian-headless    # Update pinned Obsidian Headless package
-dotfile -d <command>         # Dry run
-dotfile -f <command>         # Force overwrite existing files
-```
+## Ownership and Entry Points
 
-## Git Signing
+`dotfile` sources modular scripts: `utils.sh` (logging), `packages.sh` (platform prerequisites/rebuilds), `releases.sh` (updates), `pins.sh` / `update_pins.py` (verified pin refresh), `doctor.sh` (health), and `obsidian.sh` (interactive Sync setup). Shared flags are exported `DRY`, `QUIET`, and `FORCE`. Windows implementation is in `dotfile.ps1`.
 
-If `git commit` hangs or fails because signing needs a passphrase, do not bypass signing by default. Tell the user to run `printf test | gpg --clearsign >/dev/null` to unlock/cache the GPG passphrase, then retry the commit after they confirm it is done.
+`config/home.nix` owns Unix links and generates `.zshrc` from `config/unix/.zshrc.base`. Layer `config/` children map by basename into `~/.config/`; top-level dotfiles map into `$HOME`, subject to explicit profile gates and exceptions:
 
-## Architecture
+- `config/shared/`: cross-platform tools, AI seeds, SSH, Neovim, Obsidian. Unix Git uses Home Manager; shared `.gitconfig` remains for Windows.
+- `config/unix/`: shells/tools and profile-gated Linux desktop configs. `config/mac/` and `config/windows/`: platform-specific files.
+- `config/nixos/`: physical system; machine values in `config/host.nix`, hardware in `config/hardware-configuration.nix`. NixOS skips imperative package installers.
+- `config/nixos-wsl/`: `${hostName}-wsl`, auto-selected by Microsoft WSL kernel detection; excludes physical hardware/bootloader/NVIDIA/desktop configuration.
 
-- **dotfile** - Unix entry point at the repo root. Sources the needed scripts from `scripts/`, parses CLI flags, dispatches to subcommands. Symlinked into `$HOME/.local/bin/` by Home Manager on Linux/macOS.
-- **dotfile.ps1** - Windows equivalent (PowerShell) at the repo root. Windows keeps its own `verify` command; Windows-only symlink and extra setup runs inside `all`. Symlinked into `$HOME\.local\bin\` by `SetupSymlinks`.
-- **scripts/** - Modular bash scripts sourced by the unix `dotfile`:
-  - `utils.sh` - Logging helpers (`info`, `success`, `fail`, `user`). Sourced first with no dependencies.
-  - `packages.sh` - OS-specific package installation (apt/pacman only for Linux bootstrap packages, NixOS flakes, existing nix-darwin or pinned nix-darwin bootstrap on macOS).
-  - `releases.sh` - Pi, Codex, Obsidian Headless, and full dependency-refresh orchestration.
-  - `pins.sh` / `update_pins.py` - Verified refreshers for native releases, npm closures, Windows pins, vendored skills, and Neovim plugins.
-  - `doctor.sh` - Health checks for Home Manager conflicts, core Unix links, Nix-managed tools, and flake targets.
-  - `obsidian.sh` - Interactive Obsidian Sync bootstrap and service restart; Home Manager owns the Linux `obsidian-headless` package and `obsidian-sync` unit file.
+Shared development tools are the default. NixOS adds desktop/personal apps, Obsidian Sync, and Google Drive. Arch server adds Sync, Drive, and storage backup without desktop/personal apps. Generic Linux/macOS leave optional groups off. Obsidian GUI/settings are personal-only; headless Sync runs on NixOS and Arch server. `packages.sh` uses apt/pacman only for Linux bootstrap, NixOS flakes for rebuilds, and existing or pinned-bootstrap nix-darwin on macOS.
 
-## Dotfile Layers
+Link only owned files: SSH config and selected Obsidian settings, not entire runtime directories. Codex config is a writable seed because the application persists preferences. Leave caches, sessions, credentials, `node_modules`, `skills-lock.json`, and plugin runtime artifacts alone.
 
-Platform config lives under `config/`. Unix links are managed by Home Manager from `config/home.nix`:
+## AI Instructions and Skills
 
-1. **config/shared/** - Cross-platform configs (neovim, starship, jj, SSH, AI tool seeds, Obsidian settings). Raw Neovim config and Snacks pickers remain cross-platform. Git settings for Linux/macOS are declared through Home Manager `programs.git`; `config/shared/.gitconfig` is kept for Windows.
-2. **config/unix/** - Unix shell/tool configs plus Linux desktop configs (`.zshrc.base`, `.tmux.conf`, ghostty, hyprland, waybar, fcitx5). Home Manager gates hyprland, waybar, and fcitx5 to Linux.
-3. **config/mac/** - macOS-only files used by `dotfile.ps1` or platform-specific Home Manager logic.
-4. **config/windows/** - Windows-specific (PowerShell profile, Windows Terminal settings). Used by `dotfile.ps1`.
-5. **config/nixos/** - Physical NixOS only. `configuration.nix` is a tracked full-desktop system config used through the repo flake. Per-machine values (username, hostname, timezone, stateVersion) live in tracked `config/host.nix`; hardware settings live in tracked `config/hardware-configuration.nix`. Edit those files when provisioning a different host. App config files (hyprland, waybar, etc.) and shell/tmux settings are managed by Home Manager from `config/home.nix`. On NixOS the imperative package installers are skipped; packages come from the rebuild.
-6. **config/nixos-wsl/** - NixOS-WSL system config. The `${hostName}-wsl` flake target imports NixOS-WSL and excludes physical bootloader, hardware, NVIDIA, and desktop configuration. NixOS package/update commands select it automatically when the Microsoft WSL kernel is detected.
+`config/shared/ai/AGENTS.md` owns shared Pi/Codex instructions; `SOUL.md` owns Hermes policy. Keep common authority/delivery rules aligned. Shared skills under `ai/skills/` install into `~/.agents/skills/` via Home Manager and Windows `InstallAiSkills`; verify native discovery in Codex/Pi. Agent-specific tools, memory, UI, hooks, and adapters stay native.
 
-Files in `config/` subdirectories of each platform layer are linked into `~/.config/` by Home Manager. Top-level dotfiles are linked directly to `$HOME`.
+Hermes adaptations under `ai/hermes/skills/` are separate immutable Home Manager links for the default Unix profile. Read `config/shared/ai/hermes/README.md` before changing deployment/updater ownership. Preserve attribution and update boundaries; never edit store targets or force-reset bundled skills. Promote reusable machine-local skills only with explicit approval, complete assets, sanitization, and discovery verification.
 
-Both loose files and directories under a layer's `config/` are linked into `~/.config/` by their basename (e.g. `config/shared/config/starship.toml` -> `~/.config/starship.toml`, `config/shared/config/nvim/` -> `~/.config/nvim/`). Shared development tools are the default profile. NixOS enables desktop, personal apps, Obsidian Sync, and Google Drive; Arch server enables Obsidian Sync, Google Drive, and storage backup without desktop or personal apps; generic Linux and macOS keep optional groups disabled. Linux desktop configuration is profile-gated, not merely OS-gated. Obsidian GUI and tracked GUI settings are personal-only; `obsidian-headless` and `obsidian-sync` run on NixOS and Arch server.
-
-Home Manager handles individual files in dotfolders we don't want to link wholesale: `config/shared/.ssh/config` -> `~/.ssh/config`, tracked Obsidian top-level settings and plugin `data.json` files -> `~/Documents/Sync/.obsidian/`, and it seeds `~/.codex/config.toml` as a regular writable file because Codex persists preferences there at runtime. Shared global instructions come from `config/shared/ai/AGENTS.md`; Unix links them through Home Manager and Windows copies them through `dotfile.ps1 ai`. Agent-agnostic global skills are vendored under `config/shared/ai/skills/`; Home Manager links them into `~/.agents/skills/` on Unix and `dotfile.ps1 ai` copies them there atomically on Windows. Codex discovers that standard location natively and Pi includes it through `settings.json`. Agent-specific plugins, packages, hooks, MCP adapters, memory, models, and UI settings remain native. Only the listed files are linked or seeded - caches, sessions, credentials, `node_modules`, `skills-lock.json`, and plugin runtime artifacts are left alone.
-
-`~/.zshrc` is generated by Home Manager from `config/unix/.zshrc.base`.
-
-## Global Variables
-
-Scripts share state via exported globals: `DRY`, `QUIET`, `FORCE`. These are set by `dotfile` CLI flags and checked throughout all sourced scripts.
-
-## Tests
-
-Tests live under `tests/` with one suite per platform.
+## Validation
 
 ```bash
-nix develop path:. -c bash tests/bash/runner.sh  # all bash tests in pinned environment
-bash tests/bash/runner.sh                         # direct host run when tools are available
-bash tests/bash/runner.sh test_platform_packages.sh # single file
-pwsh tests/powershell/runner.ps1           # PowerShell tests (Windows / pwsh)
-./scripts/check.sh                         # local full check: bash, pwsh if present, Nix flake, ShellCheck via Nix
+nix develop path:. -c bash tests/bash/runner.sh    # pinned Bash suite
+bash tests/bash/runner.sh test_platform_packages.sh # focused host run
+pwsh tests/powershell/runner.ps1                  # Windows/pwsh suite
+./scripts/check.sh                               # full local gate
 ```
 
-### Bash test pattern
+The full gate runs Bash, PowerShell if present, Nix evaluation/builds, and ShellCheck. Preserve check exit status and report unavailable platform coverage.
 
-- Default to one `test_<module>.sh` per `scripts/<module>.sh`; split unusually large modules into focused suites. `scripts/packages.sh` uses platform, release pin, Codex runtime, and Neovim suites. Each `test_*` function is auto-discovered by the runner.
-- Source `tests/bash/helpers.sh` at the top, then use `setup`/`teardown` to call `init_test_env` / `cleanup_test_env`. Package suites use `setup_packages_test_env`. The helper creates a throwaway `$HOME` under a temp dir and exports `DRY`/`QUIET`/`FORCE`.
-- Source the script under test via `source_scripts utils.sh <module>.sh` (always pulls in `platform.sh` automatically).
-- Mock OS detection with `mock_uname Linux` / `mock_uname Darwin` (auto-cleared by `cleanup_test_env`).
-- Assertions: `assert_equals`, `assert_contains`, `assert_file_exists`, `assert_symlink`, `assert_exit_code`. Failures append to `$ERROR_FILE`; tests do not abort on first failure.
-- Default exercise paths: `DRY=true` smoke run, "already installed" short-circuit, `--update` mode does not skip when present, and any platform-specific branches.
+For Bash, reuse `tests/bash/helpers.sh`: `setup`/`teardown` call `init_test_env`/`cleanup_test_env` (packages use `setup_packages_test_env`); source via `source_scripts utils.sh <module>.sh`, which includes `platform.sh`. The helper supplies a disposable HOME/flags; `mock_uname` selects Linux/Darwin and is cleared at teardown. Assertions record failures without aborting the test. Follow a nearby test for available assertions; `test_*` functions are auto-discovered.
 
-### PowerShell test pattern
-
-- One `test_<feature>.ps1` per logical area. Source `tests/powershell/helpers.ps1` and dot-source `dotfile.ps1 -NoMain` to load functions without triggering self-elevation or main dispatch.
-- Same dry-run / branch-coverage philosophy as bash tests.
-
-### When adding a new subcommand or script
-
-Add a `tests/bash/test_<name>.sh` (and `tests/powershell/test_<name>.ps1` if Windows-relevant) covering the dry-run path, the skip-if-already-installed path, and any platform branching. Also add a CLI dispatch test in `test_cli.sh` (e.g., `--dry <newcommand>` exits 0 and the help text mentions it).
+PowerShell tests source `helpers.ps1` and dot-source `dotfile.ps1 -NoMain` to avoid elevation/dispatch. Prefer one suite per module/feature; split unusually large areas. New subcommands/scripts need focused dry-run, already-installed, update, and platform-path checks as applicable, plus CLI dispatch/help coverage (`test_cli.sh`). Do not replace behavior checks with source-prose substring assertions.
