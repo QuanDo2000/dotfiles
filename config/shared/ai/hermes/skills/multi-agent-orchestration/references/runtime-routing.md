@@ -1,114 +1,36 @@
-# Subagent runtime routing
+# Runtime Routing
 
-Choose by ownership and lifecycle, then verify live state. Versions and defaults change; never infer from memory alone.
+Choose by ownership/lifecycle, then inspect the installed runtime. Defaults, APIs, and available extensions change.
 
-## Comparison
+| Mechanism | Use when | Boundary |
+|---|---|---|
+| Main agent | tiny, serial, tightly coupled work or synthesis | do mechanical inventory with local tools |
+| Hermes `delegate_task` | an isolated general reasoning lane needs Hermes tools | only final summary enters parent; owner-process loss can lose handoff |
+| Pi subagent extension | installed chains, steering, worktrees, or async artifacts help | extension owns lifecycle/model/concurrency semantics; not a core Pi guarantee |
+| Codex native agents | code-native exploration, implementation, review, monitoring | feature/config and role support must be verified |
+| Tracked background CLI | a bounded mission outlives the current turn | explicit workdir/ownership, output and process supervision; not durable |
+| Kanban/cron | work must survive resets, retry, or deliver later | persisted ownership/retry/delivery, with extra overhead |
 
-| Runtime | Best fit | Lifecycle | Main caveat |
-|---|---|---|---|
-| Main agent | tiny/serial work and final synthesis | current session | context pollution if used for huge raw inventories |
-| Hermes `delegate_task` | bounded general reasoning with Hermes tools | background child in shared process | only final summary enters parent; not durable across owner-process loss |
-| Pi native subagents | structured coding/research agents, chains, steering, worktrees | foreground or artifact-backed async | extension configuration owns timeout, wait, model, and concurrency semantics |
-| Codex native subagents | code exploration, implementation, review, monitoring | Codex thread/app-server lifecycle | custom roles and routing depend on current Codex feature/config schema |
-| Background Pi/Codex CLI | long independent coding mission | tracked subprocess | parent must inspect outputs/diff and manage process completion |
-| Kanban/cron | durable multi-worker or scheduled work | persisted queue/scheduler | higher orchestration overhead; use only when durability/retry is required |
+Do not nest runtimes unless their distinct capabilities justify it. Native delegation or supervised tmux is usually simpler for same-machine work.
 
-## Hermes checks
+## Hermes
 
-```bash
-hermes config get delegation
-```
+Inspect `hermes config get delegation` and live task records at `$HERMES_HOME/cache/delegation/live/<delegation-id>/`. Verify the resolved timeout and iteration/heartbeat controls separately.
 
-Inspect live task records under:
+Hermes' optional Codex app-server runtime does not expose Hermes-loop tools such as `delegate_task`, `memory`, `session_search`, and Hermes `todo`. Verify the active runtime rather than inventing calls.
 
-```text
-$HERMES_HOME/cache/delegation/live/<delegation-id>/
-```
+For a requested total team size N, children are N−1. Hermes' `delegation.max_concurrent_children` is distinct from iteration/spawn budgets; after an authorized change, verify persisted config and a fresh session's generated tool schema.
 
-Current Hermes behavior uses no hard child timeout when `child_timeout_seconds` resolves to `0`. The heartbeat staleness monitor and iteration budget remain separate controls.
+## Pi
 
-When Hermes uses the optional Codex app-server runtime, `delegate_task`, `memory`, `session_search`, and Hermes `todo` are unavailable because they require the Hermes agent loop. Use Codex-native agents there, or switch Hermes back to its default runtime for Hermes delegation.
+Inspect `pi --version`, `pi list`, live settings, project overrides, and installed extension source. Do not assume Pi Subagents exists just because these references describe it. If installed, its runtime config may live at `$PI_CODING_AGENT_DIR/extensions/subagent/config.json`; verify the active schema before changing it.
 
-## Pi checks
+Use `pi-concurrency-and-model-scope.md` for concurrency lifetime and deployment safeguards, and `pi-model-routing.md` for effective selection. Run deadlines, parent waits, per-run limits, and session-wide caps are different contracts; inspect async status, events, logs, result artifacts, and completion notification.
 
-```bash
-pi --version
-pi list
-```
+For an existing tmux agent, follow `pi-tmux-agent-operations.md`; identify the socket, pane, and current task before sending input, then verify delivery.
 
-For an existing Pi process inside tmux, list and capture its pane before sending input. If plain `tmux list-sessions` reports no server, do not assume none exists: Hermes' shell may lack the user's `TMUX_TMPDIR`/runtime environment. Check the running tmux command and sockets under `/run/user/$UID/tmux-$UID/`; then address the discovered server explicitly, for example:
+## Codex
 
-```bash
-tmux -S /run/user/$UID/tmux-$UID/default list-panes -a
-tmux -S /run/user/$UID/tmux-$UID/default capture-pane -p -t session:window.pane -S -40
-tmux -S /run/user/$UID/tmux-$UID/default send-keys -t session:window.pane 'message' Enter
-```
+Use the installed CLI's supported feature/health commands and inspect project/user role configuration. Missing custom roles can mean built-in routing, not a broken system. Check auth/network health without exposing secrets.
 
-Capture again after sending. Never send input until the pane and current task are identified.
-
-Inspect:
-
-```text
-$PI_CODING_AGENT_DIR/settings.json
-$PI_CODING_AGENT_DIR/extensions/subagent/config.json
-```
-
-For `pi-subagents`, distinguish run deadlines from waiting:
-
-- `timeoutMs`/`maxRuntimeMs` can impose a run deadline.
-- A foreground run may have a runtime default supplied by the extension.
-- Async work may continue after the parent yields.
-- `subagent_wait` timing out stops the wait; it does not prove the child was killed.
-- Verify async `status.json`, `events.jsonl`, output log, result JSON, and completion notification.
-
-Useful configuration fields include async default, compact tool descriptions, artifact location, global concurrency, per-session spawn cap, model scope, and per-agent model/thinking overrides. Read their resolved values; do not hardcode another installation's choices.
-
-## Team-size and concurrency caps
-
-Translate total team size before editing config: **N total agents = one parent + N-1 children**. Keep concurrency, per-call task count, nesting depth, and cumulative session spawns separate.
-
-Hermes uses:
-
-```bash
-hermes config set delegation.max_concurrent_children <N-1>
-hermes config get delegation.max_concurrent_children
-```
-
-A running Hermes session can retain the old generated `delegate_task` schema, so verify the persisted value and confirm the new limit in a fresh session.
-
-Pi Subagents keeps native orchestration config separate from Pi's main `settings.json`:
-
-```json
-{
-  "globalConcurrencyLimit": 7,
-  "parallel": {
-    "maxTasks": 7,
-    "concurrency": 7
-  }
-}
-```
-
-Use the same N-1 value for all three fields: `maxTasks` bounds children accepted by one parallel call, `parallel.concurrency` bounds that call's simultaneous work, and `globalConcurrencyLimit` bounds simultaneous tasks within one subagent run. `maxSubagentSpawnsPerSession` is a cumulative launch budget, not a concurrency cap; do not lower it just to express team size.
-
-Pi's native global limit is documented **per run**. Overlapping independent async runs can exceed it in aggregate. If the requirement is a strict session- or machine-wide cap, avoid overlapping runs or add an explicit outer coordinator rather than claiming the per-run setting provides that guarantee.
-
-For declarative dotfiles, manage `$PI_CODING_AGENT_DIR/extensions/subagent/config.json` as a writable seeded file using the existing three-way merge mechanism. Do not symlink application-editable runtime config directly into the read-only Nix store. Build the intended host profile, apply it, then compare live and seed values.
-
-## Codex checks
-
-```bash
-codex --version
-codex features list
-codex doctor
-```
-
-Confirm `multi_agent` state, auth/network health, thread DB consistency, and whether project/user `.codex/agents/*.toml` roles exist. Absence of custom roles means built-in/default routing, not a broken multi-agent system.
-
-Codex-native agents are not Hermes `delegate_task` children and do not inherit Hermes delegation timeout settings. For a long one-shot launched by Hermes, use a tracked background terminal process, an explicit workdir, one writer per worktree, and parent-side diff/test verification.
-
-## Dispatch recommendations
-
-- Prefer Pi when its configured chains, fleet view, steering, async artifacts, or worktree workflows materially help.
-- Prefer Codex for focused code-native implementation/review under its sandbox and role system.
-- Prefer Hermes for short general-purpose lanes needing its broader tools and automatic result delivery.
-- Do not nest runtimes merely because nesting is possible. `Hermes → Pi/Codex process → native children` is justified only for a long mission that benefits from the external runtime's orchestration.
+Codex-native agents do not inherit Hermes delegation timeouts. For external CLI missions, use a tracked process, explicit workdir, one writer per worktree, and parent-side diff/test verification.

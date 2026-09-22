@@ -3,8 +3,8 @@
 These are the approved local Hermes adaptations of `requesting-code-review`,
 `subagent-driven-development`, `writing-plans`, `plan`,
 `test-driven-development`, `systematic-debugging`, and `multi-agent-orchestration`,
-including their complete reference trees. Their frontmatter attribution and
-reference-level provenance are retained unchanged.
+including their referenced assets. Attribution is retained in frontmatter and
+references; consolidated checkpoint guidance credits its source in the owning skill.
 The source snapshot is the default profile's `skills/software-development/` and
 `skills/autonomous-ai-agents/` trees, after the workflow simplification; it is not
 an unmodified upstream release.
@@ -55,10 +55,12 @@ sources while preserving adaptations, and update provenance only after review.
 Do not remove the manual policy just to obtain a newer pin. The Hermes tree is
 outside that updater's replacement root.
 
-The Hermes debugging adaptation retains service-manager environment/interpreter
+The compact Hermes debugging adaptation retains service-manager environment/interpreter
 checks, investigation-only prohibitions, data-flow tracing, and a measured
-performance loop. Its trim removes repeated persuasion, fixed-attempt rhetoric,
-and unattributed performance claims, not those locally learned safeguards.
+performance loop. TDD follows the shared failure-first/real-flow policy while retaining
+Hermes metadata and separate discovery. Generic tutorials, historical success statistics,
+and legacy context/gate references are removed; their useful safeguards live in the
+owning skills. Shared debugging techniques are consolidated in `../skills/systematic-debugging/troubleshooting.md`.
 
 ## Security reference correction (default profile, Unix)
 
@@ -125,8 +127,9 @@ profile settings are installed by this correction.
 
 The skill frontmatter credits Hermes Agent, obra/superpowers, and MorAlekss as
 applicable. The shared [superpowers MIT notice](../skills/licenses/superpowers-MIT.txt)
-credits Jesse Vincent. The two subagent references retain their MIT attribution
-to Lex Christopherson and link to `gsd-build/get-shit-done`. Local additions include
+credits Jesse Vincent. Consolidated subagent checkpoint/context guidance retains
+its MIT attribution to Lex Christopherson and link to `gsd-build/get-shit-done` in
+the owning skill. Local additions include
 read-only review, failure-signal auditing, review of clean/jj-managed checkouts,
 one-writer delegation, plan-only boundaries, and preservation of existing work
 when establishing RED/GREEN evidence. Preserve these when updating upstream text.

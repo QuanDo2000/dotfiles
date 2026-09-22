@@ -116,23 +116,6 @@ test_pi_model_cycling_shortcuts_are_disabled() {
   fi
 }
 
-test_all_ai_agents_start_with_shared_policy() {
-  local agents soul guidance
-  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-  soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
-
-  for guidance in "$agents" "$soul"; do
-    assert_contains "$guidance" 'Apply these fixed rules at every main-agent and subagent startup.'
-    assert_contains "$guidance" '**Minimal implementation:**'
-    assert_contains "$guidance" 'stop at the first solution that works'
-    assert_contains "$guidance" 'standard-library, native-platform, and installed-dependency solutions'
-    assert_contains "$guidance" 'Prefer deletion and boring code.'
-    assert_contains "$guidance" 'Mark deliberate limitations with a `debt:` comment naming the ceiling and upgrade trigger.'
-    assert_contains "$guidance" '**Terse communication:**'
-  done
-}
-
-
 test_ai_delivery_policy_is_shared_and_finite() {
   local agents soul identity
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
@@ -141,14 +124,9 @@ test_ai_delivery_policy_is_shared_and_finite() {
   soul="${soul#*## Automatic Delivery}"
   agents="${agents%%## *}"
   soul="${soul%%## *}"
-  assert_equals "$agents" "$soul"
-  assert_contains "$agents" 'without per-action confirmation'
-  assert_contains "$agents" 'New, unlisted or identity-ambiguous projects require explicit merge confirmation'
-  assert_contains "$agents" 'independent review'
-  assert_contains "$agents" 'required tests/CI pass for the exact final head'
-  assert_contains "$agents" 'Never push directly to default/protected branches'
-  assert_contains "$agents" 'explicit task-level no-commit/no-push restrictions remain binding'
-  assert_contains "$agents" 'has no approved publish destination'
+  assert_equals "$(printf '%s' "$agents")" "$(printf '%s' "$soul")"
+  # Shared authority and exact repository identities are the contract here.
+  # Exercise interpretation with tests/ai/instruction-scenarios.md, not prose greps.
   for identity in github.com/QuanDo2000/dotfiles github.com/QuanDo2000/zmk-config github.com/QuanDo2000/chrome-puzzle-solver ssh://git@192.168.1.200:2222/quando/silly-cavern-odin.git; do
     assert_contains "$agents" "\`$identity\`"
   done
@@ -183,73 +161,6 @@ test_skill_retrospective_is_installed_cross_platform() {
 
   assert_file_exists "$skill"
   assert_contains "$windows" "'systematic-debugging', 'test-driven-development', 'skill-retrospective'"
-  assert_contains "$(<"$skill")" 'Use bounded session search rather than scanning all history by default.'
-  assert_contains "$(<"$skill")" 'Do not assign numeric grades or composite scores.'
-  assert_contains "$(<"$skill")" 'Do not modify installed skills without explicit user approval.'
-}
-
-
-test_agents_own_complexity_audit_and_debt_policy() {
-  local agents soul guidance
-  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-  soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
-
-  for guidance in "$agents" "$soul"; do
-    assert_contains "$guidance" 'For explicit whole-repository complexity or dependency audits'
-    assert_contains "$guidance" 'For explicit diff complexity reviews, inspect changed and impacted code'
-    assert_contains "$guidance" '`delete`, `stdlib`, `native`, `yagni`, or `shrink`'
-    assert_contains "$guidance" 'For debt-ledger requests, search `debt:` comments'
-    assert_contains "$guidance" 'tag markers without one as `no-trigger`'
-  done
-}
-
-
-test_all_ai_agents_delegate_efficiently() {
-  local agents debugging_skill soul
-  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-  debugging_skill="$(<"$REPO_DIR/config/shared/ai/skills/systematic-debugging/SKILL.md")"
-  soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
-
-  for guidance in "$agents" "$soul"; do
-    assert_contains "$guidance" 'multiple independent, substantial lanes'
-    assert_contains "$guidance" 'parallel and asynchronously when supported'
-    assert_contains "$guidance" 'one writer per worktree'
-    assert_contains "$guidance" 'Do not delegate tiny, tightly serial, or duplicate work.'
-    assert_contains "$guidance" 'Prefer 1–3 narrow children with only the context they need'
-    assert_contains "$guidance" 'cheapest capable model'
-    assert_contains "$guidance" 'Parent owns synthesis and final verification.'
-  done
-
-  assert_contains "$agents" 'Before launching, check active and completed runs for the same lane and unchanged target revision.'
-  assert_contains "$agents" 'Treat reviewers as static: never ask them to run shell commands, tests, lint, typecheck, builds, or mutations.'
-  assert_contains "$agents" 'When a matched reusable skill governs delegated work, pass only that skill explicitly to the child.'
-  assert_contains "$agents" 'Normally use one fan-out wave; launch another only for a changed target or unresolved evidence gap.'
-  assert_contains "$soul" 'do not prefer delegation by default for bounded code-mutation tasks.'
-  assert_contains "$debugging_skill" 'Use the `test-driven-development` skill for writing proper failing tests'
-  assert_contains "$debugging_skill" 'Follow the global verification policy before claiming success.'
-  assert_contains "$agents" 'For explicit code reviews, report findings only: severity `P0`–`P3`, confidence, exact `path:line`, concrete failure mode, smallest fix, and residual risk.'
-  assert_contains "$agents" 'Reject praise, style-only noise, speculative findings, duplicates, and claims unsupported by source or supplied validation evidence.'
-
-  for guidance in "$agents" "$soul"; do
-    assert_contains "$guidance" 'Before claiming completion, committing, or moving on, map each claim to the smallest authoritative command or live-state check'
-    assert_contains "$guidance" 'Use proportionate, risk-based verification: test important behavior and credible failure modes'
-    assert_contains "$guidance" 'Preserve security, data-loss prevention, rollback checks, and explicit acceptance criteria.'
-  done
-}
-
-
-test_agents_recommend_promoting_reusable_hermes_skills() {
-  local agents
-  agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-
-  assert_contains "$agents" 'Recommend promotion when a Hermes-generated skill is useful across machines or projects.'
-  assert_contains "$agents" 'Do not copy it automatically.'
-  assert_contains "$agents" 'config/shared/ai/skills/<name>/'
-  assert_contains "$agents" 'config/home.nix'
-  assert_contains "$agents" 'Windows `InstallAiSkills`'
-  assert_contains "$agents" 'Sanitize machine-specific paths, secrets, and assumptions before copying'
-  assert_contains "$agents" 'Verify discovery in every intended harness'
-  assert_contains "$agents" 'remove the Hermes copy only after tracked installation is verified'
 }
 
 

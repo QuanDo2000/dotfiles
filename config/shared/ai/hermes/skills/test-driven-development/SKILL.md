@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: "TDD: enforce RED-GREEN-REFACTOR, tests before code."
+description: "Use for behavior-changing code or bug fixes."
 version: 1.1.0
 author: Hermes Agent (adapted from obra/superpowers)
 license: MIT
@@ -11,213 +11,37 @@ metadata:
     related_skills: [systematic-debugging, subagent-driven-development]
 ---
 
-# Test-Driven Development (TDD)
+# Test-First, Real-Flow Verification
 
-## Overview
+Prove observable behavior, not implementation structure. Prefer a few tests through real workflows over many internal assertions; coverage percentage and test count are not completion criteria.
 
-Write the test first. Watch it fail. Write minimal code to pass.
+## Before implementation
 
-**Core principle:** If you didn't watch the test fail, you don't know if it tests the right thing.
+1. Name the user-visible outcome and credible failures, including relevant security, data-loss, and rollback risks.
+2. Inspect the real entry point, dependencies, and existing checks. Choose the smallest boundary that catches the failure.
+3. Prefer integration/E2E checks for complex features. Use focused unit tests for logic and failure paths that are hard, unsafe, or expensive to exercise end to end; do not duplicate assertions across layers.
+4. Write the smallest failing example before changing production code. Bug fixes start with the reported symptom, not a test inferred from the proposed implementation.
 
-## When to Use
+## RED → GREEN → simplify
 
-**Default for important behavior changes:**
-- New features
-- Bug fixes
-- Refactoring
-- Behavior changes
+Run the focused check and confirm failure for the intended behavior, not setup errors. If it already passes, test against the revision without the fix in isolation, preserving existing work. Do not weaken expectations to manufacture RED; disclose when RED cannot be established safely.
 
-**Use existing validation or a representative smoke check when sufficient:**
-- Throwaway prototypes
-- Generated code
-- Configuration files
+Apply only the smallest shared root-cause fix, run the check again, then simplify while keeping checks green. Repeat for the next important behavior, not every function or line. Do not batch speculative tests, introduce future options, or bundle unrelated cleanup.
 
-Keep verification proportionate and risk-based: test important behavior and credible failure paths, not exhaustive low-value cases. Reuse existing checks; avoid elaborate one-off test harnesses. Preserve security, data-loss prevention, rollback, explicit acceptance criteria, and actual execution. Documentation-only edits need existing policy checks and diff review, not a new unit framework.
+Exploration is allowed when an interface is unknown. Remove only your own throwaway exploratory changes before RED/GREEN. For existing implementation, add the missing regression and establish RED against the prior revision when safe; never discard user work or pretend the test came first.
 
-## Test-first evidence
+## What earns a test
 
-For new behavior, establish a failing test before implementation; for existing work, establish the safe comparison below.
+- Name the plausible defect each assertion catches. Check output, durable state, exit status, or boundary contracts using independently derived expectations.
+- Do not grep source text, split constants into assertions, or freeze private structure. Exact text is appropriate when it is the required public contract.
+- Use real components; substitute only unavoidable external, nondeterministic, costly, or unsafe boundaries. Inspect the actual interface and preserve the side effects and response shape consumed by the flow.
+- Assert calls/arguments/order only when they are the boundary contract. A mock returning its configured answer proves nothing. If mock setup outgrows the behavior, prefer real integration.
+- Keep test-only scaffolding in tests; do not add production APIs solely for tests.
 
-For a bug fix, prove the regression fails without the fix and passes with it.
-If implementation already exists, preserve user work and establish that comparison safely; do not delete unrelated or pre-existing code to enforce ordering.
+## Evidence and completion
 
-## Red-Green-Refactor Cycle
+Finish complex features with a safe real-flow check and inspectable artifact: existing runner output, generated file, trace, or verified resulting state. Record revision, exact command, prerequisites/fixtures, expected outcome, and actual result. Do not build an artifact framework; screenshots alone do not prove hidden state or safety.
 
-### RED — Write Failing Test
+Use disposable state and authorized environments; redact private data/secrets. Disclose substitutions or unavailable real flows rather than claiming E2E coverage. Confirm RED/GREEN or its limitation, run impacted checks and required gates on the final revision, and inspect exit status/failures/output. Report passed, failed, skipped, and unverified checks with evidence. Reuse results only while revision and inputs are unchanged.
 
-Write one minimal test showing what should happen.
-
-**Good test:**
-```python
-def test_retries_failed_operations_3_times():
-    attempts = 0
-    def operation():
-        nonlocal attempts
-        attempts += 1
-        if attempts < 3:
-            raise Exception('fail')
-        return 'success'
-
-    result = retry_operation(operation)
-
-    assert result == 'success'
-    assert attempts == 3
-```
-Clear name, tests real behavior, one thing.
-
-**Bad test:**
-```python
-def test_retry_works():
-    mock = MagicMock()
-    mock.side_effect = [Exception(), Exception(), 'success']
-    result = retry_operation(mock)
-    assert result == 'success'  # What about retry count? Timing?
-```
-Vague name, tests mock not real code.
-
-**Requirements:**
-- One behavior per test
-- Clear descriptive name ("and" in name? Split it)
-- Real code, not mocks (unless truly unavoidable)
-- Name describes behavior, not implementation
-
-### Verify RED — Watch It Fail
-
-Demonstrate RED, or explicitly report why it could not be established.
-
-```bash
-# Use terminal tool to run the specific test
-pytest tests/test_feature.py::test_specific_behavior -v
-```
-
-Confirm:
-- Test fails (not errors from typos)
-- Failure message is expected
-- Fails because the feature is missing
-
-**Test passes immediately?** Check it against the revision without the fix, safely preserving existing work. Change the test only if it does not check the intended behavior.
-
-**Test errors?** Fix the error, re-run until it fails correctly.
-
-### GREEN — Minimal Code
-
-Write the simplest code to pass the test. Nothing more.
-
-**Good:**
-```python
-def add(a, b):
-    return a + b  # Nothing extra
-```
-
-**Bad:**
-```python
-def add(a, b):
-    result = a + b
-    logging.info(f"Adding {a} + {b} = {result}")  # Extra!
-    return result
-```
-
-Don't add features, refactor other code, or "improve" beyond the test.
-
-**Cheating is OK in GREEN:**
-- Hardcode return values
-- Copy-paste
-- Duplicate code
-- Skip edge cases
-
-We'll fix it in REFACTOR.
-
-### Verify GREEN — Watch It Pass
-
-**MANDATORY.**
-
-```bash
-# Run the specific test
-pytest tests/test_feature.py::test_specific_behavior -v
-
-# Only when material risk or an explicit requirement warrants the full suite
-pytest tests/ -q
-```
-
-Confirm:
-- Test passes
-- Impacted tests pass
-- Investigate relevant errors or warnings; do not chase unrelated output cleanup
-
-**Test fails?** Fix the code, not the test.
-
-**Other tests fail?** Fix regressions now.
-
-### REFACTOR — Clean Up
-
-After green only:
-- Remove duplication
-- Improve names
-- Extract helpers
-- Simplify expressions
-
-Keep tests green throughout. Don't add behavior.
-
-**If tests fail during refactor:** Isolate the regression and repair or revert only your own affected refactor. Preserve pre-existing user work; take smaller steps.
-
-### Repeat
-
-Next failing test for next behavior. One cycle at a time.
-
-## Avoid Horizontal Slices
-
-Do **not** write all tests first and then all implementation. That is horizontal slicing: RED becomes "write a pile of imagined tests" and GREEN becomes "make the pile pass." It produces brittle tests because the tests are designed before the implementation has taught you what behavior and interface actually matter.
-
-Use vertical tracer bullets instead:
-
-```text
-WRONG:
-  RED:   test1, test2, test3, test4
-  GREEN: impl1, impl2, impl3, impl4
-
-RIGHT:
-  RED→GREEN: test1→impl1
-  RED→GREEN: test2→impl2
-  RED→GREEN: test3→impl3
-```
-
-A tracer bullet is one end-to-end behavior slice. It proves the path works, teaches you about the interface, and keeps each next test grounded in what you just learned.
-
-## Evidence, not ritual
-
-Test-first is the default for new behavior. A useful regression checks the real boundary and fails for the intended reason without the fix; document any constraint that prevents demonstrating RED.
-
-## Verification
-
-- The regression fails for the intended reason without the fix and passes with it.
-- Assertions cover changed behavior and relevant failure paths, not merely mock internals.
-- Impacted tests and the repository's required final gate pass, or failures are reported.
-- No unrelated production changes are bundled.
-
-## When Stuck
-
-| Problem | Solution |
-|---------|----------|
-| Don't know how to test | Write the wished-for API. Write the assertion first. Ask the user. |
-| Test too complicated | Design too complicated. Simplify the interface. |
-| Must mock everything | Code too coupled. Use dependency injection. |
-| Test setup huge | Extract helpers. Still complex? Simplify the design. |
-
-## Execution
-
-Run the repository's focused test command during RED/GREEN; run broader required checks at the appropriate final boundary. Use available local tools; delegation is optional.
-
-### With systematic-debugging
-
-Bug found? Write failing test reproducing it. Follow TDD cycle. The test proves the fix and prevents regression.
-
-Never fix bugs without a test.
-
-## Testing Anti-Patterns
-
-- **Testing mock behavior instead of real behavior** — mocks should verify interactions, not replace the system under test
-- **Testing implementation details** — test behavior/results, not internal method calls
-- **Ignoring material failure paths** — test edge cases, errors, and boundaries with credible security, data-loss, rollback, or user-visible impact, not every imaginable case
-- **Brittle tests** — tests should verify behavior, not structure; refactoring shouldn't break them
-
-Report RED/GREEN evidence and any unverified behavior; do not claim TDD solely because tests exist.
+Configuration may use native parsing/evaluation or existing validators. Human prose needs review, not substring tests. Exercise agent instructions through representative consuming-agent scenarios when available; otherwise report static review, not behavioral validation.

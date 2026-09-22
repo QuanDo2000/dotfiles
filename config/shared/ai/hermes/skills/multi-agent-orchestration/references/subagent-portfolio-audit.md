@@ -4,7 +4,7 @@ Use this after several days of real agent activity, before deleting roles or uni
 
 ## Evidence sources
 
-Prefer structured local evidence over anecdotes:
+Agree on a project scope and time/session bound before inspecting history. Use a bounded history interface or selected exports; do not automatically scan raw session stores. Keep transcripts local and redact secrets. Prefer structured evidence over anecdotes:
 
 - Parent transcripts: launch, list, status, wait, steer, stop, and completion-notification counts.
 - Child transcripts: resolved role/model, start/end timestamps, API turns, tool calls/errors, final response, and output size.
@@ -55,12 +55,6 @@ Aliases, generic delegates, planners, and context builders are removal candidate
 6. Reduce active async/session ceilings; keep a larger per-workflow ceiling only when exceptional fanout is genuinely needed.
 7. Cap returned summaries while preserving durable file artifacts for long evidence.
 8. Re-measure before further cuts.
-
-## Verified case shape (August 2026)
-
-A two-week audit found 205 Pi child sessions. Reviewers were 138 children (67.3%) and 9,226 of 11,013 child tool calls (83.8%). Parents made 288 explicit waits for 205 children. Most children returned useful final responses, so the correct fix was not removing subagents: routine review moved to the normal child model, four overlapping roles were reversibly disabled, default reviewer fanout became one, and overlapping async/session ceilings were reduced.
-
-A separate Hermes audit found 18 children; 15 closed normally and three lost their terminal handoff when the owner exited. Concurrency and inline-summary limits were reduced, while critical long work was routed toward durable artifacts/processes rather than hard child timeouts.
 
 ## Verification
 
