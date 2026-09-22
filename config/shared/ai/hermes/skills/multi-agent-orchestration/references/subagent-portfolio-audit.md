@@ -1,68 +1,24 @@
 # Subagent Portfolio Audit
 
-Use this after several days of real agent activity, before deleting roles or uninstalling delegation support.
+Use evidence from real activity before recommending role removal. This is a read-only audit until configuration changes are approved; there is no mandatory role roster.
 
-## Evidence sources
+## Bound the evidence
 
-Agree on a project scope and time/session bound before inspecting history. Use a bounded history interface or selected exports; do not automatically scan raw session stores. Keep transcripts local and redact secrets. Prefer structured evidence over anecdotes:
+Agree on projects and a time/session limit. Use a bounded history interface or selected exports, not an automatic raw-session scan. Keep transcripts local, redact secrets, and disclose sampling gaps.
 
-- Parent transcripts: launch, list, status, wait, steer, stop, and completion-notification counts.
-- Child transcripts: resolved role/model, start/end timestamps, API turns, tool calls/errors, final response, and output size.
-- Runtime database: parent-child links, end reason, tokens/cache reads, tool/API counts.
-- Managed configuration: effective role overrides, disabled flags, model routing, concurrency/spawn ceilings, timeout, and summary caps.
+Collect parent launch/wait/steer/stop/completion events; child role/model, status, duration, tool errors, usage, and final handoff; and resolved routing/lifecycle limits. Count completed handoffs, duplicate waves on unchanged targets, tool/output share, and waits per child. Separate launch failures from owner-process loss and tool errors from heuristic error-text matches.
 
-Count by role and model. Also compute:
+## Attribute before cutting
 
-- completed handoffs / child runs;
-- role share of children;
-- role share of child tools/output;
-- waits and status/list calls per child;
-- failed launches separately from owner/session-loss outcomes;
-- duplicate review waves against an unchanged target.
+- Successful completion alone does not prove quality or unique value; inspect whether the result satisfied its task.
+- High useful output but excessive share suggests narrower scope or less fan-out before role removal.
+- Low use with a unique safety/capability boundary can justify retention. Low use with overlapping capability is a candidate for reversible disablement, not automatic deletion.
+- Useful evidence without a summary indicates a lifecycle/handoff problem. A wait is not waste when same-turn synthesis truly depends on it.
 
-Treat error-like text counters as heuristics unless the runtime marks the event as an error.
+Follow the owning orchestration skill for reviewer count, evidence packets, and parent verification rather than duplicating those rules. Choose the smallest correction that addresses the measured cause; do not reduce concurrency, change models, or invent roles merely to hit a template.
 
-## Interpretation
+## Verify authorized changes
 
-- **High completion, low duplication:** role is useful.
-- **High completion, dominant tool/output share:** role may be useful but overused; reduce fanout and prompt scope first.
-- **Low use, unique capability:** keep as an explicit exception if its failure domain matters (for example, sole writer or high-stakes oracle).
-- **Low use, overlapping capability:** reversibly disable.
-- **Useful child evidence, missing final summary:** evidence utility is positive but handoff utility failed; fix lifecycle/durability rather than deleting the role.
-- **Async launch followed immediately by wait:** no parallel benefit; use foreground or yield for completion.
+Record baseline and a representative re-audit window. Parse effective config through the runtime; confirm discovery, intended models/tools, and the smallest relevant smoke/check. Verify source and live configuration separately and avoid broad activation that would include unrelated dirty work.
 
-Do not infer usefulness from role count alone. Reviewers naturally outnumber writers in review-heavy workflows, but several generic reviewers inspecting the same unchanged diff are duplicate work.
-
-## Minimal retained portfolio
-
-A practical default is:
-
-- scout — local code/context discovery;
-- researcher — external/primary-source research;
-- worker — one mutation owner;
-- reviewer — independent static review;
-- oracle — rare high-risk decision consistency.
-
-Aliases, generic delegates, planners, and context builders are removal candidates when the parent or retained roles already cover them. Disable first; delete only after a representative observation period and dependency check.
-
-## Optimization order
-
-1. One reviewer by default; second only for a distinct named risk.
-2. Parent precomputes inventory/diff once and sends a compact evidence packet.
-3. Remove acceptance schemas and validation-command requests from static reviewers.
-4. Stop polling; rely on completion notification or one blocking wait only when same-turn synthesis requires it.
-5. Route routine children to the normal child model; override upward only for explicit high-risk work.
-6. Reduce active async/session ceilings; keep a larger per-workflow ceiling only when exceptional fanout is genuinely needed.
-7. Cap returned summaries while preserving durable file artifacts for long evidence.
-8. Re-measure before further cuts.
-
-## Verification
-
-After configuration changes:
-
-1. Parse the effective config through the runtime or its CLI—not only the source template.
-2. Confirm disabled roles are absent from discovery and retained roles resolve to intended models/tools.
-3. Run the smallest existing configuration test.
-4. Check source and live config independently when deployment is generated or symlinked.
-5. Do not activate a broad configuration transaction when unrelated dirty changes would be included; apply a safe live structured update and leave the tracked source ready for the normal deployment path.
-6. Record baseline and re-audit window; do not claim savings before new usage exists.
+Disable before deleting; check dependencies and retain rollback until the observation period supports removal. Re-measure completion quality, handoffs, and cost before claiming improvement. Missing quality evidence is a limitation, not proof that a role is useful or useless.
