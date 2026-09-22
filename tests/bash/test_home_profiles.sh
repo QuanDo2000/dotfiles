@@ -184,6 +184,21 @@ test_hermes_workflow_skills_are_separate_and_non_destructive() {
   done
 }
 
+test_promoted_skills_share_complete_sources_without_forcing_collisions() {
+  local profile entry category name shared native
+  for profile in linux arch-server nixos darwin; do
+    for entry in github/github-code-review github/github-pr-workflow devops/dotfiles-health-checks evaluation/agent-tool-benchmarking; do
+      category="${entry%/*}"; name="${entry##*/}"
+      shared=$(_profile_file_meta "$profile" ".agents/skills/$name")
+      native=$(_profile_file_meta "$profile" ".hermes/skills/$category/$name")
+      assert_equals false "$(jq -r .force <<< "$shared")"
+      assert_equals false "$(jq -r .force <<< "$native")"
+      assert_contains "$(jq -r .source <<< "$shared")" "ai/skills/$name"
+      assert_equals "$(jq -r .source <<< "$shared")" "$(jq -r .source <<< "$native")"
+    done
+  done
+}
+
 test_evaluated_profile_configures_desktop_and_storage_settings() {
   local nixos arch generic
   nixos=$(_profile_summary nixos); arch=$(_profile_summary arch-server); generic=$(_profile_summary linux)

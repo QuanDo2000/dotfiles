@@ -32,7 +32,11 @@ from that backup.
 After deployment these skills are immutable Home Manager links. Make future
 changes here, not through `skill_manage` on the installed copy; run the focused
 profile tests and full `./scripts/check.sh` before activating and committing.
-Other local Hermes skills remain writable and unmanaged.
+The four cross-runtime promotions (`github-code-review`, `github-pr-workflow`,
+`dotfiles-health-checks`, and `agent-tool-benchmarking`) are owned under
+`../skills/`, with Unix native Hermes aliases to those same complete trees. See
+[shared skill ownership](../skills/README.md) for paths, migration, and platform
+boundaries. Other local Hermes skills remain writable and unmanaged.
 
 ## Update boundary
 

@@ -208,6 +208,15 @@ in
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
     ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;
     ".agents/skills/skill-retrospective" = forceSource ./shared/ai/skills/skill-retrospective;
+    # Promoted shared skills: refuse local collisions, including native Hermes copies.
+    ".agents/skills/github-code-review".source = ./shared/ai/skills/github-code-review;
+    ".agents/skills/github-pr-workflow".source = ./shared/ai/skills/github-pr-workflow;
+    ".agents/skills/dotfiles-health-checks".source = ./shared/ai/skills/dotfiles-health-checks;
+    ".agents/skills/agent-tool-benchmarking".source = ./shared/ai/skills/agent-tool-benchmarking;
+    ".hermes/skills/github/github-code-review".source = ./shared/ai/skills/github-code-review;
+    ".hermes/skills/github/github-pr-workflow".source = ./shared/ai/skills/github-pr-workflow;
+    ".hermes/skills/devops/dotfiles-health-checks".source = ./shared/ai/skills/dotfiles-health-checks;
+    ".hermes/skills/evaluation/agent-tool-benchmarking".source = ./shared/ai/skills/agent-tool-benchmarking;
     ".pi/agent/extensions/codex-status.js" = forceSource ./shared/ai/pi/codex-status.js;
     ".pi/agent/extensions/gpg-signing-display" = forceSource ./shared/ai/pi/gpg-signing-display;
     ".pi/agent/extensions/autoresearch" = forceSource ./shared/ai/pi/autoresearch;
