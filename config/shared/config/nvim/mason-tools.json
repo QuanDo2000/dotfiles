@@ -1,10 +1,10 @@
 {
-  "registryVersion": "2026-09-21-last-mile",
-  "registrySha256": "72d01445667ce4cdcc9e13d05b202e26cd66e133ada54463bd1218c80e02d4da",
+  "registryVersion": "2026-09-23-savory-zebra",
+  "registrySha256": "08b2dee9f03db9abe5c58160f81ed7571fff0aa8cb4fe3a47873e422270980de",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
-    "markdownlint-cli2": "0.23.2",
+    "markdownlint-cli2": "0.23.3",
     "marksman": "2026-02-08",
     "prettier": "3.9.8",
     "stylua": "v2.5.2",
