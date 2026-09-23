@@ -7,7 +7,6 @@
   "enableInstallTelemetry": false,
   "enabledModels": [
     "openai-codex/gpt-6-astra",
-    "openrouter/deepseek/deepseek-v4-flash-0731:free",
     "openrouter/deepseek/deepseek-v4-flash-0731",
     "openrouter/z-ai/glm-5.3-flash",
     "openrouter/deepseek/deepseek-v4.1-flash",
