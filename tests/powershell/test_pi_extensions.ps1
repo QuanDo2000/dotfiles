@@ -6,6 +6,7 @@ function TestSetup {
     $script:OriginalArchitecture = $env:PROCESSOR_ARCHITECTURE
     $script:OriginalExpandWindowsTarArchive = (Get-Command Expand-WindowsTarArchive).ScriptBlock
     $script:NodeLauncher = (Get-Command node).Source
+    $script:WebSourceDrift = $false
 }
 
 function TestTeardown {
@@ -25,10 +26,12 @@ function Get-PiExtensionTestSha256($Path) {
 function New-PiExtensionTestFixture($Root, [switch]$WrongLockHash) {
     $source = Join-Path $Root 'config\shared\ai\pi\extensions'
     $packages = Join-Path $Root 'packages'
-    New-Item -ItemType Directory -Force -Path $source, $packages | Out-Null
-    '{"name":"fixture","private":true,"version":"1.0.0","dependencies":{"@tobilu/qmd":"2.8.3","example-extension":"1.2.3","pi-memory":"0.4.2"}}' |
+    $scripts = Join-Path $Root 'scripts'
+    New-Item -ItemType Directory -Force -Path $source, $packages, $scripts | Out-Null
+    Copy-Item (Join-Path $script:RepoDir 'scripts/patch_pi_web_activation.cjs') $scripts
+    '{"name":"fixture","private":true,"version":"1.0.0","dependencies":{"@tobilu/qmd":"2.8.3","example-extension":"1.2.3","pi-memory":"0.4.2","pi-web-access":"0.31.0"}}' |
         Set-Content -LiteralPath (Join-Path $source 'package.json') -Encoding ascii
-    '{"name":"fixture","lockfileVersion":3,"packages":{"":{"dependencies":{"@tobilu/qmd":"2.8.3","example-extension":"1.2.3","pi-memory":"0.4.2"}},"node_modules/@tobilu/qmd":{"version":"2.8.3","resolved":"https://registry.npmjs.org/@tobilu/qmd/-/qmd-2.8.3.tgz","integrity":"sha512-test"},"node_modules/example-extension":{"version":"1.2.3","resolved":"https://registry.npmjs.org/example-extension/-/example-extension-1.2.3.tgz","integrity":"sha512-test"},"node_modules/pi-memory":{"version":"0.4.2","resolved":"https://registry.npmjs.org/pi-memory/-/pi-memory-0.4.2.tgz","integrity":"sha512-test"}}}' |
+    '{"name":"fixture","lockfileVersion":3,"packages":{"":{"dependencies":{"@tobilu/qmd":"2.8.3","example-extension":"1.2.3","pi-memory":"0.4.2","pi-web-access":"0.31.0"}},"node_modules/@tobilu/qmd":{"version":"2.8.3","resolved":"https://registry.npmjs.org/@tobilu/qmd/-/qmd-2.8.3.tgz","integrity":"sha512-test"},"node_modules/example-extension":{"version":"1.2.3","resolved":"https://registry.npmjs.org/example-extension/-/example-extension-1.2.3.tgz","integrity":"sha512-test"},"node_modules/pi-memory":{"version":"0.4.2","resolved":"https://registry.npmjs.org/pi-memory/-/pi-memory-0.4.2.tgz","integrity":"sha512-test"},"node_modules/pi-web-access":{"version":"0.31.0","resolved":"https://registry.npmjs.org/pi-web-access/-/pi-web-access-0.31.0.tgz","integrity":"sha512-test"}}}' |
         Set-Content -LiteralPath (Join-Path $source 'package-lock.json') -Encoding ascii
     $lockHash = Get-PiExtensionTestSha256 (Join-Path $source 'package-lock.json')
     if ($WrongLockHash) { $lockHash = '0' * 64 }
@@ -50,7 +53,7 @@ function test_pi_extension_sources_are_local_and_match_locked_release {
     Assert-False ($package.PSObject.Properties.Name -contains 'overrides')
     foreach ($entry in $settings.packages) {
         $source = if ($entry -is [string]) { $entry } else { $entry.source }
-        Assert-True $source.StartsWith("./locked-extensions/releases/$($pins.releaseId)/node_modules/") 'Pi extension should use locked local release'
+        Assert-True $source.StartsWith("./locked-extensions/releases/$($pins.releaseId)-web-version1/node_modules/") 'Pi extension should use locked local release'
     }
 }
 
@@ -137,7 +140,7 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
     Set-CommandMock 'node' {
         if ($args[0] -eq '--version') { 'v24.18.1' }
         elseif ($args[0] -eq '-p') { '137' }
-        else { & $script:NodeLauncher @args }
+        else { & $script:NodeLauncher @args; return }
         $global:LASTEXITCODE = 0
     }
     Set-CommandMock 'npm' {
@@ -147,7 +150,11 @@ function test_installpiextensions_uses_npm_ci_without_scripts_and_immutable_rele
         $memoryDir = Join-Path $prefix 'node_modules\pi-memory'
         $qmdPackageDir = Join-Path $prefix 'node_modules\@tobilu\qmd'
         $qmdDir = Join-Path $qmdPackageDir 'dist\cli'
-        New-Item -ItemType Directory -Force -Path $packageDir, $memoryDir, $qmdDir | Out-Null
+        $webDir = Join-Path $prefix 'node_modules\pi-web-access'
+        New-Item -ItemType Directory -Force -Path $packageDir, $memoryDir, $qmdDir, (Join-Path $webDir 'dist') | Out-Null
+        '{"name":"pi-web-access","version":"0.31.0"}' | Set-Content (Join-Path $webDir 'package.json') -Encoding ascii
+        Copy-Item (Join-Path $script:RepoDir 'tests/fixtures/pi-web-access-activation.mjs') (Join-Path $webDir 'dist/index.js')
+        if ($script:WebSourceDrift) { 'upstream changed' | Set-Content (Join-Path $webDir 'dist/index.js') }
         '{"name":"example-extension","version":"1.2.3"}' | Set-Content -LiteralPath (Join-Path $packageDir 'package.json') -Encoding ascii
         '{"name":"pi-memory","version":"0.4.2"}' | Set-Content -LiteralPath (Join-Path $memoryDir 'package.json') -Encoding ascii
         '{"name":"@tobilu/qmd","version":"2.8.3"}' | Set-Content -LiteralPath (Join-Path $qmdPackageDir 'package.json') -Encoding ascii
@@ -161,13 +168,19 @@ export default function (pi) {
 '@ | Set-Content -LiteralPath (Join-Path $memoryDir 'index.ts') -Encoding ascii
         $global:LASTEXITCODE = 0
     }
+    $script:WebSourceDrift = $true
+    Assert-Throws { InstallPiExtensions 6>&1 | Out-Null } 'patch drift must prevent publishing the staged release'
+    Assert-True (Test-Path -LiteralPath $obsoleteRelease) 'failed patch must preserve prior releases'
+    $releases = Split-Path $obsoleteRelease -Parent
+    Assert-Equals 'obsolete' ((Get-ChildItem -LiteralPath $releases -Directory -Force).Name -join ',') 'failed staging tree should be cleaned without publication'
+    $script:WebSourceDrift = $false
     InstallPiExtensions 6>&1 | Out-Null
 
     Assert-Contains $script:NpmArgs 'ci --prefix'
     Assert-Contains $script:NpmArgs '--ignore-scripts'
     Assert-Contains $script:NpmArgs '--legacy-peer-deps'
     $pins = Get-Content -Raw $pinsPath | ConvertFrom-Json
-    $release = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$($pins.releaseId)"
+    $release = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$($pins.releaseId)-web-version1"
     Assert-True (Test-PiExtensionsRelease $release $pins) 'immutable extension release should validate'
     Assert-False (Test-Path -LiteralPath $obsoleteRelease) 'obsolete extension releases should be pruned'
     $memoryEntry = Join-Path $release 'node_modules\pi-memory\index.ts'
@@ -184,4 +197,11 @@ export default function (pi) {
     Assert-False (Test-PiExtensionsRelease $release $pins) 'wrong installed dependency version must fail validation'
     Set-Content -LiteralPath $installedManifest -Value $original -Encoding ascii -NoNewline
     Assert-True (Test-PiExtensionsRelease $release $pins) 'restored dependency version should validate'
+    $script:NpmArgs = ''
+    InstallPiExtensions 6>&1 | Out-Null
+    Assert-Equals '' $script:NpmArgs 'already-patched release should not reinstall'
+    $webEntry = Join-Path $release 'node_modules/pi-web-access/dist/index.js'
+    Copy-Item (Join-Path $script:RepoDir 'tests/fixtures/pi-web-access-activation.mjs') $webEntry -Force
+    Assert-False (Test-PiExtensionsRelease $release $pins) 'unpatched release must not pass verification'
+    Assert-Throws { InstallPiExtensions 6>&1 | Out-Null } 'existing broken release must fail closed'
 }

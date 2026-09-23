@@ -744,6 +744,9 @@ function Test-PiExtensionsRelease($ReleaseDir, $Pins) {
         try { $installed = Get-Content -Raw -LiteralPath $installedManifest | ConvertFrom-Json } catch { return $false }
         if ([string]$installed.version -ne [string]$dependency.Value) { return $false }
     }
+    $patch = Join-Path $script:DotfilesDir 'scripts\patch_pi_web_activation.cjs'
+    & node $patch (Join-Path $nodeModules 'pi-web-access\dist\index.js') --check 2>$null
+    if ($LASTEXITCODE -ne 0) { return $false }
     return $true
 }
 
@@ -767,7 +770,8 @@ function InstallPiExtensions {
 
     $root = Join-Path $env:USERPROFILE '.pi\agent\locked-extensions'
     $releases = Join-Path $root 'releases'
-    $release = Join-Path $releases ([string]$pins.releaseId)
+    $releaseName = "$($pins.releaseId)-web-version1"
+    $release = Join-Path $releases $releaseName
     New-Item -ItemType Directory -Force -Path $root | Out-Null
     $installLock = [IO.File]::Open((Join-Path $root 'install.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
     try {
@@ -786,6 +790,10 @@ function InstallPiExtensions {
                     Invoke-NativeChecked "Pi extension npm ci failed" { npm ci --prefix $staging --omit=dev --ignore-scripts --legacy-peer-deps }
                 } finally { $lockStream.Dispose() }
 
+                $patch = Join-Path $script:DotfilesDir 'scripts\patch_pi_web_activation.cjs'
+                Invoke-NativeChecked "Pi web activation repair failed" {
+                    node $patch (Join-Path $staging 'node_modules\pi-web-access\dist\index.js')
+                }
                 if (-not (Test-PiExtensionsRelease $staging $pins)) { throw "Installed Pi extension release verification failed" }
                 Move-Item -LiteralPath $staging -Destination $release
             } finally {
@@ -793,7 +801,7 @@ function InstallPiExtensions {
             }
         }
         foreach ($obsolete in Get-ChildItem -LiteralPath $releases -Directory -Force) {
-            if ($obsolete.Name -ceq [string]$pins.releaseId) { continue }
+            if ($obsolete.Name -ceq $releaseName) { continue }
             if (($obsolete.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
                 Remove-Item -LiteralPath $obsolete.FullName -Force -ErrorAction Stop
             } else {
