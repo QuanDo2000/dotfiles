@@ -36,7 +36,7 @@ test_pi_extension_settings_use_locked_local_release() {
   assert_equals '["@tobilu/qmd","pi-memory","pi-web-access"]' "$(jq -c '.dependencies | keys | sort' "$package")"
   assert_equals '["pi-memory","pi-web-access"]' "$(jq -c '[.packages[] | split("/")[-1]] | sort' "$settings")"
   assert_equals false "$(jq 'has("overrides")' "$package")"
-  assert_equals 0 "$(jq --arg id "$release_id" '[.packages[] | (if type == "string" then . else .source end) | select(startswith("./locked-extensions/releases/" + $id + "/node_modules/") | not)] | length' "$settings")"
+  assert_equals 0 "$(jq --arg id "${release_id}-web-version1" '[.packages[] | (if type == "string" then . else .source end) | select(startswith("./locked-extensions/releases/" + $id + "/node_modules/") | not)] | length' "$settings")"
   assert_equals 0 "$(jq '[.packages[] | (if type == "string" then . else .source end) | select(startswith("npm:"))] | length' "$settings")"
 }
 

@@ -1,1 +1,2 @@
 config/shared/ai/pi/extensions/package-lock.json text eol=lf
+tests/fixtures/pi-web-access-activation.mjs text eol=lf

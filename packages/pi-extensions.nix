@@ -1,4 +1,4 @@
-{ buildNpmPackage, lib, nodejs }:
+{ buildNpmPackage, lib, nodejs, pi-agent }:
 
 let
   pins = builtins.fromJSON (builtins.readFile ./pi-extensions-release.json);
@@ -15,6 +15,9 @@ buildNpmPackage {
   npmDepsHash = "sha256-84ZI51Hb9ikPBSnaQ6iHMJ62gKtgy3N502jk27wl7EY=";
   npmFlags = [ "--omit=dev" "--ignore-scripts" "--legacy-peer-deps" ];
   dontNpmBuild = true;
+  preInstall = ''
+    node ${../scripts/patch_pi_web_activation.cjs} node_modules/pi-web-access/dist/index.js
+  '';
   installPhase = ''
     runHook preInstall
     mkdir -p "$out/bin"
@@ -25,8 +28,9 @@ buildNpmPackage {
   '';
 
   doInstallCheck = true;
-  nativeInstallCheckInputs = [ nodejs ];
+  nativeInstallCheckInputs = [ nodejs pi-agent ];
   installCheckPhase = ''
+    node ${../scripts/patch_pi_web_activation.cjs} "$out/node_modules/pi-web-access/dist/index.js" --check
     node - <<'NODE'
 const root = process.env.out;
 const expected = require(`''${root}/package.json`).dependencies;
@@ -36,6 +40,7 @@ for (const [name, version] of Object.entries(expected)) {
 }
 NODE
     "$out/bin/qmd" --version | grep -q '^qmd '
+    node ${../tests/ai/pi-web-activation-smoke.mjs} ${lib.getExe pi-agent} "$out/node_modules/pi-web-access/dist/index.js"
   '';
 
   meta = {
