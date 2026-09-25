@@ -66,6 +66,8 @@ Auto-merge only the repositories below, after independent review has no unresolv
 
 Prefer native JJ in new/uninitialized or dual workspaces; keep existing Git-only repositories in Git. Fall back to Git if JJ is unavailable or a required integration supports only Git. Before push, fetch and compare upstream; rebase safely if it advanced, preserve both sides, and rerun affected checks. Stop on ambiguous conflicts. Never push directly to default/protected branches, force-push, reset away upstream work, bypass signing/protection, or overwrite others' changes. Verify published head and final merge state by readback.
 
+After a merge is verified, automatically remove only the clean task-owned worktree and its local task branch, plus its remote task branch if one exists. First confirm the task head is in the merged target, the worktree has no untracked or ignored user data, no other worktree uses the branch, and any remote branch still points to the verified task head. Never force-remove or delete shared/pre-existing resources; leave anything uncertain intact and report it.
+
 ## Skill Promotion
 
 At task close, recommend broadly reusable Hermes-generated skills by name/current path, reuse rationale, and proposed `config/shared/ai/skills/<name>/` destination. Identify machine-specific paths, secrets, and assumptions. Do not copy without approval.
