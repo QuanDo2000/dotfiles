@@ -83,24 +83,31 @@ test_pi_web_access_is_pinned() {
   fi
 }
 
-test_pi_defaults_to_astra_with_low_thinking() {
+test_pi_defaults_to_sol_with_medium_thinking() {
   local settings="$REPO_DIR/config/shared/ai/pi/settings.json"
 
   assert_exit_code 0 jq -e '
     .defaultProvider == "openai-codex" and
-    .defaultModel == "gpt-6-astra" and
-    .defaultThinkingLevel == "low"
+    .defaultModel == "gpt-6-sol" and
+    .defaultThinkingLevel == "medium" and
+    (.enabledModels | index("openai-codex/gpt-6-sol") != null) and
+    (.enabledModels | index("openai-codex/gpt-6-astra") != null)
   ' "$settings"
 }
 
-test_codex_defaults_to_astra_with_low_reasoning() {
+test_codex_defaults_to_sol_with_medium_reasoning() {
   local config
 
   for config in \
     "$REPO_DIR/config/shared/ai/codex/config.toml" \
     "$REPO_DIR/config/windows/ai/codex/config.toml"; do
-    assert_contains "$(<"$config")" 'model = "gpt-6-astra"'
-    assert_contains "$(<"$config")" 'model_reasoning_effort = "low"'
+    assert_exit_code 0 python3 -c '
+import sys, tomllib
+with open(sys.argv[1], "rb") as file:
+    config = tomllib.load(file)
+assert config["model"] == "gpt-6-sol"
+assert config["model_reasoning_effort"] == "medium"
+' "$config"
   done
 }
 
