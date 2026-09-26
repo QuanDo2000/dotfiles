@@ -4,10 +4,6 @@ function test_parameter_binder_dispatches_dry_command {
     Assert-Equals 0 $LASTEXITCODE
     Assert-Contains $output 'Installing packages'
 
-    $output = pwsh -NoProfile -File $script:DotfileScript ai --dry 6>&1 | Out-String
-    Assert-Equals 0 $LASTEXITCODE
-    Assert-Contains $output 'Installing agent CLIs'
-
     $output = pwsh -NoProfile -File $script:DotfileScript update ai --dry 6>&1 | Out-String
     Assert-Equals 0 $LASTEXITCODE
     Assert-Contains $output 'Updating AI tools and configs'
@@ -23,6 +19,14 @@ function test_symlinks_command_dry_run_dispatches_without_packages_or_repo_updat
     Assert-Contains $output 'Linking'
     Assert-False ($output -like '*Updating dotfiles repo*') 'standalone links must not pull the repo'
     Assert-False ($output -like '*Installing packages*') 'standalone links must not install packages'
+}
+
+function test_redundant_ai_and_verify_commands_are_not_exposed {
+    foreach ($command in 'ai', 'verify') {
+        $output = pwsh -NoProfile -File $script:DotfileScript $command --dry 6>&1 | Out-String
+        Assert-Equals 1 $LASTEXITCODE
+        Assert-Contains $output "Unknown command: $command"
+    }
 }
 
 # Lock the short-form CLI aliases in place.

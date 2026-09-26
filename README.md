@@ -153,9 +153,7 @@ Commands:
               Update only AI tools and configs with `update ai`
   packages    Install all managed packages only
   symlinks    Link managed Windows config files (no package installation)
-  ai          Install AI tools and shared skills
-  doctor      Detect Windows installation issues
-  verify      Verify installation
+  doctor      Verify Windows installation
 
 Options:
   -d, --dry   Dry run (no changes made)
@@ -169,6 +167,9 @@ WinGet. Close both apps before running these commands.
 `dotfile.ps1 symlinks` links managed configs, seeds writable Notepad++/Neovim
 files, and reloads the GPG agent without installing packages or pulling the repo.
 Use `-Dry` to preview; existing conflicting files may prompt or be backed up.
+On Windows, `dotfile.ps1 update ai` pulls reviewed pins and installs AI tools
+and shared skills without updating other packages; `dotfile.ps1 doctor` checks
+the installation. There is no separate `ai` or `verify` command.
 
 AnkiConnect, Pass/Fail 2, and Zoom are pinned in `config/windows/anki-addons.json`.
 Downloads are SHA-256 checked. Anki's automatic updates are disabled for these
@@ -218,7 +219,7 @@ Note: Home Manager seeds `~/.codex/config.toml` as a writable file for Codex
 runtime preferences and owns shared global skills under `~/.agents/skills/`.
 Codex discovers that standard location natively; Pi includes it through its
 settings. Windows copies the same reviewed, vendored skill set through
-`dotfile.ps1 ai`; no remote skill installer runs during setup. Agent-specific
+`dotfile.ps1 update ai` or full setup; no remote skill installer runs during setup. Agent-specific
 plugins, packages, hooks, and generated runtime state
 such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
 
