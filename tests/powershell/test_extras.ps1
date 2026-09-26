@@ -186,6 +186,17 @@ function test_installfnm_uses_pi_extension_node_pin {
     Assert-False (($script:FnmCalls -join "`n") -like '*lts-latest*') 'Node version should not float'
 }
 
+function test_installfnm_fails_when_fnm_is_missing {
+    $script:Dry = $false
+    Set-CommandMock 'Get-Command' {
+        param($Name)
+        if ($Name -eq 'fnm') { return $null }
+        return Microsoft.PowerShell.Core\Get-Command @PSBoundParameters
+    }
+
+    Assert-Throws { InstallFnm 6>&1 | Out-Null } 'missing fnm must fail the AI-only update'
+}
+
 function test_installfnm_fails_when_fnm_command_fails {
     $script:Dry = $false
     Set-CommandMock 'Get-Command' {
