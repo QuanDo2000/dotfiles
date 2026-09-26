@@ -16,6 +16,17 @@ let
     inherit source;
     force = true;
   };
+  # AGENTS.md owns the cross-agent policy. SOUL.md owns Hermes identity only;
+  # compose the complete Hermes startup file without including Pi-only sections.
+  sharedAgentPolicy = builtins.readFile ./shared/ai/AGENTS.md;
+  commonAgentSections = lib.splitString "\n## Skill Promotion\n" sharedAgentPolicy;
+  commonAgentHeader = "# Global Agent Instructions\n\n";
+  commonAgentPolicy =
+    assert builtins.length commonAgentSections == 2;
+    assert lib.hasPrefix commonAgentHeader (builtins.head commonAgentSections);
+    lib.removePrefix commonAgentHeader (builtins.head commonAgentSections);
+  hermesSoul = pkgs.writeText "hm_SOUL.md"
+    ((builtins.readFile ./shared/ai/SOUL.md) + "\n" + commonAgentPolicy);
   linuxConfig = source: lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource source);
   networkServiceHardening = {
     UMask = "0077";
@@ -195,7 +206,7 @@ in
     ".ssh/config" = forceSource ./shared/.ssh/config;
     ".codex/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
-    ".hermes/SOUL.md" = forceSource ./shared/ai/SOUL.md;
+    ".hermes/SOUL.md" = forceSource hermesSoul;
     # Hermes adaptations stay separate from the shared Codex/Pi skills.
     # Refuse unmanaged collisions; back up existing local directories first.
     ".hermes/skills/autonomous-ai-agents/multi-agent-orchestration".source = ./shared/ai/hermes/skills/multi-agent-orchestration;
