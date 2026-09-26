@@ -74,6 +74,27 @@ function test_windows_gpg_agent_caches_passphrase_for_eight_hours {
     }
 }
 
+function test_setupsymlinks_succeeds_when_gpg4win_is_not_installed {
+    $oldProgramFiles = $env:ProgramFiles
+    $originalSpecs = (Get-Command Get-WindowsLinkSpecs).ScriptBlock
+    $originalNotepad = (Get-Command Sync-NotepadPlusPlusConfig).ScriptBlock
+    $originalLock = (Get-Command Sync-LazyLock).ScriptBlock
+    Set-CommandMock 'Get-WindowsLinkSpecs' { @() }
+    Set-CommandMock 'Sync-NotepadPlusPlusConfig' { }
+    Set-CommandMock 'Sync-LazyLock' { }
+    try {
+        $env:ProgramFiles = Join-Path $env:USERPROFILE 'missing-program-files'
+        SetupSymlinks
+        New-Item -ItemType Directory -Force -Path (Join-Path $env:ProgramFiles 'GnuPG') | Out-Null
+        Assert-Throws { SetupSymlinks } 'an incomplete Gpg4win installation must not silently skip reload'
+    } finally {
+        $env:ProgramFiles = $oldProgramFiles
+        Set-Item function:global:Get-WindowsLinkSpecs $originalSpecs
+        Set-Item function:global:Sync-NotepadPlusPlusConfig $originalNotepad
+        Set-Item function:global:Sync-LazyLock $originalLock
+    }
+}
+
 function test_setupsymlinks_reloads_gpg4win_agent {
     $setup = (Get-Command SetupSymlinks).Definition
 
