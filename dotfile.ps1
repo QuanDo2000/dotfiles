@@ -182,7 +182,7 @@ function Get-InstalledWingetPackages {
 
 function Get-WingetPackages {
     @(
-        "Microsoft.PowerShell", "Git.Git", "GnuPG.Gpg4win", "Microsoft.WindowsTerminal",
+        "Microsoft.PowerShell", "Git.Git", "GitHub.cli", "GnuPG.Gpg4win", "Microsoft.WindowsTerminal",
         "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd",
         "tree-sitter.tree-sitter-cli", "LLVM.LLVM", "odin-lang.Odin",
@@ -193,7 +193,7 @@ function Get-WingetPackages {
 
 function Get-RequiredCommands {
     @(
-        "git", "gpg", "nvim", "starship", "fd", "rg", "lazygit",
+        "git", "gh", "gpg", "nvim", "starship", "fd", "rg", "lazygit",
         "fnm", "node", "jj", "zoxide", "codex", "pi",
         "py",
         "bash-language-server", "shellcheck", "tree-sitter", "clang", "odin"
