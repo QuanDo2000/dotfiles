@@ -124,9 +124,12 @@ test_pi_model_cycling_shortcuts_are_disabled() {
 }
 
 test_ai_delivery_policy_is_shared_and_finite() {
-  local agents soul identity
+  local agents soul identity rendered_soul nix_bin
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
-  soul="$(<"$REPO_DIR/config/shared/ai/SOUL.md")"
+  nix_bin="$(type -P nix)" || return
+  rendered_soul="$("$nix_bin" build --no-link --print-out-paths \
+    "path:$REPO_DIR#homeConfigurations.\"quando@arch-server\".config.home.file.\".hermes/SOUL.md\".source")" || return
+  soul="$(<"$rendered_soul")"
   agents="${agents#*## Automatic Delivery}"
   soul="${soul#*## Automatic Delivery}"
   agents="${agents%%## *}"
