@@ -118,6 +118,7 @@ Commands:
               Install native prerequisites and activate current profile
               Update only AI tools and configs with 'update ai'
   packages    Install system packages only
+  symlinks    Activate Home Manager config on Debian/Arch (also applies other user settings)
   upgrade     Upgrade native system packages
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package
@@ -187,6 +188,24 @@ packages)
     fail "Pending dependency update must be reviewed before package installation"
   fi
   run_checked_flow false false install_packages
+  ;;
+symlinks)
+  [[ $# -eq 1 ]] || fail "Unexpected symlinks argument: ${2:-}"
+  platform="$(detect_platform)"
+  case "$platform" in
+    debian|arch)
+      if [[ "$DRY" == "false" ]]; then
+        _load_nix_profile
+        command -v nix >/dev/null 2>&1 || fail "Nix is required; run dotfile packages to install prerequisites"
+      fi
+      ;;
+  esac
+  case "$platform" in
+    debian) DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch linux ;;
+    arch)   DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _home_manager_switch arch-server ;;
+    nixos)  fail "NixOS links are managed by nixos-rebuild; use the normal setup flow" ;;
+    *)      fail "Standalone symlinks is supported only on Debian/Arch; use the normal setup flow" ;;
+  esac
   ;;
 upgrade)
   [[ $# -eq 1 ]] || fail "Unexpected upgrade argument: ${2:-}"

@@ -98,6 +98,41 @@ test_help_exits_zero() {
   assert_not_contains "$output" "obsidian-config"
 }
 
+test_symlinks_command_dry_run_activates_arch_home_manager_without_native_packages() {
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=arch\n' > "$osrel"
+  local output status=0
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry symlinks 2>&1) || status=$?
+  assert_equals 0 "$status"
+  assert_contains "$output" 'home-manager switch --flake'
+  assert_contains "$output" '@arch-server'
+  assert_not_contains "$output" 'Updating dotfiles repo'
+  assert_not_contains "$output" 'pacman -S'
+}
+
+test_symlinks_command_dry_run_selects_debian_profile() {
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=debian\n' > "$osrel"
+  local output status=0
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry symlinks 2>&1) || status=$?
+  assert_equals 0 "$status"
+  assert_contains "$output" 'home-manager switch --flake'
+  assert_contains "$output" '@linux'
+}
+
+test_symlinks_command_rejects_nixos_without_system_rebuild() {
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release"
+  printf 'ID=nixos\n' > "$osrel"
+  local output status=0
+  output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry symlinks 2>&1) || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'NixOS links are managed by nixos-rebuild'
+  assert_not_contains "$output" 'nixos-rebuild switch'
+}
+
 test_upgrade_command_dispatches_arch_dry_run() {
   mock_uname Linux
   local osrel="$TEST_HOME/os-release"

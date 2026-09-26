@@ -1524,7 +1524,13 @@ function SetupSymlinks {
     Sync-LazyLock
     if (-not $script:Dry) {
         $gpgconf = Join-Path $env:ProgramFiles 'GnuPG\bin\gpgconf.exe'
-        Invoke-NativeChecked "GPG agent reload failed" { & $gpgconf --reload gpg-agent }
+        if (Test-Path -LiteralPath $gpgconf -PathType Leaf) {
+            Invoke-NativeChecked "GPG agent reload failed" { & $gpgconf --reload gpg-agent }
+        } elseif (Test-Path -LiteralPath (Join-Path $env:ProgramFiles 'GnuPG') -PathType Container) {
+            throw "GPG agent reload failed: $gpgconf is missing"
+        } else {
+            Info 'Skipping GPG agent reload (Gpg4win is not installed)'
+        }
     }
 
     Success "Finished setting up symlinks"
@@ -1662,6 +1668,7 @@ Commands:
   update [ai] Pull and activate published reviewed package pins
               Update only AI tools and configs with update ai
   packages    Install all managed packages only
+  symlinks    Link managed Windows config files (no package installation)
   ai          Install AI tools and shared skills
   doctor      Detect Windows installation issues
   verify      Verify installation
@@ -1683,6 +1690,7 @@ if (-not $NoMain) {
         "all"       { SetupDotfiles -AfterRepoUpdate:$AfterUpdate }
         "update"    { Update-Packages $UpdateTarget -AfterRepoUpdate:$AfterUpdate }
         "packages"  { InstallManagedPackages }
+        "symlinks"  { SetupSymlinks }
         "ai"        { InstallAi }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
         "verify"    { Verify; if ($script:VerifyFailed) { exit 1 } }

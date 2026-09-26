@@ -115,6 +115,7 @@ Commands:
               Install native prerequisites and activate current profile
               Update only AI tools and configs with `update ai`
   packages    Install system packages only
+  symlinks    Activate Home Manager config on Debian/Arch (also applies other user settings)
   upgrade     Upgrade native system packages
   obsidian    Bootstrap Obsidian Sync login and vault setup
   codex       Update pinned Codex release package
@@ -136,6 +137,10 @@ Options:
 `dotfile upgrade` runs `sudo pacman -Syu` on Arch, `sudo apt-get update` plus
 `sudo apt-get upgrade -y` on Debian, or `brew update` plus `brew upgrade --greedy` on
 macOS. NixOS remains declarative; use `dotfile update` there.
+`dotfile symlinks` on Debian/Arch runs the role-specific Home Manager switch from
+this checkout, without pulling or installing native prerequisites. It can also
+change user packages and services; preview with `dotfile -d symlinks`. NixOS and
+macOS use system-managed activation, so this command refuses those platforms.
 
 ### Windows Commands
 
@@ -147,6 +152,7 @@ Commands:
   update [ai] Update system packages
               Update only AI tools and configs with `update ai`
   packages    Install all managed packages only
+  symlinks    Link managed Windows config files (no package installation)
   ai          Install AI tools and shared skills
   doctor      Detect Windows installation issues
   verify      Verify installation
@@ -160,6 +166,9 @@ Options:
 
 Windows `all`, `packages`, and full `update` manage Anki and Obsidian through
 WinGet. Close both apps before running these commands.
+`dotfile.ps1 symlinks` links managed configs, seeds writable Notepad++/Neovim
+files, and reloads the GPG agent without installing packages or pulling the repo.
+Use `-Dry` to preview; existing conflicting files may prompt or be backed up.
 
 AnkiConnect, Pass/Fail 2, and Zoom are pinned in `config/windows/anki-addons.json`.
 Downloads are SHA-256 checked. Anki's automatic updates are disabled for these
