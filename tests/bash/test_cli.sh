@@ -231,7 +231,6 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" '`~/dotfiles#darwin-rebuild` app'
   assert_contains "$readme_text" "### Windows Commands"
   assert_contains "$readme_text" "dotfile.ps1 [OPTIONS] [COMMAND]"
-  assert_contains "$readme_text" "verify      Verify installation"
   assert_contains "$readme_text" 'NixOS flake target is `#${hostName}`'
 }
 

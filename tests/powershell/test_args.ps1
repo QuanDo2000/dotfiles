@@ -4,16 +4,20 @@ function test_parameter_binder_dispatches_dry_command {
     Assert-Equals 0 $LASTEXITCODE
     Assert-Contains $output 'Installing packages'
 
-    $output = pwsh -NoProfile -File $script:DotfileScript ai --dry 6>&1 | Out-String
-    Assert-Equals 0 $LASTEXITCODE
-    Assert-Contains $output 'Installing agent CLIs'
-
     $output = pwsh -NoProfile -File $script:DotfileScript update ai --dry 6>&1 | Out-String
     Assert-Equals 0 $LASTEXITCODE
     Assert-Contains $output 'Updating AI tools and configs'
     Assert-Contains $output 'Installing agent CLIs'
     Assert-False ($output -like '*Installing packages*') 'AI update should skip system packages'
     Assert-False ($output -like '*Neovim plugins*') 'AI update should skip Neovim plugins'
+}
+
+function test_redundant_ai_and_verify_commands_are_not_exposed {
+    foreach ($command in 'ai', 'verify') {
+        $output = pwsh -NoProfile -File $script:DotfileScript $command --dry 6>&1 | Out-String
+        Assert-Equals 1 $LASTEXITCODE
+        Assert-Contains $output "Unknown command: $command"
+    }
 }
 
 # Lock the short-form CLI aliases in place.

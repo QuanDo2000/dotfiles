@@ -340,8 +340,7 @@ function InstallFnm {
         Refresh-ProcessPath
     }
     if (-not (Get-Command fnm -ErrorAction SilentlyContinue)) {
-        FailSoft "fnm not found on PATH. Skipping Node.js LTS install - open a new shell and re-run 'dotfile.ps1'."
-        return
+        throw "fnm not found on PATH. Install fnm or open a new shell, then re-run 'dotfile.ps1 update ai'."
     }
 
     $nodeVersion = [string](Get-PiExtensionsPins).node.version
@@ -1383,7 +1382,7 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
         SetupSymlinks
         Sync-NeovimPlugins
     }
-    if (-not $script:Dry) { Assert-WindowsHealthy }
+    if (-not $script:Dry -and -not $aiOnly) { Assert-WindowsHealthy }
     Success $(if ($aiOnly) { "Finished AI update" } else { "Finished updating packages" })
 }
 
@@ -1662,9 +1661,7 @@ Commands:
   update [ai] Pull and activate published reviewed package pins
               Update only AI tools and configs with update ai
   packages    Install all managed packages only
-  ai          Install AI tools and shared skills
-  doctor      Detect Windows installation issues
-  verify      Verify installation
+  doctor      Verify Windows installation
 
 Options:
   -d, --dry     Dry run (no changes made)
@@ -1683,9 +1680,7 @@ if (-not $NoMain) {
         "all"       { SetupDotfiles -AfterRepoUpdate:$AfterUpdate }
         "update"    { Update-Packages $UpdateTarget -AfterRepoUpdate:$AfterUpdate }
         "packages"  { InstallManagedPackages }
-        "ai"        { InstallAi }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
-        "verify"    { Verify; if ($script:VerifyFailed) { exit 1 } }
         default     { Fail "Unknown command: $Command" }
     }
 }

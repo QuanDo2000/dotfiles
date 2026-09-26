@@ -31,6 +31,6 @@ directory for parent inspection; identical completed requests reuse their result
 until extension reload/session replacement. The parent must verify findings and
 run tests/CI before merging; review text never automatically authorizes a merge.
 
-Installed by Home Manager on Unix and `dotfile.ps1 ai` on Windows. After installation,
+Installed by Home Manager on Unix and `dotfile.ps1 update ai` (or full setup) on Windows. After installation,
 run `/reload` in Pi to expose the tool. Existing upstream `/review` commands can
 coexist: this extension registers a tool only.

@@ -145,6 +145,22 @@ function test_update_packages_propagates_updated_process_failure {
     Assert-Contains $message 'exit code 23'
 }
 
+function test_ai_only_update_does_not_require_unrelated_packages {
+    $originalInstallAi = (Get-Command InstallAi).ScriptBlock
+    $originalHealth = (Get-Command Assert-WindowsHealthy).ScriptBlock
+    $script:Dry = $false
+    $script:AiInstalled = $false
+    Set-FunctionMock 'InstallAi' { param([switch]$Update) $script:AiInstalled = [bool]$Update }
+    Set-FunctionMock 'Assert-WindowsHealthy' { throw 'Unrelated Windows package missing' }
+    try {
+        Update-Packages ai -AfterRepoUpdate 6>&1 | Out-Null
+    } finally {
+        Set-FunctionMock 'InstallAi' $originalInstallAi
+        Set-FunctionMock 'Assert-WindowsHealthy' $originalHealth
+    }
+    Assert-True $script:AiInstalled 'AI-only update must run the AI installer in update mode'
+}
+
 function test_update_packages_dry_run_does_not_call_winget {
     $script:Dry = $true
     $script:Called = $false
