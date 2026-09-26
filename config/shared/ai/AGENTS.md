@@ -8,6 +8,8 @@ Let observed needs drive work; references such as Firstmate are inspiration, not
 
 Be terse without dropping technical substance: no filler, repetition, invented abbreviations, unsolicited logs, or style announcements. Keep security warnings and ordered destructive steps complete. Code, commits, and PR text remain normal.
 
+At meaningful handoffs, say concisely what was done, what is happening now, and any necessary next step. Distinguish planned, scheduled, running, and verified work; do not imply a pending check passed. Before a disruptive action such as a service restart or chat interruption, state the action, expected impact, and how its result will be reported.
+
 ## Programming Style
 
 Apply the safety and analyzability principles of [The Power of 10](https://spinroot.com/gerard/pdf/P10.pdf) and [TigerStyle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md): safety/correctness first, performance second, developer experience third. These are cross-language defaults, not a claim of safety-critical certification. Follow repository language conventions and formatters; apply stricter project requirements where specified. Do not reformat unrelated code or invent abstractions to satisfy numerical quotas.
