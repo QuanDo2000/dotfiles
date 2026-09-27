@@ -23,7 +23,7 @@ test_ci_bash_jobs_share_pinned_environments_and_parallelize_linux_checks() {
   assert_equals 1 "$(grep -c 'shellcheck_pid=\$!' <<< "$workflow")"
   assert_contains "$workflow" 'wait "$shellcheck_pid"'
   assert_contains "$workflow" 'darwinConfigurations.mac.system.drvPath'
-  assert_contains "$workflow" 'nix build .#codex .#pi-extensions --no-link'
+  assert_contains "$workflow" 'nix build .#pi-extensions --no-link'
 }
 
 test_ci_filters_pull_requests_but_runs_full_main_and_schedule() {
@@ -89,7 +89,7 @@ test_ci_runs_direct_nix_checks_without_duplicate_home_evaluations() {
   assert_contains "$workflow" "nix flake check --no-build --all-systems"
   assert_not_contains "$workflow" 'Evaluate Home Manager configurations'
   assert_not_contains "$workflow" 'homeConfigurations.\"$username@linux\".activationPackage.drvPath'
-  assert_contains "$workflow" 'nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions --no-link'
+  assert_contains "$workflow" 'nix build .#obsidian-headless .#pi-agent .#pi-extensions --no-link'
 }
 
 test_ci_pins_current_actions() {

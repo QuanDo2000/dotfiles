@@ -56,7 +56,7 @@ jobs:
           tests_pid=$!
           nix eval --raw .#darwinConfigurations.mac.system.drvPath &
           darwin_pid=$!
-          nix build .#codex .#pi-extensions --no-link &
+          nix build .#pi-extensions --no-link &
           packages_pid=$!
 
           status=0
@@ -175,4 +175,4 @@ jobs:
         run: nix flake check --no-build --all-systems
 
       - name: Build custom packages
-        run: nix build .#codex .#obsidian-headless .#pi-agent .#pi-extensions --no-link
+        run: nix build .#obsidian-headless .#pi-agent .#pi-extensions --no-link

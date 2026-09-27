@@ -91,122 +91,6 @@ function _update_lix_installer_pins {
   rm -rf "$tmp_dir"
 }
 
-function _latest_codex_release_tag {
-  local release_url tag
-  release_url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/openai/codex/releases/latest)" \
-    || fail "Failed to check latest Codex release"
-  tag="${release_url##*/}"
-  [[ "$tag" == rust-v* ]] || fail "Unexpected Codex release tag: $tag"
-  printf '%s\n' "$tag"
-}
-
-function _codex_release_archive_url {
-  local tag platform version
-  tag="$1"
-  platform="${2:-linux}"
-  version="${tag#rust-v}"
-
-  case "$platform" in
-    linux)  printf 'https://github.com/openai/codex/releases/download/%s/codex-package-x86_64-unknown-linux-musl.tar.gz\n' "$tag" ;;
-    darwin) printf 'https://github.com/openai/codex/releases/download/%s/openai_codex_cli_bin-%s-py3-none-macosx_11_0_arm64.whl\n' "$tag" "$version" ;;
-    *)      fail "Unsupported Codex release platform: $platform" ;;
-  esac
-}
-
-function _prefetch_codex_release_hash {
-  local tag platform url output hash
-  tag="$1"
-  platform="${2:-linux}"
-  url="$(_codex_release_archive_url "$tag" "$platform")"
-  output="$(nix store prefetch-file --json --hash-type sha256 "$url")" \
-    || fail "Failed to prefetch Codex release archive"
-  hash="$(jq -r '.hash // empty' <<< "$output")"
-  [[ -n "$hash" ]] || fail "Failed to parse Codex release archive hash"
-  printf '%s\n' "$hash"
-}
-
-function _codex_windows_release_hashes {
-  local tag metadata x64_digest arm64_digest
-  tag="$1"
-  metadata="$(curl -fsSL \
-    -H 'Accept: application/vnd.github+json' \
-    -H 'User-Agent: dotfiles' \
-    "https://api.github.com/repos/openai/codex/releases/tags/$tag")" \
-    || fail "Failed to read Codex Windows release metadata"
-  x64_digest="$(jq -r '.assets[] | select(.name == "codex-package-x86_64-pc-windows-msvc.tar.gz") | .digest // empty' <<< "$metadata")"
-  arm64_digest="$(jq -r '.assets[] | select(.name == "codex-package-aarch64-pc-windows-msvc.tar.gz") | .digest // empty' <<< "$metadata")"
-  [[ "$x64_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "Invalid Codex Windows x64 checksum"
-  [[ "$arm64_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "Invalid Codex Windows ARM64 checksum"
-  printf '%s\n%s\n' "${x64_digest#sha256:}" "${arm64_digest#sha256:}"
-}
-
-function _write_codex_release_package {
-  local tag linux_hash darwin_hash windows_x64_hash windows_arm64_hash version package_file tmp
-  tag="$1"
-  linux_hash="$2"
-  darwin_hash="$3"
-  windows_x64_hash="$4"
-  windows_arm64_hash="$5"
-  version="${tag#rust-v}"
-  package_file="$DOTFILES_DIR/packages/codex-release.json"
-  [[ -f "$package_file" ]] || fail "Missing Codex pin file: $package_file"
-
-  tmp="$(mktemp "${package_file}.tmp.XXXXXX")" || fail "Failed to create Codex pin temp file"
-  if ! jq -n \
-    --arg version "$version" \
-    --arg linuxHash "$linux_hash" \
-    --arg darwinHash "$darwin_hash" \
-    --arg windowsX64 "$windows_x64_hash" \
-    --arg windowsArm64 "$windows_arm64_hash" \
-    '{version: $version, linuxHash: $linuxHash, darwinHash: $darwinHash, windows: {x86_64: $windowsX64, aarch64: $windowsArm64}}' > "$tmp" \
-    || ! chmod 644 "$tmp" \
-    || ! mv "$tmp" "$package_file"; then
-    rm -f "$tmp"
-    fail "Failed to update Codex pin file"
-  fi
-}
-
-function _update_codex_release_package {
-  if [[ "$DRY" == "true" ]]; then
-    info "Would update Codex package from the latest GitHub release"
-    return
-  fi
-
-  local tag linux_hash darwin_hash windows_hashes windows_x64_hash windows_arm64_hash version package_file current_version
-  package_file="$DOTFILES_DIR/packages/codex-release.json"
-  [[ -f "$package_file" ]] || fail "Missing Codex pin file: $package_file"
-  tag="$(_latest_codex_release_tag)"
-  version="${tag#rust-v}"
-  current_version="$(jq -r '.version // empty' "$package_file")"
-  if [[ "$current_version" == "$version" ]]; then
-    info "Codex package already at $tag"
-    return
-  fi
-
-  info "Updating Codex package to $tag..."
-  _ensure_nix
-  local hashes_dir linux_pid darwin_pid windows_pid failed=false windows_failed=false
-  hashes_dir="$(mktemp -d)" || fail "Failed to create Codex hash temp directory"
-  _prefetch_codex_release_hash "$tag" linux > "$hashes_dir/linux" & linux_pid=$!
-  _prefetch_codex_release_hash "$tag" darwin > "$hashes_dir/darwin" & darwin_pid=$!
-  _codex_windows_release_hashes "$tag" > "$hashes_dir/windows" & windows_pid=$!
-  wait "$linux_pid" || failed=true
-  wait "$darwin_pid" || failed=true
-  wait "$windows_pid" || windows_failed=true
-  if [[ "$failed" == true || "$windows_failed" == true ]]; then
-    rm -rf "$hashes_dir"
-    [[ "$windows_failed" == false ]] || fail "Failed to resolve Codex Windows checksums"
-    fail "Failed to resolve Codex release checksums"
-  fi
-  linux_hash="$(<"$hashes_dir/linux")"
-  darwin_hash="$(<"$hashes_dir/darwin")"
-  windows_hashes="$(<"$hashes_dir/windows")"
-  rm -rf "$hashes_dir"
-  windows_x64_hash="$(sed -n '1p' <<< "$windows_hashes")"
-  windows_arm64_hash="$(sed -n '2p' <<< "$windows_hashes")"
-  _write_codex_release_package "$tag" "$linux_hash" "$darwin_hash" "$windows_x64_hash" "$windows_arm64_hash"
-}
-
 function _latest_npm_package_version {
   local package metadata version
   package="$1"
@@ -615,7 +499,6 @@ function _update_npm_release_package {
 
 function _update_all_dependency_pins {
   _update_lix_installer_pins || return $?
-  _update_codex_release_package || return $?
   _update_pi_release_package || return $?
   _update_obsidian_headless_package || return $?
   _run_python_pin_batch \
@@ -634,7 +517,6 @@ function _refresh_all_dependency_set {
 }
 
 function _refresh_ai_dependency_set {
-  _update_codex_release_package || return $?
   _update_pi_release_package
 }
 
@@ -940,12 +822,6 @@ function update_lix_installer_pins {
   info "Updating pinned Lix installer checksums..."
   _update_lix_installer_pins
   success "Finished updating pinned Lix installer checksums"
-}
-
-function update_codex_release {
-  info "Updating pinned Codex release package..."
-  _update_codex_release_package
-  success "Finished updating pinned Codex release package"
 }
 
 function update_obsidian_headless_release {

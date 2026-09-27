@@ -2,9 +2,9 @@
 
 Home Manager owns Unix links under `~/.agents/skills/`; Windows `InstallAiSkills`
 installs complete directories there with the existing staged-copy/rollback helper.
-Pi and Codex discover this native shared location. Do not add duplicate Pi copies.
+Pi discovers this native shared location. Do not add duplicate Pi copies.
 
-`test-driven-development` is now discovered as `tdd` in Pi and Codex; the separate
+`test-driven-development` is now discovered as `tdd` in Pi; the separate
 Hermes-native workflow keeps its original name. Windows moves any retired shared
 or Pi copy outside skill discovery after installing the replacement, preserving
 its contents for review. Unix Home Manager removes its old managed link on
@@ -35,7 +35,7 @@ are placeholders; runtime/version/role assumptions must be resolved before use.
 
 Hermes does not use the shared discovery location in this deployment, so Unix
 links each existing native path to the same tracked tree. This is not a second
-adaptation or an extra search root. Windows installs shared Pi/Codex skills only;
+adaptation or an extra search root. Windows installs shared Pi skills only;
 Windows Hermes and non-default Hermes profiles remain unmanaged. The separate
 Hermes workflow adaptations under `../hermes/skills/` retain their ownership.
 

@@ -194,7 +194,7 @@ function Get-WingetPackages {
 function Get-RequiredCommands {
     @(
         "git", "gh", "gpg", "nvim", "starship", "fd", "rg", "lazygit",
-        "fnm", "node", "jj", "zoxide", "codex", "pi",
+        "fnm", "node", "jj", "zoxide", "pi",
         "py",
         "bash-language-server", "shellcheck", "tree-sitter", "clang", "odin"
     )
@@ -535,151 +535,6 @@ function InstallManagedPackages {
     Sync-ObsidianSettings
     InstallFiraCodeNerdFont
     InstallAi
-}
-
-function Get-CodexWindowsTarget($Architecture) {
-    switch ([string]$Architecture) {
-        "X64" { return "x86_64-pc-windows-msvc" }
-        "Arm64" { return "aarch64-pc-windows-msvc" }
-        default { throw "Unsupported Codex Windows architecture: $Architecture" }
-    }
-}
-
-function Get-CodexHome {
-    if ([string]::IsNullOrWhiteSpace($env:CODEX_HOME)) { return (Join-Path $env:USERPROFILE '.codex') }
-    return $env:CODEX_HOME
-}
-
-function Get-CodexPathValue($PathValue, $BinDir, $ManagedRoot) {
-    $managedRootNormalized = $ManagedRoot.TrimEnd([char[]](92, 47))
-    $entries = @($PathValue -split ";" | Where-Object {
-        if (-not $_) { return $false }
-        $entry = $_.TrimEnd([char[]](92, 47))
-        return $entry -ine $BinDir.TrimEnd([char[]](92, 47)) -and
-            -not $entry.StartsWith($managedRootNormalized + [char]92, [StringComparison]::OrdinalIgnoreCase) -and
-            -not $entry.StartsWith($managedRootNormalized + [char]47, [StringComparison]::OrdinalIgnoreCase)
-    })
-    return (@($BinDir) + $entries) -join ";"
-}
-
-function Test-CodexRelease($ReleaseDir, $ExpectedVersion) {
-    foreach ($relativePath in @(
-        "codex-package.json",
-        "bin\codex.exe",
-        "bin\codex-code-mode-host.exe",
-        "codex-path\rg.exe",
-        "codex-resources\codex-command-runner.exe",
-        "codex-resources\codex-windows-sandbox-setup.exe"
-    )) {
-        if (-not (Test-Path -LiteralPath (Join-Path $ReleaseDir $relativePath) -PathType Leaf)) { return $false }
-    }
-
-    try {
-        $versionOutput = & (Join-Path $ReleaseDir "bin\codex.exe") --version 2>$null
-    } catch {
-        return $false
-    }
-    if ($LASTEXITCODE -ne 0) { return $false }
-    $match = [regex]::Match(($versionOutput -join " "), "([0-9][0-9A-Za-z.+-]*)$")
-    return $match.Success -and $match.Groups[1].Value -ceq $ExpectedVersion
-}
-
-function Set-CodexActivePath($BinDir, $ManagedRoot) {
-    $oldUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    try {
-        [Environment]::SetEnvironmentVariable("Path", (Get-CodexPathValue $oldUserPath $BinDir $ManagedRoot), "User")
-    } catch {
-        [Environment]::SetEnvironmentVariable("Path", $oldUserPath, "User")
-        throw
-    }
-}
-
-function InstallCodex {
-    Info "Installing Codex CLI..."
-    if ($script:Dry) { return }
-    if (-not [Environment]::Is64BitOperatingSystem) { throw "Codex requires 64-bit Windows" }
-
-    $pinsPath = Join-Path $script:DotfilesDir "packages\codex-release.json"
-    if (-not (Test-Path -LiteralPath $pinsPath -PathType Leaf)) { throw "Missing Codex pin file: $pinsPath" }
-    $pins = Get-Content -Raw -LiteralPath $pinsPath | ConvertFrom-Json
-    $version = [string]$pins.version
-    if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw "Invalid pinned Codex version: $version" }
-
-    $target = Get-CodexWindowsTarget ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture)
-    $architecture = if ($target.StartsWith("x86_64")) { "x86_64" } else { "aarch64" }
-    $expectedHash = [string]$pins.windows.$architecture
-    if ($expectedHash -notmatch '^[0-9a-f]{64}$') { throw "Invalid pinned Codex checksum for $architecture" }
-
-    $codexHome = Get-CodexHome
-    $standaloneRoot = Join-Path $codexHome "packages\standalone"
-    $releasesDir = Join-Path $standaloneRoot "releases"
-    $releaseDir = Join-Path $releasesDir "$version-$target-$($expectedHash.Substring(0, 12))"
-    $binDir = Join-Path $releaseDir "bin"
-    New-Item -ItemType Directory -Force -Path $standaloneRoot | Out-Null
-    $installLock = [IO.File]::Open((Join-Path $standaloneRoot "install.lock"), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-
-    try {
-        if ((Test-Path -LiteralPath $releaseDir) -and -not (Test-CodexRelease $releaseDir $version)) {
-            throw "Pinned Codex release is incomplete: $releaseDir"
-        }
-        if (-not (Test-Path -LiteralPath $releaseDir)) {
-            New-Item -ItemType Directory -Force -Path $releasesDir | Out-Null
-            $tempDir = Join-Path ([IO.Path]::GetTempPath()) "codex-install-$([Guid]::NewGuid().ToString('N'))"
-            $stagingDir = Join-Path $releasesDir ".staging.$([Guid]::NewGuid().ToString('N'))"
-            $archive = Join-Path $tempDir "codex-package-$target.tar.gz"
-            $archiveLock = $null
-            try {
-                New-Item -ItemType Directory -Force -Path $tempDir, $stagingDir | Out-Null
-                $uri = "https://github.com/openai/codex/releases/download/rust-v$version/codex-package-$target.tar.gz"
-                Invoke-WebRequest -Uri $uri -OutFile $archive -UseBasicParsing
-                $archiveLock = [IO.File]::Open($archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-                if ((Get-StreamSha256 $archiveLock) -ne $expectedHash) { throw "Codex package checksum mismatch" }
-                Invoke-NativeChecked "Codex package extraction failed" { Expand-WindowsTarArchive $archive $stagingDir }
-                if (-not (Test-CodexRelease $stagingDir $version)) { throw "Codex package is incomplete or has wrong version" }
-                $archiveLock.Dispose()
-                $archiveLock = $null
-                Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction Stop
-                Move-Item -LiteralPath $stagingDir -Destination $releaseDir
-            } catch {
-                $operationError = $_
-                if ($archiveLock) { $archiveLock.Dispose(); $archiveLock = $null }
-                $cleanupError = $null
-                foreach ($path in $tempDir, $stagingDir) {
-                    try {
-                        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop }
-                    } catch {
-                        if (-not $cleanupError) { $cleanupError = $_.Exception }
-                    }
-                }
-                if ($cleanupError) { throw "Codex cleanup failed after '$($operationError.Exception.Message)': $($cleanupError.Message)" }
-                throw $operationError
-            } finally {
-                if ($archiveLock) { $archiveLock.Dispose() }
-            }
-        }
-
-        if (-not (Test-CodexRelease $releaseDir $version)) { throw "Installed Codex release verification failed" }
-        Set-CodexActivePath $binDir $releasesDir
-    } finally {
-        $installLock.Dispose()
-    }
-
-    Success "Finished installing Codex CLI"
-}
-
-function SyncCodexConfig {
-    $source = Join-Path $script:DotfilesDir 'config\windows\ai\codex\config.toml'
-    $target = Join-Path (Get-CodexHome) 'config.toml'
-    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-    if (-not (Test-Path -LiteralPath $target)) {
-        Copy-Item -LiteralPath $source -Destination $target
-    } else {
-        $applySeed = ''
-        Invoke-NativeChecked 'Codex config seed comparison failed' {
-            py -3.14 (Join-Path $script:DotfilesDir 'scripts\seed_merge\codex.py') $target $source $applySeed
-        }
-    }
-    (Get-Item -LiteralPath $target).IsReadOnly = $false
 }
 
 function Get-PinnedPiVersion {
@@ -1149,7 +1004,6 @@ function SyncAiInstructions {
 
     $source = Join-Path $script:DotfilesDir 'config\shared\ai\AGENTS.md'
     foreach ($target in @(
-            (Join-Path $env:USERPROFILE '.codex\AGENTS.md'),
             (Join-Path $env:USERPROFILE '.pi\agent\AGENTS.md')
         )) {
         New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
@@ -1287,8 +1141,6 @@ function InstallAi {
     if ($script:Dry) { return }
 
     InstallFnm
-    InstallCodex
-    SyncCodexConfig
     InstallPi -Update:$Update
     InstallPiLanguageServers
     InstallPiExtensions
@@ -1631,19 +1483,6 @@ function Verify {
     } else {
         FailSoft "Neovim config not found at $nvimPath"
         $errors++
-    }
-
-    Info "Verifying Codex config..."
-    $codexConfig = Join-Path (Get-CodexHome) 'config.toml'
-    if (-not (Test-Path -LiteralPath $codexConfig)) {
-        FailSoft "$codexConfig not found"
-        $errors++
-    } elseif (($item = Get-Item -LiteralPath $codexConfig -Force).PSIsContainer -or
-        $item.LinkType -or $item.IsReadOnly) {
-        FailSoft "$codexConfig must be a regular writable file"
-        $errors++
-    } else {
-        Success "Codex config installed"
     }
 
     Write-Host ""

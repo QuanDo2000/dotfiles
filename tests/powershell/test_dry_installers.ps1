@@ -10,7 +10,6 @@ function test_installers_dry_run_before_external_commands {
         @{ Command = 'Invoke-WebRequest'; Function = 'InstallFiraCodeNerdFont'; Banner = 'Installing FiraCode Nerd Font' }
         @{ Command = 'fnm'; Function = 'InstallFnm'; Banner = 'Installing Node.js LTS' }
         @{ Command = 'npm'; Function = 'InstallAi'; Banner = 'Installing agent CLIs' }
-        @{ Command = 'Invoke-RestMethod'; Function = 'InstallCodex'; Banner = 'Installing Codex CLI' }
         @{ Command = 'winget'; Function = 'InstallPackages'; Banner = 'Installing packages' }
     )
 

@@ -118,7 +118,6 @@ Commands:
   symlinks    Activate Home Manager config on Debian/Arch (also applies other user settings)
   upgrade     Upgrade native system packages
   obsidian    Bootstrap Obsidian Sync login and vault setup
-  codex       Update pinned Codex release package
   lix-installer
               Update pinned Lix installer checksums
   obsidian-headless
@@ -220,10 +219,8 @@ Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` is generated from `c
 
 Run `./scripts/check.sh` from the repo root before pushing changes.
 
-Note: Home Manager seeds `~/.codex/config.toml` as a writable file for Codex
-runtime preferences and owns shared global skills under `~/.agents/skills/`.
-Codex discovers that standard location natively; Pi includes it through its
-settings. Windows copies the same reviewed, vendored skill set through
+Home Manager owns shared global skills under `~/.agents/skills/`.
+Pi discovers that standard location natively. Windows copies the same reviewed, vendored skill set through
 `dotfile.ps1 update ai` or full setup; no remote skill installer runs during setup. Agent-specific
 plugins, packages, hooks, and generated runtime state
 such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
@@ -294,7 +291,7 @@ Full updates install missing native prerequisites for the detected platform
 before activating its configured profile; installed-state detection does not
 select dependencies.
 Use `dotfile update ai` to update only AI tools and configs. On Unix this
-refreshes Codex and Pi release pins, managed AI packages, and Pi extensions with
+refreshes Pi release pins, managed AI packages, and Pi extensions with
 the same isolated validation, diff display, and automatic approval. On Windows it
 activates their published validated pins. On NixOS the full update ends with:
 

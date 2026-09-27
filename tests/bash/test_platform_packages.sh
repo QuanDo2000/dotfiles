@@ -95,22 +95,6 @@ test_pi_defaults_to_sol_with_medium_thinking() {
   ' "$settings"
 }
 
-test_codex_defaults_to_sol_with_medium_reasoning() {
-  local config
-
-  for config in \
-    "$REPO_DIR/config/shared/ai/codex/config.toml" \
-    "$REPO_DIR/config/windows/ai/codex/config.toml"; do
-    assert_exit_code 0 python3 -c '
-import sys, tomllib
-with open(sys.argv[1], "rb") as file:
-    config = tomllib.load(file)
-assert config["model"] == "gpt-6-sol"
-assert config["model_reasoning_effort"] == "medium"
-' "$config"
-  done
-}
-
 test_pi_model_cycling_shortcuts_are_disabled() {
   local keybindings="$REPO_DIR/config/shared/ai/pi/keybindings.json"
 

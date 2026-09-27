@@ -22,9 +22,8 @@ link_core_dotfiles() {
   ln -s "$REPO_DIR/config/unix/.tmux.conf" "$HOME/.config/tmux/tmux.conf"
   ln -s "$REPO_DIR/config/shared/.gitconfig" "$HOME/.config/git/config"
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
-  mkdir -p "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.codex" "$HOME/.pi/agent"
+  mkdir -p "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.pi/agent"
   ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/init.lua"
-  : > "$HOME/.codex/config.toml"
   : > "$HOME/.pi/agent/settings.json"
   : > "$HOME/.pi/agent/mcp.json"
   mkdir -p "$HOME/.config/dotfiles"
@@ -84,8 +83,6 @@ test_help_exits_zero() {
   assert_contains "$output" "Update only AI tools and configs"
   assert_contains "$output" "upgrade"
   assert_contains "$output" "Upgrade native system packages"
-  assert_contains "$output" "codex"
-  assert_contains "$output" "Update pinned Codex release package"
   assert_contains "$output" "lix-installer"
   assert_contains "$output" "Update pinned Lix installer checksums"
   assert_contains "$output" "obsidian-headless"
@@ -248,10 +245,9 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_text" "Install native prerequisites and activate current profile"
   assert_contains "$readme_text" "Update only AI tools and configs"
   assert_contains "$readme_text" "upgrade     Upgrade native system packages"
-  assert_contains "$readme_flat" 'On Unix this refreshes Codex and Pi release pins, managed AI packages, and Pi extensions with the same isolated validation, diff display, and automatic approval'
+  assert_contains "$readme_flat" 'On Unix this refreshes Pi release pins, managed AI packages, and Pi extensions with the same isolated validation, diff display, and automatic approval'
   assert_contains "$readme_flat" 'On Windows it activates their published validated pins'
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
-  assert_contains "$readme_text" "codex       Update pinned Codex release package"
   assert_contains "$readme_text" "lix-installer"
   assert_contains "$readme_text" "Update pinned Lix installer checksums"
   assert_contains "$readme_text" "obsidian-headless"
@@ -278,7 +274,7 @@ test_dry_run_update_command() {
   output=$(bash "$DOTFILE_CMD" --dry update 2>&1)
   assert_checked_flow "$output" true
   assert_contains "$output" "Updating packages"
-  for dependency in "Codex package" "Obsidian Headless" "Pi extension closure" "WebCord" "Anki Zoom" "Windows Anki add-ons" "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
+  for dependency in "Obsidian Headless" "Pi extension closure" "WebCord" "Anki Zoom" "Windows Anki add-ons" "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
     assert_contains "$output" "Would update $dependency"
   done
   assert_contains "$output" "Would run full dependency checks before activation"
@@ -298,21 +294,8 @@ test_dry_run_update_ai_command_only_updates_ai() {
 
   assert_checked_flow "$output" true
   assert_contains "$output" "Updating AI tools and configs"
-  assert_contains "$output" "Would update Codex package from the latest GitHub release"
   assert_contains "$output" "Would update Pi package from the latest npm release"
   assert_contains "$output" "Would update Pi extensions"
-  assert_not_contains "$output" "Updating packages"
-}
-
-test_dry_run_codex_command_updates_release_pin_only() {
-  is_windows_bash && return 0
-
-  local output
-  output=$(bash "$DOTFILE_CMD" --dry codex 2>&1)
-
-  assert_contains "$output" "Updating pinned Codex release package"
-  assert_contains "$output" "Would update Codex package from the latest GitHub release"
-  assert_not_contains "$output" "Verifying symlinks"
   assert_not_contains "$output" "Updating packages"
 }
 
@@ -521,7 +504,7 @@ test_explicit_all_rejects_extra_arguments() {
 
 test_leaf_commands_reject_extra_arguments() {
   local command output exit_code
-  for command in all packages upgrade obsidian codex obsidian-headless check; do
+  for command in all packages upgrade obsidian obsidian-headless check; do
     output=$(bash "$DOTFILE_CMD" --dry "$command" extra 2>&1) || exit_code=$?
     assert_equals "1" "$exit_code"
     assert_contains "$output" "Unexpected $command argument: extra"
@@ -587,7 +570,6 @@ probe() {
 }
 update_packages() { probe; }
 update_ai() { probe; }
-update_codex_release() { probe; }
 update_lix_installer_pins() { probe; }
 update_obsidian_headless_release() { probe; }
 EOF
@@ -612,7 +594,7 @@ EOF
   chmod +x "$bin/nix" "$bin/python3"
   local real_python
   real_python="$(command -v python3)"
-  for command in update ai codex lix-installer obsidian-headless; do
+  for command in update ai lix-installer obsidian-headless; do
     local args=("$command")
     [[ "$command" != ai ]] || args=(update ai)
     status=0

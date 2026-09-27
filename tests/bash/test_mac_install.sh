@@ -149,13 +149,12 @@ test_set_zsh_default_skips_on_mac() {
 # ---------------------------------------------------------------------------
 
 test_dotfile_packages_command_mac() {
-  mkdir -p "$HOME/.local/bin" "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/nvim" "$HOME/.codex" "$HOME/.pi/agent"
+  mkdir -p "$HOME/.local/bin" "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/nvim" "$HOME/.pi/agent"
   ln -s "$REPO_DIR/config/unix/.zshrc.base" "$HOME/.zshrc"
   ln -s "$REPO_DIR/config/unix/.tmux.conf" "$HOME/.config/tmux/tmux.conf"
   ln -s "$REPO_DIR/config/shared/.gitconfig" "$HOME/.config/git/config"
   ln -s "$REPO_DIR/config/shared/config/nvim/init.lua" "$HOME/.config/nvim/init.lua"
   ln -s "$DOTFILE_CMD" "$HOME/.local/bin/dotfile"
-  : > "$HOME/.codex/config.toml"
   : > "$HOME/.pi/agent/settings.json"
   : > "$HOME/.pi/agent/mcp.json"
   printf '#!/usr/bin/env bash\n' > "$HOME/.local/bin/pi"

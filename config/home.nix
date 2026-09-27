@@ -141,7 +141,6 @@ let
   devTerminalPackages = with pkgs; [
     bash-language-server
     bun
-    codex
     nil
     nixfmt
     nodejs_26
@@ -204,7 +203,6 @@ in
     ".config/dotfiles/profile" = profileFile;
     "${homeDir}/.config/jj/config.toml".force = true;
     ".ssh/config" = forceSource ./shared/.ssh/config;
-    ".codex/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".hermes/SOUL.md" = forceSource hermesSoul;
     # Hermes adaptations stay separate from the shared Codex/Pi skills.
@@ -726,11 +724,7 @@ in
       done
     '');
 
-  home.activation.fixCodexRuntime = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    if [ -L "$HOME/.codex/dotfiles.config.toml" ] && [ ! -e "$HOME/.codex/dotfiles.config.toml" ]; then
-      rm -f "$HOME/.codex/dotfiles.config.toml"
-    fi
-
+  home.activation.installGhosttyTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     terminfo_source="/Applications/Ghostty.app/Contents/Resources/terminfo/78/xterm-ghostty"
     terminfo_target="$HOME/.local/share/terminfo/78/xterm-ghostty"
     if [ -f "$terminfo_source" ]; then
@@ -743,37 +737,6 @@ in
   home.activation.patchHermesSecurityReference = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     "${pkgs.bash}/bin/bash" "${../scripts/apply_hermes_skill_fixes.sh}" \
       "${./shared/ai/hermes/security-privacy.patch}" "${pkgs.patch}/bin/patch"
-  '';
-
-  home.activation.seedCodexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    target="$HOME/.codex/config.toml"
-    source="${./shared/ai/codex/config.toml}"
-    repo_seed="''${DOTFILES_DIR:-$HOME/dotfiles}/config/shared/ai/codex/config.toml"
-    apply_seed=
-    replace=false
-
-    if [ ! -e "$target" ]; then
-      replace=true
-    elif [ -L "$target" ]; then
-      case "$(readlink "$target")" in
-        /nix/store/*) replace=true ;;
-      esac
-    fi
-
-    if [ -f "$target" ] && [ ! -L "$target" ]; then
-      if [ -w "$repo_seed" ]; then
-        apply_seed="$repo_seed"
-      fi
-
-      "${pkgs.python3}/bin/python3" "${../scripts/seed_merge}/codex.py" "$target" "$source" "$apply_seed" || echo "Warning: failed to sync Codex config seed" >&2
-    fi
-
-    if [ "$replace" = true ]; then
-      mkdir -p "$(dirname "$target")"
-      rm -f "$target"
-      cp "$source" "$target"
-      chmod u+w "$target"
-    fi
   '';
 
   home.activation.seedPiConfigs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

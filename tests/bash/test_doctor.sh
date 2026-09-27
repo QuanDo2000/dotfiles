@@ -37,7 +37,7 @@ setup_neovim_health_fixture() {
 link_valid_core_dotfiles() {
   with_nix_agent_tools
   local root="${1:-$DOTFILES_DIR}"
-  mkdir -p "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.codex" "$HOME/.pi/agent"
+  mkdir -p "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.pi/agent"
   local store_target="" candidate
   if [[ "$root" == /nix/store/* ]]; then
     for candidate in /nix/store/*; do
@@ -55,7 +55,6 @@ link_valid_core_dotfiles() {
   ln -s "${store_target:-$root/.config/nvim/init.lua}" "$HOME/.config/nvim/init.lua"
   ln -s /nix/store/test-obsidian-sync.service/obsidian-sync.service "$HOME/.config/systemd/user/obsidian-sync.service"
   ln -s "${store_target:-$root/bin/dotfile}" "$HOME/.local/bin/dotfile"
-  : > "$HOME/.codex/config.toml"
   : > "$HOME/.pi/agent/settings.json"
   : > "$HOME/.pi/agent/mcp.json"
   mkdir -p "$HOME/.config/dotfiles"
@@ -152,7 +151,7 @@ test_doctor_fails_missing_runtime_health() {
   assert_equals "1" "$errors"
   command() { return 1; }
   _check_managed_commands
-  assert_equals "4" "$errors"
+  assert_equals "3" "$errors"
   unset -f command
 }
 
@@ -268,7 +267,6 @@ test_doctor_checks_managed_runtime_health() {
   assert_contains "$doctor_text" '_check_symlink .config/tmux/tmux.conf'
   assert_contains "$doctor_text" '_check_symlink .config/git/config'
   assert_contains "$doctor_text" '.config/nvim/init.lua'
-  assert_contains "$doctor_text" '.codex/config.toml'
   assert_contains "$doctor_text" '.pi/agent/settings.json'
   assert_contains "$doctor_text" 'obsidian-sync.service'
 }
@@ -327,14 +325,13 @@ test_doctor_accepts_repo_dotfile_command_link() {
   ln -s "$DOTFILES_DIR/.zshrc" "$HOME/.zshrc"
   echo '#!/usr/bin/env bash' > "$DOTFILES_DIR/dotfile"
   ln -s "$DOTFILES_DIR/dotfile" "$HOME/.local/bin/dotfile"
-  mkdir -p "$HOME/.config/nvim" "$HOME/.codex" "$HOME/.pi/agent"
+  mkdir -p "$HOME/.config/nvim" "$HOME/.pi/agent"
   mkdir -p "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/systemd/user"
   for path in .config/tmux/tmux.conf .config/git/config .config/nvim/init.lua .config/systemd/user/obsidian-sync.service; do
     mkdir -p "$DOTFILES_DIR/$(dirname "$path")"
     : > "$DOTFILES_DIR/$path"
     ln -s "$DOTFILES_DIR/$path" "$HOME/$path"
   done
-  : > "$HOME/.codex/config.toml"
   : > "$HOME/.pi/agent/settings.json"
   : > "$HOME/.pi/agent/mcp.json"
   mkdir -p "$HOME/.config/dotfiles"
