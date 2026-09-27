@@ -145,6 +145,10 @@ let
     nixfmt
     nodejs_26
     odin
+    rustc
+    cargo
+    rustfmt
+    clippy
     pkgs.pi-agent
     pkgs.pi-extensions
     shellcheck

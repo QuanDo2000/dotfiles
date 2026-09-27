@@ -15,6 +15,7 @@ function TestSetup {
 
 function TestTeardown {
     Clear-CommandMock 'winget'
+    Clear-CommandMock 'rustup'
     Clear-CommandMock 'Get-Process'
     Set-FunctionMock 'Get-InstalledWingetPackages' $script:OriginalGetInstalledWingetPackages
     Set-FunctionMock 'AddToUserPath' $script:OriginalAddToUserPath
@@ -198,6 +199,8 @@ function test_installpackages_skips_upgrades_outside_update {
 function test_installpackages_update_upgrades_only_managed_packages {
     $script:Dry = $false
     $script:WingetCalls = @()
+    $script:RustupCalls = @()
+    Set-CommandMock 'rustup' { $script:RustupCalls += ,($args -join ' '); $global:LASTEXITCODE = 0 }
     Set-CommandMock 'winget' {
         $script:WingetCalls += ,($args -join ' ')
         if ($args[0] -eq 'export') {
@@ -216,6 +219,19 @@ function test_installpackages_update_upgrades_only_managed_packages {
     foreach ($package in $managed) {
         Assert-True ($script:WingetCalls -contains "upgrade --id $package --exact --disable-interactivity --accept-package-agreements --accept-source-agreements") "missing managed upgrade for $package"
     }
+    Assert-Equals 1 $script:RustupCalls.Count
+    Assert-Equals 'update stable' $script:RustupCalls[0]
+}
+
+function test_installpackages_update_reports_rust_toolchain_failure {
+    $script:Dry = $false
+    Set-FunctionMock 'Get-InstalledWingetPackages' { return @(Get-WingetPackages) }
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
+    Set-CommandMock 'rustup' { $global:LASTEXITCODE = 1 }
+
+    $message = ''
+    try { InstallPackages -Update 6>&1 | Out-Null } catch { $message = $_.Exception.Message }
+    Assert-Contains $message 'rustup update stable failed'
 }
 
 function test_native_upgrade_dry_run_never_calls_winget {
@@ -283,16 +299,18 @@ function test_invokewinget_accepts_no_applicable_upgrade {
     Assert-False $threw 'Winget no-applicable-update exit should be accepted for upgrades'
 }
 
-function test_installpackages_adds_llvm_to_user_path {
+function test_installpackages_adds_compiler_tools_to_user_path {
     $script:Dry = $false
-    $script:AddedUserPath = $null
+    $script:AddedUserPaths = @()
     Set-FunctionMock 'Get-InstalledWingetPackages' { return @(Get-WingetPackages) }
     Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
-    Set-FunctionMock 'AddToUserPath' { param($dir) $script:AddedUserPath = $dir }
+    Set-FunctionMock 'AddToUserPath' { param($dir) $script:AddedUserPaths += $dir }
 
     InstallPackages 6>&1 | Out-Null
 
-    Assert-Equals (Join-Path $env:ProgramFiles 'LLVM\bin') $script:AddedUserPath
+    Assert-Equals 2 $script:AddedUserPaths.Count
+    Assert-True ($script:AddedUserPaths -contains (Join-Path $env:ProgramFiles 'LLVM\bin')) 'LLVM should be on user PATH'
+    Assert-True ($script:AddedUserPaths -contains (Join-Path $env:USERPROFILE '.cargo\bin')) 'Rust tools should be on user PATH'
 }
 
 function test_installpackages_propagates_winget_install_failure {

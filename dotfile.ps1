@@ -185,7 +185,7 @@ function Get-WingetPackages {
         "Microsoft.PowerShell", "Git.Git", "GitHub.cli", "GnuPG.Gpg4win", "Microsoft.WindowsTerminal",
         "Neovim.Neovim", "Starship.Starship", "JesseDuffield.lazygit",
         "BurntSushi.ripgrep.MSVC", "sharkdp.fd",
-        "tree-sitter.tree-sitter-cli", "LLVM.LLVM", "odin-lang.Odin",
+        "tree-sitter.tree-sitter-cli", "LLVM.LLVM", "odin-lang.Odin", "Rustlang.Rustup",
         "Schniz.fnm", "jj-vcs.jj", "ajeetdsouza.zoxide",
         "Python.Python.3.14", "Notepad++.Notepad++", "koalaman.shellcheck", "Anki.Anki", "Obsidian.Obsidian"
     )
@@ -196,7 +196,8 @@ function Get-RequiredCommands {
         "git", "gh", "gpg", "nvim", "starship", "fd", "rg", "lazygit",
         "fnm", "node", "jj", "zoxide", "pi",
         "py",
-        "bash-language-server", "shellcheck", "tree-sitter", "clang", "odin"
+        "bash-language-server", "shellcheck", "tree-sitter", "clang", "odin",
+        "rustc", "cargo", "rustfmt", "clippy-driver"
     )
 }
 
@@ -237,6 +238,10 @@ function InstallPackages {
     }
 
     AddToUserPath (Join-Path $env:ProgramFiles 'LLVM\bin')
+    AddToUserPath (Join-Path $env:USERPROFILE '.cargo\bin')
+    if ($Update) {
+        Invoke-NativeChecked 'rustup update stable failed' { rustup update stable }
+    }
     Success "Finished installing packages"
 }
 
@@ -1421,12 +1426,22 @@ function Verify {
     Info "Verifying installed tools..."
     foreach ($cmd in Get-RequiredCommands) {
         $found = Get-Command $cmd -ErrorAction SilentlyContinue
-        if ($found) {
-            Success "$cmd found: $($found.Source)"
-        } else {
+        if (-not $found) {
             FailSoft "$cmd not found"
             $errors++
+            continue
         }
+        if ($cmd -in @('rustc', 'cargo', 'rustfmt', 'clippy-driver')) {
+            try {
+                & $cmd --version 2>&1 | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw 'nonzero exit code' }
+            } catch {
+                FailSoft "$cmd failed to run (check the Rustup default toolchain)"
+                $errors++
+                continue
+            }
+        }
+        Success "$cmd found: $($found.Source)"
     }
 
     Info "Verifying Winget packages..."
