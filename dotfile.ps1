@@ -240,6 +240,18 @@ function InstallPackages {
     Success "Finished installing packages"
 }
 
+function UpgradeNativePackages {
+    Info "Upgrading native WinGet packages..."
+    if ($script:Dry) {
+        Info 'Would run: winget upgrade --all --disable-interactivity --accept-package-agreements --accept-source-agreements'
+        return
+    }
+    Assert-AnkiClosed
+    Assert-ObsidianClosed
+    Invoke-Winget 'winget upgrade failed' @('upgrade', '--all')
+    Success 'Finished upgrading native WinGet packages'
+}
+
 function Get-StreamSha256($Stream) {
     $sha256 = [Security.Cryptography.SHA256]::Create()
     try { return ([BitConverter]::ToString($sha256.ComputeHash($Stream)) -replace '-', '').ToLowerInvariant() } finally { $sha256.Dispose() }
@@ -1683,6 +1695,7 @@ Commands:
   update [ai] Pull and activate published reviewed package pins
               Update only AI tools and configs with update ai
   packages    Install all managed packages only
+  upgrade     Upgrade native WinGet packages without pulling the repo
   symlinks    Link managed Windows config files (no package installation)
   doctor      Verify Windows installation
 
@@ -1703,6 +1716,7 @@ if (-not $NoMain) {
         "all"       { SetupDotfiles -AfterRepoUpdate:$AfterUpdate }
         "update"    { Update-Packages $UpdateTarget -AfterRepoUpdate:$AfterUpdate }
         "packages"  { InstallManagedPackages }
+        "upgrade"   { UpgradeNativePackages }
         "symlinks"  { SetupSymlinks }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
         default     { Fail "Unknown command: $Command" }

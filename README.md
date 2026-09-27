@@ -149,9 +149,10 @@ dotfile.ps1 [OPTIONS] [COMMAND]
 
 Commands:
   all         Run full setup (default)
-  update [ai] Update system packages
-              Update only AI tools and configs with `update ai`
+  update [ai] Pull and activate published reviewed package pins
+              Update only AI tools and configs with update ai
   packages    Install all managed packages only
+  upgrade     Upgrade native WinGet packages without pulling the repo
   symlinks    Link managed Windows config files (no package installation)
   doctor      Verify Windows installation
 
@@ -164,6 +165,10 @@ Options:
 
 Windows `all`, `packages`, and full `update` manage Anki and Obsidian through
 WinGet. Close both apps before running these commands.
+`dotfile.ps1 upgrade` runs `winget upgrade --all`, including installed packages
+outside this repository's managed list. It does not pull the repo, refresh pins,
+or run config setup. Close Anki and Obsidian before upgrading; use `-Dry` to
+preview the command.
 `dotfile.ps1 symlinks` links managed configs, seeds writable Notepad++/Neovim
 files, and reloads the GPG agent without installing packages or pulling the repo.
 Use `-Dry` to preview; existing conflicting files may prompt or be backed up.

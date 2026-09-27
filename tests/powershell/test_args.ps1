@@ -12,6 +12,14 @@ function test_parameter_binder_dispatches_dry_command {
     Assert-False ($output -like '*Neovim plugins*') 'AI update should skip Neovim plugins'
 }
 
+function test_upgrade_command_dry_run_dispatches_without_repo_or_setup {
+    $output = pwsh -NoProfile -File $script:DotfileScript upgrade --dry 6>&1 | Out-String
+    Assert-Equals 0 $LASTEXITCODE
+    Assert-Contains $output 'Would run: winget upgrade --all'
+    Assert-False ($output -like '*Updating dotfiles repo*') 'native upgrade must not pull the repo'
+    Assert-False ($output -like '*Installing packages*') 'native upgrade must not run setup'
+}
+
 function test_symlinks_command_dry_run_dispatches_without_packages_or_repo_update {
     Initialize-TestEnv | Out-Null
     try {
