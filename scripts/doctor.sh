@@ -104,7 +104,7 @@ _check_neovim_runtime() {
 
 _check_managed_commands() {
   local command_name command_path nvm_dir="${NVM_DIR:-$HOME/.nvm}"
-  for command_name in nvim codex pi; do
+  for command_name in nvim pi; do
     command_path="$(command -v "$command_name" 2>/dev/null || true)"
     if [[ "$command_name" == pi && "$command_path" == "$nvm_dir"/versions/node/* ]]; then
       fail_soft "pi is shadowed by NVM at $command_path; uninstall the npm-global Pi and restart the shell"
@@ -282,7 +282,6 @@ function doctor {
   _check_symlink .config/nvim/init.lua "$platform"
   _check_neovim_runtime
   _check_symlink .local/bin/dotfile "$platform" "$DOTFILES_DIR/dotfile"
-  _check_writable_file .codex/config.toml
   _check_writable_file .pi/agent/settings.json
   _check_writable_file .pi/agent/mcp.json
   _check_managed_commands

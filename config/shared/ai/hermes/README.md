@@ -16,7 +16,7 @@ No machine-specific absolute paths were present in that snapshot.
 `~/.hermes/skills/software-development/<name>` on Unix, except orchestration at
 `~/.hermes/skills/autonomous-ai-agents/multi-agent-orchestration`. Only the default
 Hermes profile is managed. No Windows installer or other Hermes profile is changed.
-The distinct shared Codex/Pi TDD adaptation under `../skills/` remains separate;
+The distinct shared Pi TDD adaptation under `../skills/` remains separate;
 do not install both adaptations into the same runtime or add this tree to Pi's
 skill search paths.
 
@@ -50,7 +50,7 @@ Recheck the actual updater in isolated fixtures after changing ownership or orig
 metadata. Normal update preservation is not a promise about forced operations or
 future updater implementations.
 
-The shared Codex/Pi adaptations in `../skills/` have `updateMode: "manual"` in
+The shared Pi adaptations in `../skills/` have `updateMode: "manual"` in
 `sources.json`. `scripts/update_pins.py skills` keeps their complete directories,
 local additions, license, and recorded upstream commit/archive hash unchanged;
 it does not label an unreviewed upstream revision as incorporated. To refresh,

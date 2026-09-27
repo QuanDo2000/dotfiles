@@ -35,16 +35,14 @@ function TestTeardown {
 
 function test_anki_doctor_reports_settings_drift {
     InstallManagedPackages
-    foreach ($name in 'Get-RequiredCommands', 'Get-InstalledWingetPackages', 'Get-WindowsLinkSpecs', 'Get-CodexHome') {
+    foreach ($name in 'Get-RequiredCommands', 'Get-InstalledWingetPackages', 'Get-WindowsLinkSpecs') {
         $script:AnkiMocks[$name] = (Get-Command $name).ScriptBlock
     }
     Set-FunctionMock 'Get-RequiredCommands' { @() }
     Set-FunctionMock 'Get-WindowsLinkSpecs' { @() }
     Set-FunctionMock 'Get-InstalledWingetPackages' { Get-WingetPackages }
-    Set-FunctionMock 'Get-CodexHome' { Join-Path $env:USERPROFILE '.codex' }
-    New-Item -ItemType Directory -Force -Path "$env:LOCALAPPDATA/nvim", "$env:USERPROFILE/.codex" | Out-Null
+    New-Item -ItemType Directory -Force -Path "$env:LOCALAPPDATA/nvim" | Out-Null
     '' | Set-Content "$env:LOCALAPPDATA/nvim/init.lua"
-    '' | Set-Content "$env:USERPROFILE/.codex/config.toml"
     Verify 6>&1 | Out-Null
     Assert-False $script:VerifyFailed
     $metaPath = "$script:AnkiRoot/876946123/meta.json"
@@ -65,7 +63,7 @@ function test_anki_doctor_reports_settings_drift {
 }
 
 function test_anki_zoom_state_is_not_managed {
-    $pin = Get-Content -Raw (Join-Path $script:AnkiOriginalDir 'config/windows/anki-addons.json') |
+    $pin = Get-Content -Raw (Join-Path $script:RepoDir 'config/windows/anki-addons.json') |
         ConvertFrom-Json | Where-Object id -eq '1923741581'
     # Use the real managed settings with the local archive fixture.
     $pin.sha256 = (Get-FileHash $script:AnkiZip).Hash

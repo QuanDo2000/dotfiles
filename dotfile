@@ -121,7 +121,6 @@ Commands:
   symlinks    Activate Home Manager config on Debian/Arch (also applies other user settings)
   upgrade     Upgrade native system packages
   obsidian    Bootstrap Obsidian Sync login and vault setup
-  codex       Update pinned Codex release package
   lix-installer
               Update pinned Lix installer checksums
   obsidian-headless
@@ -214,11 +213,6 @@ upgrade)
 obsidian)
   [[ $# -eq 1 ]] || fail "Unexpected obsidian argument: ${2:-}"
   setup_obsidian
-  ;;
-codex)
-  [[ $# -eq 1 ]] || fail "Unexpected codex argument: ${2:-}"
-  _ensure_update_environment
-  update_codex_release
   ;;
 lix-installer)
   [[ $# -eq 1 ]] || fail "Unexpected lix-installer argument: ${2:-}"

@@ -143,8 +143,6 @@ test_update_packages_syncs_neovim() {
   _validate_dependency_update() { :; }
   _approve_dependency_update() { :; }
   _nixos_rebuild_switch() { :; }
-  _codex_version() { :; }
-  _cleanup_codex_runtime_after_update() { :; }
   _update_pi_extensions() { :; }
   _sync_neovim() { printf 'neovim-sync\n' >> "$calls"; }
   _publish_dependency_update() { printf 'published\n' >> "$calls"; }

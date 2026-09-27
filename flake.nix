@@ -22,7 +22,6 @@
       machine = import ./config/host.nix;
       overlays = [
         (final: _prev: {
-          codex = final.callPackage ./packages/codex-release.nix { };
           obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
           pi-agent = final.callPackage ./packages/pi-agent.nix { };
           pi-extensions = final.callPackage ./packages/pi-extensions.nix { };
@@ -70,12 +69,10 @@
       };
     in
     {
-      packages.x86_64-linux.codex = linuxPkgs.codex;
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
       packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent;
       packages.x86_64-linux.pi-extensions = linuxPkgs.pi-extensions;
       packages.x86_64-linux.prefetch-npm-deps = linuxPkgs.prefetch-npm-deps;
-      packages.aarch64-darwin.codex = darwinPkgs.codex;
       packages.aarch64-darwin.pi-extensions = darwinPkgs.pi-extensions;
       packages.aarch64-darwin.prefetch-npm-deps = darwinPkgs.prefetch-npm-deps;
 

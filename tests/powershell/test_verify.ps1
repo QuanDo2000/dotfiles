@@ -13,8 +13,6 @@ function TestSetup {
     # gated by $script:Quiet. Keep Quiet off so 6>&1 captures the banners the
     # assertions look for.
     $script:Quiet = $false
-    $script:OriginalCodexHome = $env:CODEX_HOME
-    Remove-Item Env:CODEX_HOME -ErrorAction SilentlyContinue
     $script:OriginalGetInstalledWingetPackages = (Get-Command Get-InstalledWingetPackages).ScriptBlock
     Set-HealthyToolMocks
     Set-FunctionMock 'Get-InstalledWingetPackages' { @() }
@@ -29,7 +27,6 @@ function TestTeardown {
     Clear-CommandMock 'Get-Command'
     Clear-CommandMock 'Get-Module'
     Set-FunctionMock 'Get-InstalledWingetPackages' $script:OriginalGetInstalledWingetPackages
-    if ($null -eq $script:OriginalCodexHome) { Remove-Item Env:CODEX_HOME -ErrorAction SilentlyContinue } else { $env:CODEX_HOME = $script:OriginalCodexHome }
     Clear-TestEnv
 }
 
@@ -63,60 +60,6 @@ function test_verify_checks_every_managed_link_spec {
 
     Assert-Contains $output 'is not linked to'
     Assert-True $script:VerifyFailed 'matching file contents must not substitute for a managed link'
-}
-
-function test_verify_reports_missing_codex_config {
-    $env:CODEX_HOME = Join-Path $env:USERPROFILE 'custom-codex-home'
-    $output = Verify 6>&1 | Out-String
-
-    Assert-Contains $output (Join-Path $env:CODEX_HOME 'config.toml')
-    Assert-True $script:VerifyFailed 'missing Codex config should fail verification'
-}
-
-function test_verify_rejects_codex_config_directory {
-    New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE '.codex\config.toml') | Out-Null
-
-    $output = Verify 6>&1 | Out-String
-
-    Assert-Contains $output 'config.toml must be a regular writable file'
-    Assert-True $script:VerifyFailed 'a Codex config directory should fail verification'
-}
-
-function test_verify_rejects_readonly_codex_config {
-    $target = Join-Path $env:USERPROFILE '.codex\config.toml'
-    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-    'model = "test"' | Set-Content $target
-    (Get-Item -LiteralPath $target).IsReadOnly = $true
-
-    try {
-        $output = Verify 6>&1 | Out-String
-    } finally {
-        (Get-Item -LiteralPath $target).IsReadOnly = $false
-    }
-
-    Assert-Contains $output 'config.toml must be a regular writable file'
-    Assert-True $script:VerifyFailed 'a read-only Codex config should fail verification'
-}
-
-function test_verify_rejects_codex_config_symlink {
-    $source = Join-Path $env:USERPROFILE 'codex-source.toml'
-    $target = Join-Path $env:USERPROFILE '.codex\config.toml'
-    New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
-    'model = "test"' | Set-Content $source
-    try {
-        New-Item -ItemType SymbolicLink -Path $target -Target $source -ErrorAction Stop | Out-Null
-    } catch {
-        if ($_.Exception.Message -match 'privilege|Administrator') {
-            Skip-Test 'symlink privilege unavailable'
-            return
-        }
-        throw
-    }
-
-    $output = Verify 6>&1 | Out-String
-
-    Assert-Contains $output 'config.toml must be a regular writable file'
-    Assert-True $script:VerifyFailed 'a symlinked Codex config should fail verification'
 }
 
 function test_verify_checks_exact_winget_packages {

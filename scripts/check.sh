@@ -29,7 +29,6 @@ else
   run nix eval --raw "$flake#homeConfigurations.\"$username@arch-server\".activationPackage.drvPath"
 fi
 packages=(
-  "$flake#codex"
   "$flake#pi-extensions"
 )
 if [[ "$(uname -s)" == "Linux" ]]; then

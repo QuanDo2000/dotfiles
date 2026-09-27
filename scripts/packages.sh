@@ -318,54 +318,6 @@ function _run_nix_managed_switch {
   "$@" || fail "$fail_message"
 }
 
-function _codex_version {
-  command -v codex >/dev/null 2>&1 || return 0
-  codex --version 2>/dev/null || true
-}
-
-function _codex_version_number {
-  printf '%s\n' "$1" | sed -n 's/.* \([0-9][^[:space:]]*\)$/\1/p'
-}
-
-function _codex_model_cache_version {
-  local codex_home cache_file
-  codex_home="${CODEX_HOME:-$HOME/.codex}"
-  cache_file="$codex_home/models_cache.json"
-  [[ -f "$cache_file" ]] || return 0
-  jq -r '.client_version // empty' "$cache_file" 2>/dev/null || true
-}
-
-function _cleanup_stale_codex_runtime {
-  local codex_home
-  codex_home="${CODEX_HOME:-$HOME/.codex}"
-  codex app-server daemon stop >/dev/null 2>&1 || true
-  rm -f "$codex_home/models_cache.json" "$codex_home/app-server-control/app-server-control.sock"
-}
-
-function _cleanup_codex_runtime_after_update {
-  local before after after_number cache_version reason
-  [[ "$DRY" == "true" ]] && return 0
-  before="$1"
-  reason=""
-  after="$(_codex_version)"
-  if [[ -n "$before" && -n "$after" && "$before" != "$after" ]]; then
-    reason="Codex version changed"
-  else
-    after_number="$(_codex_version_number "$after" || true)"
-    cache_version="$(_codex_model_cache_version || true)"
-    if [[ -n "$after_number" && -n "$cache_version" && "$after_number" != "$cache_version" ]]; then
-      reason="Codex model cache is stale"
-    fi
-  fi
-
-  if [[ -n "$reason" ]]; then
-    info "$reason; clearing stale runtime cache..."
-    _cleanup_stale_codex_runtime
-    info "Restart any open Codex sessions to use the new version"
-  fi
-  return 0
-}
-
 function _darwin_rebuild_switch {
   local target
   target="${DOTFILE_FLAKE_REF:-$DOTFILES_DIR}#mac"
@@ -448,7 +400,7 @@ function _nixos_rebuild_switch {
 }
 
 # Reprovision NixOS from this repo's flake. System packages come from the
-# rebuild; user config and Codex skills come from Home Manager.
+# rebuild; user config and shared AI skills come from Home Manager.
 # Usage: install_nixos
 function install_nixos {
   info "Installing packages for NixOS..."
@@ -492,7 +444,7 @@ function _update_pi_extensions {
 }
 
 function _update_packages_scope {
-  local scope="$1" platform codex_version_before refresh marker label suffix pending_args=()
+  local scope="$1" platform refresh marker label suffix pending_args=()
   if [[ "$scope" == ai ]]; then
     refresh=_refresh_ai_dependency_set marker=ai label="AI dependency" suffix="AI update" pending_args=(ai)
     info "Updating AI tools and configs..."
@@ -500,7 +452,6 @@ function _update_packages_scope {
     refresh=_refresh_all_dependency_set marker=full label=Dependency suffix=update
     info "Updating packages..."
   fi
-  codex_version_before="$(_codex_version)"
   platform="$(detect_platform)"
   case "$platform" in
     nixos|debian|arch|mac) ;;
@@ -538,7 +489,6 @@ function _update_packages_scope {
   if [[ "$platform" == arch && "$scope" != ai ]]; then
     _install_arch_service_state_backup
   fi
-  _cleanup_codex_runtime_after_update "$codex_version_before"
   _update_pi_extensions
   local neovim_sync_error=
   [[ "$scope" == ai ]] || _sync_neovim || neovim_sync_error="$NEOVIM_SYNC_ERROR"

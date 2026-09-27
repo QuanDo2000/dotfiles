@@ -6,7 +6,7 @@ Personal Linux/macOS/Windows provisioning. Unix uses Nix/Home Manager; Windows u
 
 - `dotfile`: full setup; `packages`: prerequisites; `upgrade`: native package upgrades.
 - `dotfile update`: routine refresh of all pins, native prerequisites, and profile activation; `update ai`: AI-only update.
-- `dotfile doctor`: health checks; `obsidian`: Sync bootstrap; `codex` / `obsidian-headless`: respective pinned-release updates.
+- `dotfile doctor`: health checks; `obsidian`: Sync bootstrap; `obsidian-headless`: pinned-release update.
 - `dotfile -d <command>`: dry run; `-f`: force overwrite.
 - Windows retains its own `verify` command and runs symlink/extra setup inside `all`.
 
@@ -25,11 +25,11 @@ If signing hangs/fails for a passphrase, never bypass signing by default. Ask th
 
 Shared development tools are the default. NixOS adds desktop/personal apps, Obsidian Sync, and Google Drive. Arch server adds Sync, Drive, and storage backup without desktop/personal apps. Generic Linux/macOS leave optional groups off. Obsidian GUI/settings are personal-only; headless Sync runs on NixOS and Arch server. `packages.sh` uses apt/pacman only for Linux bootstrap, NixOS flakes for rebuilds, and existing or pinned-bootstrap nix-darwin on macOS.
 
-Link only owned files: SSH config and selected Obsidian settings, not entire runtime directories. Codex config is a writable seed because the application persists preferences. Leave caches, sessions, credentials, `node_modules`, `skills-lock.json`, and plugin runtime artifacts alone.
+Link only owned files: SSH config and selected Obsidian settings, not entire runtime directories. Leave caches, sessions, credentials, `node_modules`, `skills-lock.json`, and plugin runtime artifacts alone.
 
 ## AI Instructions and Skills
 
-`config/shared/ai/AGENTS.md` owns shared Pi/Codex instructions; `SOUL.md` owns Hermes policy. Keep common authority/delivery rules aligned. Shared skills under `ai/skills/` install into `~/.agents/skills/` via Home Manager and Windows `InstallAiSkills`; verify native discovery in Codex/Pi. Agent-specific tools, memory, UI, hooks, and adapters stay native.
+`config/shared/ai/AGENTS.md` owns shared Pi instructions; `SOUL.md` owns Hermes policy. Keep common authority/delivery rules aligned. Shared skills under `ai/skills/` install into `~/.agents/skills/` via Home Manager and Windows `InstallAiSkills`; verify native discovery in Pi. Agent-specific tools, memory, UI, hooks, and adapters stay native.
 
 Hermes adaptations under `ai/hermes/skills/` are separate immutable Home Manager links for the default Unix profile. Read `config/shared/ai/hermes/README.md` before changing deployment/updater ownership. Preserve attribution and update boundaries; never edit store targets or force-reset bundled skills. Promote reusable machine-local skills only with explicit approval, complete assets, sanitization, and discovery verification.
 
