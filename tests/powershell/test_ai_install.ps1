@@ -382,7 +382,7 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'test-driven-development', 'skill-retrospective', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
+    $skills = @('systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'unslop', 'blast-radius', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
     foreach ($skill in $skills) {
         $source = Join-Path $sourceRoot $skill
         $target = Join-Path $targetRoot $skill
@@ -394,6 +394,11 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     foreach ($skill in $skills) {
         New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") | Out-Null
     }
+    New-Item -ItemType Directory -Force -Path (Join-Path $targetRoot 'test-driven-development') | Out-Null
+    'legacy' | Set-Content (Join-Path $targetRoot 'test-driven-development\SKILL.md')
+    $oldPi = Join-Path $env:USERPROFILE '.pi\agent\skills\test-driven-development'
+    New-Item -ItemType Directory -Force -Path $oldPi | Out-Null
+    'old pi copy' | Set-Content (Join-Path $oldPi 'SKILL.md')
     Set-CommandMock 'npx' { throw 'npx must not install shared skills' }
 
     InstallAiSkills
@@ -407,6 +412,14 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     foreach ($skill in $skills) {
         Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Stale Pi copy remains for $skill"
     }
+    Assert-False (Test-Path (Join-Path $targetRoot 'test-driven-development')) 'Old shared skill name remains discoverable'
+    $retired = @(Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.agents') -Directory -Filter 'test-driven-development.backup.*')
+    Assert-Equals 1 $retired.Count
+    if ($retired.Count -eq 1) { Assert-Contains (Get-Content -Raw (Join-Path $retired[0].FullName 'SKILL.md')) 'legacy' }
+    Assert-False (Test-Path (Join-Path $env:USERPROFILE '.pi\agent\skills\test-driven-development')) 'Old Pi skill remains discoverable'
+    $piRetired = @(Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.pi\agent\retired-skills') -Directory -Filter 'test-driven-development.backup.*')
+    Assert-Equals 1 $piRetired.Count
+    if ($piRetired.Count -eq 1) { Assert-Contains (Get-Content -Raw (Join-Path $piRetired[0].FullName 'SKILL.md')) 'old pi copy' }
 }
 
 function test_codex_tar_extracts_locked_archive_in_windows_powershell {

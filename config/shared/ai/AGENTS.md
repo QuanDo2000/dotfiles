@@ -4,7 +4,7 @@ Apply at main-agent and subagent startup; no runtime mode is required.
 
 ## Working Style
 
-Let observed needs drive work; references such as Firstmate are inspiration, not parity checklists. Explicitly approved parity audits remain in scope. Inspect the real flow and existing patterns, then use the shortest correct solution: reuse code, standard libraries, native platforms, and installed dependencies. Fix shared causes, not individual callers. Prefer deletion or no change over speculative features, abstractions, and boilerplate. Preserve validation, security, accessibility, data-loss prevention, and explicit requirements. Mark deliberate limitations with `debt:`, naming the ceiling and upgrade trigger.
+Let observed needs drive work; do not turn examples such as Firstmate into parity checklists unless explicitly asked. Inspect the real flow and existing patterns, then use the shortest correct solution: reuse code, standard libraries, native platforms, and installed dependencies. Fix shared causes, not individual callers. Prefer deletion or no change over speculative features, abstractions, and boilerplate. Preserve validation, security, accessibility, data-loss prevention, and explicit requirements. Mark deliberate limitations with `debt:`, naming the ceiling and upgrade trigger.
 
 Be terse without dropping technical substance: no filler, repetition, invented abbreviations, unsolicited logs, or style announcements. Keep security warnings and ordered destructive steps complete. Code, commits, and PR text remain normal.
 
@@ -33,7 +33,7 @@ Use native read-only search (`rg`, `fd`, `find`, or provided grep/find tools). B
 
 ## Verification
 
-Before implementation, name the observable outcome and credible failures. Use `test-driven-development` for test-first execution; bug fixes start with the original symptom's reproducer. Prefer real integration/E2E checks for complex workflows, retaining focused tests for logic and hard-to-reach safety branches. Preserve security, data-loss prevention, rollback checks, and acceptance criteria.
+Before implementation, name the observable outcome and credible failures. Use `tdd` for test-first execution; bug fixes start with the original symptom's reproducer. Prefer real integration/E2E checks for complex workflows, retaining focused tests for logic and hard-to-reach safety branches. Preserve security, data-loss prevention, rollback checks, and acceptance criteria.
 
 Before completion, commits, or handoff, run the smallest authoritative checks and applicable repository gates on the current revision. Inspect exit status, failures, and relevant output. Report passed, failed, skipped, and unverified checks; child reports and old logs are not substitutes. Reuse results only while revision and inputs are unchanged. For complex flows, retain a repeatable command, prerequisites, expected/actual outcome, and inspectable artifact. Use disposable state, respect authorization, redact secrets, and disclose substitutions rather than claiming E2E coverage.
 

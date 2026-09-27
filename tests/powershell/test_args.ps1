@@ -13,12 +13,19 @@ function test_parameter_binder_dispatches_dry_command {
 }
 
 function test_symlinks_command_dry_run_dispatches_without_packages_or_repo_update {
-    $output = pwsh -NoProfile -File $script:DotfileScript symlinks --dry 6>&1 | Out-String
-    Assert-Equals 0 $LASTEXITCODE
-    Assert-Contains $output 'Setting up symlinks'
-    Assert-Contains $output 'Linking'
-    Assert-False ($output -like '*Updating dotfiles repo*') 'standalone links must not pull the repo'
-    Assert-False ($output -like '*Installing packages*') 'standalone links must not install packages'
+    Initialize-TestEnv | Out-Null
+    try {
+        $env:DOTFILES_DIR = $script:RepoDir
+        $output = pwsh -NoProfile -File $script:DotfileScript symlinks --dry 6>&1 | Out-String
+        Assert-Equals 0 $LASTEXITCODE
+        Assert-Contains $output 'Setting up symlinks'
+        Assert-Contains $output 'Linking'
+        Assert-False ($output -like '*Updating dotfiles repo*') 'standalone links must not pull the repo'
+        Assert-False ($output -like '*Installing packages*') 'standalone links must not install packages'
+        Assert-False (Test-Path (Join-Path $env:USERPROFILE '.local\bin\dotfile.ps1')) 'dry run must not create the CLI link'
+    } finally {
+        Clear-TestEnv
+    }
 }
 
 function test_redundant_ai_and_verify_commands_are_not_exposed {

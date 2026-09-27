@@ -4,6 +4,19 @@ Home Manager owns Unix links under `~/.agents/skills/`; Windows `InstallAiSkills
 installs complete directories there with the existing staged-copy/rollback helper.
 Pi and Codex discover this native shared location. Do not add duplicate Pi copies.
 
+`test-driven-development` is now discovered as `tdd` in Pi and Codex; the separate
+Hermes-native workflow keeps its original name. Windows moves any retired shared
+or Pi copy outside skill discovery after installing the replacement, preserving
+its contents for review. Unix Home Manager removes its old managed link on
+activation; inspect collisions before activation. Existing sessions may retain
+the old catalog until restarted.
+
+`reflect` reviews the current conversation, while `skill-retrospective` audits
+a bounded sample of past conversations. `unslop` is an opt-in prose edit and
+`blast-radius` is a read-only impact assessment. They are not an always-on mode
+or substitutes for the governing review and delivery policies. Each new skill's
+`UPSTREAM.md` records the reviewed pstack revision and adaptation.
+
 ## Promoted local workflows
 
 | Shared name | Original/default Unix Hermes path |
