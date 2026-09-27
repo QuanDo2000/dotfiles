@@ -10,6 +10,13 @@ function test_windows_provisions_odin {
     Assert-True (@(Get-RequiredCommands) -contains 'odin') 'Verify should require Odin on PATH'
 }
 
+function test_windows_provisions_rust_toolchain {
+    Assert-True (@(Get-WingetPackages) -contains 'Rustlang.Rustup') 'Winget should manage Rustup'
+    foreach ($command in 'rustc', 'cargo', 'rustfmt', 'clippy-driver') {
+        Assert-True (@(Get-RequiredCommands) -contains $command) "Verify should require $command on PATH"
+    }
+}
+
 function test_windows_neovim_provisions_treesitter_build_tools {
     $packages = @(Get-WingetPackages)
     Assert-Contains ($packages -join "`n") "tree-sitter.tree-sitter-cli"

@@ -15,6 +15,15 @@ Personal setup scripts and configuration files for new machines.
   The script self-elevates via `Start-Process -Verb RunAs` if needed.
 - `git` (install via `winget install Git.Git` first, or use another existing Git installation)
 - The script installs `winget` packages and the pinned FiraCode Nerd Font; no extra package manager required.
+- Rust is installed through WinGet's `Rustlang.Rustup`. A fresh install selects
+  stable; full `dotfile.ps1 update` refreshes stable without changing an existing
+  Rustup default or project override. `doctor` checks that `rustc`, `cargo`,
+  `rustfmt`, and Clippy run, not which channel is active. To select stable for
+  your user explicitly, run `rustup default stable`.
+  Building native Windows targets also needs the MSVC C++ Build Tools with the
+  **Desktop development with C++** workload (not provisioned here).
+  debt: Windows Rust compilation is not verified by `doctor`; add a native
+  compile/link smoke test when a Windows Rust project is brought into scope.
 
 ### Configuration
 

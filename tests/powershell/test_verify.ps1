@@ -21,11 +21,15 @@ function TestSetup {
 function Set-HealthyToolMocks {
     Set-CommandMock 'Get-Command' { param($Name) [pscustomobject]@{ Source = "C:\fake\$Name.exe" } }
     Set-CommandMock 'Get-Module' { [pscustomobject]@{ Name = 'FakeModule' } }
+    foreach ($cmd in 'rustc', 'cargo', 'rustfmt', 'clippy-driver') {
+        Set-CommandMock $cmd { $global:LASTEXITCODE = 0 }
+    }
 }
 
 function TestTeardown {
     Clear-CommandMock 'Get-Command'
     Clear-CommandMock 'Get-Module'
+    foreach ($cmd in 'rustc', 'cargo', 'rustfmt', 'clippy-driver') { Clear-CommandMock $cmd }
     Set-FunctionMock 'Get-InstalledWingetPackages' $script:OriginalGetInstalledWingetPackages
     Clear-TestEnv
 }
@@ -68,4 +72,13 @@ function test_verify_checks_exact_winget_packages {
 
     Assert-Contains $output 'Winget package missing: Microsoft.PowerShell'
     Assert-True $script:VerifyFailed 'missing exact Winget package should fail verification'
+}
+
+function test_verify_rejects_rustup_proxy_without_toolchain {
+    Set-CommandMock 'rustc' { $global:LASTEXITCODE = 1 }
+
+    $output = Verify 6>&1 | Out-String
+
+    Assert-Contains $output 'rustc failed to run'
+    Assert-True $script:VerifyFailed 'a Rustup proxy without a toolchain must fail verification'
 }
