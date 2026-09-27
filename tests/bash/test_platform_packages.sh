@@ -157,7 +157,7 @@ test_shared_agent_skills_use_vendored_pinned_sources() {
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_equals "0" "$(jq '[to_entries[] | select(.key != "schemaVersion") | select((.value.commit | test("^[0-9a-f]{40}$") | not) or (.value.observedArchiveSha256 | test("^[0-9a-f]{64}$") | not))] | length' "$pins")"
-  for skill in systematic-debugging test-driven-development; do
+  for skill in systematic-debugging tdd; do
     assert_file_exists "$REPO_DIR/config/shared/ai/skills/$skill/SKILL.md"
   done
   assert_not_contains "$windows" 'npx --yes skills add'
@@ -170,7 +170,7 @@ test_skill_retrospective_is_installed_cross_platform() {
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_file_exists "$skill"
-  assert_contains "$windows" "'systematic-debugging', 'test-driven-development', 'skill-retrospective'"
+  assert_contains "$windows" "'systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'unslop', 'blast-radius'"
 }
 
 

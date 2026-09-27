@@ -1,5 +1,5 @@
 ---
-name: test-driven-development
+name: tdd
 description: Use for behavior-changing code or bug fixes.
 ---
 

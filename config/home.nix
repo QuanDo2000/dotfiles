@@ -217,8 +217,11 @@ in
     ".hermes/skills/software-development/systematic-debugging".source = ./shared/ai/hermes/skills/systematic-debugging;
     ".hermes/skills/software-development/test-driven-development".source = ./shared/ai/hermes/skills/test-driven-development;
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
-    ".agents/skills/test-driven-development" = forceSource ./shared/ai/skills/test-driven-development;
+    ".agents/skills/tdd" = forceSource ./shared/ai/skills/tdd;
     ".agents/skills/skill-retrospective" = forceSource ./shared/ai/skills/skill-retrospective;
+    ".agents/skills/reflect".source = ./shared/ai/skills/reflect;
+    ".agents/skills/unslop".source = ./shared/ai/skills/unslop;
+    ".agents/skills/blast-radius".source = ./shared/ai/skills/blast-radius;
     # Promoted shared skills: refuse local collisions, including native Hermes copies.
     ".agents/skills/github-code-review".source = ./shared/ai/skills/github-code-review;
     ".agents/skills/github-pr-workflow".source = ./shared/ai/skills/github-pr-workflow;

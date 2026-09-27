@@ -30,7 +30,7 @@ After two failed hypotheses, stop and redraw the data/control flow before attemp
 
 Trace every caller of the function or configuration being changed. Prefer one correction at the shared boundary over guards in sibling callers.
 
-Use the `test-driven-development` skill for writing proper failing tests. Keep the regression focused on the observed behavior. Do not bundle cleanup.
+Use the `tdd` skill for writing proper failing tests. Keep the regression focused on the observed behavior. Do not bundle cleanup.
 
 ## 4. Verify efficiently
 

@@ -131,8 +131,8 @@ test_profile_desktop_units_and_nixos_fuse_wrapper() {
 test_evaluated_profile_configures_runtime_files_and_activations() {
   local nixos_files arch_files activations
   nixos_files=$(_profile_files nixos); arch_files=$(_profile_files arch-server)
-  _test_present "$nixos_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/test-driven-development' '.agents/skills/skill-retrospective' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/bitwarden-picker' '.local/bin/input-method-status' '.local/bin/hyprsunset-status' '.local/bin/show-keybinds'
-  _test_present "$arch_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/test-driven-development' '.agents/skills/skill-retrospective' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/restic-recover'
+  _test_present "$nixos_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/unslop' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/bitwarden-picker' '.local/bin/input-method-status' '.local/bin/hyprsunset-status' '.local/bin/show-keybinds'
+  _test_present "$arch_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/unslop' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/restic-recover'
   local activation
   activation=$(_profile_activation nixos seedPiConfigs)
   for seed in 'settings.json' 'keybindings.json' 'web-search.json:../web-search.json' 'mcp.json'; do
@@ -176,11 +176,12 @@ test_hermes_workflow_skills_are_separate_and_non_destructive() {
       assert_equals false "$(jq -r .force <<< "$meta")"
       assert_contains "$meta" "hermes/skills/$name"
       assert_line_absent "$files" ".hermes/skills/$name"
-      if [[ "$name" != test-driven-development && "$name" != systematic-debugging ]]; then
+      if [[ "$name" != systematic-debugging ]]; then
         assert_line_absent "$files" ".agents/skills/$name"
       fi
     done
-    assert_contains "$(_profile_file_meta "$profile" '.agents/skills/test-driven-development')" 'ai/skills/test-driven-development'
+    assert_contains "$(_profile_file_meta "$profile" '.agents/skills/tdd')" 'ai/skills/tdd'
+    assert_line_absent "$files" '.agents/skills/test-driven-development'
   done
 }
 
