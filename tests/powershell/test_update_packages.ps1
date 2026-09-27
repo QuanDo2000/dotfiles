@@ -218,6 +218,58 @@ function test_installpackages_update_upgrades_only_managed_packages {
     }
 }
 
+function test_native_upgrade_dry_run_never_calls_winget {
+    $script:Dry = $true
+    $script:Called = $false
+    Set-CommandMock 'winget' { $script:Called = $true }
+
+    UpgradeNativePackages 6>&1 | Out-Null
+
+    Assert-False $script:Called 'dry run must not call winget'
+}
+
+function test_native_upgrade_runs_all_winget_packages_without_setup {
+    $script:WingetCalls = @()
+    Set-CommandMock 'winget' {
+        $script:WingetCalls += ,($args -join ' ')
+        $global:LASTEXITCODE = 0
+    }
+
+    UpgradeNativePackages 6>&1 | Out-Null
+
+    Assert-Equals 1 $script:WingetCalls.Count
+    Assert-Equals 'upgrade --all --disable-interactivity --accept-package-agreements --accept-source-agreements' $script:WingetCalls[0]
+}
+
+function test_native_upgrade_fails_before_winget_when_anki_is_running {
+    $script:Called = $false
+    Set-CommandMock 'winget' { $script:Called = $true }
+    Set-CommandMock 'Get-Process' { param($Name) if ($Name -eq 'anki') { [pscustomobject]@{ Name = 'anki' } } }
+
+    $message = ''
+    try { UpgradeNativePackages 6>&1 | Out-Null } catch { $message = $_.Exception.Message }
+    Assert-Contains $message 'Close Anki before installing or updating Anki'
+    Assert-False $script:Called 'upgrade must stop before invoking winget'
+}
+
+function test_native_upgrade_fails_before_winget_when_obsidian_is_running {
+    $script:Called = $false
+    Set-CommandMock 'winget' { $script:Called = $true }
+    Set-CommandMock 'Get-Process' { param($Name) if ($Name -eq 'Obsidian') { [pscustomobject]@{ Name = 'Obsidian' } } }
+
+    $message = ''
+    try { UpgradeNativePackages 6>&1 | Out-Null } catch { $message = $_.Exception.Message }
+    Assert-Contains $message 'Close Obsidian before updating its application'
+    Assert-False $script:Called 'upgrade must stop before invoking winget'
+}
+
+function test_native_upgrade_propagates_winget_failure {
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = 1 }
+    $message = ''
+    try { UpgradeNativePackages 6>&1 | Out-Null } catch { $message = $_.Exception.Message }
+    Assert-Contains $message 'winget upgrade failed'
+}
+
 function test_invokewinget_accepts_no_applicable_upgrade {
     Set-CommandMock 'winget' { $global:LASTEXITCODE = -1978335189 }
     $threw = $false
