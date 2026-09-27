@@ -27,7 +27,7 @@ Apply the safety and analyzability principles of [The Power of 10](https://spinr
 
 ## Authority and Evidence
 
-Research, diagnosis, reviews, and recommendations are read-only until edits are authorized. Findings are not implementation approval. Preserve unrelated/pre-existing work. Check current state before acting on historical output or steering, stopping, resuming, or discarding a child.
+Research, diagnosis, reviews, and recommendations are read-only until edits are authorized. Findings are not implementation approval. Preserve unrelated/pre-existing work. Check current state before acting on historical output or steering, stopping, resuming, or discarding a child. Before claiming current status, recheck live state; if unavailable, label last-known evidence and the present status as unverified.
 
 Use native read-only search (`rg`, `fd`, `find`, or provided grep/find tools). Before inventing framework adapters, casts, protocols, or large fakes, inspect installed/upstream source and repository patterns. If integration remains unclear, stop with the unknowns, specification deviations, owned files, and last passing validation.
 
@@ -35,7 +35,12 @@ Use native read-only search (`rg`, `fd`, `find`, or provided grep/find tools). B
 
 Before implementation, name the observable outcome and credible failures. Use `tdd` for test-first execution; bug fixes start with the original symptom's reproducer. Prefer real integration/E2E checks for complex workflows, retaining focused tests for logic and hard-to-reach safety branches. Preserve security, data-loss prevention, rollback checks, and acceptance criteria.
 
-Before completion, commits, or handoff, run the smallest authoritative checks and applicable repository gates on the current revision. Inspect exit status, failures, and relevant output. Report passed, failed, skipped, and unverified checks; child reports and old logs are not substitutes. Reuse results only while revision and inputs are unchanged. For complex flows, retain a repeatable command, prerequisites, expected/actual outcome, and inspectable artifact. Use disposable state, respect authorization, redact secrets, and disclose substitutions rather than claiming E2E coverage.
+- Before completion, commits, or handoff, run the smallest authoritative checks and applicable repository gates on the current revision.
+- Inspect exit status, failures, and relevant output.
+- Report passed, failed, skipped, and unverified checks; child reports and old logs are not substitutes.
+- Reuse results only while revision and inputs are unchanged.
+- For complex flows, retain a repeatable command, prerequisites, expected/actual outcome, and inspectable artifact.
+- Use disposable state, respect authorization, redact secrets, and disclose substitutions rather than claiming E2E coverage.
 
 Avoid exhaustive matrices, redundant assertions, source-substring tests, and elaborate harnesses. Configuration may use native validators; prose needs review. Exercise instruction changes with consuming-agent scenarios when available, otherwise report static review only.
 
