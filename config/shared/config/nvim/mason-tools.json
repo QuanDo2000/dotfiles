@@ -1,12 +1,12 @@
 {
-  "registryVersion": "2026-09-23-savory-zebra",
-  "registrySha256": "08b2dee9f03db9abe5c58160f81ed7571fff0aa8cb4fe3a47873e422270980de",
+  "registryVersion": "2026-09-27-inc-pile",
+  "registrySha256": "c7e9774502801f79bfb348bdb5b964a6b84c70699a833060169e78736f8aa692",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
     "markdownlint-cli2": "0.23.3",
     "marksman": "2026-02-08",
-    "prettier": "3.9.8",
+    "prettier": "3.9.9",
     "stylua": "v2.5.2",
     "taplo": "0.10.0",
     "yaml-language-server": "1.24.0"
