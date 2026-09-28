@@ -137,6 +137,11 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
   nixos_files=$(_profile_files nixos); arch_files=$(_profile_files arch-server)
   _test_present "$nixos_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/unslop' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/bitwarden-picker' '.local/bin/input-method-status' '.local/bin/hyprsunset-status' '.local/bin/show-keybinds'
   _test_present "$arch_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/unslop' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/restic-recover'
+  local sunset_source
+  sunset_source=$(_profile_file_meta nixos '.local/bin/hyprsunset-status' | jq -r .source)
+  assert_contains "$sunset_source" '-hyprsunset-status-0.1.0/bin/hyprsunset-status'
+  assert_not_contains "$sunset_source" 'scripts/hyprsunset-status.sh'
+  assert_line_absent "$arch_files" '.local/bin/hyprsunset-status'
   local activation
   activation=$(_profile_activation nixos seedPiConfigs)
   for seed in 'settings.json' 'keybindings.json' 'web-search.json:../web-search.json' 'mcp.json'; do

@@ -32,7 +32,11 @@ packages=(
   "$flake#pi-extensions"
 )
 if [[ "$(uname -s)" == "Linux" ]]; then
-  packages+=("$flake#obsidian-headless" "$flake#pi-agent")
+  packages+=("$flake#obsidian-headless" "$flake#pi-agent" "$flake#hyprsunset-status")
 fi
 run nix build "${packages[@]}" --no-link
+if [[ "$(uname -s)" == "Linux" ]]; then
+  status_package=$(nix build "$flake#hyprsunset-status" --no-link --print-out-paths)
+  HYPRSUNSET_CANDIDATE="$status_package/bin/hyprsunset-status" run python3 "$repo_dir/tests/rust/hyprsunset_oracle.py"
+fi
 run shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh

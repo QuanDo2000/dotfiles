@@ -2,6 +2,18 @@
 
 Personal setup scripts and configuration files for new machines.
 
+The Linux desktop Waybar `hyprsunset-status` command is a dependency-free Rust
+binary built by Nix from `rust/hyprsunset-status/main.rs`. Home Manager links its
+store binary only on desktop Linux profiles; the original Bash script remains
+as a comparison oracle, not a deployed command. `./scripts/check.sh` builds the
+Nix package and compares its JSON with the Bash oracle in disposable fixtures.
+Run `cargo fmt --manifest-path rust/hyprsunset-status/Cargo.toml --all --check`,
+`cargo test --manifest-path rust/hyprsunset-status/Cargo.toml --locked --offline`,
+and `cargo clippy --manifest-path rust/hyprsunset-status/Cargo.toml --locked --offline --all-targets -- -D warnings`
+when changing the Rust source. `debt:` This component port does not replace
+Home Manager/Nix or establish live Waybar behavior; verify on a graphical
+Linux desktop before treating activation as a production cutover.
+
 ## Requirements
 
 ### Linux / macOS

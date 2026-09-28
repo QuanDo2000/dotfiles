@@ -20,4 +20,5 @@ config/shared/ai/codex/tmp/
 config/unix/config/fcitx5/conf/cached_layouts
 
 result
+rust/hyprsunset-status/target/
 packages/.*-update.transaction.flock
