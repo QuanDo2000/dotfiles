@@ -23,6 +23,7 @@
       overlays = [
         (final: _prev: {
           obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
+          hyprsunset-status = final.callPackage ./packages/hyprsunset-status.nix { };
           pi-agent = final.callPackage ./packages/pi-agent.nix { };
           pi-extensions = final.callPackage ./packages/pi-extensions.nix { };
           webcord = final.callPackage ./packages/webcord-release.nix { };
@@ -70,6 +71,7 @@
     in
     {
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
+      packages.x86_64-linux.hyprsunset-status = linuxPkgs.hyprsunset-status;
       packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent;
       packages.x86_64-linux.pi-extensions = linuxPkgs.pi-extensions;
       packages.x86_64-linux.prefetch-npm-deps = linuxPkgs.prefetch-npm-deps;

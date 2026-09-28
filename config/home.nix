@@ -255,7 +255,7 @@ in
     ".local/bin/input-method-status" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ../scripts/input-method-status.sh // {
       executable = true;
     });
-    ".local/bin/hyprsunset-status" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ../scripts/hyprsunset-status.sh // {
+    ".local/bin/hyprsunset-status" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource "${pkgs.hyprsunset-status}/bin/hyprsunset-status" // {
       executable = true;
     });
     ".local/bin/show-keybinds" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ../scripts/show-keybinds.sh // {
