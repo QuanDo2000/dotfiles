@@ -1,12 +1,12 @@
 {
   "collapseChangelog": true,
-  "defaultModel": "gpt-6-sol",
+  "defaultModel": "gpt-6.1-sol",
   "defaultProjectTrust": "ask",
   "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "medium",
   "enableInstallTelemetry": false,
   "enabledModels": [
-    "openai-codex/gpt-6-sol",
+    "openai-codex/gpt-6.1-sol",
     "openai-codex/gpt-6-astra",
     "openrouter/deepseek/deepseek-v4-flash-0731",
     "openrouter/z-ai/glm-5.3-flash",
