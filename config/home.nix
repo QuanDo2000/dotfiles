@@ -437,6 +437,7 @@ in
       };
       commit.gpgsign = true;
       tag.gpgsign = true;
+      gpg.format = "ssh";
       gpg.program = "gpg";
     };
     includes = [
