@@ -88,9 +88,9 @@ test_pi_defaults_to_sol_with_medium_thinking() {
 
   assert_exit_code 0 jq -e '
     .defaultProvider == "openai-codex" and
-    .defaultModel == "gpt-6-sol" and
+    .defaultModel == "gpt-6.1-sol" and
     .defaultThinkingLevel == "medium" and
-    (.enabledModels | index("openai-codex/gpt-6-sol") != null) and
+    (.enabledModels | index("openai-codex/gpt-6.1-sol") != null) and
     (.enabledModels | index("openai-codex/gpt-6-astra") != null)
   ' "$settings"
 }
