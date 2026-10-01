@@ -38,7 +38,7 @@ let
     RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
   };
   piExtensionsPins = builtins.fromJSON (builtins.readFile ../packages/pi-extensions-release.json);
-  piExtensionsReleaseId = "${piExtensionsPins.releaseId}-web-version1";
+  piExtensionsReleaseId = piExtensionsPins.releaseId;
   ankiWithAddons = pkgs.anki.withAddons [
     (pkgs.ankiAddons.passfail2.withConfig {
       config = {
