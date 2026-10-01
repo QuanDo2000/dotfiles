@@ -738,7 +738,7 @@ function _publish_dependency_update {
   local scope="${1:-full}" status branch remote merge upstream ahead behind subject
   status="$(git -C "$DOTFILES_DIR" status --porcelain)" \
     || fail "Failed to inspect dependency repository"
-  [[ -n "$status" ]] || return
+  [[ -n "$status" ]] || return 0
   _validate_pending_dependency_update "$scope"
   branch="$(git -C "$DOTFILES_DIR" symbolic-ref --quiet --short HEAD)" \
     || fail "Dependency update requires a branch"
@@ -796,7 +796,7 @@ function _approve_dependency_update {
   local status untracked untracked_list diff_status
   status="$(git -C "$DOTFILES_DIR" status --porcelain)" \
     || fail "Failed to inspect dependency repository"
-  [[ -n "$status" ]] || return
+  [[ -n "$status" ]] || return 0
   git -C "$DOTFILES_DIR" status --short || fail "Failed to show dependency status"
   git -C "$DOTFILES_DIR" diff -- || fail "Failed to show dependency diff"
   git -C "$DOTFILES_DIR" diff --cached -- || fail "Failed to show staged dependency diff"

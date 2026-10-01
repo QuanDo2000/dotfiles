@@ -108,6 +108,18 @@ prepare_dependency_publication() {
   _dependency_update_fingerprint > "$(_dependency_update_marker full)"
 }
 
+test_dependency_no_change_approval_and_publication_succeed() {
+  local repo="$TEST_TMPDIR/clean-repo" operation status
+  git init -q "$repo"
+  DOTFILES_DIR="$repo"
+  DRY=false
+  for operation in _approve_dependency_update _publish_dependency_update; do
+    status=0
+    "$operation" || status=$?
+    assert_equals 0 "$status"
+  done
+}
+
 test_dependency_publish_rebases_and_pushes_update() {
   prepare_dependency_publication
   local repo="$DOTFILES_DIR" remote="$TEST_TMPDIR/remote.git"
