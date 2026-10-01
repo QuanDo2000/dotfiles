@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-01-remote-route",
-  "registrySha256": "c5c46555d6de1e9297f7ed8ade33a6572fabe2349af1412afe43f685e7aa730b",
+  "registryVersion": "2026-10-01-sonic-ghoul",
+  "registrySha256": "16dcc6a33d69c10242e31b4a6529a322587b427a8d35468fe05c168b69ac058f",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
