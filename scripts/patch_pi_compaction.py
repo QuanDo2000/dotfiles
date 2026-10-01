@@ -72,6 +72,15 @@ REPLACEMENTS_086 = replacements(
     (SUCCESS_EMIT, ERROR_EMIT.replace("aborted: false,", "aborted,")),
     (LATE_STEERING_086, LATE_STEERING_086_PATCHED),
 )
+# 0.99.2 moves the same input boundary out one indentation level.
+LATE_STEERING_099 = LATE_STEERING_086.replace("            ", "        ")
+LATE_STEERING_099_PATCHED = "\n".join(
+    line[4:] for line in LATE_STEERING_086_PATCHED.splitlines()
+)
+REPLACEMENTS_099 = replacements(
+    (SUCCESS_EMIT, ERROR_EMIT.replace("aborted: false,", "aborted,")),
+    (LATE_STEERING_099, LATE_STEERING_099_PATCHED),
+)
 
 
 def main() -> int:
@@ -90,6 +99,8 @@ def main() -> int:
     # The patched input block no longer contains the original adjacent lines.
     if LATE_STEERING_086_PATCHED in source:
         selected = REPLACEMENTS_086
+    if LATE_STEERING_099 in source or LATE_STEERING_099_PATCHED in source:
+        selected = REPLACEMENTS_099
     states = []
     for original, replacement in selected:
         if source.count(replacement) == 1:

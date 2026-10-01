@@ -249,6 +249,47 @@ console.log(await session.prompt("change direction"));
 EOF
 }
 
+# 0.99.2 moved the prompt input boundary out one indentation level.
+write_099_fixture() {
+  write_086_fixture "$1"
+  python3 - "$1" <<'PYTHON'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+source = path.read_text()
+start = source.index("    async prompt(text) {")
+path.write_text(source[:start] + source[start:].replace("            ", "        "))
+PYTHON
+}
+
+test_pi_compaction_patch_supports_099_lifecycle() {
+  local target="$TEST_TMPDIR/agent-session.mjs" status=0 before output
+  write_099_fixture "$target"
+  python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$target" 2>>"$ERROR_FILE" || status=$?
+  assert_equals 0 "$status"
+  if [[ "$status" != 0 ]]; then return; fi
+  output="$(node "$target" 2>>"$ERROR_FILE")"
+  assert_equals "sent" "$output"
+  before="$(sha256sum "$target")"
+  python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$target" 2>>"$ERROR_FILE"
+  assert_equals "$before" "$(sha256sum "$target")"
+}
+
+test_pi_compaction_patch_rejects_partial_099_source() {
+  local target="$TEST_TMPDIR/agent-session.mjs" status=0 before
+  write_099_fixture "$target"
+  python3 - "$target" <<'PYTHON'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+path.write_text(path.read_text().replace("                    aborted,", "                    aborted: changed,"))
+PYTHON
+  before="$(sha256sum "$target")"
+  python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$target" 2>"$TEST_TMPDIR/patch-error" || status=$?
+  assert_equals 1 "$status"
+  assert_equals "$before" "$(sha256sum "$target")"
+}
+
 test_pi_compaction_patch_supports_086_lifecycle() {
   local target="$TEST_TMPDIR/agent-session.mjs" status=0 before output
   write_086_fixture "$target"
