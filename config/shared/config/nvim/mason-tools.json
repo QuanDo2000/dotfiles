@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-09-27-inc-pile",
-  "registrySha256": "c7e9774502801f79bfb348bdb5b964a6b84c70699a833060169e78736f8aa692",
+  "registryVersion": "2026-09-30-aboard-mob",
+  "registrySha256": "69a52e9d625c790d4811b8a1295df09e681d3faff1c09a80909b661773d127f9",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
