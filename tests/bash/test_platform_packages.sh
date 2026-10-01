@@ -108,11 +108,17 @@ test_pi_model_cycling_shortcuts_are_disabled() {
 }
 
 test_ai_delivery_policy_is_shared_and_finite() {
-  local agents soul identity rendered_soul nix_bin
+  local agents soul identity rendered_soul nix_bin username target
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
   nix_bin="$(type -P nix)" || return
+  username="$("$nix_bin" eval --raw --file "$REPO_DIR/config/host.nix" username)" || return
+  if [[ "$(uname -s)" == Darwin ]]; then
+    target="darwinConfigurations.mac.config.home-manager.users.\"$username\""
+  else
+    target="homeConfigurations.\"$username@arch-server\".config"
+  fi
   rendered_soul="$("$nix_bin" build --no-link --print-out-paths \
-    "path:$REPO_DIR#homeConfigurations.\"quando@arch-server\".config.home.file.\".hermes/SOUL.md\".source")" || return
+    "path:$REPO_DIR#$target.home.file.\".hermes/SOUL.md\".source")" || return
   soul="$(<"$rendered_soul")"
   agents="${agents#*## Automatic Delivery}"
   soul="${soul#*## Automatic Delivery}"
