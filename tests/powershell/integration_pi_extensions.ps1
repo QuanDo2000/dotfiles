@@ -8,7 +8,7 @@ $script:Dry = $false
 
 InstallPiExtensions
 $pins = Get-PiExtensionsPins
-$release = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$($pins.releaseId)-web-version1"
+$release = Join-Path $env:USERPROFILE ".pi\agent\locked-extensions\releases\$($pins.releaseId)"
 if (-not (Test-PiExtensionsRelease $release $pins)) { throw 'Pi extension release validation failed' }
 
 $memoryEntry = Join-Path $release 'node_modules\pi-memory\index.ts'

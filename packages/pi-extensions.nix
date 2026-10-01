@@ -12,12 +12,9 @@ buildNpmPackage {
   version = builtins.substring 0 12 pins.releaseId;
   src = source;
 
-  npmDepsHash = "sha256-84ZI51Hb9ikPBSnaQ6iHMJ62gKtgy3N502jk27wl7EY=";
+  npmDepsHash = "sha256-DNlZsRD5ThBr15zb/B3OwJ5PS5QdEpZDeduQyuyE2r4=";
   npmFlags = [ "--omit=dev" "--ignore-scripts" "--legacy-peer-deps" ];
   dontNpmBuild = true;
-  preInstall = ''
-    node ${../scripts/patch_pi_web_activation.cjs} node_modules/pi-web-access/dist/index.js
-  '';
   installPhase = ''
     runHook preInstall
     mkdir -p "$out/bin"
@@ -30,7 +27,6 @@ buildNpmPackage {
   doInstallCheck = true;
   nativeInstallCheckInputs = [ nodejs pi-agent ];
   installCheckPhase = ''
-    node ${../scripts/patch_pi_web_activation.cjs} "$out/node_modules/pi-web-access/dist/index.js" --check
     node - <<'NODE'
 const root = process.env.out;
 const expected = require(`''${root}/package.json`).dependencies;
