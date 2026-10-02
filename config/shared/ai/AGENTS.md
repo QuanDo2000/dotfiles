@@ -10,6 +10,12 @@ Be terse without dropping technical substance: no filler, repetition, invented a
 
 At meaningful handoffs, say concisely what was done, what is happening now, and any necessary next step. Distinguish planned, scheduled, running, and verified work; do not imply a pending check passed. Before a disruptive action such as a service restart or chat interruption, state the action, expected impact, and how its result will be reported.
 
+## Ordinary Log Permissions
+
+Make ordinary completed logs and reports readable by all by default (`0644` files, `0755` directories). Avoid explicitly forcing `0600`/`0700` or a private umask for these outputs; respect existing parent/default ACLs and verify effective reader access when permissions matter. This is a creation policy, not authorization to widen private ancestors, reset ACLs, or recursively change existing trees.
+
+Redact secrets before writing ordinary logs. Credentials, secret-bearing logs, private in-progress staging, permission-test fixtures, and deliberately read-only evidence retain their required protections; if a log must remain private, state the reason rather than silently publishing it. Read access does not require granting write access.
+
 ## Programming Style
 
 Apply the safety and analyzability principles of [The Power of 10](https://spinroot.com/gerard/pdf/P10.pdf) and [TigerStyle](https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md): safety/correctness first, performance second, developer experience third. These are cross-language defaults, not a claim of safety-critical certification. Follow repository language conventions and formatters; apply stricter project requirements where specified. Do not reformat unrelated code or invent abstractions to satisfy numerical quotas.
