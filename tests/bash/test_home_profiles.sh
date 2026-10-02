@@ -281,6 +281,18 @@ test_evaluated_profile_service_security_and_schedule() {
   assert_equals '*-*-08 07:00:00' "$(_profile_timer arch-server storage-offsite-maintenance | jq -r .calendar)"
 }
 
+test_bisync_hooks_preserve_smb_acl() {
+  if [[ "$(uname -s)" != Linux ]] || ! command -v setfacl >/dev/null || ! command -v getfacl >/dev/null; then
+    printf 'SKIP: bisync ACL integration requires Linux and ACL tools\n'
+    return
+  fi
+  local service
+  service=$(_profile_service arch-server google-drive-bisync | jq '{ExecStartPre: .execStartPre, ExecStopPost: .execStopPost}')
+  if ! python3 "$REPO_DIR/tests/nix/drive-permissions.py" <<< "$service"; then
+    printf 'bisync hooks did not preserve SMB ACL access\n' >> "$ERROR_FILE"
+  fi
+}
+
 test_platform_profiles_have_expected_ghostty_config() {
   local generic_files arch_files nixos_config darwin_config
   generic_files=$(_profile_files linux); arch_files=$(_profile_files arch-server); nixos_config=$(_profile_xdg_files nixos); darwin_config=$(_profile_xdg_files darwin)
