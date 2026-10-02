@@ -10,6 +10,32 @@ export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-$HOME/.cache/restic}"
 
 readonly TAG='storage-offsite'
 readonly RECOVERY_ROOT="${RESTIC_RECOVERY_ROOT:-$HOME/Documents/Restic Recovery}"
+readonly SMB_USER="${RESTIC_RECOVERY_SMB_USER:-samba_user}"
+
+prepare_recovery_root() {
+  command -v setfacl >/dev/null || { printf 'setfacl is required for recovery SMB access.\n' >&2; return 1; }
+  smb_uid="$(id -u "$SMB_USER")" || return 1
+  [[ ! -L "$RECOVERY_ROOT" ]] || { printf 'Recovery root must not be a symlink.\n' >&2; return 1; }
+  install -d -m 700 "$RECOVERY_ROOT"
+  setfacl -m "u:$smb_uid:r-x,g::---,o::---" -- "$RECOVERY_ROOT"
+}
+
+private_stage() {
+  local stage
+  stage="$(mktemp -d "$RECOVERY_ROOT/$1-XXXXXX")" || return 1
+  # Strip inherited grants/defaults; the staging root gates access to restored metadata.
+  setfacl -b -k -- "$stage" || return 1
+  chmod 700 "$stage" || return 1
+  printf '%s\n' "$stage"
+}
+
+publish_restore() {
+  local stage="$1"
+  # Leave the staging root private until every descendant ACL has been installed.
+  find "$stage" -mindepth 1 \( -type d -o -type f \) \
+    -exec setfacl -m "u:$smb_uid:r-X" -- {} +
+  setfacl -m "u:$smb_uid:r-x,g::---,o::---" -- "$stage"
+}
 
 usage() {
   cat <<'EOF'
@@ -20,7 +46,10 @@ Usage:
   restic-recover mount
 
 SNAPSHOT is "latest" or a snapshot ID. Restores always go to a new private
-staging directory; this command never restores over live data.
+staging directory; this command never restores over live data. After verification,
+completed restores become readable by the SMB account (default: samba_user).
+Failed/in-progress restores and the read-only backup browser remain private.
+RESTIC_RECOVERY_SMB_USER selects the local SMB account; setfacl is required.
 EOF
 }
 
@@ -91,18 +120,19 @@ case "${1:-}" in
     valid_snapshot "$snapshot" || { printf 'Invalid snapshot: %s\n' "$snapshot" >&2; exit 2; }
     allowed_path "$path" || { printf 'Path is outside the backed-up roots or is not canonical: %s\n' "$path" >&2; exit 2; }
     pattern="$(literal_pattern "$path")"
-    install -d -m 700 "$RECOVERY_ROOT"
-    target="$(mktemp -d "$RECOVERY_ROOT/restore-$(date +%Y%m%d-%H%M%S)-XXXXXX")"
+    prepare_recovery_root
+    target="$(private_stage "restore-$(date +%Y%m%d-%H%M%S)")"
     printf 'Dry run for %s:%s\n' "$snapshot" "$path"
     restic restore "$snapshot" --tag "$TAG" --include "$pattern" --target "$target" --overwrite never --dry-run --verbose=2
     printf 'Restoring and verifying into private staging directory...\n'
     restic restore "$snapshot" --tag "$TAG" --include "$pattern" --target "$target" --overwrite never --verify
+    publish_restore "$target"
     printf 'Staged restore: %s\n' "$target"
     ;;
   mount)
     [[ $# == 1 ]] || { usage >&2; exit 2; }
-    install -d -m 700 "$RECOVERY_ROOT"
-    mountpoint="$(mktemp -d "$RECOVERY_ROOT/mount-XXXXXX")"
+    prepare_recovery_root
+    mountpoint="$(private_stage mount)"
     cleanup() {
       mountpoint -q "$mountpoint" && fusermount3 -u "$mountpoint" || true
       rmdir "$mountpoint" 2>/dev/null || true
