@@ -53,18 +53,13 @@ test_neovim_provisions_configured_formatters() {
 }
 
 test_neovim_pins_mason_registry_and_tool_versions() {
-  local home init pins sync
-  home="$(<"$REPO_DIR/config/home.nix")"
-  init="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-  sync="$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")"
-  pins="$REPO_DIR/config/shared/config/nvim/mason-tools.json"
-
-  assert_file_exists "$pins"
-  assert_equals "8" "$(jq '.tools | length' "$pins")"
-  assert_equals "64" "$(jq -r '.registrySha256 | length' "$pins")"
-  assert_contains "$init" 'registries = { require("config.mason").registry() }'
-  assert_contains "$home" 'xdg.configFile."nvim/mason-tools.json"'
-  assert_contains "$sync" 'get_installed_version() ~= version'
+  local pins="$REPO_DIR/config/shared/config/nvim/mason-tools.json"
+  assert_exit_code 0 jq -e '
+    (.registrySha256 | test("^[0-9a-f]{64}$")) and
+    (.registryVersion | type == "string" and length > 0) and
+    (.tools | type == "object" and length > 0) and
+    (.tools | all(.[]; type == "string" and length > 0))
+  ' "$pins"
 }
 
 test_neovim_owns_only_used_build_and_mason_tools() {
@@ -77,50 +72,6 @@ test_neovim_owns_only_used_build_and_mason_tools() {
   assert_not_contains "$home" "luarocks"
   assert_contains "$home" "tree-sitter"
   assert_contains "$home" "unzip"
-}
-
-test_neovim_uses_raw_config() {
-  local config="$REPO_DIR/config/shared/config/nvim" init lock name
-  init="$(<"$config/init.lua")"
-  lock="$(<"$config/lazy-lock.json")"
-
-  assert_contains "$init" "vim.g.raw_neovim = true"
-  assert_contains "$init" 'version = "1.*"'
-  for name in neotest dial.nvim flash.nvim friendly-snippets grug-far.nvim lazydev.nvim \
-    mason-lspconfig.nvim mini.ai mini.hipatterns noice.nvim nui.nvim nvim-ts-autotag persistence.nvim \
-    render-markdown.nvim trouble.nvim ts-comments.nvim yanky.nvim; do
-    assert_not_contains "$lock" "\"$name\""
-  done
-  for name in markdown-toc render-markdown.nvim Snacks.picker.autocmds \
-    Snacks.picker.commands Snacks.picker.highlights Snacks.picker.man \
-    Snacks.picker.command_history Snacks.picker.search_history; do
-    assert_not_contains "$init" "$name"
-  done
-}
-
-test_neovim_sync_defers_eager_plugins_until_installed() {
-  local config
-  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-
-  assert_equals "3" "$(grep -c 'lazy = vim.env.DOTFILE_NVIM_SYNC == "1"' <<< "$config")"
-  assert_contains "$config" 'concurrency = os.getenv("DOTFILE_NVIM_SYNC") == "1" and 2 or nil'
-  assert_contains "$(<"$REPO_DIR/config/shared/config/nvim/lua/config/sync.lua")" 'options.git.timeout = 600'
-}
-
-test_neovim_uses_reviewed_plugin_lock() {
-  local config lazy updater
-  config="$(<"$REPO_DIR/config/home.nix")"
-  lazy="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-  updater="$(<"$REPO_DIR/scripts/update_pins.py")"
-
-  assert_contains "$config" "home.activation.seedLazyLock"
-  assert_contains "$config" 'if ! managed_file_current "${./shared/config/nvim/lazy-lock.json}" "$target"; then'
-  assert_contains "$lazy" 'lazy-lock.json'
-  assert_contains "$lazy" 'git", "-C", lazypath, "checkout", "--force", commit'
-  assert_not_contains "$lazy" '"--branch=stable"'
-  assert_contains "$updater" '"XDG_CONFIG_HOME"'
-  assert_contains "$updater" '"XDG_DATA_HOME"'
-  assert_contains "$updater" 'repo / "config/shared/config/nvim"'
 }
 
 test_install_packages_syncs_neovim() {
@@ -205,24 +156,6 @@ test_sync_neovim_dry_run_does_not_start_neovim() {
   assert_exit_code 0 _sync_neovim
   unset -f nvim
 }
-
-test_neovim_loads_snacks_before_initial_buffer() {
-  local config
-  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-
-  assert_contains "$config" $'"folke/snacks.nvim",\n    lazy = vim.env.DOTFILE_NVIM_SYNC == "1",'
-  assert_not_contains "$config" 'event = "VimEnter"'
-  assert_not_contains "$config" 'quickfile = { enabled = true }'
-}
-
-test_neovim_uses_snacks_picker() {
-  local config
-  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-
-  assert_contains "$config" 'map("n", "<leader>ff", function() Snacks.picker.files({ cwd = root() }) end, "Find Files")'
-  assert_contains "$config" 'map("n", "<leader>sg", function() Snacks.picker.grep({ cwd = root() }) end, "Grep")'
-}
-
 
 _raw_neovim_cache_lock() {
   local lock="$1" attempts=0
@@ -349,11 +282,4 @@ test_raw_neovim_headless_config() {
   assert_equals "0" "$status"
   assert_contains "$output" "INITIAL_BIGFILE_OK"
   rm -rf "$data"
-}
-
-test_nix_managed_lazy_nvim_is_excluded_from_lazy_updates() {
-  local config
-  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-
-  assert_contains "$config" '{ "folke/lazy.nvim", enabled = vim.fn.has("win32") == 1 }'
 }

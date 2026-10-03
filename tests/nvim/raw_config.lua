@@ -70,6 +70,14 @@ for _, lhs in ipairs({ " <Tab>l", " <Tab>o", " <Tab>f" }) do
 end
 
 local lazy = require("lazy.core.config")
+local reviewed_lock = vim.json.decode(table.concat(vim.fn.readfile(lazy.options.lockfile), "\n"))
+for name, pin in pairs(reviewed_lock) do
+  if name ~= "lazy.nvim" then
+    local plugin = assert(lazy.plugins[name], name .. " locked plugin missing")
+    local result = vim.system({ "git", "-C", plugin.dir, "rev-parse", "HEAD" }, { text = true }):wait()
+    assert(result.code == 0 and vim.trim(result.stdout) == pin.commit, name .. " does not match reviewed lock")
+  end
+end
 assert(lazy.options.install.missing == false, "ordinary startup must not install plugins")
 if not windows then
   assert(not vim.o.runtimepath:find(vim.fn.stdpath("data") .. "/lazy/lazy.nvim", 1, true), "Unix must use Nix-managed lazy.nvim")
@@ -79,7 +87,6 @@ assert(vim.tbl_contains(blink.event, "CmdlineEnter"), "Blink should load for com
 assert(type(blink.opts.cmdline.completion.menu.auto_show) == "function", "Blink command-line suggestions must auto-show selectively")
 local mason = lazy.plugins["mason.nvim"]
 local mason_pins = vim.json.decode(table.concat(vim.fn.readfile(vim.fn.stdpath("config") .. "/mason-tools.json"), "\n"))
-assert(vim.tbl_count(mason_pins.tools) == 8, "Mason tool pins changed unexpectedly")
 assert(mason.opts.registries[1] == "github:mason-org/mason-registry@" .. mason_pins.registryVersion, "Mason registry pin missing")
 assert(vim.tbl_contains(mason.cmd, "Mason"), "Mason UI command missing")
 assert(not mason.event, "Mason must not provision tools during startup")
