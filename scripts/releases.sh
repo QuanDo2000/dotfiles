@@ -747,7 +747,7 @@ function _finish_dependency_update {
 
 function _publish_dependency_update {
   [[ "$DRY" == "true" ]] && return
-  local scope="${1:-full}" status branch remote merge upstream ahead behind subject
+  local scope="${1:-full}" status branch remote merge upstream ahead behind subject validation_base
   status="$(git -C "$DOTFILES_DIR" status --porcelain)" \
     || fail "Failed to inspect dependency repository"
   [[ -n "$status" ]] || return 0
@@ -766,6 +766,8 @@ function _publish_dependency_update {
   [[ "$ahead" == 0 ]] \
     || fail "Dependency update branch has unpublished commits; push them before updating"
 
+  validation_base="$(git -C "$DOTFILES_DIR" rev-parse HEAD)" \
+    || fail "Failed to record dependency validation base"
   subject="chore: update dependencies"
   [[ "$scope" != ai ]] || subject="chore: update AI dependencies"
   git -C "$DOTFILES_DIR" add -A \
@@ -778,7 +780,7 @@ function _publish_dependency_update {
   if (( behind > 0 )); then
     git -C "$DOTFILES_DIR" rebase "$upstream" \
       || fail "Dependency update rebase needs manual conflict resolution"
-    _validate_dependency_update "$scope" HEAD^ \
+    _validate_dependency_update "$scope" "$validation_base" \
       || fail "Rebased dependency checks failed; refusing publication"
   fi
   git -C "$DOTFILES_DIR" push "$remote" "HEAD:${merge#refs/heads/}" \

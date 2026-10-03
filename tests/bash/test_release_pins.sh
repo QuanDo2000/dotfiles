@@ -122,9 +122,10 @@ test_dependency_no_change_approval_and_publication_succeed() {
 
 test_dependency_publish_rebases_and_pushes_update() {
   prepare_dependency_publication
-  local repo="$DOTFILES_DIR" remote="$TEST_TMPDIR/remote.git"
+  local repo="$DOTFILES_DIR" remote="$TEST_TMPDIR/remote.git" validation_base
+  validation_base="$(git -C "$repo" rev-parse HEAD)"
   _validate_dependency_update() {
-    [[ "$1" == full && "$2" == HEAD^ ]] || return 1
+    [[ "$1" == full && "$2" == "$validation_base" ]] || return 1
     git -C "$DOTFILES_DIR" rev-parse HEAD > "$TEST_TMPDIR/validated-head"
   }
   _publish_dependency_update full
