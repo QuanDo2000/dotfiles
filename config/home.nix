@@ -431,6 +431,7 @@ in
       user = {
         name = "Quan Do";
         email = "minhquand3@gmail.com";
+        signingkey = "~/.ssh/id_ed25519.pub";
       };
       core = {
         ignorecase = false;
@@ -438,7 +439,6 @@ in
       commit.gpgsign = true;
       tag.gpgsign = true;
       gpg.format = "ssh";
-      gpg.program = "gpg";
     };
     includes = [
       { path = "~/.gitconfig.local"; }
