@@ -38,11 +38,14 @@ if $flake_changed && [[ "${DOTFILE_UPDATE_CHECK_IN_DEV_SHELL:-}" != 1 ]]; then
     bash "$repo_dir/scripts/check-update.sh" "$scope" "$base"
 fi
 
-tests=(test_update_packages.sh test_release_pins.sh test_config_merge.sh)
+tests=()
 if $pi || $extensions; then tests+=(test_pi_extensions.sh test_pi_compaction_patch.sh); fi
 if $neovim; then tests+=(test_neovim.sh test_pins.sh); fi
-if $flake_changed; then tests+=(test_home_profiles.sh); fi
-bash "$repo_dir/tests/bash/runner.sh" "${tests[@]}"
+if $flake_changed; then
+  tests+=(test_home_profiles.sh test_update_packages.sh test_release_pins.sh test_config_merge.sh)
+fi
+# The runner's empty argument list means the entire suite, not no tests.
+if [[ ${#tests[@]} -gt 0 ]]; then bash "$repo_dir/tests/bash/runner.sh" "${tests[@]}"; fi
 
 # Evaluate the deployed role, not an inferred generic Linux target.
 source "$repo_dir/scripts/platform.sh"

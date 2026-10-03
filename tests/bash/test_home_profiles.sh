@@ -46,7 +46,7 @@ assert_line_absent() { grep -Fxq "$2" <<< "$1" && echo "  unexpected line presen
 _test_present() { local text="$1" item; shift; for item in "$@"; do assert_line_present "$text" "$item"; done; }
 _test_absent() { local text="$1" item; shift; for item in "$@"; do assert_line_absent "$text" "$item"; done; }
 
-common_packages=(bash-language-server nil nixfmt odin pi-coding-agent ShellCheck statix rustc cargo rustfmt clippy)
+common_packages=(bash-language-server nil nixfmt odin pi-coding-agent pi-extensions ShellCheck statix rustc cargo rustfmt clippy)
 desktop_packages=(ghostty google-chrome grim hyprshutdown pavucontrol playerctl rbw slurp wl-clipboard)
 system_desktop_packages=(pinentry-gnome3 thunar xarchiver)
 personal_packages=(anki-with-addons obsidian webcord)
@@ -140,7 +140,15 @@ test_profile_desktop_units_and_nixos_fuse_wrapper() {
 }
 
 test_evaluated_profile_configures_runtime_files_and_activations() {
-  local nixos_files arch_files activations
+  local nixos_files arch_files activations profile release_id linux_source darwin_source source
+  release_id="$(jq -r .releaseId "$REPO_DIR/packages/pi-extensions-release.json")"
+  linux_source="$(nix eval --raw "path:$REPO_DIR#packages.x86_64-linux.pi-extensions.outPath")"
+  darwin_source="$(nix eval --raw "path:$REPO_DIR#packages.aarch64-darwin.pi-extensions.outPath")"
+  for profile in linux arch-server nixos darwin; do
+    source="$linux_source"
+    [[ "$profile" != darwin ]] || source="$darwin_source"
+    assert_equals "$source" "$(_profile_file_meta "$profile" ".pi/agent/locked-extensions/releases/$release_id" | jq -r .source)"
+  done
   nixos_files=$(_profile_files nixos); arch_files=$(_profile_files arch-server)
   _test_present "$nixos_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/unslop' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/bitwarden-picker' '.local/bin/input-method-status' '.local/bin/hyprsunset-status' '.local/bin/show-keybinds'
   _test_present "$arch_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/unslop' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/restic-recover'

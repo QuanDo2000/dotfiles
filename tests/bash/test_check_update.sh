@@ -52,6 +52,9 @@ test_ai_update_gate_excludes_unrelated_checks() {
   assert_contains "$calls" 'homeConfigurations."fixture@linux"'
   assert_not_contains "$calls" 'test_neovim.sh'
   assert_not_contains "$calls" 'test_home_profiles.sh'
+  assert_not_contains "$calls" 'test_update_packages.sh'
+  assert_not_contains "$calls" 'test_release_pins.sh'
+  assert_not_contains "$calls" 'test_config_merge.sh'
   assert_not_contains "$calls" '#obsidian-headless'
   assert_not_contains "$calls" 'full-gate'
 }
@@ -74,11 +77,24 @@ test_update_gate_flake_changes_cover_custom_packages_and_roles() {
   assert_contains "$calls" 'test-env candidate'
   assert_not_contains "$calls" 'test-env old'
   assert_contains "$calls" 'test_home_profiles.sh'
+  assert_contains "$calls" 'test_update_packages.sh'
+  assert_contains "$calls" 'test_release_pins.sh'
+  assert_contains "$calls" 'test_config_merge.sh'
   assert_contains "$calls" 'test_neovim.sh'
   assert_contains "$calls" '#pi-extensions'
   assert_contains "$calls" '#obsidian-headless'
   assert_contains "$calls" '#hyprsunset-status'
   assert_contains "$calls" 'oracle /fixture-package/bin/hyprsunset-status'
+}
+
+test_update_gate_without_selected_tests_does_not_run_the_whole_suite() {
+  _update_change packages/obsidian-headless.nix
+  assert_exit_code 0 _update_gate full
+  local calls
+  calls="$(<"$UPDATE_CALLS")"
+  assert_not_contains "$calls" 'tests '
+  assert_contains "$calls" '#obsidian-headless'
+  assert_contains "$calls" 'homeConfigurations."fixture@linux"'
 }
 
 test_update_gate_selects_native_profiles() {
