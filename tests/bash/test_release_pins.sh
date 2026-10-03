@@ -122,8 +122,10 @@ test_dependency_no_change_approval_and_publication_succeed() {
 
 test_dependency_publish_rebases_and_pushes_update() {
   prepare_dependency_publication
-  local repo="$DOTFILES_DIR" remote="$TEST_TMPDIR/remote.git"
+  local repo="$DOTFILES_DIR" remote="$TEST_TMPDIR/remote.git" validation_base
+  validation_base="$(git -C "$repo" rev-parse HEAD)"
   _validate_dependency_update() {
+    [[ "$1" == full && "$2" == "$validation_base" ]] || return 1
     git -C "$DOTFILES_DIR" rev-parse HEAD > "$TEST_TMPDIR/validated-head"
   }
   _publish_dependency_update full
@@ -540,9 +542,9 @@ test_dependency_refresh_runs_selected_updater_in_isolated_worktree() {
     [[ "$DOTFILES_DIR" != "$source_dir" ]] || return 1
     printf 'ai\n' > "$DOTFILES_DIR/managed"
   }
-  _validate_dependency_update() { [[ "$(<"$DOTFILES_DIR/managed")" == ai ]]; }
+  _validate_dependency_update() { [[ "$1" == ai && "$(<"$DOTFILES_DIR/managed")" == ai ]]; }
 
-  _refresh_dependency_set _test_ai_refresh
+  _refresh_dependency_set _test_ai_refresh ai
 
   assert_equals "ai" "$(<"$repo/managed")"
   unset -f _test_ai_refresh _validate_dependency_update

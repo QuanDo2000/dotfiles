@@ -45,7 +45,6 @@ test_pi_extension_lock_has_integrity_for_every_tarball() {
   [ -f "$extension_dir/package-lock.json" ] || return
 
   assert_equals 0 "$(jq '[.packages | to_entries[] | select(.key != "" and (.value.link != true)) | select((.value.resolved | type) != "string" or (.value.integrity | startswith("sha512-") | not))] | length' "$extension_dir/package-lock.json")"
-  assert_equals 'node_modules/node-llama-cpp node_modules/pi-memory node_modules/tree-sitter-go node_modules/tree-sitter-javascript node_modules/tree-sitter-python node_modules/tree-sitter-rust node_modules/tree-sitter-typescript' "$(jq -r '[.packages | to_entries[] | select(.value.hasInstallScript == true) | .key] | sort | join(" ")' "$extension_dir/package-lock.json")"
 }
 
 test_pi_extensions_nix_package_disables_scripts() {

@@ -66,6 +66,26 @@ function test_verify_checks_every_managed_link_spec {
     Assert-True $script:VerifyFailed 'matching file contents must not substitute for a managed link'
 }
 
+function test_verify_reports_missing_neovim_link_once {
+    $script:NvimSource = Join-Path $script:DotfilesDir 'config/shared/config/nvim/init.lua'
+    $script:NvimDestination = Join-Path $env:LOCALAPPDATA 'nvim/init.lua'
+    New-Item -ItemType Directory -Path (Join-Path $script:DotfilesDir 'config/windows') -Force | Out-Null
+    '[]' | Set-Content (Join-Path $script:DotfilesDir 'config/windows/anki-addons.json')
+    $originalLinks = (Microsoft.PowerShell.Core\Get-Command Get-WindowsLinkSpecs).ScriptBlock
+    $originalPackages = (Microsoft.PowerShell.Core\Get-Command Get-WingetPackages).ScriptBlock
+    Set-FunctionMock 'Get-WindowsLinkSpecs' { @(New-LinkSpec 'File' $script:NvimSource $script:NvimDestination) }
+    Set-FunctionMock 'Get-WingetPackages' { @() }
+    try {
+        $output = Verify 6>&1 | Out-String
+    } finally {
+        Set-FunctionMock 'Get-WindowsLinkSpecs' $originalLinks
+        Set-FunctionMock 'Get-WingetPackages' $originalPackages
+    }
+    Assert-Contains $output "$($script:NvimDestination) not found"
+    Assert-Contains $output '1 issue(s) found'
+    Assert-True $script:VerifyFailed 'missing Neovim link must still fail verification'
+}
+
 function test_verify_checks_exact_winget_packages {
 
     $output = Verify 6>&1 | Out-String

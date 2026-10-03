@@ -62,6 +62,26 @@ test_ci_filters_pull_requests_but_runs_full_main_and_schedule() {
   assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
 }
 
+test_ci_filters_known_platform_owned_paths_without_skipping_shared_consumers() {
+  local filter="$REPO_DIR/scripts/ci_paths.sh" path output
+  for path in scripts/google-drive-storage-sync.py scripts/input-method-status.sh packages/obsidian-headless.nix packages/webcord-release.nix packages/hyprsunset-status.nix rust/hyprsunset-status/src/main.rs tests/rust/hyprsunset_oracle.py config/unix/config/hypr/hyprland.lua; do
+    output="$(printf '%s\n' "$path" | bash "$filter")"
+    assert_equals $'linux=true\nmacos=false\nwindows=false\nnix=true' "$output"
+  done
+  for path in scripts/packages.sh scripts/check-update.sh scripts/update_pins.py packages/pi-extensions.nix tests/ai/pi-web-activation-smoke.mjs; do
+    output="$(printf '%s\n' "$path" | bash "$filter")"
+    assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=true' "$output"
+  done
+  for path in scripts/patch_pi_compaction.py scripts/seed_merge/common.py packages/pi-agent.nix packages/pi-extensions-release.json config/shared/config/nvim/init.lua; do
+    output="$(printf '%s\n' "$path" | bash "$filter")"
+    assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
+  done
+  output="$(printf '%s\n' scripts/new-unknown.py | bash "$filter")"
+  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
+  output="$(printf '%s\n' scripts/packages.sh scripts/seed_merge/pi.py | bash "$filter")"
+  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
+}
+
 test_ci_dev_shell_includes_script_dependencies() {
   local flake
   flake="$(<"$REPO_DIR/flake.nix")"

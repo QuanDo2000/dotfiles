@@ -7,6 +7,21 @@ windows=false
 nix=false
 
 while IFS= read -r path; do
+  # Narrow only known ownership. Unknown scripts/packages retain all platforms.
+  case "$path" in
+    packages/hyprsunset-status.nix | packages/obsidian-headless* | packages/webcord-release.nix | scripts/google-drive-storage-sync.py | scripts/hyprsunset-status.sh | scripts/input-method-status.sh | scripts/show-keybinds.sh | rust/* | tests/rust/* | config/unix/config/hypr/* | config/unix/config/waybar/* | config/unix/config/fcitx5/*)
+      linux=true
+      nix=true
+      continue
+      ;;
+    packages/pi-extensions.nix | scripts/apply_hermes_skill_fixes.sh | scripts/check.sh | scripts/check-update.sh | scripts/doctor.sh | scripts/host_config.sh | scripts/obsidian.sh | scripts/packages.sh | scripts/pins.sh | scripts/platform.sh | scripts/releases.sh | scripts/update_pins.py | scripts/utils.sh | tests/ai/pi-web-activation-smoke.mjs)
+      linux=true
+      macos=true
+      nix=true
+      continue
+      ;;
+  esac
+
   case "$path" in
     .github/workflows/* | .gitattributes | AGENTS.md | README.md | dotfile | dotfile.ps1 | flake.nix | flake.lock | packages/* | scripts/* | tests/bash/* | tests/nix/* | tests/nvim/* | config/*)
       linux=true

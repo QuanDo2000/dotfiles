@@ -11,43 +11,59 @@ teardown() {
   cleanup_test_env
 }
 
-test_check_script_runs_repo_verification() {
-  local check_text flake_text
-  check_text="$(<"$REPO_DIR/scripts/check.sh")"
-  flake_text="$(<"$REPO_DIR/flake.nix")"
-
-  assert_equals "1" "$(grep -c 'nix develop' <<< "$check_text")"
-  assert_contains "$check_text" 'exec nix develop "$flake" -c env DOTFILE_CHECK_IN_DEV_SHELL=1 bash "$repo_dir/scripts/check.sh"'
-  assert_contains "$check_text" 'run bash "$repo_dir/tests/bash/runner.sh"'
-  assert_not_contains "$check_text" '--no-docker'
-  assert_contains "$check_text" 'run pwsh "$repo_dir/tests/powershell/runner.ps1"'
-  assert_contains "$check_text" 'command -v pwsh'
-  assert_contains "$check_text" 'nix flake check "$flake" --no-build --all-systems'
-  assert_contains "$check_text" 'darwinConfigurations.mac.system.drvPath'
-  assert_contains "$check_text" 'homeConfigurations.\"$username@linux\".activationPackage.drvPath'
-  assert_contains "$check_text" 'homeConfigurations.\"$username@arch-server\".activationPackage.drvPath'
-  assert_contains "$check_text" 'flake="path:$repo_dir"'
-  assert_contains "$check_text" '"$flake#obsidian-headless"'
-  assert_contains "$check_text" '"$flake#pi-agent"'
-  assert_contains "$check_text" 'if [[ "$(uname -s)" == "Linux" ]]'
-  assert_contains "$check_text" 'nix build "${packages[@]}" --no-link'
-  assert_contains "$check_text" 'run shellcheck'
-  assert_contains "$flake_text" "pi-agent = final.callPackage ./packages/pi-agent.nix"
-  assert_contains "$flake_text" "packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent"
-  assert_contains "$flake_text" "packages.x86_64-linux.pi-extensions = linuxPkgs.pi-extensions"
-  assert_contains "$flake_text" "devShells.aarch64-darwin.default"
-  assert_contains "$flake_text" "jujutsu"
-  assert_contains "$flake_text" "python3"
-  assert_not_contains "$flake_text" "python-launcher"
-  assert_contains "$flake_text" "shellcheck"
+# Substitute expensive tool boundaries, but execute the real gate and re-exec.
+_check_fixture() {
+  export CHECK_ROOT="$TEST_TMPDIR/check" CHECK_CALLS="$TEST_TMPDIR/check-calls"
+  mkdir -p "$CHECK_ROOT/scripts" "$CHECK_ROOT/tests/bash" "$CHECK_ROOT/bin"
+  cp "$REPO_DIR/scripts/check.sh" "$CHECK_ROOT/scripts/check.sh"
+  : > "$CHECK_CALLS"
+  printf 'printf "bash-tests\\n" >> "$CHECK_CALLS"\nexit "${CHECK_TEST_EXIT:-0}"\n' > "$CHECK_ROOT/tests/bash/runner.sh"
+  cat > "$CHECK_ROOT/bin/nix" <<'SH'
+#!/usr/bin/env bash
+printf 'nix %s\n' "$*" >> "$CHECK_CALLS"
+if [[ "$1" == develop ]]; then
+  shift 3
+  exec "$@"
+fi
+[[ "$1" != "${CHECK_FAIL:-}" ]] || exit 42
+if [[ "$1" == eval && "$*" == *username* ]]; then printf 'test-user'; fi
+if [[ "$1" == build ]]; then printf '/fixture-package\n'; fi
+SH
+  local tool
+  for tool in pwsh shellcheck python3; do
+    printf '#!/usr/bin/env bash\nprintf "%s %%s\\n" "$*" >> "$CHECK_CALLS"\n' "$tool" > "$CHECK_ROOT/bin/$tool"
+  done
+  chmod +x "$CHECK_ROOT/bin/"*
 }
 
-test_bash_runner_defaults_to_nix_environment() {
-  local runner_text
-  runner_text="$(<"$REPO_DIR/tests/bash/runner.sh")"
-  assert_not_contains "$runner_text" 'docker build'
-  assert_not_contains "$runner_text" 'Docker orchestration'
-  assert_not_contains "$runner_text" '--no-docker'
+test_check_script_runs_repo_verification() {
+  _check_fixture
+  assert_exit_code 0 env -u DOTFILE_CHECK_IN_DEV_SHELL PATH="$CHECK_ROOT/bin:$PATH" bash "$CHECK_ROOT/scripts/check.sh"
+  local calls
+  calls="$(<"$CHECK_CALLS")"
+  assert_contains "$calls" "nix develop path:$CHECK_ROOT -c"
+  assert_contains "$calls" 'bash-tests'
+  assert_contains "$calls" 'pwsh '
+  assert_contains "$calls" "nix flake check path:$CHECK_ROOT --no-build --all-systems"
+  assert_contains "$calls" "path:$CHECK_ROOT#pi-extensions"
+  if [[ "$(uname -s)" == Linux ]]; then
+    assert_contains "$calls" 'test-user@linux'
+    assert_contains "$calls" 'test-user@arch-server'
+    assert_contains "$calls" "path:$CHECK_ROOT#pi-agent"
+    assert_contains "$calls" 'python3 '
+  else
+    assert_contains "$calls" 'darwinConfigurations.mac.system.drvPath'
+  fi
+  assert_contains "$calls" 'shellcheck '
+}
+
+test_check_script_stops_on_failed_tests_or_build() {
+  _check_fixture
+  assert_exit_code 23 env DOTFILE_CHECK_IN_DEV_SHELL=1 CHECK_TEST_EXIT=23 PATH="$CHECK_ROOT/bin:$PATH" bash "$CHECK_ROOT/scripts/check.sh"
+  assert_not_contains "$(<"$CHECK_CALLS")" 'nix flake check'
+  : > "$CHECK_CALLS"
+  assert_exit_code 42 env DOTFILE_CHECK_IN_DEV_SHELL=1 CHECK_FAIL=build PATH="$CHECK_ROOT/bin:$PATH" bash "$CHECK_ROOT/scripts/check.sh"
+  assert_not_contains "$(<"$CHECK_CALLS")" 'shellcheck '
 }
 
 test_bash_runner_accepts_multiple_test_files() {
