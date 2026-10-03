@@ -112,15 +112,55 @@ test_ci_runs_direct_nix_checks_without_duplicate_home_evaluations() {
   assert_contains "$workflow" 'nix build .#obsidian-headless .#pi-agent .#pi-extensions --no-link'
 }
 
+test_ci_accepts_action_sha_refreshes() {
+  local fixture="$TEST_TMPDIR/refreshed"
+  mkdir -p "$fixture/.github/workflows"
+  python3 - "$REPO_DIR/.github/workflows/test.yml" "$fixture/.github/workflows/test.yml" <<'PY'
+import re
+import sys
+from pathlib import Path
+source, target = map(Path, sys.argv[1:])
+target.write_text(re.sub(r"@[0-9a-f]{40}", "@" + "a" * 40, source.read_text()))
+PY
+  (REPO_DIR="$fixture"; test_ci_pins_current_actions)
+}
+
+_ci_actions_pinned() {
+  # debt: literal, single-line references only; use a YAML parser if workflows
+  # adopt multiline references. GitHub owns YAML syntax validation.
+  python3 - "$1" <<'PY'
+import re
+import sys
+from pathlib import Path
+references = re.findall(r"(?m)^\s*(?:-\s*)?uses:\s*([^\n#]+)", Path(sys.argv[1]).read_text())
+assert references, "No action references found"
+for reference in references:
+    reference = reference.strip().strip("\"'")
+    if reference.startswith("./"):
+        continue  # Local actions use the checked-out revision.
+    assert re.fullmatch(r"[^\s@]+@[0-9a-fA-F]{40}", reference), f"Action is not commit-pinned: {reference}"
+PY
+}
+
 test_ci_pins_current_actions() {
   local workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+  for workflow in "$REPO_DIR"/.github/workflows/*.yml "$REPO_DIR"/.github/workflows/*.yaml; do
+    [[ -f "$workflow" ]] || continue
+    _ci_actions_pinned "$workflow"
+  done
+}
 
-  assert_contains "$workflow" "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1"
-  assert_contains "$workflow" "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0"
-  assert_contains "$workflow" "DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22"
-  assert_contains "$workflow" "cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1"
-  assert_equals 2 "$(grep -c 'cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17' <<< "$workflow")"
+test_ci_rejects_unpinned_external_actions() {
+  local fixture="$TEST_TMPDIR/action.yml" reference
+  for reference in actions/checkout@v7 actions/checkout@main "actions/checkout@$(printf 'a%.0s' {1..39})"; do
+    printf 'steps:\n  - uses: %s\n' "$reference" > "$fixture"
+    assert_exit_code 1 _ci_actions_pinned "$fixture"
+  done
+}
+
+test_ci_restricts_cache_writes_and_permissions() {
+  local workflow
+  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
   assert_contains "$workflow" 'name: ${{ vars.CACHIX_CACHE_NAME }}'
   assert_contains "$workflow" "authToken: \${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}"
   assert_contains "$workflow" "skipPush: \${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}"
