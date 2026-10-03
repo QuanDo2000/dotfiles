@@ -462,7 +462,7 @@ function _update_packages_scope {
 
   if [[ "$DRY" == "true" ]]; then
     "$refresh"
-    _validate_dependency_update
+    _validate_dependency_update "$scope"
   elif _dependency_update_markers_conflict; then
     fail "Conflicting pending dependency updates require manual review"
   elif _dependency_update_pending "${pending_args[@]}"; then
@@ -470,7 +470,7 @@ function _update_packages_scope {
     info "Resuming validated $label update"
   else
     _require_clean_dependency_tree
-    _refresh_dependency_set "$refresh" \
+    _refresh_dependency_set "$refresh" "$scope" \
       || fail "$label refresh failed; working tree was not changed"
     _write_dependency_update_marker "$marker" "$DEPENDENCY_UPDATE_FINGERPRINT" \
       || fail "Failed to record validated $label update"

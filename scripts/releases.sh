@@ -676,7 +676,7 @@ function _validate_pending_dependency_update {
 }
 
 function _refresh_dependency_set {
-  local updater="${1:-_refresh_all_dependency_set}" source_dir="$DOTFILES_DIR" result status=0
+  local updater="${1:-_refresh_all_dependency_set}" scope="${2:-full}" source_dir="$DOTFILES_DIR" result status=0
   DEPENDENCY_UPDATE_FINGERPRINT=
   _dependency_git_repository || return 1
   result="$(mktemp)" || return 1
@@ -703,7 +703,7 @@ function _refresh_dependency_set {
       _dependency_update_fingerprint > "$base_fingerprint" || exit 1
       "$updater" || exit 1
       update_status="$(git status --porcelain)" || exit 1
-      [[ -z "$update_status" ]] || _validate_dependency_update || exit 1
+      [[ -z "$update_status" ]] || _validate_dependency_update "$scope" || exit 1
       _dependency_update_fingerprint > "$fingerprint" || exit 1
       git add -A || exit 1
       git diff --cached --binary HEAD -- > "$patch" || exit 1
@@ -778,7 +778,7 @@ function _publish_dependency_update {
   if (( behind > 0 )); then
     git -C "$DOTFILES_DIR" rebase "$upstream" \
       || fail "Dependency update rebase needs manual conflict resolution"
-    _validate_dependency_update \
+    _validate_dependency_update "$scope" HEAD^ \
       || fail "Rebased dependency checks failed; refusing publication"
   fi
   git -C "$DOTFILES_DIR" push "$remote" "HEAD:${merge#refs/heads/}" \
@@ -796,10 +796,11 @@ function _require_clean_dependency_tree {
 
 function _validate_dependency_update {
   if [[ "$DRY" == "true" ]]; then
-    info "Would run full dependency checks before activation"
+    info "Would run focused dependency checks before activation"
     return
   fi
-  "$DOTFILES_DIR/scripts/check.sh" || fail "Dependency checks failed; refusing activation"
+  bash "$DOTFILES_DIR/scripts/check-update.sh" "${1:-full}" "${2:-HEAD}" \
+    || fail "Dependency checks failed; refusing activation"
 }
 
 function _approve_dependency_update {

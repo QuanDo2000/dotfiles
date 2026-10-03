@@ -277,7 +277,7 @@ test_dry_run_update_command() {
   for dependency in "Obsidian Headless" "Pi extension closure" "WebCord" "Anki Zoom" "Windows Anki add-ons" "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
     assert_contains "$output" "Would update $dependency"
   done
-  assert_contains "$output" "Would run full dependency checks before activation"
+  assert_contains "$output" "Would run focused dependency checks before activation"
   assert_not_contains "$output" "language toolchains"
 }
 

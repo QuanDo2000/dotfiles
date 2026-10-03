@@ -300,8 +300,13 @@ sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
 ```
 
 After provisioning, use `dotfile update` to update managed dependencies. On Unix,
-it refreshes every repository-managed pin, runs full checks, shows the resulting
-uncommitted diff, then automatically approves and activates validated changes.
+it refreshes every repository-managed pin, runs focused update checks, shows the
+resulting uncommitted diff, then automatically approves and activates validated changes.
+The update gate evaluates the current machine's profile, builds changed custom
+packages, and runs relevant pin/runtime tests. AI-only pin updates omit unrelated
+Neovim and desktop checks. Flake updates also check profile roles and Neovim;
+changes outside recognized pin surfaces fall back to the full repository gate.
+`dotfile check` and CI retain comprehensive checks.
 After successful activation, it commits the validated changes, fetches and rebases
 if the upstream advanced, reruns checks on the rebased tree, and pushes the current
 branch only if those checks pass. Existing unpublished
