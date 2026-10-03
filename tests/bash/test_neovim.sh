@@ -27,29 +27,10 @@ test_neovim_explicit_sync_fails_closed() {
   assert_contains "$output" "NVIM_SYNC_OK"
 }
 
-test_neovim_dev_shell_provisions_parser_builder() {
-  assert_contains "$(<"$REPO_DIR/flake.nix")" "tree-sitter"
-}
-
-test_neovim_provisions_nix_linter() {
-  assert_contains "$(<"$REPO_DIR/config/home.nix")" "statix"
-}
-
-test_neovim_provisions_native_node_for_mason_npm_packages() {
-  local home
-  home="$(<"$REPO_DIR/config/home.nix")"
-
-  assert_contains "$home" $'    nodejs_26\n'
-}
-
-test_neovim_provisions_configured_formatters() {
-  local home pins
-  home="$(<"$REPO_DIR/config/home.nix")"
-  pins="$REPO_DIR/config/shared/config/nvim/mason-tools.json"
+test_neovim_formatter_pins_match_tool_ownership() {
+  local pins="$REPO_DIR/config/shared/config/nvim/mason-tools.json"
   assert_equals "string" "$(jq -r '.tools.prettier | type' "$pins")"
   assert_equals "null" "$(jq -r '.tools.nixfmt' "$pins")"
-  assert_contains "$home" $'    nixfmt\n'
-  assert_not_contains "$home" "nixfmt-rfc-style"
 }
 
 test_neovim_pins_mason_registry_and_tool_versions() {
@@ -60,18 +41,6 @@ test_neovim_pins_mason_registry_and_tool_versions() {
     (.tools | type == "object" and length > 0) and
     (.tools | all(.[]; type == "string" and length > 0))
   ' "$pins"
-}
-
-test_neovim_owns_only_used_build_and_mason_tools() {
-  local config home
-  config="$(<"$REPO_DIR/config/shared/config/nvim/init.lua")"
-  home="$(<"$REPO_DIR/config/home.nix")"
-
-  assert_not_contains "$config" '"shellcheck", "shfmt"'
-  assert_not_contains "$home" "lua5_1"
-  assert_not_contains "$home" "luarocks"
-  assert_contains "$home" "tree-sitter"
-  assert_contains "$home" "unzip"
 }
 
 test_install_packages_syncs_neovim() {

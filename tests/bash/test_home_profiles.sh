@@ -46,7 +46,7 @@ assert_line_absent() { grep -Fxq "$2" <<< "$1" && echo "  unexpected line presen
 _test_present() { local text="$1" item; shift; for item in "$@"; do assert_line_present "$text" "$item"; done; }
 _test_absent() { local text="$1" item; shift; for item in "$@"; do assert_line_absent "$text" "$item"; done; }
 
-common_packages=(bash-language-server nil odin pi-coding-agent ShellCheck statix rustc cargo rustfmt clippy)
+common_packages=(bash-language-server nil nixfmt odin pi-coding-agent ShellCheck statix rustc cargo rustfmt clippy)
 desktop_packages=(ghostty google-chrome grim hyprshutdown pavucontrol playerctl rbw slurp wl-clipboard)
 system_desktop_packages=(pinentry-gnome3 thunar xarchiver)
 personal_packages=(anki-with-addons obsidian webcord)
@@ -106,6 +106,13 @@ test_unix_profiles_provide_node26_and_bun() {
     summary="$(_profile_summary "$profile")"
     assert_equals '["26"]' "$(jq -c '.nodeVersions | map(split(".")[0])' <<< "$summary")"
     assert_line_present "$(jq -r '.packages[]' <<< "$summary")" bun
+  done
+}
+
+test_neovim_profiles_provide_parser_and_archive_tools() {
+  local profile
+  for profile in linux arch-server nixos darwin; do
+    _test_present "$(_profile_lines "$profile" neovimPackages)" tree-sitter unzip
   done
 }
 
