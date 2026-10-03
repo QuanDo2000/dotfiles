@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-01-sonic-ghoul",
-  "registrySha256": "16dcc6a33d69c10242e31b4a6529a322587b427a8d35468fe05c168b69ac058f",
+  "registryVersion": "2026-10-03-unusual-penguin",
+  "registrySha256": "9d1c510acf21b6479e22404aa34989cb0d97f4d3724d685eca57645b04b217c5",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
