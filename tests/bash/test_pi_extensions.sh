@@ -47,22 +47,15 @@ test_pi_extension_lock_has_integrity_for_every_tarball() {
   assert_equals 0 "$(jq '[.packages | to_entries[] | select(.key != "" and (.value.link != true)) | select((.value.resolved | type) != "string" or (.value.integrity | startswith("sha512-") | not))] | length' "$extension_dir/package-lock.json")"
 }
 
-test_pi_extensions_nix_package_disables_scripts() {
-  local package home flake check
-  package="$(<"$REPO_DIR/packages/pi-extensions.nix")"
-  home="$(<"$REPO_DIR/config/home.nix")"
-  flake="$(<"$REPO_DIR/flake.nix")"
-  check="$(<"$REPO_DIR/scripts/check.sh")"
-
-  assert_contains "$package" 'pi-extensions-release.json'
-  assert_contains "$package" 'npmDepsHash = "sha256-'
-  assert_contains "$package" '"--ignore-scripts"'
-  assert_contains "$package" 'ln -s ../node_modules/.bin/qmd "$out/bin/qmd"'
-  assert_contains "$home" 'locked-extensions/releases/${piExtensionsReleaseId}'
-  assert_contains "$home" 'pkgs.pi-extensions'
-  assert_contains "$flake" 'packages.x86_64-linux.pi-extensions'
-  assert_contains "$flake" 'packages.aarch64-darwin.pi-extensions'
-  assert_contains "$check" '"$flake#pi-extensions"'
+test_pi_extensions_evaluated_packages_disable_scripts_and_require_install_checks() {
+  local system safe
+  for system in x86_64-linux aarch64-darwin; do
+    safe="$(command nix eval --json "path:$REPO_DIR#packages.$system.pi-extensions" --apply '
+      package: builtins.elem "--ignore-scripts" package.npmFlags
+        && package.doInstallCheck && package.npmDeps.outputHash != ""
+    ')"
+    assert_equals true "$safe"
+  done
 }
 
 
