@@ -1485,15 +1485,6 @@ function Verify {
         }
     }
 
-    Info "Verifying neovim config..."
-    $nvimPath = "$env:LOCALAPPDATA\nvim"
-    if (Test-Path (Join-Path $nvimPath "init.lua")) {
-        Success "Neovim config installed"
-    } else {
-        FailSoft "Neovim config not found at $nvimPath"
-        $errors++
-    }
-
     Write-Host ""
     if ($errors -eq 0) {
         $script:VerifyFailed = $false
