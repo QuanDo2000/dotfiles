@@ -206,6 +206,20 @@ test_raw_neovim_cache_serializes_publication() {
   assert_file_exists "$root/new/complete"
 }
 
+test_raw_neovim_parse_only_does_not_require_installed_plugins() {
+  is_windows_bash && return 0
+  local data="$TEST_TMPDIR/parse-only" source_lazy output status=0
+  source_lazy="${LAZY_NVIM_PATH:-$ORIG_HOME/.local/share/nvim/site/pack/hm/start/lazy.nvim}"
+  mkdir -p "$data/config" "$data/data/nvim/site/pack/pins/start"
+  cp -R "$REPO_DIR/config/shared/config/nvim" "$data/config/nvim"
+  ln -s "$source_lazy" "$data/data/nvim/site/pack/pins/start/lazy.nvim"
+  output="$(RAW_CONFIG_PARSE_ONLY=1 DOTFILE_NVIM_SYNC=1 XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
+    nvim --headless -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1)" || status=$?
+  assert_equals 0 "$status"
+  assert_contains "$output" RAW_CONFIG_OK
+  [[ ! -d "$data/data/nvim/lazy/snacks.nvim" ]] || echo '  parse-only startup installed plugins' >> "$ERROR_FILE"
+}
+
 test_raw_neovim_headless_config() {
   is_windows_bash && return 0
   local data source_lazy output status lock_hash cache_base cache_root cached_plugins marker lazy_dir lazy_package bigfile

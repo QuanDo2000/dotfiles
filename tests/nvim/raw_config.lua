@@ -70,14 +70,6 @@ for _, lhs in ipairs({ " <Tab>l", " <Tab>o", " <Tab>f" }) do
 end
 
 local lazy = require("lazy.core.config")
-local reviewed_lock = vim.json.decode(table.concat(vim.fn.readfile(lazy.options.lockfile), "\n"))
-for name, pin in pairs(reviewed_lock) do
-  if name ~= "lazy.nvim" then
-    local plugin = assert(lazy.plugins[name], name .. " locked plugin missing")
-    local result = vim.system({ "git", "-C", plugin.dir, "rev-parse", "HEAD" }, { text = true }):wait()
-    assert(result.code == 0 and vim.trim(result.stdout) == pin.commit, name .. " does not match reviewed lock")
-  end
-end
 assert(lazy.options.install.missing == false, "ordinary startup must not install plugins")
 if not windows then
   assert(not vim.o.runtimepath:find(vim.fn.stdpath("data") .. "/lazy/lazy.nvim", 1, true), "Unix must use Nix-managed lazy.nvim")
@@ -105,6 +97,14 @@ assert(vim.env.PATH:match("^" .. vim.pesc(vim.fn.stdpath("data") .. "/mason/bin"
 if vim.env.RAW_CONFIG_PARSE_ONLY == "1" then
   print("RAW_CONFIG_OK")
   return
+end
+local reviewed_lock = vim.json.decode(table.concat(vim.fn.readfile(lazy.options.lockfile), "\n"))
+for name, pin in pairs(reviewed_lock) do
+  if name ~= "lazy.nvim" then
+    local plugin = assert(lazy.plugins[name], name .. " locked plugin missing")
+    local result = vim.system({ "git", "-C", plugin.dir, "rev-parse", "HEAD" }, { text = true }):wait()
+    assert(result.code == 0 and vim.trim(result.stdout) == pin.commit, name .. " does not match reviewed lock")
+  end
 end
 require("lazy").load({ plugins = { "nvim-lspconfig" } })
 local servers = { "bashls", "jsonls", "lua_ls", "marksman", "taplo", "yamlls" }
