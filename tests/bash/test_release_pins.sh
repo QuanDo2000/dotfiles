@@ -1148,6 +1148,42 @@ EOF
   unset -f curl nix tar
 }
 
+test_pi_generates_lock_when_archive_omits_shrinkwrap() {
+  local fixture="$TEST_TMPDIR/pi-fixture" archive="$TEST_TMPDIR/pi.tgz"
+  local lock="$TEST_TMPDIR/pi-lock.json"
+  mkdir -p "$fixture/package"
+  printf '%s\n' '{"name":"@earendil-works/pi-coding-agent","version":"1.0.1","dependencies":{},"devDependencies":{"unused":"1.0.0"}}' > "$fixture/package/package.json"
+  tar -czf "$archive" -C "$fixture" package
+  nix() {
+    assert_equals "null" "$(jq .devDependencies package.json)"
+    printf '%s\n' "$*" > "$TEST_TMPDIR/pi-lock-command"
+    printf '%s\n' '{"version":"1.0.1","lockfileVersion":3,"packages":{}}' > package-lock.json
+  }
+
+  _download_pi_package_lock 1.0.1 "$lock" "$archive"
+
+  assert_equals "1.0.1" "$(jq -r .version "$lock")"
+  assert_contains "$(<"$TEST_TMPDIR/pi-lock-command")" "--ignore-scripts"
+  assert_contains "$(<"$TEST_TMPDIR/pi-lock-command")" "--no-audit"
+  assert_contains "$(<"$TEST_TMPDIR/pi-lock-command")" "--omit=dev"
+  unset -f nix
+}
+
+test_pi_lock_generation_failure_is_reported() {
+  local fixture="$TEST_TMPDIR/pi-fixture" archive="$TEST_TMPDIR/pi.tgz"
+  local output status=0
+  mkdir -p "$fixture/package"
+  printf '%s\n' '{"name":"@earendil-works/pi-coding-agent","version":"1.0.1"}' > "$fixture/package/package.json"
+  tar -czf "$archive" -C "$fixture" package
+  nix() { return 1; }
+
+  output="$(_download_pi_package_lock 1.0.1 "$TEST_TMPDIR/pi-lock.json" "$archive" 2>&1)" || status=$?
+
+  assert_equals "1" "$status"
+  assert_contains "$output" "Failed to generate Pi package lock"
+  unset -f nix
+}
+
 test_obsidian_headless_generates_lock_when_archive_omits_it() {
   local lock="$TEST_TMPDIR/generated-lock.json"
   curl() {

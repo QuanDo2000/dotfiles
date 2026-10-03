@@ -125,8 +125,20 @@ function _download_pi_package_lock {
     curl -fsSL "$(_pi_archive_url "$version")" -o "$tarball" \
       || { rm -rf "$tmp_dir"; fail "Failed to download Pi archive"; }
   fi
-  tar -xOzf "$tarball" package/npm-shrinkwrap.json > "$lock_file" \
-    || { rm -rf "$tmp_dir"; fail "Failed to extract Pi package lock"; }
+  if ! tar -xOzf "$tarball" package/npm-shrinkwrap.json > "$lock_file" 2>/dev/null; then
+    tar -xOzf "$tarball" package/package.json > "$tmp_dir/package.json" \
+      || { rm -rf "$tmp_dir"; fail "Failed to extract Pi package metadata"; }
+    # Match pi-agent.nix: development dependencies are not part of the installed CLI.
+    jq 'del(.devDependencies)' "$tmp_dir/package.json" > "$tmp_dir/runtime.json" \
+      && mv "$tmp_dir/runtime.json" "$tmp_dir/package.json" \
+      || { rm -rf "$tmp_dir"; fail "Failed to prepare Pi package metadata"; }
+    (
+      cd "$tmp_dir" \
+        && nix develop "path:$DOTFILES_DIR" -c npm install --package-lock-only --ignore-scripts --no-audit --omit=dev >/dev/null
+    ) || { rm -rf "$tmp_dir"; fail "Failed to generate Pi package lock"; }
+    cp "$tmp_dir/package-lock.json" "$lock_file" \
+      || { rm -rf "$tmp_dir"; fail "Failed to stage Pi package lock"; }
+  fi
   rm -rf "$tmp_dir"
 
   while IFS=$'\t' read -r key package package_version; do
