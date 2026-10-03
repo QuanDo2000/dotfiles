@@ -1,6 +1,7 @@
 [user]
     name = Quan Do
     email = minhquand3@gmail.com
+    signingkey = ~/.ssh/id_ed25519.pub
 [core]
     ignorecase = false
     editor = nvim
@@ -9,8 +10,8 @@
 [gpg]
     format = ssh
 
-[include]
-    path = ~/.gitconfig.local
-    path = ~/.gitconfig.windows
 [tag]
     gpgsign = true
+[include]
+    path = ~/.gitconfig.windows
+    path = ~/.gitconfig.local

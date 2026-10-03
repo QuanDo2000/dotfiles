@@ -21,7 +21,7 @@ After explicit user approval, call `autoresearch_start` alone with a `goal` cont
    - Linux/macOS: executable `.auto/measure.sh` and `.auto/checks.sh` using `set -euo pipefail`.
    - Windows: `.auto/measure.ps1` and `.auto/checks.ps1` using `$ErrorActionPreference = 'Stop'`.
    - The measure script must output `METRIC <metricName>=<number>`; the checks script must run the smallest authoritative correctness checks.
-4. If a Git setup commit fails because signing is locked, stop and ask the user to run `printf test | gpg --clearsign >/dev/null`. For JJ, report the configured signing failure. Never disable signing.
+4. If Git or JJ signing fails, stop and report the effective backend and public-key path separately from key availability/agent unlock failures. Defaults are SSH with `~/.ssh/id_ed25519.pub` (JJ behavior `own`); local overrides may differ. Ask the user to restore/unlock the intended existing identity in their own terminal. Do not assume the first available key, provision keys, change authentication, or recommend GPG unlock probes for SSH. Only an explicitly configured OpenPGP backend warrants a targeted GPG/pinentry check. Never disable signing; config loading alone does not establish signing availability or cryptographic validity. Preserve task-specific review/check/delivery gates.
 
 ## Commands
 

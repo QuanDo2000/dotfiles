@@ -3,7 +3,9 @@ name = "Quan Do"
 email = "minhquand3@gmail.com"
 
 [signing]
-backend = "gpg"
+backend = "ssh"
+key = "~/.ssh/id_ed25519.pub"
+behavior = "own"
 
 [ui]
 editor = "nvim"

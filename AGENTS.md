@@ -10,7 +10,9 @@ Personal Linux/macOS/Windows provisioning. Unix uses Nix/Home Manager; Windows u
 - `dotfile -d <command>`: dry run; `-f`: force overwrite.
 - Windows retains its own `verify` command and runs symlink/extra setup inside `all`.
 
-If signing hangs/fails for a passphrase, never bypass signing by default. Ask the user to run `printf test | gpg --clearsign >/dev/null`, then retry after confirmation.
+Git and JJ default to SSH signing with `~/.ssh/id_ed25519.pub`; Git commits/tags require signing and JJ uses `signing.behavior = "own"`. This public path does not provision a private key. On failure, distinguish effective backend/path configuration, availability of the matching private key through the intended agent, and agent unlock state. Ask the user to restore/unlock their intended existing identity; never select the first key, create keys, change authentication, or bypass signing. Config checks are not cryptographic verification; verify actual Git/JJ signatures separately before delivery.
+
+Git's `~/.gitconfig.local` include follows managed defaults (and the Windows include), so user-owned values override them; repository config has higher precedence. JJ uses native user `conf.d/*.toml` overrides after `config.toml`, then repository config; preserve existing machine-local settings, including `keep`. Never edit live overrides as part of a source-default change. For explicitly chosen OpenPGP overrides and backend-specific diagnosis, see `config/shared/ai/skills/dotfiles-health-checks/references/headless-git-publishing.md`. GPG unlock probes do not diagnose SSH signing.
 
 ## Ownership and Entry Points
 
