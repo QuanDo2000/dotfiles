@@ -11,11 +11,16 @@ setup() {
     cp "$REPO_DIR/scripts/check-update.sh" "$UPDATE_ROOT/scripts/"
   fi
   printf 'printf "full-gate\\n" >> "$UPDATE_CALLS"\n' > "$UPDATE_ROOT/scripts/check.sh"
-  printf 'printf "tests %%s\\n" "$*" >> "$UPDATE_CALLS"\nexit "${UPDATE_TEST_EXIT:-0}"\n' > "$UPDATE_ROOT/tests/bash/runner.sh"
+  printf 'printf "tests %%s\\n" "$*" >> "$UPDATE_CALLS"\nprintf "test-env %%s\\n" "${UPDATE_CANDIDATE_ENV:-old}" >> "$UPDATE_CALLS"\nexit "${UPDATE_TEST_EXIT:-0}"\n' > "$UPDATE_ROOT/tests/bash/runner.sh"
   cat > "$UPDATE_ROOT/bin/nix" <<'SH'
 #!/usr/bin/env bash
 printf 'nix %s\n' "$*" >> "$UPDATE_CALLS"
 [[ "$1" != "${UPDATE_FAIL:-}" ]] || exit 42
+if [[ "$1" == develop ]]; then
+  export UPDATE_CANDIDATE_ENV=candidate
+  shift 3
+  exec "$@"
+fi
 if [[ "$1" == eval && "$*" == *--file* ]]; then printf 'fixture'; fi
 if [[ "$1" == build ]]; then printf '/fixture-package\n'; fi
 SH
@@ -65,6 +70,9 @@ test_update_gate_flake_changes_cover_custom_packages_and_roles() {
   assert_exit_code 0 _update_gate full
   local calls
   calls="$(<"$UPDATE_CALLS")"
+  assert_contains "$calls" "nix develop path:$UPDATE_ROOT -c"
+  assert_contains "$calls" 'test-env candidate'
+  assert_not_contains "$calls" 'test-env old'
   assert_contains "$calls" 'test_home_profiles.sh'
   assert_contains "$calls" 'test_neovim.sh'
   assert_contains "$calls" '#pi-extensions'
@@ -104,4 +112,8 @@ test_update_gate_failures_stop_validation() {
   assert_exit_code 42 env UPDATE_FAIL=build PATH="$UPDATE_ROOT/bin:$PATH" bash "$UPDATE_ROOT/scripts/check-update.sh" ai
   assert_exit_code 1 _update_gate invalid
   assert_exit_code 1 _update_gate ai bad-revision
+  : > "$UPDATE_CALLS"
+  _update_change flake.lock
+  assert_exit_code 42 env UPDATE_FAIL=develop PATH="$UPDATE_ROOT/bin:$PATH" bash "$UPDATE_ROOT/scripts/check-update.sh" full
+  assert_not_contains "$(<"$UPDATE_CALLS")" 'tests '
 }
