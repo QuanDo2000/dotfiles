@@ -304,7 +304,9 @@ it refreshes every repository-managed pin, runs focused update checks, shows the
 resulting uncommitted diff, then automatically approves and activates validated changes.
 The update gate evaluates the current machine's profile, builds changed custom
 packages, and runs relevant pin/runtime tests. AI-only pin updates omit unrelated
-Neovim and desktop checks. Flake updates also check profile roles and Neovim;
+Neovim and desktop checks. Unchanged updater/merge unit tests run in CI and the
+full gate, and during flake updates—not ordinary pin-only updates.
+Flake updates also check profile roles and Neovim;
 changes outside recognized pin surfaces fall back to the full repository gate.
 `dotfile check` and CI retain comprehensive checks.
 After successful activation, it commits the validated changes, fetches and rebases
