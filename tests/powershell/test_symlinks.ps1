@@ -48,12 +48,57 @@ function test_windows_neovim_links_mason_tool_pins {
     }
 }
 
-function test_windows_gitconfig_uses_platform_gpg_program {
-    $shared = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\shared\.gitconfig')
-    $windows = Get-Content -Raw (Join-Path $script:DotfilesDir 'config\windows\.gitconfig')
-
-    Assert-False ($shared -match '(?m)^\s*program\s*=\s*gpg\s*$') 'shared config must not override the platform GPG program'
-    Assert-Contains $windows 'C:/Program Files/GnuPG/bin/gpg.exe'
+function test_windows_gitconfig_native_ssh_defaults_and_overrides {
+    # Real Git, isolated HOME; this tests config consumption, not signing.
+    $git = (Get-Command git -CommandType Application -ErrorAction Stop |
+        Where-Object { Test-Path -LiteralPath $_.Source -PathType Leaf } |
+        Select-Object -First 1).Source
+    if (-not $git) { throw 'No existing native Git application found' }
+    $saved = @{}
+    $names = @('GIT_CONFIG_GLOBAL', 'GIT_CONFIG_SYSTEM', 'GIT_CONFIG_NOSYSTEM', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_PARAMETERS', 'XDG_CONFIG_HOME')
+    foreach ($name in $names) {
+        $saved[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+        Remove-Item "Env:$name" -ErrorAction SilentlyContinue
+    }
+    try {
+        $env:GIT_CONFIG_NOSYSTEM = '1'
+        $env:GIT_CONFIG_GLOBAL = Join-Path $env:HOME '.gitconfig'
+        $env:XDG_CONFIG_HOME = Join-Path $env:HOME '.config'
+        Copy-Item (Join-Path $script:RepoDir 'config/shared/.gitconfig') (Join-Path $env:HOME '.gitconfig')
+        Copy-Item (Join-Path $script:RepoDir 'config/windows/.gitconfig') (Join-Path $env:HOME '.gitconfig.windows')
+        $expected = @{
+            'gpg.format' = 'ssh'
+            'user.signingkey' = '~/.ssh/id_ed25519.pub'
+            'commit.gpgsign' = 'true'
+            'tag.gpgsign' = 'true'
+            'windows.appendAtomically' = 'false'
+        }
+        foreach ($key in $expected.Keys) {
+            $value = & $git config --global --includes --get $key
+            Assert-Equals 0 $LASTEXITCODE
+            Assert-Equals $expected[$key] $value
+        }
+        $value = & $git config --global --includes --path --get user.signingkey
+        Assert-Equals 0 $LASTEXITCODE
+        Assert-Equals ((Join-Path $env:HOME '.ssh/id_ed25519.pub') -replace '\\', '/') ($value -replace '\\', '/')
+        $value = & $git config --global --includes --get gpg.program
+        Assert-Equals 1 $LASTEXITCODE
+        $local = Join-Path $env:HOME '.gitconfig.local'
+        & $git config --file $local user.signingkey '~/.ssh/approved-override.pub'
+        Assert-Equals 0 $LASTEXITCODE
+        & $git config --file $local windows.appendAtomically true
+        Assert-Equals 0 $LASTEXITCODE
+        $value = & $git config --global --includes --get user.signingkey
+        Assert-Equals 0 $LASTEXITCODE
+        Assert-Equals '~/.ssh/approved-override.pub' $value
+        $value = & $git config --global --includes --bool --get windows.appendAtomically
+        Assert-Equals 0 $LASTEXITCODE
+        Assert-Equals 'true' $value
+    } finally {
+        foreach ($name in $names) {
+            [Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process')
+        }
+    }
 }
 
 function test_windows_gpg_agent_caches_passphrase_for_eight_hours {
