@@ -11,41 +11,124 @@ teardown() {
   cleanup_test_env
 }
 
-test_ci_bash_jobs_share_pinned_environments_and_parallelize_linux_checks() {
-  local workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+# Execute the real Bash job blocks, substituting only costly tool boundaries.
+# debt: replay supports unconditional Bash run steps; extend it if these jobs
+# gain per-step conditions, environment overrides, or another shell.
+_ci_run_job() (
+  local job="$1" root="$2"
+  nix() {
+    printf 'nix %s\n' "$*" >> "$CI_CALLS"
+    if [[ "$1" == develop && "$3" == -c ]]; then
+      shift 3
+      "$@"
+    else
+      [[ "$1" != "$CI_FAIL" ]]
+    fi
+  }
+  shellcheck() {
+    printf 'shellcheck %s\n' "$*" >> "$CI_CALLS"
+    [[ "$CI_FAIL" != shellcheck ]]
+  }
+  export -f nix shellcheck
+  python3 - "$REPO_DIR/.github/workflows/test.yml" "$job" > "$root/job.sh" <<'PY' || exit 1
+import sys
+from pathlib import Path
+import yaml
+job = yaml.safe_load(Path(sys.argv[1]).read_text())["jobs"][sys.argv[2]]
+print("\n".join(step["run"] for step in job["steps"] if "run" in step))
+PY
+  cd "$root" || exit 1
+  bash -e -o pipefail job.sh
+)
 
-  assert_contains "$workflow" $'  bash-linux:\n    needs: changes'
-  assert_contains "$workflow" 'nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh test_release_pins.sh'
-  assert_contains "$workflow" 'nix develop . -c bash -c'
-  assert_equals 1 "$(grep -c 'neovim_pid=\$!' <<< "$workflow")"
-  assert_equals 1 "$(grep -c 'core_pid=\$!' <<< "$workflow")"
-  assert_equals 1 "$(grep -c 'shellcheck_pid=\$!' <<< "$workflow")"
-  assert_contains "$workflow" 'wait "$shellcheck_pid"'
-  assert_contains "$workflow" 'darwinConfigurations.mac.system.drvPath'
-  assert_contains "$workflow" 'nix build .#pi-extensions --no-link'
+test_ci_bash_jobs_use_pinned_tools_and_propagate_each_failure() {
+  local root="$TEST_TMPDIR/ci" job failure failures
+  export CI_CALLS="$TEST_TMPDIR/ci-calls" CI_FAIL=
+  mkdir -p "$root/tests/bash"
+  touch "$root/tests/bash/test_neovim.sh" "$root/tests/bash/test_core.sh"
+  cat > "$root/tests/bash/runner.sh" <<'SH'
+printf 'tests %s\n' "$*" >> "$CI_CALLS"
+kind=core
+[[ "$1" != test_neovim.sh ]] || kind=neovim
+[[ "$CI_FAIL" != tests && "$CI_FAIL" != "$kind" ]]
+SH
+  for job in bash-linux bash-macos nix; do
+    CI_FAIL=; : > "$CI_CALLS"
+    assert_exit_code 0 _ci_run_job "$job" "$root"
+    local calls
+    calls="$(<"$CI_CALLS")"
+    case "$job" in
+      bash-linux)
+        assert_contains "$calls" 'nix develop . -c bash'
+        assert_contains "$calls" 'shellcheck -S warning'
+        assert_contains "$calls" 'tests test_neovim.sh'
+        assert_contains "$calls" 'tests test_core.sh'
+        failures='shellcheck neovim core' ;;
+      bash-macos)
+        assert_contains "$calls" 'nix develop .#ci -c bash'
+        assert_contains "$calls" 'nix eval --raw .#darwinConfigurations.mac.system.drvPath'
+        assert_contains "$calls" 'nix build .#pi-extensions --no-link'
+        failures='tests eval build' ;;
+      nix)
+        assert_contains "$calls" 'nix flake check --no-build --all-systems'
+        assert_contains "$calls" 'nix build .#obsidian-headless .#pi-agent .#pi-extensions --no-link'
+        failures='flake build' ;;
+    esac
+    for failure in $failures; do
+      CI_FAIL="$failure"
+      assert_exit_code 1 _ci_run_job "$job" "$root"
+    done
+  done
+}
+
+test_ci_workflow_preserves_routing_permissions_and_bounds() {
+  python3 - "$REPO_DIR/.github/workflows/test.yml" <<'PY'
+import sys
+from pathlib import Path
+import yaml
+workflow = yaml.safe_load(Path(sys.argv[1]).read_text())
+# PyYAML's YAML 1.1 loader reads the GitHub "on" key as boolean True.
+events = workflow.get("on", workflow.get(True))
+assert events["push"]["branches"] == ["main"]
+assert events["pull_request"]["branches"] == ["main"]
+assert events["schedule"]
+assert workflow["permissions"] == {"contents": "read"}
+assert workflow["concurrency"]["cancel-in-progress"] is True
+jobs = workflow["jobs"]
+for name, output in (("bash-linux", "linux"), ("bash-macos", "macos"),
+                     ("powershell", "windows"), ("nix", "nix")):
+    job = jobs[name]
+    needs = job["needs"]
+    assert "changes" in (needs if isinstance(needs, list) else [needs]), name
+    assert job["if"] == "${{ github.event_name != 'pull_request' || needs.changes.outputs." + output + " == 'true' }}", name
+    assert jobs["changes"]["outputs"][output] == "${{ steps.filter.outputs." + output + " }}", output
+steps = jobs["changes"]["steps"]
+checkout = next(step for step in steps if step.get("uses", "").startswith("actions/checkout@"))
+filter_step = next(step for step in steps if step.get("id") == "filter")
+assert checkout["with"]["fetch-depth"] == 0
+for step in (checkout, filter_step):
+    assert step["if"] == "${{ github.event_name == 'pull_request' }}"
+for variable, expression in (("BASE_SHA", "${{ github.event.pull_request.base.sha }}"),
+                             ("HEAD_SHA", "${{ github.event.pull_request.head.sha }}")):
+    assert filter_step["env"][variable] == expression, variable
+for name, job in jobs.items():
+    assert type(job["timeout-minutes"]) is int and job["timeout-minutes"] > 0, name
+    assert job.get("permissions", workflow["permissions"]) == {"contents": "read"}, name
+    for step in job.get("steps", []):
+        if step.get("uses", "").startswith("cachix/cachix-action@"):
+            options = step["with"]
+            assert options["name"] == "${{ vars.CACHIX_CACHE_NAME }}"
+            assert options["authToken"] == "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}"
+            assert options["skipPush"] == "${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}"
+PY
 }
 
 test_ci_filters_pull_requests_but_runs_full_main_and_schedule() {
-  local workflow filter output
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
+  local filter output
   filter="$REPO_DIR/scripts/ci_paths.sh"
 
   assert_file_exists "$filter"
   [ -f "$filter" ] || return
-  assert_not_contains "$workflow" 'dorny/paths-filter'
-  assert_contains "$workflow" $'schedule:\n    - cron:'
-  assert_contains "$workflow" "if: \${{ github.event_name == 'pull_request' }}"
-  assert_contains "$workflow" 'fetch-depth: 0'
-  assert_contains "$workflow" 'git diff --name-only --no-renames'
-  assert_contains "$workflow" 'bash scripts/ci_paths.sh'
-  assert_equals 4 "$(grep -c 'needs: changes' <<< "$workflow")"
-  assert_equals 4 "$(grep -c "github.event_name != 'pull_request' || needs.changes.outputs" <<< "$workflow")"
-  assert_contains "$workflow" "linux: \${{ steps.filter.outputs.linux }}"
-  assert_contains "$workflow" "macos: \${{ steps.filter.outputs.macos }}"
-  assert_contains "$workflow" "windows: \${{ steps.filter.outputs.windows }}"
-  assert_contains "$workflow" "nix: \${{ steps.filter.outputs.nix }}"
-
   output="$(printf '%s\n' docs/note.md | bash "$filter")"
   assert_equals $'linux=false\nmacos=false\nwindows=false\nnix=false' "$output"
   output="$(printf '%s\n' dotfile.ps1 | bash "$filter")"
@@ -83,33 +166,19 @@ test_ci_filters_known_platform_owned_paths_without_skipping_shared_consumers() {
 }
 
 test_ci_dev_shell_includes_script_dependencies() {
-  local flake
-  flake="$(<"$REPO_DIR/flake.nix")"
-
-  assert_contains "$flake" "jq"
-  assert_contains "$flake" 'LAZY_NVIM_PATH = "${pkgs.vimPlugins.lazy-nvim}";'
-  local dev_shell
-  dev_shell="$(sed -n '/devShell =/,/^[[:space:]]*};/p' "$REPO_DIR/flake.nix")"
-  assert_contains "$dev_shell" 'zsh'
-  assert_contains "$dev_shell" 'rclone'
-  assert_contains "$flake" 'devShells.aarch64-darwin.ci = ciShell darwinPkgs;'
-  assert_contains "$flake" 'devShells.x86_64-linux.ci = ciShell linuxPkgs;'
-  assert_contains "$flake" 'ciShell = pkgs: pkgs.mkShellNoCC {'
-  local ci_shell
-  ci_shell="$(sed -n '/ciShell =/,/^[[:space:]]*};/p' "$REPO_DIR/flake.nix")"
-  assert_contains "$ci_shell" 'python3'
-  assert_contains "$ci_shell" 'tree-sitter'
-  assert_not_contains "$ci_shell" 'pi-agent'
-}
-
-test_ci_runs_direct_nix_checks_without_duplicate_home_evaluations() {
-  local workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
-
-  assert_contains "$workflow" "nix flake check --no-build --all-systems"
-  assert_not_contains "$workflow" 'Evaluate Home Manager configurations'
-  assert_not_contains "$workflow" 'homeConfigurations.\"$username@linux\".activationPackage.drvPath'
-  assert_contains "$workflow" 'nix build .#obsidian-headless .#pi-agent .#pi-extensions --no-link'
+  local system default_shell ci_shell
+  for system in x86_64-linux aarch64-darwin; do
+    default_shell="$(command nix eval --json "path:$REPO_DIR#devShells.$system.default" --apply '
+      shell: { packages = map (p: p.pname or (builtins.parseDrvName p.name).name) shell.nativeBuildInputs;
+               lazy = builtins.toString shell.LAZY_NVIM_PATH; }
+    ')"
+    assert_equals true "$(jq '(["jq", "python3", "zsh", "rclone", "ShellCheck"] - .packages) | length == 0' <<< "$default_shell")"
+    assert_contains "$(jq -r .lazy <<< "$default_shell")" '-vimplugin-lazy.nvim-'
+    ci_shell="$(command nix eval --json "path:$REPO_DIR#devShells.$system.ci" --apply '
+      shell: map (p: p.pname or (builtins.parseDrvName p.name).name) shell.nativeBuildInputs
+    ')"
+    assert_equals true "$(jq '((["python3", "tree-sitter"] - .) | length == 0) and (index("pi-coding-agent") == null)' <<< "$ci_shell")"
+  done
 }
 
 test_ci_accepts_action_sha_refreshes() {
@@ -194,32 +263,4 @@ test_ci_checks_reusable_workflow_references() {
   assert_exit_code 0 _ci_actions_pinned "$fixture"
   printf 'on: push\njobs:\n  call: { uses: "./.github/workflows/test.yml" }\n' > "$fixture"
   assert_exit_code 0 _ci_actions_pinned "$fixture"
-}
-
-test_ci_restricts_cache_writes_and_permissions() {
-  local workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
-  assert_contains "$workflow" 'name: ${{ vars.CACHIX_CACHE_NAME }}'
-  assert_contains "$workflow" "authToken: \${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}"
-  assert_contains "$workflow" "skipPush: \${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}"
-  assert_contains "$workflow" $'permissions:\n  contents: read'
-}
-
-test_ci_checker_jobs_provision_dependencies() {
-  local workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
-
-  assert_not_contains "${workflow,,}" "cspell"
-  assert_not_contains "${workflow,,}" "codespell"
-  assert_contains "$workflow" "shellcheck -S warning"
-  assert_not_contains "$(find "$REPO_DIR/.github/workflows" -maxdepth 1 -type f -name 'lint.*' -print)" 'lint.'
-  assert_contains "$(<"$REPO_DIR/flake.nix")" "shellcheck"
-}
-
-test_ci_cancels_superseded_runs_and_bounds_jobs() {
-  local workflow
-  workflow="$(<"$REPO_DIR/.github/workflows/test.yml")"
-
-  assert_contains "$workflow" 'cancel-in-progress: true'
-  assert_equals 5 "$(grep -c 'timeout-minutes:' <<< "$workflow")"
 }

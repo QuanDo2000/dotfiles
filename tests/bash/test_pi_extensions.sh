@@ -60,10 +60,22 @@ test_pi_extensions_evaluated_packages_disable_scripts_and_require_install_checks
 
 
 test_pi_extension_update_reconciles_local_packages_only() {
-  local settings packages
-  settings="$(<"$REPO_DIR/config/shared/ai/pi/settings.json")"
-  packages="$(<"$REPO_DIR/scripts/packages.sh")"
+  local pi_calls="$TEST_TMPDIR/pi-calls"
+  : > "$pi_calls"
+  pi() { printf '%s\n' "$@" >> "$pi_calls"; }
+  assert_exit_code 0 _update_pi_extensions
+  assert_equals $'update\n--extensions' "$(<"$pi_calls")"
 
-  assert_not_contains "$settings" '"npm:'
-  assert_contains "$packages" 'pi update --extensions'
+  : > "$pi_calls"
+  DRY=true
+  assert_exit_code 0 _update_pi_extensions
+  assert_equals '' "$(<"$pi_calls")"
+}
+
+test_pi_extension_update_failure_stops_the_caller() {
+  pi() { return 42; }
+  local output status=0
+  output="$(_update_pi_extensions; printf 'unexpected continuation')" || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'Failed to update Pi extensions'
 }

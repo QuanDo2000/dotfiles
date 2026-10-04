@@ -51,6 +51,7 @@ test_check_script_runs_repo_verification() {
     assert_contains "$calls" 'test-user@arch-server'
     assert_contains "$calls" "path:$CHECK_ROOT#pi-agent"
     assert_contains "$calls" 'python3 '
+    assert_equals 1 "$(grep -c '^nix build .*#hyprsunset-status' "$CHECK_CALLS")"
   else
     assert_contains "$calls" 'darwinConfigurations.mac.system.drvPath'
   fi
