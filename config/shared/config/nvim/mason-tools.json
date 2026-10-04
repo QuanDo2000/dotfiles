@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-03-unusual-penguin",
-  "registrySha256": "9d1c510acf21b6479e22404aa34989cb0d97f4d3724d685eca57645b04b217c5",
+  "registryVersion": "2026-10-04-lucky-jar",
+  "registrySha256": "134d359047a75b51f5ba842023574cb50656a296c15c15b6abe9f8f746c4eab8",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
