@@ -273,7 +273,7 @@ function Write-TestPatchedPiSession($Path) {
     "this._autoCompactionAbortController = undefined;`nawait this.waitForIdle();" | Set-Content -LiteralPath $Path
 }
 
-function test_installpi_installs_verified_versioned_release {
+function Assert-PiVerifiedInstall([switch]$WithoutEmbeddedLock, [switch]$MismatchedEmbeddedLock) {
     $version = Get-PinnedPiVersion
     $script:NpmArgs = ''
     Set-CommandMock 'Invoke-WebRequest' { param($Uri, $OutFile) [IO.File]::WriteAllText($OutFile, 'archive') }
@@ -282,7 +282,12 @@ function test_installpi_installs_verified_versioned_release {
         param($Archive, $Destination)
         $package = Join-Path $Destination 'package'
         New-Item -ItemType Directory -Force -Path (Join-Path $package 'dist\core'), (Join-Path $package 'dist\bundle') | Out-Null
-        Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $package 'npm-shrinkwrap.json')
+        if (-not $WithoutEmbeddedLock) {
+            Copy-Item (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json') (Join-Path $package 'npm-shrinkwrap.json')
+            if ($MismatchedEmbeddedLock) {
+                '{"version":"0.0.0"}' | Set-Content (Join-Path $package 'npm-shrinkwrap.json')
+            }
+        }
         "{`"version`":`"$version`",`"devDependencies`":{`"typescript`":`"1.0.0`"}}" | Set-Content (Join-Path $package 'package.json')
         'entry' | Set-Content (Join-Path $package 'dist\bundle\cli.js')
         Write-TestPatchedPiSession (Join-Path $package 'dist\core\agent-session.js')
@@ -292,9 +297,16 @@ function test_installpi_installs_verified_versioned_release {
         $script:NpmArgs = $args -join ' '
         $prefix = $args[[Array]::IndexOf($args, '--prefix') + 1]
         $script:NpmSawDevDependencies = [bool]((Get-Content -Raw (Join-Path $prefix 'package.json') | ConvertFrom-Json).devDependencies)
+        Assert-Equals (Get-Content -Raw (Join-Path $script:RepoDir 'packages\pi-agent-npm-shrinkwrap.json')) (Get-Content -Raw (Join-Path $prefix 'npm-shrinkwrap.json')) 'npm ci must receive the reviewed lock'
         $global:LASTEXITCODE = 0
     }
 
+    if ($MismatchedEmbeddedLock) {
+        Assert-Throws { InstallPi } 'embedded lock disagreement must still block installation'
+        Assert-Equals '' $script:NpmArgs 'npm must not run after lock disagreement'
+        Assert-False (Test-Path (Join-Path $env:LOCALAPPDATA 'dotfiles\pi\bin\pi.cmd')) 'failed install must not publish a launcher'
+        return
+    }
     InstallPi
 
     Assert-Contains $script:NpmArgs 'ci --prefix'
@@ -304,6 +316,18 @@ function test_installpi_installs_verified_versioned_release {
     Assert-FileExists $launcher
     Assert-Contains (Get-Content -Raw -LiteralPath $launcher) 'dist\bundle\cli.js'
     Assert-Equals (Split-Path $launcher -Parent) (($env:Path -split ';')[0])
+}
+
+function test_installpi_installs_verified_versioned_release {
+    Assert-PiVerifiedInstall
+}
+
+function test_installpi_accepts_archive_without_embedded_lock {
+    Assert-PiVerifiedInstall -WithoutEmbeddedLock
+}
+
+function test_installpi_rejects_mismatched_embedded_lock {
+    Assert-PiVerifiedInstall -MismatchedEmbeddedLock
 }
 
 function test_installpi_verifies_cached_release_and_rejects_tamper {
