@@ -781,8 +781,10 @@ function InstallPi {
                 $package = Join-Path $stage 'package'
                 if (-not (Test-Path -LiteralPath $package)) { throw 'Pi package archive missing package directory' }
                 $embeddedLock = Join-Path $package 'npm-shrinkwrap.json'
-                if (-not (Test-Path -LiteralPath $embeddedLock)) { throw 'Pi package archive missing npm shrinkwrap' }
-                Compare-PiPackageLocks $embeddedLock $lockPath $stage
+                # Some upstream releases omit shrinkwrap; the reviewed repository lock remains authoritative.
+                if (Test-Path -LiteralPath $embeddedLock) {
+                    Compare-PiPackageLocks $embeddedLock $lockPath $stage
+                }
                 Copy-Item -LiteralPath $lockPath -Destination $embeddedLock -Force
                 $manifestPath = Join-Path $package 'package.json'
                 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
