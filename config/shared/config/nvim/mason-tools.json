@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-04-lucky-jar",
-  "registrySha256": "134d359047a75b51f5ba842023574cb50656a296c15c15b6abe9f8f746c4eab8",
+  "registryVersion": "2026-10-04-crispy-font",
+  "registrySha256": "4d83a34b41af82ad9beec50a84111aa1041a09ed313c28fd0c520fe77fe0826c",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
