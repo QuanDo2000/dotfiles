@@ -32,7 +32,7 @@ packages=(
   "$flake#pi-extensions"
 )
 if [[ "$(uname -s)" == "Linux" ]]; then
-  packages+=("$flake#obsidian-headless" "$flake#pi-agent" "$flake#hyprsunset-status")
+  packages+=("$flake#obsidian-headless" "$flake#pi-agent")
 fi
 run nix build "${packages[@]}" --no-link
 if [[ "$(uname -s)" == "Linux" ]]; then
