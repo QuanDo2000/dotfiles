@@ -48,7 +48,7 @@
           neovim
           nodejs
           pi-agent
-          python3
+          (python3.withPackages (packages: [ packages.pyyaml ]))
           rclone
           shellcheck
           tree-sitter
