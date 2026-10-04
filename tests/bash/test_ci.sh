@@ -126,19 +126,27 @@ PY
 }
 
 _ci_actions_pinned() {
-  # debt: literal, single-line references only; use a YAML parser if workflows
-  # adopt multiline references. GitHub owns YAML syntax validation.
+  # Validate parsed step/job references, including flow mappings and scalars.
+  # GitHub owns workflow schema validation; safe_load never executes YAML tags.
   python3 - "$1" <<'PY'
 import re
 import sys
 from pathlib import Path
-references = re.findall(r"(?m)^\s*(?:-\s*)?uses:\s*([^\n#]+)", Path(sys.argv[1]).read_text())
-assert references, "No action references found"
+import yaml
+
+workflow = yaml.safe_load(Path(sys.argv[1]).read_text())
+references = []
+for job in workflow["jobs"].values():
+    if "uses" in job:
+        references.append(job["uses"])
+    references.extend(step["uses"] for step in job.get("steps", []) if "uses" in step)
+if not references:
+    raise ValueError("No action references found")
 for reference in references:
-    reference = reference.strip().strip("\"'")
-    if reference.startswith("./"):
-        continue  # Local actions use the checked-out revision.
-    assert re.fullmatch(r"[^\s@]+@[0-9a-fA-F]{40}", reference), f"Action is not commit-pinned: {reference}"
+    if isinstance(reference, str) and reference.startswith("./"):
+        continue  # Local actions/workflows use the checked-out revision.
+    if not isinstance(reference, str) or not re.fullmatch(r"[^\s@]+@[0-9a-fA-F]{40}", reference):
+        raise ValueError(f"Action is not commit-pinned: {reference}")
 PY
 }
 
@@ -153,9 +161,39 @@ test_ci_pins_current_actions() {
 test_ci_rejects_unpinned_external_actions() {
   local fixture="$TEST_TMPDIR/action.yml" reference
   for reference in actions/checkout@v7 actions/checkout@main "actions/checkout@$(printf 'a%.0s' {1..39})"; do
-    printf 'steps:\n  - uses: %s\n' "$reference" > "$fixture"
+    printf 'on: push\njobs:\n  check:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n' "$reference" > "$fixture"
     assert_exit_code 1 _ci_actions_pinned "$fixture"
   done
+}
+
+test_ci_rejects_inline_unpinned_actions() {
+  local fixture="$TEST_TMPDIR/inline-action.yml"
+  printf '%s\n' \
+    'on: push' 'jobs:' '  check:' '    runs-on: ubuntu-latest' '    steps:' \
+    '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' \
+    '      - { uses: actions/setup-node@v7 }' > "$fixture"
+  assert_exit_code 1 _ci_actions_pinned "$fixture"
+}
+
+test_ci_accepts_yaml_action_layouts_and_local_actions() {
+  local fixture="$TEST_TMPDIR/yaml-actions.yml"
+  printf '%s\n' \
+    'on: push' 'jobs:' '  check:' '    runs-on: ubuntu-latest' '    steps:' \
+    '      - { "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" }' \
+    '      - uses: >-' \
+    '          actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' \
+    '      - { uses: "./local-action" }' > "$fixture"
+  assert_exit_code 0 _ci_actions_pinned "$fixture"
+}
+
+test_ci_checks_reusable_workflow_references() {
+  local fixture="$TEST_TMPDIR/reusable-workflow.yml"
+  printf 'on: push\njobs:\n  call: { uses: owner/repo/.github/workflows/test.yml@main }\n' > "$fixture"
+  assert_exit_code 1 _ci_actions_pinned "$fixture"
+  printf 'on: push\njobs:\n  call: { uses: owner/repo/.github/workflows/test.yml@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa }\n' > "$fixture"
+  assert_exit_code 0 _ci_actions_pinned "$fixture"
+  printf 'on: push\njobs:\n  call: { uses: "./.github/workflows/test.yml" }\n' > "$fixture"
+  assert_exit_code 0 _ci_actions_pinned "$fixture"
 }
 
 test_ci_restricts_cache_writes_and_permissions() {
