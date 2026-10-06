@@ -18,8 +18,8 @@
   "followUpMode": "all",
   "hideThinkingBlock": true,
   "packages": [
-    "./locked-extensions/releases/50b32f25d2469371a7407eefc3ab2aab160bc1f4be66562abe0de2e1cba96cb7/node_modules/pi-memory",
-    "./locked-extensions/releases/50b32f25d2469371a7407eefc3ab2aab160bc1f4be66562abe0de2e1cba96cb7/node_modules/pi-web-access"
+    "./locked-extensions/releases/c4fc2044c065574e52174e9ef6f87adb173a87c066e85a2909f670e657c70a50/node_modules/pi-memory",
+    "./locked-extensions/releases/c4fc2044c065574e52174e9ef6f87adb173a87c066e85a2909f670e657c70a50/node_modules/pi-web-access"
   ],
   "steeringMode": "all",
   "terminal": {

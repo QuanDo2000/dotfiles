@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-04-crispy-font",
-  "registrySha256": "4d83a34b41af82ad9beec50a84111aa1041a09ed313c28fd0c520fe77fe0826c",
+  "registryVersion": "2026-10-06-unique-device",
+  "registrySha256": "ebed10be72514f5227c52241b5c7e18ca6ff8daafb773b8346d718fa1e3e4b00",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
