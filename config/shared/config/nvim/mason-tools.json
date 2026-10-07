@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-06-unique-device",
-  "registrySha256": "ebed10be72514f5227c52241b5c7e18ca6ff8daafb773b8346d718fa1e3e4b00",
+  "registryVersion": "2026-10-07-ruddy-swim",
+  "registrySha256": "1026f27c74df71c5da0c1722a5fd49423a27cce542382f74dee5364a7a27b1ee",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.1",
