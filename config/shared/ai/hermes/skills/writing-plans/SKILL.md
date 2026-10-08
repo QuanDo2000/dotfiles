@@ -23,4 +23,7 @@ Include code only when it resolves a non-obvious interface or algorithm; do not 
 Preserve security, data-loss, concurrency, and migration constraints next to the affected step.
 Use the requested save path or the repository's established convention; never commit the plan automatically.
 For planning-only requests, use `plan` for its write boundary and `.hermes/plans/` location.
-Offer execution only after delivering the plan. Delegation and test strategy depend on task risk and available tools, not a mandatory itinerary.
+For planning-only requests, deliver the plan and stop; findings do not authorize implementation. When implementation is already authorized, use the plan as an internal checkpoint and proceed without asking for plan approval.
+Resolve low-risk reversible choices from current requirements and repository conventions. Ask only for material unresolved decisions or missing authority, not routine sequencing; batch independent related questions.
+Carry the approved outcome, permitted effects, exclusions and original budgets into implementation. Continue necessary in-scope edits, tests, review and corrections without milestone reapproval; do not start adjacent backlog work or renew exhausted allowances.
+Delegation and test strategy depend on task risk and available tools, not a mandatory itinerary.
