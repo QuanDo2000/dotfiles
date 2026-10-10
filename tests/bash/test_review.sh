@@ -10,5 +10,6 @@ test_review_targets_require_clean_exact_commits() {
 }
 
 test_review_sdk_isolation_and_tool_dispatch() {
-  assert_exit_code 0 python3 "$REPO_DIR/tests/fixtures/review-integration.py"
+  # Caller stdin must not become a Pi prompt or replace the SDK test command.
+  printf 'unrelated caller input\n' | assert_exit_code 0 python3 "$REPO_DIR/tests/fixtures/review-integration.py"
 }

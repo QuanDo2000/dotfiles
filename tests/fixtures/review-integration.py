@@ -11,7 +11,9 @@ pi = sys.argv[1:] or [shutil.which("pi") or "pi"]
 
 
 def run(args, cwd, env=None, logs=False):
-    result = subprocess.run(args, cwd=cwd, env=env, capture_output=True, text=True, timeout=90)
+    # Pi treats piped stdin as prompt text; these invocations own their input.
+    result = subprocess.run(args, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                            capture_output=True, text=True, timeout=90)
     if result.returncode:
         raise RuntimeError(result.stdout + result.stderr)
     return result.stdout + (result.stderr if logs else "")
