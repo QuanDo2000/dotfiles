@@ -39,7 +39,7 @@ Use native read-only search (`rg`, `fd`, `find`, or provided grep/find tools). B
 
 ## Verification
 
-Verify real workflows, not test volume. Before implementation, name the observable outcome and credible failures. Use `tdd` for real-flow verification: prefer a small number of repeatable end-to-end checks through actual entry points, using disposable state. For bug fixes, run the same symptom reproducer against baseline and patched revisions under equivalent conditions: baseline fails, patched passes (A/B regression verification, not statistical experimentation). Disclose when a safe baseline run is unavailable.
+Verify real workflows, not test volume. Before implementation, name the observable outcome and credible failures. Use the runtime's testing skill (`tdd` in Pi; `test-driven-development` in Hermes) for real-flow verification: prefer a small number of repeatable end-to-end checks through actual entry points, using disposable state. For bug fixes, run the same symptom reproducer against baseline and patched revisions under equivalent conditions: baseline fails, patched passes (A/B regression verification, not statistical experimentation). Disclose when a safe baseline run is unavailable.
 
 Do not add unit tests by default or duplicate E2E assertions. Add a focused test only when an important security, data-loss, rollback, or correctness failure cannot be exercised safely and reliably end to end. Reuse existing checks; preserve acceptance criteria.
 
