@@ -39,7 +39,9 @@ Use native read-only search (`rg`, `fd`, `find`, or provided grep/find tools). B
 
 ## Verification
 
-Before implementation, name the observable outcome and credible failures. Use `tdd` for test-first execution; bug fixes start with the original symptom's reproducer. Prefer real integration/E2E checks for complex workflows, retaining focused tests for logic and hard-to-reach safety branches. Preserve security, data-loss prevention, rollback checks, and acceptance criteria.
+Verify real workflows, not test volume. Before implementation, name the observable outcome and credible failures. Use `tdd` for real-flow verification: prefer a small number of repeatable end-to-end checks through actual entry points, using disposable state. For bug fixes, run the same symptom reproducer against baseline and patched revisions under equivalent conditions: baseline fails, patched passes (A/B regression verification, not statistical experimentation). Disclose when a safe baseline run is unavailable.
+
+Do not add unit tests by default or duplicate E2E assertions. Add a focused test only when an important security, data-loss, rollback, or correctness failure cannot be exercised safely and reliably end to end. Reuse existing checks; preserve acceptance criteria.
 
 - Before completion, commits, or handoff, run the smallest authoritative checks and applicable repository gates on the current revision.
 - Inspect exit status, failures, and relevant output.
