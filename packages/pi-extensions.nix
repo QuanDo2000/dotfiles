@@ -12,7 +12,7 @@ buildNpmPackage {
   version = builtins.substring 0 12 pins.releaseId;
   src = source;
 
-  npmDepsHash = "sha256-fvHq8rObAlxmaZbC2qynG5lSSH7xhfU2Bs5oYp6VuCI=";
+  npmDepsHash = "sha256-Sm/vhswBMPWKnTGSQnNAF/uVXGKtLyG7BlgDrbOIZ60=";
   npmFlags = [ "--omit=dev" "--ignore-scripts" "--legacy-peer-deps" ];
   dontNpmBuild = true;
   installPhase = ''

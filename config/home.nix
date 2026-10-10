@@ -51,10 +51,10 @@ let
     })
     ((pkgs.anki-utils.buildAnkiAddon {
       pname = "zoom24";
-      version = "2026-05-27";
+      version = "2026-10-10";
       src = pkgs.fetchzip {
         url = "https://ankiweb.net/shared/download/1923741581?v=2.1&p=2509004";
-        hash = "sha256-6dRKLIc/ySELmOI8xHkSZO2orTZSHb7e12aL2pSogfY=";
+        hash = "sha256-y87rfY7riA5dRAXfDQW/WrLV+oDN2n7u81eyDUdXYSg=";
         extension = "zip";
         stripRoot = false;
       };
