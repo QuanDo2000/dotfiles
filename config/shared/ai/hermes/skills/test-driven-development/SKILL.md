@@ -1,7 +1,7 @@
 ---
 name: test-driven-development
 description: "Use for behavior-changing code or bug fixes."
-version: 1.2.0
+version: 1.3.0
 author: Hermes Agent (adapted from obra/superpowers)
 license: MIT
 platforms: [linux, macos, windows]
@@ -11,34 +11,40 @@ metadata:
     related_skills: [systematic-debugging, subagent-driven-development]
 ---
 
-# Real-Flow and A/B Regression Verification
+# Reusable Execution and Focused Verification
 
-Verify real workflows, not test volume. Prefer a small number of repeatable end-to-end checks through actual entry points. Test count and coverage percentage are not completion criteria.
+Build the working capability, not a growing collection of one-off tests. Prefer a small number of real-flow checks through actual entry points. Test count and coverage percentage are not completion criteria.
 
-## Choose the evidence
+## Generalize repeated execution patterns
 
-- Before implementation, name the user-visible outcome and credible failures, including relevant security, data-loss, and rollback risks.
-- Inspect the real entry point, dependencies, and existing checks. Reuse a check that catches the failure instead of adding redundant coverage.
-- Do not add unit tests by default or duplicate E2E assertions. Add a focused test only when an important correctness or safety failure cannot be exercised safely and reliably end to end.
-- Assert observable output, durable state, exit status, or a boundary contract, using independently derived expectations. Do not test private structure or grep source text merely to prove an edit happened.
+- Inspect existing tools, native APIs, and repository runners first. Reuse them before creating another wrapper or fixture.
+- When the same execution problem recurs, fix it once in a retained shared tool: process supervision, deadlines, bounded capture, cleanup, source binding, or result validation. Give callers a small explicit interface instead of copying orchestration and checks into each task.
+- Build only for observed callers and failure modes. Prefer a helper or command over a framework; use a framework when existing repeated patterns justify it. Keep the executable source and invocation with the tool, not only its reports.
+- Validate the shared tool through its real entry point with a representative success and the important failure paths. Consumers normally need only an integration check of their changed use, not a fresh proof of every unchanged tool invariant.
+- Reuse is not blanket trust: changes to ownership, cleanup, limits, permissions, persistence, or source/runtime binding require focused verification of the affected contract. Preserve security, data-loss prevention, rollback, and required repository gates.
 
-## Bug fixes: baseline versus patched
+## Choose the minimum useful checks
 
-1. Start with a reproducer for the reported symptom, not an expectation inferred from the proposed fix. Run it against the baseline and confirm failure for the intended reason, not a setup error.
-2. Fix the shared root cause under approval, preserving unrelated work.
-3. Run the same reproducer against the patched revision under equivalent conditions: baseline fails, patched passes. This is A/B regression verification, not statistical experimentation.
-4. Simplify only after the check passes, then rerun affected checks. Add another check only for an important uncovered failure, not every function or line.
+- Before implementation, name the user-visible outcome and credible failures. Choose the smallest existing check that can catch them.
+- Do not add unit tests by default, duplicate E2E assertions, or create a new fixture for every edit. Add a focused test only for an important uncovered correctness or safety failure.
+- Batch related edits into a coherent change, then run affected checks. Do not rerun the full suite after every edit, handoff, or prose change. During development, run a targeted check when its result will change the next implementation decision.
+- Reuse passing results for an unchanged tested component when its inputs, dependencies, environment, and relevant contract remain unchanged, even if unrelated files or the overall revision changed. State the checked scope and why it remains applicable; never describe an old full-suite run as a pass on a new head. Required exact-head gates still run on the final head.
+- Assert observable output, durable state, exit status, or a boundary contract with independently derived expectations. Do not test private structure or grep source text merely to prove an edit happened.
 
-If the fix already exists, establish the baseline in isolation. Do not discard existing work, weaken expectations to manufacture failure, or claim test-first execution retroactively. Disclose when a safe baseline run is unavailable.
+## Bug fixes: one symptom reproducer
 
-## Safe, repeatable real-flow checks
+1. Reuse or create one reproducer for the reported symptom. Run it against the baseline and confirm failure for the intended reason, not a setup error.
+2. Fix the shared root cause, batch related corrections, and run the same reproducer against the patched revision under equivalent conditions: baseline fails, patched passes.
+3. Rerun only checks affected by subsequent behavior changes, plus applicable final repository gates. Do not repeat the baseline or recreate the harness for every refinement unless the reproducer or relevant assumptions changed.
 
-Use disposable state or an approved test environment. Do not touch production data, credentials, deployments, or paid services without authorization. Exercise real components; substitute only unavoidable external, nondeterministic, costly, or unsafe boundaries. Disclose substitutions and unavailable coverage; mock-backed checks are not E2E evidence.
+Preserve unrelated work and baseline failure evidence. If a safe baseline run is unavailable, disclose that limitation; do not manufacture RED or claim test-first execution retroactively.
 
-For complex workflows, retain the revision, exact command, prerequisites/fixtures, expected and actual outcomes, and an inspectable artifact such as existing runner output or verified resulting state. Redact secrets and private data. Do not build an artifact framework; a screenshot alone does not prove hidden state or safety properties.
+## Safe execution and completion
 
-## Completion
+Use disposable state or an approved test environment. Production data, credentials, deployments, paid services, one-shot allowances, and explicit approval boundaries remain protected. Exercise real components; disclose unavoidable substitutions and unavailable coverage. Mock-backed checks are not E2E evidence.
 
-- Run impacted checks and applicable repository gates on the final revision. Inspect exit status, failures, and relevant output; child reports and old logs are not substitutes.
-- Report passed, failed, skipped, and unverified checks. Reuse results only while revision and inputs remain unchanged.
-- Configuration may use native parsing, evaluation, or existing validation. Prose needs review, not substring tests. Exercise instruction changes with representative consuming-agent scenarios when a harness is available; otherwise report static review only.
+Retain the shared executable tool and a repeatable command, prerequisites, checked scope, expected/actual outcome, and inspectable result. Use existing runner output rather than a separate evidence framework. Redact secrets and private data. A screenshot alone does not prove hidden state or safety properties.
+
+At completion, run the smallest affected authoritative checks and applicable repository gates on the final revision. Inspect actual exit status and relevant output; report passed, failed, reused, skipped, and unverified checks. Child reports alone are not verification.
+
+Configuration may use native validators. Prose needs review, not new substring tests or unrelated runtime trials. For instruction changes, use a small representative consuming-agent scenario only when an existing harness is available; otherwise report static review. Do not build a new evaluation harness just to validate wording.
