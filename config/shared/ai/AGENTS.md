@@ -37,20 +37,22 @@ Research, diagnosis, reviews, and recommendations are read-only until edits are 
 
 Use native read-only search (`rg`, `fd`, `find`, or provided grep/find tools). Before inventing framework adapters, casts, protocols, or large fakes, inspect installed/upstream source and repository patterns. If integration remains unclear, stop with the unknowns, specification deviations, owned files, and last passing validation.
 
-## Verification
+## Reusable Execution and Verification
 
-Verify real workflows, not test volume. Before implementation, name the observable outcome and credible failures. Use the runtime's testing skill (`tdd` in Pi; `test-driven-development` in Hermes) for real-flow verification: prefer a small number of repeatable end-to-end checks through actual entry points, using disposable state. For bug fixes, run the same symptom reproducer against baseline and patched revisions under equivalent conditions: baseline fails, patched passes (A/B regression verification, not statistical experimentation). Disclose when a safe baseline run is unavailable.
+Prioritize building the working capability and reusable tools over accumulating tests or repeatedly reconfirming unchanged behavior. Inspect existing native APIs and runners first. When execution patterns recur, consolidate them in a retained shared tool with a small explicit interface: supervision, deadlines, bounded capture, cleanup, source binding, or result validation. Prefer a helper or command over a framework unless observed repeated callers justify one; retain executable source and invocation, not only reports.
 
-Do not add unit tests by default or duplicate E2E assertions. Add a focused test only when an important security, data-loss, rollback, or correctness failure cannot be exercised safely and reliably end to end. Reuse existing checks; preserve acceptance criteria.
+Validate the shared tool through its real entry point with representative success and important failure paths. Consumers normally need only a check of their changed integration, not a fresh proof of every unchanged tool invariant. Changes to ownership, cleanup, limits, permissions, persistence, or source/runtime binding require focused verification of the affected contract. Reuse never substitutes for current authorization or required safety validation.
 
-- Before completion, commits, or handoff, run the smallest authoritative checks and applicable repository gates on the current revision.
-- Inspect exit status, failures, and relevant output.
-- Report passed, failed, skipped, and unverified checks; child reports and old logs are not substitutes.
-- Reuse results only while revision and inputs are unchanged.
-- For complex flows, retain a repeatable command, prerequisites, expected/actual outcome, and inspectable artifact.
-- Use disposable state, respect authorization, redact secrets, and disclose substitutions rather than claiming E2E coverage.
+Use the runtime's testing skill (`tdd` in Pi; `test-driven-development` in Hermes). Before implementation, name the observable outcome and credible failures, then choose the smallest existing real-flow check that can catch them. Do not add unit tests by default, duplicate E2E assertions, or create a new fixture for every edit. Add a focused test only for an important uncovered security, data-loss, rollback, or correctness failure.
 
-Avoid exhaustive matrices, redundant assertions, source-substring tests, and elaborate harnesses. Configuration may use native validators; prose needs review. Exercise instruction changes with consuming-agent scenarios when available, otherwise report static review only.
+- Batch related edits into a coherent change before running affected checks. Do not rerun the full suite after every edit or handoff; during development, check when the result will change the next implementation decision.
+- For bug fixes, run one symptom reproducer against baseline and patched revisions under equivalent conditions: baseline fails, patched passes. Preserve the baseline evidence; do not repeat it for every refinement unless the reproducer or relevant assumptions changed. Disclose when a safe baseline run is unavailable.
+- Reuse passing results for an unchanged tested component when its inputs, dependencies, environment, and relevant contract are unchanged, even across unrelated revision changes. State the checked scope and reuse rationale; never call an old full-suite run a pass on a new head.
+- Before completion or commits, run the smallest affected authoritative checks and applicable repository gates on the final revision. Required exact-head gates remain mandatory.
+- Inspect actual exit status, failures, and relevant output. Report passed, failed, reused, skipped, and unverified checks; child reports alone are not verification.
+- Use disposable state, preserve explicit allowances and approval boundaries, redact secrets, and disclose substitutions rather than claiming E2E coverage. Retain a repeatable command, prerequisites, checked scope, expected/actual outcome, and inspectable result with the shared tool.
+
+Avoid exhaustive matrices, redundant assertions, source-substring tests, and one-off evidence frameworks. Configuration may use native validators; prose needs review, not unrelated runtime trials. For instruction changes, use a small representative consuming-agent scenario only when an existing harness is available; otherwise report static review. Do not build a new evaluation harness just to validate wording.
 
 ## Reviews and Audits
 
