@@ -3,7 +3,7 @@
     "id": "2055492159",
     "name": "AnkiConnect",
     "url": "https://ankiweb.net/shared/download/2055492159?v=2.1&p=2509004",
-    "sha256": "665d9534654469b7e4708b4df235d43cf3770ff85b23b9ff5eb36f9b7b4133cf",
+    "sha256": "8746c7a2992c54fbd1db4abdca4b8cf519eee01a609a75f658bfd6941337255c",
     "config": {
       "webBindAddress": "127.0.0.1",
       "webBindPort": 8765,
@@ -13,12 +13,20 @@
       "ignoreOriginList": []
     },
     "files": {
-      "__init__.py": "629566e8eea59f3d67abf1b2339d5c0c621b2d894139e8335db030d022582873",
+      "__init__.py": "c5867f555e7f49d5ba3a81f60a78cf60edde2ec432a997b05d7f19855f3e9429",
       "config.json": "696e9c384e062e60e4a9cab2e58da6616a16d4955bb3d6404c75347022303cb5",
-      "config.md": "85c0f3491685de970757d0ee33d9ae4be805d18a6033295b3c32e577b6632036",
-      "edit.py": "4196d9efc37f4906ea5caf712ac45c04c22fdb822e57c3b8d4e0ea26b022d214",
-      "util.py": "059b4c6170bdb40286a040e4a7950bccd69259ad5c8dd16e2f0fa2587766b18d",
-      "web.py": "69b122ba110ab60af40406d21ce1459f834f972bdaedbef58578a28c3b5c5421"
+      "config.md": "883430d46b5df7d127518047d5522d9e92dcbd86332747bd10ec85064ba8db59",
+      "contract.py": "bf9c1da7224d0e35c13f119f1c68241c638363caf3d8a6558cc5c511a61de301",
+      "edit.py": "e5e7fa94ba29e89ed5a494022f91fe2cc81470ce84afbb9202c3e56d5a1e8e4a",
+      "gui.py": "6dd349d6cd6b00543679fd3c2c4ac0854d2f7f7ded38ca6c8808763b5a51fecb",
+      "legacy.py": "e4427f729e9a8142dbeb19ddd285416ce8f2cda3ff49f511cfe9832af1826c59",
+      "manifest.json": "84f2533595d0f544cbb3579166d63c0b53883c736b057da64fb4a1bd110a70c5",
+      "media.py": "6cc1a71d3472acac2584e2f1b67fc1bdd977131dd06624452b898d65d0997a00",
+      "protocol.py": "1497a4243e6b083cb1f96ad3221b4e05da12788fe81455b9de38b5b6e9544ae3",
+      "runtime.py": "d3a198190602c634c403ea697d8025c911844c76e045c7950e223f4ff6e44a63",
+      "services.py": "3c1132b842f11c30f3fc20f49ea9ba49c67921d8934aac43fd49c1e058d27fd7",
+      "util.py": "831d5c7199bc2b159b6a226dcf5664c805b27e51c25692ae5f1bf226015e57eb",
+      "web.py": "27bbdd89a87e1f321a0c1d6eb54242e3a795168194841ca7a83acaf7d1fb7ea6"
     }
   },
   {

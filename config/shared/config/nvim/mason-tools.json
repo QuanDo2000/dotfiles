@@ -1,14 +1,14 @@
 {
-  "registryVersion": "2026-10-09-violet-bangu",
-  "registrySha256": "18d39ae109d60c78f8fb3ef692deb102b0a92ce4cf57e65c2b1820e91e692a45",
+  "registryVersion": "2026-10-14-frank-knight",
+  "registrySha256": "029e8bc6ec0f74aeff8aeb3946f24ffe36bf90fe9fb1bd6802e141eb9027bec6",
   "tools": {
     "json-lsp": "4.10.0",
-    "lua-language-server": "3.19.1",
+    "lua-language-server": "3.19.2",
     "markdownlint-cli2": "0.23.3",
     "marksman": "2026-02-08",
-    "prettier": "3.9.9",
-    "stylua": "v2.5.2",
+    "prettier": "3.9.10",
+    "stylua": "v2.6.0",
     "taplo": "0.10.0",
-    "yaml-language-server": "1.24.0"
+    "yaml-language-server": "1.25.0"
   }
 }
