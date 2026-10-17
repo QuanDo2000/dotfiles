@@ -288,12 +288,11 @@ function doctor {
   _check_obsidian_service "$platform"
   _check_nix_config "$platform"
 
-  echo ""
   if [ "$errors" -eq 0 ]; then
-    success "All checks passed!" --force
+    success "All checks passed!"
     return 0
   fi
 
-  info "$errors issue(s) found" --force
+  fail_soft "$errors issue(s) found"
   return 1
 }

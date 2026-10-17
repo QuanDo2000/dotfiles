@@ -6,28 +6,44 @@ set -eo pipefail
 : "${QUIET:=false}"
 : "${FORCE:=false}"
 
-info() {
-  [[ "$QUIET" == "true" && "${2:-}" != "--force" ]] && return
-  local prefix=""
-  [[ "$DRY" == "true" ]] && prefix="[DRY] "
-  printf '\r  [ \033[00;34m..\033[0m ] %s%s\n' "$prefix" "$1"
+# Human-readable output only; callers returning data keep their own stdout.
+_log() {
+  local label="$1" message="$2" color="$3" line first=true
+  while IFS= read -r line; do
+    if [[ "$first" == true ]]; then
+      if [[ -t 1 && "${TERM:-}" != dumb && -z "${NO_COLOR:-}" ]]; then
+        printf '  [\033[%sm%s\033[0m] %s\n' "$color" "$label" "$line"
+      else
+        printf '  [%s] %s\n' "$label" "$line"
+      fi
+      first=false
+    else
+      printf '         %s\n' "$line"
+    fi
+  done <<< "$message"
 }
 
-user() {
-  printf '\r  [ \033[0;33m??\033[0m ] %b\n' "$1"
+info() {
+  [[ "$QUIET" == true && "${2:-}" != --force ]] && return 0
+  local label=INFO
+  [[ "$DRY" == true ]] && label='DRY '
+  _log "$label" "$1" 34
 }
+
+user() { _log 'ASK ' "$1" 33; }
+
+warn() { _log WARN "$1" 33; }
 
 success() {
-  [[ "$QUIET" == "true" && "${2:-}" != "--force" ]] && return
-  printf '\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n' "$1"
+  # Operations may be skipped in dry runs; never claim they completed.
+  [[ "$DRY" == true ]] && return 0
+  [[ "$QUIET" == true && "${2:-}" != --force ]] && return 0
+  _log ' OK ' "$1" 32
 }
 
-fail_soft() {
-  printf '\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n' "$1"
-}
+fail_soft() { _log FAIL "$1" 31; }
 
 fail() {
   fail_soft "$1"
-  echo ''
   exit 1
 }
