@@ -193,7 +193,9 @@ test_doctor_fast_skips_nix_eval() {
   output=$(OS_RELEASE="$osrel" bash "$DOTFILE_CMD" doctor --fast 2>&1)
 
   assert_contains "$output" "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true"
-  assert_contains "$output" "All checks passed"
+  assert_contains "$output" "Completed checks passed;"
+  assert_contains "$output" "skipped"
+  assert_not_contains "$output" "All checks passed"
 }
 
 test_dry_run_default_command() {

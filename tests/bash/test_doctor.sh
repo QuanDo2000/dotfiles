@@ -341,7 +341,7 @@ test_doctor_accepts_repo_dotfile_command_link() {
   local output
   output=$(doctor 2>&1) || true
 
-  assert_contains "$output" "All checks passed"
+  assert_contains "$output" "Completed checks passed;"
 }
 
 test_doctor_accepts_home_manager_store_targets_on_nixos() {
@@ -353,7 +353,7 @@ test_doctor_accepts_home_manager_store_targets_on_nixos() {
   local output
   output=$(OS_RELEASE="$osrel" doctor 2>&1) || true
 
-  assert_contains "$output" "All checks passed"
+  assert_contains "$output" "Completed checks passed;"
 }
 
 test_doctor_accepts_home_manager_store_targets_on_mac() {
@@ -363,7 +363,7 @@ test_doctor_accepts_home_manager_store_targets_on_mac() {
   local output
   output=$(doctor 2>&1) || true
 
-  assert_contains "$output" "All checks passed"
+  assert_contains "$output" "Completed checks passed;"
 }
 
 test_doctor_accepts_home_manager_store_targets_on_arch() {
@@ -376,7 +376,7 @@ test_doctor_accepts_home_manager_store_targets_on_arch() {
 
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1) || true
-  assert_contains "$output" "All checks passed"
+  assert_contains "$output" "Completed checks passed;"
 }
 
 test_doctor_accepts_home_manager_store_targets_on_debian() {
@@ -389,7 +389,7 @@ test_doctor_accepts_home_manager_store_targets_on_debian() {
 
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1) || true
-  assert_contains "$output" "All checks passed"
+  assert_contains "$output" "Completed checks passed;"
 }
 
 test_obsidian_service_target_accepts_exact_store_unit() {
@@ -560,7 +560,19 @@ test_doctor_passes_with_home_manager_store_targets() {
   local output
   output=$(OS_RELEASE="$os_release" doctor 2>&1)
 
-  assert_contains "$output" "All checks passed"
+  assert_contains "$output" "Completed checks passed;"
+}
+
+test_doctor_quiet_reports_skips_without_accumulating_between_runs() {
+  mock_uname Darwin
+  link_valid_core_dotfiles /nix/store/example-dotfiles
+  QUIET=true
+  local output
+  output=$(DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor; DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor)
+
+  assert_contains "$output" "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true"
+  assert_equals 2 "$(grep -c 'Completed checks passed; 2 check group(s) skipped' <<< "$output")"
+  assert_not_contains "$output" "All checks passed"
 }
 
 test_doctor_skips_nix_eval_in_dry_mode() {
@@ -625,7 +637,7 @@ test_doctor_retries_nix_eval_with_temp_cache_after_fetcher_cache_failure() {
   local output
   output=$(unset XDG_CACHE_HOME; OS_RELEASE="$os_release" doctor 2>&1)
 
-  assert_contains "$output" "All checks passed"
+  assert_contains "$output" "Completed checks passed;"
   assert_contains "$(tail -n 1 "$calls")" "dotfile-nix-cache."
 }
 
@@ -717,5 +729,5 @@ test_doctor_reads_host_config_when_nix_file_eval_is_unavailable() {
   output=$(OS_RELEASE="$os_release" doctor 2>&1)
 
   assert_contains "$output" "NixOS configuration fallbackhost evaluates"
-  assert_contains "$output" "All checks passed"
+  assert_contains "$output" "Completed checks passed;"
 }

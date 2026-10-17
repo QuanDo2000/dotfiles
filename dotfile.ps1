@@ -135,7 +135,7 @@ function LinkPath($source, $destination, [bool]$isDirectory = $false) {
             $overwrite = $script:Force
             $backup = -not $script:Force
         } elseif (-not $script:OverwriteAll -and -not $script:BackupAll -and -not $script:SkipAll) {
-            switch (PromptAction $destination (Split-Path $source -Leaf)) {
+            switch -CaseSensitive (PromptAction $destination (Split-Path $source -Leaf)) {
                 'o' { $overwrite = $true }
                 'O' { $script:OverwriteAll = $true }
                 'b' { $backup = $true }

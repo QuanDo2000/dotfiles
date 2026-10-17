@@ -32,6 +32,34 @@ function test_getlinkconflict_finds_item_when_testpath_reports_false {
     }
 }
 
+function test_linkpath_lowercase_overwrite_does_not_authorize_next_conflict {
+    if (Try-Skip-If-No-Symlink-Privilege) { return }
+    $src = Join-Path $env:USERPROFILE 'src.txt'
+    $first = Join-Path $env:USERPROFILE 'first.txt'
+    $second = Join-Path $env:USERPROFILE 'second.txt'
+    'new' | Set-Content -LiteralPath $src
+    'first old' | Set-Content -LiteralPath $first
+    'second old' | Set-Content -LiteralPath $second
+    $script:PromptCount = 0
+    $originalPrompt = (Get-Command PromptAction).ScriptBlock
+    Set-CommandMock 'PromptAction' {
+        $script:PromptCount++
+        if ($script:PromptCount -eq 1) { return 'o' }
+        return 's'
+    }
+    try {
+        LinkPath $src $first
+        LinkPath $src $second
+        Assert-Equals 2 $script:PromptCount
+        Assert-Equals $src (Get-Item -LiteralPath $first).Target
+        Assert-Equals 'second old' (Get-Content -LiteralPath $second)
+        Assert-False $script:OverwriteAll 'lowercase overwrite must not persist consent'
+        Assert-False $script:SkipAll 'lowercase skip must not persist consent'
+    } finally {
+        Set-CommandMock 'PromptAction' $originalPrompt
+    }
+}
+
 function test_linkpath_file_overwrite_all_replaces_existing {
     if (Try-Skip-If-No-Symlink-Privilege) { return }
     $src = Join-Path $env:USERPROFILE 'src.txt'
