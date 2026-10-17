@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-14-frank-knight",
-  "registrySha256": "029e8bc6ec0f74aeff8aeb3946f24ffe36bf90fe9fb1bd6802e141eb9027bec6",
+  "registryVersion": "2026-10-17-lunar-wire",
+  "registrySha256": "7c4ed7d996ea9791efb85b896eacfb9f8e04a3a3734b1da870c06bd0752638a7",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
