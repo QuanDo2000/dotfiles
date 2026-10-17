@@ -35,16 +35,34 @@ $script:FiraCodeNerdFontVersion = '3.5.1'
 $script:FiraCodeNerdFontUrl = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/FiraCode.zip'
 $script:FiraCodeNerdFontSha256 = '239395baf60c89b2eaf4862b6b09db0ef95605cd3e8eef51c00345822a81a665'
 
-# Logging helpers
-function Info($msg) { if (-not $script:Quiet) { Write-Host "  [ .. ] $msg" } }
-function Success($msg) { if (-not $script:Quiet) { Write-Host "  [ OK ] $msg" -ForegroundColor Green } }
-function Fail($msg) { Write-Host "  [FAIL] $msg" -ForegroundColor Red; exit 1 }
-function FailSoft($msg) { Write-Host "  [FAIL] $msg" -ForegroundColor Red }
+# Human-readable output only; do not write log messages to the success stream.
+function Write-Log($label, [string]$msg, $color) {
+    $prefix = "  [$label] "
+    if (-not [Console]::IsOutputRedirected -and $Host.UI.SupportsVirtualTerminal -and
+        $env:TERM -ne 'dumb' -and -not $env:NO_COLOR) {
+        $escape = [char]27
+        $prefix = "  [$escape[${color}m$label$escape[0m] "
+    }
+    Write-Host ($prefix + ($msg -replace '\r?\n', "`n         "))
+}
+
+function Info($msg) {
+    if ($script:Quiet) { return }
+    $label = if ($script:Dry) { 'DRY ' } else { 'INFO' }
+    Write-Log $label $msg 34
+}
+function Success($msg) {
+    # Operations may be skipped in dry runs; never claim they completed.
+    if (-not $script:Quiet -and -not $script:Dry) { Write-Log ' OK ' $msg 32 }
+}
+function Ask($msg) { Write-Log 'ASK ' $msg 33 }
+function Warn($msg) { Write-Log 'WARN' $msg 33 }
+function FailSoft($msg) { Write-Log 'FAIL' $msg 31 }
+function Fail($msg) { FailSoft $msg; exit 1 }
 
 # File helpers
 function PromptAction($destination, $sourceName) {
-    Write-Host "  [ ?? ] File already exists: $destination ($sourceName)"
-    Write-Host "         [s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all"
+    Ask "File already exists: $destination ($sourceName)`n[s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all"
     $key = [System.Console]::ReadKey($true).KeyChar
     return $key
 }
@@ -1487,13 +1505,12 @@ function Verify {
         }
     }
 
-    Write-Host ""
     if ($errors -eq 0) {
         $script:VerifyFailed = $false
         Success "All checks passed!"
     } else {
         $script:VerifyFailed = $true
-        Info "$errors issue(s) found"
+        FailSoft "$errors issue(s) found"
     }
 }
 

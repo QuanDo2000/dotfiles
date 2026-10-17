@@ -183,6 +183,12 @@ Options:
   -h, --help  Show this help message
 ```
 
+Both entry points use `[INFO]`, `[ OK ]`, `[WARN]`, `[FAIL]`, `[ASK ]`, and
+`[DRY ]` labels, with indented continuation lines. Colors are terminal-only;
+set `NO_COLOR=1` to disable them. Quiet mode keeps failures and required prompts.
+Dry runs label progress as planned work and suppress completion messages.
+Subprocess output and help text retain their native formats.
+
 Windows `all`, `packages`, and full `update` manage Anki and Obsidian through
 WinGet. Close both apps before running these commands.
 `dotfile.ps1 upgrade` runs `winget upgrade --all`, including installed packages

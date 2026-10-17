@@ -25,7 +25,7 @@ test_install_mac_dry_run_no_brew_calls() {
 
   assert_contains "$output" "Installing packages and programs for Mac"
   assert_contains "$output" "sudo HOME=/var/root darwin-rebuild switch --flake $DOTFILES_DIR#mac"
-  assert_contains "$output" "Finished install for Mac"
+  assert_not_contains "$output" "Finished install for Mac"
 }
 
 
@@ -141,7 +141,7 @@ test_set_zsh_default_skips_on_mac() {
   output=$(set_zsh_default 2>&1)
 
   assert_contains "$output" "Shell is managed declaratively on mac; skipping chsh"
-  assert_contains "$output" "Finished changing zsh as default"
+  assert_not_contains "$output" "Finished changing zsh as default"
 }
 
 # ---------------------------------------------------------------------------

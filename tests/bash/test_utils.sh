@@ -12,22 +12,35 @@ setup() {
 test_info_output() {
   local output
   output=$(info "hello world")
-  assert_contains "$output" "hello world"
+  assert_equals "  [INFO] hello world" "$output"
 }
 
 test_success_output() {
   local output
   output=$(success "it worked")
-  assert_contains "$output" "it worked"
+  assert_equals "  [ OK ] it worked" "$output"
 }
 
 test_user_output() {
   local output
   output=$(user "pick one")
-  assert_contains "$output" "pick one"
+  assert_equals "  [ASK ] pick one" "$output"
 }
 
 
+
+test_multiline_literal_output() {
+  local output
+  output=$(user $'path\\name\nnext line')
+  assert_equals $'  [ASK ] path\\name\n         next line' "$output"
+}
+
+test_dry_run_does_not_claim_success() {
+  DRY=true
+  local output
+  output=$(info "Would install packages"; success "Finished installing packages")
+  assert_equals "  [DRY ] Would install packages" "$output"
+}
 
 test_fail_exits() {
   assert_exit_code 1 bash -c "source '$REPO_DIR/scripts/utils.sh'; fail 'boom'"
