@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-17-lunar-wire",
-  "registrySha256": "7c4ed7d996ea9791efb85b896eacfb9f8e04a3a3734b1da870c06bd0752638a7",
+  "registryVersion": "2026-10-18-blank-budget",
+  "registrySha256": "eb75fbc3486ed75edd928e004b4de4d976bb0a122bbe5cfb6dc27efdcc7b0db9",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
