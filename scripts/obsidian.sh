@@ -56,7 +56,7 @@ function _obsidian_pick_vault {
   local vault_name=""
   while [[ -z "$vault_name" ]]; do
     user 'Enter the vault name to sync:' >&2
-    read -r vault_name
+    read -r vault_name || fail 'Vault selection cancelled: input closed' >&2
   done
   echo "$vault_name"
 }

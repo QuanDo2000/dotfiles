@@ -62,9 +62,15 @@ function Fail($msg) { FailSoft $msg; exit 1 }
 
 # File helpers
 function PromptAction($destination, $sourceName) {
-    Ask "File already exists: $destination ($sourceName)`n[s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all"
-    $key = [System.Console]::ReadKey($true).KeyChar
-    return $key
+    Ask "File already exists: $destination ($sourceName)`n[s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all, [c]ancel (then Enter)"
+    while ($true) {
+        $choice = [System.Console]::ReadLine()
+        if ($null -eq $choice -or $choice -ieq 'c') {
+            Fail "Link setup cancelled at $destination; this conflict was not changed"
+        }
+        if ($choice -cmatch '^[sSoObB]$') { return $choice }
+        Warn 'Invalid choice. Enter s, S, o, O, b, B, or c to cancel.'
+    }
 }
 
 function Get-LinkConflict($source, $destination) {
@@ -142,7 +148,7 @@ function LinkPath($source, $destination, [bool]$isDirectory = $false) {
                 'B' { $script:BackupAll = $true }
                 's' { $skip = $true }
                 'S' { $script:SkipAll = $true }
-                default { $skip = $true }
+                default { throw 'Unexpected link-conflict choice' }
             }
         }
 
@@ -1560,7 +1566,8 @@ Commands:
 Options:
   -d, --dry     Dry run (no changes made)
   -f, --force   Overwrite existing files without prompting
-  -q, --quiet   Only show errors
+  -q, --quiet   Hide routine dotfile progress; keep warnings and prompts
+               Native subprocess output is unchanged
   -h, --help    Show this help message
 "@
 }

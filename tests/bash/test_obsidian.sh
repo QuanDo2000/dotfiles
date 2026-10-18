@@ -417,6 +417,24 @@ test_start_service_skips_when_home_manager_unit_missing() {
   assert_contains "$output" "dotfile update"
 }
 
+test_pick_vault_exits_on_closed_input() {
+  REPO_DIR="$REPO_DIR" python3 - <<'PY'
+import os
+import subprocess
+
+result = subprocess.run(
+    ["bash", "-c", '''source "$1/scripts/utils.sh"
+source "$1/scripts/obsidian.sh"
+OBSIDIAN_REMOTE_VAULTS=demo
+vault="$(_obsidian_pick_vault)"
+''', "bash", os.environ["REPO_DIR"]],
+    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    timeout=2,
+)
+assert result.returncode == 1, f"closed input must cancel selection, got {result.returncode}"
+PY
+}
+
 test_setup_obsidian_quiet_reports_pending_service() {
   QUIET=true
   mkdir -p "$HOME/Documents/test-vault"

@@ -60,6 +60,30 @@ function test_linkpath_lowercase_overwrite_does_not_authorize_next_conflict {
     }
 }
 
+function test_promptaction_retries_invalid_input_and_preserves_case {
+    $path = $script:DotfileScript.Replace("'", "''")
+    $command = ". '$path' -NoMain; `$choice = PromptAction 'destination' 'source'; Write-Output ('CHOICE=' + `$choice)"
+    $output = @('x', 'S') | pwsh -NoProfile -NonInteractive -Command $command 2>&1 | Out-String
+    Assert-Equals 0 $LASTEXITCODE
+    Assert-Contains $output 'Invalid choice'
+    Assert-Contains $output '[c]ancel'
+    Assert-Contains $output 'CHOICE=S'
+}
+
+function test_linkpath_cancel_preserves_conflicting_file {
+    $src = Join-Path $env:USERPROFILE 'src.txt'
+    $dst = Join-Path $env:USERPROFILE 'dst.txt'
+    'new' | Set-Content -LiteralPath $src
+    'old' | Set-Content -LiteralPath $dst
+    $path = $script:DotfileScript.Replace("'", "''")
+    $command = ". '$path' -NoMain; LinkPath '$($src.Replace("'", "''"))' '$($dst.Replace("'", "''"))'"
+    $output = 'c' | pwsh -NoProfile -NonInteractive -Command $command 2>&1 | Out-String
+    Assert-Equals 1 $LASTEXITCODE
+    Assert-Contains $output 'Link setup cancelled'
+    Assert-Equals 'old' (Get-Content -LiteralPath $dst)
+    Assert-False (Test-Path -LiteralPath "$dst.bak") 'cancel must not back up or replace the conflict'
+}
+
 function test_linkpath_file_overwrite_all_replaces_existing {
     if (Try-Skip-If-No-Symlink-Privilege) { return }
     $src = Join-Path $env:USERPROFILE 'src.txt'
