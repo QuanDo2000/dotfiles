@@ -12,7 +12,7 @@
   "mini.surround": {"branch": "main","commit": "59ce0acf79e1d930756ef3a7cb4c2369560cf548"},
   "nvim-lint": {"branch": "master","commit": "f6230a5c06ba59e6059c14637f1dbe29a7978b9b"},
   "nvim-lspconfig": {"branch": "master","commit": "45a3a444b710511c39abca3b60bb6e23a21e3de5"},
-  "nvim-treesitter": {"branch": "main","commit": "d4a9b23a383266bdb0bfb42d565f31e83f27be5e"},
+  "nvim-treesitter": {"branch": "main","commit": "d3e4a28b63961ba972b0945d66c73b6eec969953"},
   "nvim-treesitter-textobjects": {"branch": "main","commit": "5c7b0263797dfd1bd6202f2b219f3b53a80b2187"},
   "snacks.nvim": {"branch": "main","commit": "882c996cf28183f4d63640de0b4c02ec886d01f2"},
   "todo-comments.nvim": {"branch": "main","commit": "31e3c38ce9b29781e4422fc0322eb0a21f4e8668"},
