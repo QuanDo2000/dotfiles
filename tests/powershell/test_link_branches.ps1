@@ -40,24 +40,20 @@ function test_linkpath_lowercase_overwrite_does_not_authorize_next_conflict {
     'new' | Set-Content -LiteralPath $src
     'first old' | Set-Content -LiteralPath $first
     'second old' | Set-Content -LiteralPath $second
-    $script:PromptCount = 0
-    $originalPrompt = (Get-Command PromptAction).ScriptBlock
-    Set-CommandMock 'PromptAction' {
-        $script:PromptCount++
-        if ($script:PromptCount -eq 1) { return 'o' }
-        return 's'
-    }
-    try {
-        LinkPath $src $first
-        LinkPath $src $second
-        Assert-Equals 2 $script:PromptCount
-        Assert-Equals $src (Get-Item -LiteralPath $first).Target
-        Assert-Equals 'second old' (Get-Content -LiteralPath $second)
-        Assert-False $script:OverwriteAll 'lowercase overwrite must not persist consent'
-        Assert-False $script:SkipAll 'lowercase skip must not persist consent'
-    } finally {
-        Set-CommandMock 'PromptAction' $originalPrompt
-    }
+    $path = $script:DotfileScript.Replace("'", "''")
+    $command = @"
+. '$path' -NoMain
+`$script:OverwriteAll = `$false
+`$script:SkipAll = `$false
+LinkPath '$($src.Replace("'", "''"))' '$($first.Replace("'", "''"))'
+LinkPath '$($src.Replace("'", "''"))' '$($second.Replace("'", "''"))'
+if (`$script:OverwriteAll -or `$script:SkipAll) { exit 2 }
+"@
+    $output = @('o', 's') | pwsh -NoProfile -NonInteractive -Command $command 2>&1 | Out-String
+    Assert-Equals 0 $LASTEXITCODE
+    Assert-Equals 2 ([regex]::Matches($output, 'File already exists:').Count)
+    Assert-Equals $src (Get-Item -LiteralPath $first).Target
+    Assert-Equals 'second old' (Get-Content -LiteralPath $second)
 }
 
 function test_promptaction_retries_invalid_input_and_preserves_case {
