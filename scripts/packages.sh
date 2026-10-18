@@ -344,28 +344,30 @@ function install_mac {
 }
 
 function set_zsh_default {
-  info "Changing default shell to zsh..."
   local platform
   platform="$(detect_platform)"
   case "$platform" in
     nixos|mac)
       info "Shell is managed declaratively on $platform; skipping chsh"
-      success "Finished changing zsh as default"
-      return
+      return 0
       ;;
   esac
-  if [[ "$DRY" == "false" ]]; then
-    local zsh_path
-    zsh_path="$(command -v zsh || true)"
-    if [[ -z "$zsh_path" ]]; then
-      info "zsh not installed; skipping default shell change"
-    elif [[ "${SHELL:-}" == "$zsh_path" || "$(basename "${SHELL:-}")" == "zsh" ]]; then
-      info "Already has zsh as default shell"
-    else
-      chsh -s "$zsh_path"
-    fi
+  if [[ "$DRY" == true ]]; then
+    info "Would change default shell to zsh if installed and not already configured"
+    return 0
   fi
-  success "Finished changing zsh as default"
+
+  local zsh_path
+  zsh_path="$(command -v zsh || true)"
+  if [[ -z "$zsh_path" ]]; then
+    warn "zsh not installed; default shell unchanged"
+  elif [[ "${SHELL:-}" == "$zsh_path" || "$(basename "${SHELL:-}")" == zsh ]]; then
+    success "zsh is already the default shell"
+  else
+    info "Changing default shell to zsh..."
+    chsh -s "$zsh_path" || fail "Failed to change default shell to zsh"
+    success "Default shell changed to zsh; log in again to use it"
+  fi
 }
 
 function _nixos_rebuild_switch {

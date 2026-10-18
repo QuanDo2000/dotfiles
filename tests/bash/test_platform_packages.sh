@@ -237,9 +237,27 @@ test_set_zsh_default_tolerates_unset_shell() {
   [[ -v SHELL ]] && had_shell=true
   unset SHELL
 
-  assert_exit_code 0 set_zsh_default
+  local output
+  output=$(set_zsh_default)
+  assert_contains "$output" "Default shell changed to zsh; log in again to use it"
 
   [[ "$had_shell" == true ]] && export SHELL="$old_shell" || unset SHELL
+  unset -f detect_platform command chsh
+}
+
+test_set_zsh_default_missing_zsh_keeps_shell_and_warns() {
+  DRY=false
+  QUIET=true
+  detect_platform() { printf 'debian\n'; }
+  command() {
+    [[ "${1:-}" == -v && "${2:-}" == zsh ]] && return 1
+    builtin command "$@"
+  }
+  chsh() { fail 'chsh must not run when zsh is missing'; }
+
+  local output
+  output=$(set_zsh_default)
+  assert_equals '  [WARN] zsh not installed; default shell unchanged' "$output"
   unset -f detect_platform command chsh
 }
 

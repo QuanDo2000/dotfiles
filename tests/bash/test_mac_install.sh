@@ -137,6 +137,7 @@ test_install_packages_mac_skips_chsh() {
 # ---------------------------------------------------------------------------
 
 test_set_zsh_default_skips_on_mac() {
+  DRY=false
   local output
   output=$(set_zsh_default 2>&1)
 

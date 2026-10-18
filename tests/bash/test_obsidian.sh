@@ -337,6 +337,7 @@ test_setup_vault_skips_when_already_configured() {
 }
 
 test_setup_obsidian_skips_reconfiguring_existing_sync() {
+  mock_cmd systemctl 'exit 0'
   local vault_path="$HOME/Documents/test-vault"
   mkdir -p "$vault_path"
   mock_cmd ob 'case "$1" in
@@ -396,6 +397,7 @@ test_start_service_dry_run_does_not_call_systemctl() {
 }
 
 test_start_service_skips_when_home_manager_unit_missing() {
+  QUIET=true
   mock_cmd systemctl 'case "$*" in
     "--user show-environment") exit 0 ;;
     "--user cat obsidian-sync.service") exit 1 ;;
@@ -409,11 +411,44 @@ test_start_service_skips_when_home_manager_unit_missing() {
   local output exit_code=0
   output=$(_obsidian_start_service 2>&1) || exit_code=$?
 
-  if [ "$exit_code" -ne 0 ]; then
-    echo "  FAILED: _obsidian_start_service should skip missing Home Manager unit ($output)" >> "$ERROR_FILE"
-  fi
+  assert_equals 2 "$exit_code"
+  assert_contains "$output" "[WARN]"
   assert_contains "$output" "is not installed yet"
   assert_contains "$output" "dotfile update"
+}
+
+test_pick_vault_exits_on_closed_input() {
+  REPO_DIR="$REPO_DIR" python3 - <<'PY'
+import os
+import subprocess
+
+result = subprocess.run(
+    ["bash", "-c", '''source "$1/scripts/utils.sh"
+source "$1/scripts/obsidian.sh"
+OBSIDIAN_REMOTE_VAULTS=demo
+vault="$(_obsidian_pick_vault)"
+''', "bash", os.environ["REPO_DIR"]],
+    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    timeout=2,
+)
+assert result.returncode == 1, f"closed input must cancel selection, got {result.returncode}"
+PY
+}
+
+test_setup_obsidian_quiet_reports_pending_service() {
+  QUIET=true
+  mkdir -p "$HOME/Documents/test-vault"
+  mock_cmd ob 'exit 0'
+  mock_cmd systemctl 'exit 1'
+
+  local output status=0
+  output=$(setup_obsidian 2>&1) || status=$?
+
+  assert_equals 0 "$status"
+  assert_contains "$output" "systemd user session unavailable"
+  assert_contains "$output" "Vault configured; service activation pending"
+  assert_contains "$output" "dotfile update"
+  assert_not_contains "$output" "[ OK ]"
 }
 
 test_start_service_skips_active_service_for_existing_vault() {

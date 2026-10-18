@@ -56,7 +56,7 @@ function _obsidian_pick_vault {
   local vault_name=""
   while [[ -z "$vault_name" ]]; do
     user 'Enter the vault name to sync:' >&2
-    read -r vault_name
+    read -r vault_name || fail 'Vault selection cancelled: input closed' >&2
   done
   echo "$vault_name"
 }
@@ -129,6 +129,7 @@ function _obsidian_existing_vault_path {
   return 1
 }
 
+# Return 2 when vault setup can succeed but service activation needs follow-up.
 function _obsidian_start_service {
   local skip_if_active="${1:-false}"
   info "Starting Home Manager-managed $OBSIDIAN_SERVICE_NAME..."
@@ -138,8 +139,8 @@ function _obsidian_start_service {
   fi
   if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
     if ! systemctl --user cat "$OBSIDIAN_SERVICE_NAME" >/dev/null 2>&1; then
-      info "$OBSIDIAN_SERVICE_NAME is not installed yet; run 'dotfile update' to activate the Home Manager service"
-      return
+      warn "$OBSIDIAN_SERVICE_NAME is not installed yet; run 'dotfile update' to activate the Home Manager service"
+      return 2
     fi
     if [[ "$skip_if_active" == "true" ]] \
       && systemctl --user is-active --quiet "$OBSIDIAN_SERVICE_NAME"; then
@@ -149,7 +150,8 @@ function _obsidian_start_service {
     systemctl --user restart "$OBSIDIAN_SERVICE_NAME" \
       || fail "Failed to restart $OBSIDIAN_SERVICE_NAME; run 'dotfile update' to activate the Home Manager service"
   else
-    info "systemd user session unavailable; run 'dotfile update' after login to activate $OBSIDIAN_SERVICE_NAME"
+    warn "systemd user session unavailable; run 'dotfile update' after login to activate $OBSIDIAN_SERVICE_NAME"
+    return 2
   fi
 }
 
@@ -159,24 +161,27 @@ function setup_obsidian {
   _obsidian_check_prereqs
   _obsidian_check_cli
 
-  local existing_vault_path
+  local existing_vault_path skip_if_active=false
   if [[ "$DRY" != "true" && "$FORCE" != "true" ]] && existing_vault_path="$(_obsidian_existing_vault_path)"; then
     info "Vault at $existing_vault_path is already configured; skipping Obsidian Sync setup"
-    _obsidian_start_service true
-    success "$OBSIDIAN_SERVICE_NAME is managed by Home Manager"
-    return
+    skip_if_active=true
+  else
+    _obsidian_login
+
+    local vault_name
+    vault_name="$(_obsidian_pick_vault)"
+    [[ -n "$vault_name" ]] || fail "No vault name provided"
+
+    local vault_path
+    vault_path="$(_obsidian_vault_path "$vault_name")" || fail "Invalid vault name: $vault_name"
+    _obsidian_setup_vault "$vault_name" "$vault_path"
   fi
 
-  _obsidian_login
-
-  local vault_name
-  vault_name="$(_obsidian_pick_vault)"
-  [[ -n "$vault_name" ]] || fail "No vault name provided"
-
-  local vault_path
-  vault_path="$(_obsidian_vault_path "$vault_name")" || fail "Invalid vault name: $vault_name"
-  _obsidian_setup_vault "$vault_name" "$vault_path"
-  _obsidian_start_service
-
-  success "Vault ready. $OBSIDIAN_SERVICE_NAME is managed by Home Manager"
+  local service_status=0
+  _obsidian_start_service "$skip_if_active" || service_status=$?
+  case "$service_status" in
+    0) success "Vault ready. $OBSIDIAN_SERVICE_NAME is active and managed by Home Manager" ;;
+    2) warn "Vault configured; service activation pending (see instructions above)" ;;
+    *) return "$service_status" ;;
+  esac
 }

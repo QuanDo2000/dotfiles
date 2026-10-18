@@ -54,13 +54,23 @@ _check_writable_file() {
   fi
 }
 
+# Count check groups, not their individual assertions. Doctor owns this state;
+# the default also allows individual checks to run independently.
+_doctor_skip() {
+  skipped=$((${skipped:-0} + 1))
+  warn "$1"
+}
+
 _check_neovim_runtime() {
   if [[ "${DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME:-false}" == "true" ]]; then
-    info "Skipping Neovim runtime verification: DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME=true"
+    _doctor_skip "Skipping Neovim runtime verification: DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME=true"
     return 0
   fi
   local tracked="$DOTFILES_DIR/config/shared/config/nvim" runtime="$HOME/.config/nvim"
-  [[ -f "$tracked/init.lua" && -f "$tracked/lazy-lock.json" ]] || return 0
+  if [[ ! -f "$tracked/init.lua" || ! -f "$tracked/lazy-lock.json" ]]; then
+    _doctor_skip "Skipping Neovim runtime verification: tracked config or lockfile missing"
+    return 0
+  fi
 
   local before="$errors" provider_prelude
   provider_prelude='vim.g.loaded_node_provider=0;vim.g.loaded_perl_provider=0;vim.g.loaded_ruby_provider=0;vim.g.loaded_python3_provider=0'
@@ -141,7 +151,11 @@ _check_obsidian_service() {
       *) expected=false ;;
     esac
   fi
-  [[ "$DRY" == true || "$expected" != true ]] && return 0
+  [[ "$expected" != true ]] && return 0
+  if [[ "$DRY" == true ]]; then
+    _doctor_skip "Skipping Obsidian service verification in dry-run mode"
+    return 0
+  fi
   local target="$HOME/.config/systemd/user/obsidian-sync.service" link_target=""
   if [[ -L "$target" && -e "$target" ]]; then
     link_target="$(readlink -f "$target" 2>/dev/null || true)"
@@ -223,19 +237,19 @@ _check_nix_config() {
   is_home_manager_platform "$platform" || return 0
 
   if [[ "${DOTFILE_DOCTOR_SKIP_NIX_EVAL:-false}" == "true" ]]; then
-    info "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true"
+    _doctor_skip "Skipping Nix evaluation: DOTFILE_DOCTOR_SKIP_NIX_EVAL=true"
     return 0
   fi
   if [[ "$DRY" == "true" ]]; then
-    info "Skipping Nix evaluation in dry-run mode"
+    _doctor_skip "Skipping Nix evaluation in dry-run mode"
     return 0
   fi
   if ! command -v nix >/dev/null 2>&1; then
-    info "Skipping Nix evaluation: nix not found"
+    _doctor_skip "Skipping Nix evaluation: nix not found"
     return 0
   fi
   if [[ ! -f "$DOTFILES_DIR/flake.nix" ]]; then
-    info "Skipping Nix evaluation: flake.nix not found"
+    _doctor_skip "Skipping Nix evaluation: flake.nix not found"
     return 0
   fi
 
@@ -270,7 +284,7 @@ _check_nix_config() {
 }
 
 function doctor {
-  local errors=0
+  local errors=0 skipped=0
   local platform
   platform="$(detect_platform)"
 
@@ -289,10 +303,14 @@ function doctor {
   _check_nix_config "$platform"
 
   if [ "$errors" -eq 0 ]; then
-    success "All checks passed!"
+    if [ "$skipped" -gt 0 ]; then
+      warn "Completed checks passed; $skipped check group(s) skipped (see reasons above)"
+    else
+      success "All checks passed!"
+    fi
     return 0
   fi
 
-  fail_soft "$errors issue(s) found"
+  fail_soft "$errors issue(s) found; $skipped check group(s) skipped"
   return 1
 }

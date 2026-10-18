@@ -150,7 +150,8 @@ Commands:
 Options:
   -d, --dry   Dry run (no changes made)
   -f, --force Overwrite existing files
-  -q, --quiet Only show errors
+  -q, --quiet Hide routine dotfile progress; keep warnings and prompts
+              Native subprocess output is unchanged
   -h, --help  Show this help message
 ```
 
@@ -179,7 +180,8 @@ Commands:
 Options:
   -d, --dry   Dry run (no changes made)
   -f, --force Overwrite existing files without prompting
-  -q, --quiet Only show errors
+  -q, --quiet Hide routine dotfile progress; keep warnings and prompts
+              Native subprocess output is unchanged
   -h, --help  Show this help message
 ```
 
