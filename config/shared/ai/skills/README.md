@@ -12,10 +12,13 @@ activation; inspect collisions before activation. Existing sessions may retain
 the old catalog until restarted.
 
 `reflect` reviews the current conversation, while `skill-retrospective` audits
-a bounded sample of past conversations. `unslop` is an opt-in prose edit and
-`blast-radius` is a read-only impact assessment. They are not an always-on mode
-or substitutes for the governing review and delivery policies. Each new skill's
-`UPSTREAM.md` records the reviewed pstack revision and adaptation.
+a bounded sample of past conversations; `blast-radius` is a read-only impact
+assessment. They are not an always-on mode or substitutes for governing policies.
+Their `UPSTREAM.md` files record the reviewed pstack revision and adaptation.
+
+`unslop` is retired: request scoped prose edits directly. Home Manager removes
+its managed link on activation. Windows moves existing shared and Pi copies to
+name-specific backups outside discovery, preserving local additions.
 
 ## Promoted local workflows
 

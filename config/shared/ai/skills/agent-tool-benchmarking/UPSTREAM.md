@@ -5,7 +5,10 @@ Promoted on 2026-09-22 from the locally maintained default Hermes profile's
 or upstream revision fields; none have been invented. This is a user-approved
 local workflow publication, not a verified upstream package or license claim.
 
-The complete entry point and all 19 references are retained. Promotion aligns
+All 19 original references are retained. The entry point now routes detailed
+execution, interpretation, removal, subagent, memory, web, and cross-client
+contracts into seven additional on-demand references; their safeguards are
+preserved rather than discarded. Promotion aligns
 Codex-home isolation, credential opacity, and experiment-owned cleanup with the
 owning skill's existing approval rules. Historical benchmark figures and
 version-scoped observations are inherited examples; their raw artifacts are not
