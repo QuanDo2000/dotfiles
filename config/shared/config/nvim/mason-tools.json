@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-18-blank-budget",
-  "registrySha256": "eb75fbc3486ed75edd928e004b4de4d976bb0a122bbe5cfb6dc27efdcc7b0db9",
+  "registryVersion": "2026-10-22-ill-fund",
+  "registrySha256": "4819746edb4b9e8644af23c058b716003291df06b746e5b5e5b9bedfdf603085",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
@@ -9,6 +9,6 @@
     "prettier": "3.9.10",
     "stylua": "v2.6.0",
     "taplo": "0.10.0",
-    "yaml-language-server": "1.25.0"
+    "yaml-language-server": "2.0.0"
   }
 }
