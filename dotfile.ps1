@@ -1140,7 +1140,8 @@ function Move-RetiredSkill($Path, $BackupRoot) {
         throw "Refusing to move unexpected retired skill path: $Path"
     }
     New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
-    $backup = Join-Path $BackupRoot "test-driven-development.backup.$([guid]::NewGuid().ToString('N'))"
+    $name = Split-Path -Path $Path -Leaf
+    $backup = Join-Path $BackupRoot "$name.backup.$([guid]::NewGuid().ToString('N'))"
     Move-Item -LiteralPath $Path -Destination $backup -ErrorAction Stop
 }
 
@@ -1150,13 +1151,15 @@ function InstallAiSkills {
 
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'unslop', 'blast-radius', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
+    $skills = @('systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'blast-radius', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
     foreach ($skill in $skills) {
         Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill)
         Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
     }
-    Move-RetiredSkill (Join-Path $targetRoot 'test-driven-development') (Join-Path $env:USERPROFILE '.agents')
-    Move-RetiredSkill (Join-Path $env:USERPROFILE '.pi\agent\skills\test-driven-development') (Join-Path $env:USERPROFILE '.pi\agent\retired-skills')
+    foreach ($skill in 'test-driven-development', 'unslop') {
+        Move-RetiredSkill (Join-Path $targetRoot $skill) (Join-Path $env:USERPROFILE '.agents')
+        Move-RetiredSkill (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") (Join-Path $env:USERPROFILE '.pi\agent\retired-skills')
+    }
 }
 
 # Install or update agent CLIs and their shared skills.

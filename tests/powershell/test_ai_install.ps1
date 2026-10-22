@@ -191,7 +191,7 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'unslop', 'blast-radius', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
+    $skills = @('systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'blast-radius', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
     foreach ($skill in $skills) {
         $source = Join-Path $sourceRoot $skill
         $target = Join-Path $targetRoot $skill
@@ -208,6 +208,16 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     $oldPi = Join-Path $env:USERPROFILE '.pi\agent\skills\test-driven-development'
     New-Item -ItemType Directory -Force -Path $oldPi | Out-Null
     'old pi copy' | Set-Content (Join-Path $oldPi 'SKILL.md')
+    # A stale source must not reinstall a retired skill or overwrite local additions.
+    $oldUnslopSource = Join-Path $sourceRoot 'unslop'
+    New-Item -ItemType Directory -Force -Path $oldUnslopSource | Out-Null
+    'retired source' | Set-Content (Join-Path $oldUnslopSource 'SKILL.md')
+    foreach ($root in $targetRoot, (Join-Path $env:USERPROFILE '.pi\agent\skills')) {
+        $retiring = Join-Path $root 'unslop'
+        New-Item -ItemType Directory -Force -Path $retiring | Out-Null
+        'local unslop' | Set-Content (Join-Path $retiring 'SKILL.md')
+        'local addition' | Set-Content (Join-Path $retiring 'notes.md')
+    }
     Set-CommandMock 'npx' { throw 'npx must not install shared skills' }
 
     InstallAiSkills
@@ -229,6 +239,17 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     $piRetired = @(Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.pi\agent\retired-skills') -Directory -Filter 'test-driven-development.backup.*')
     Assert-Equals 1 $piRetired.Count
     if ($piRetired.Count -eq 1) { Assert-Contains (Get-Content -Raw (Join-Path $piRetired[0].FullName 'SKILL.md')) 'old pi copy' }
+    foreach ($root in $targetRoot, (Join-Path $env:USERPROFILE '.pi\agent\skills')) {
+        Assert-False (Test-Path (Join-Path $root 'unslop')) 'Retired unslop remains discoverable'
+    }
+    foreach ($root in (Join-Path $env:USERPROFILE '.agents'), (Join-Path $env:USERPROFILE '.pi\agent\retired-skills')) {
+        $backups = @(Get-ChildItem -LiteralPath $root -Directory -Filter 'unslop.backup.*')
+        Assert-Equals 1 $backups.Count
+        if ($backups.Count -eq 1) {
+            Assert-Contains (Get-Content -Raw (Join-Path $backups[0].FullName 'SKILL.md')) 'local unslop'
+            Assert-Contains (Get-Content -Raw (Join-Path $backups[0].FullName 'notes.md')) 'local addition'
+        }
+    }
 }
 
 function test_ai_installers_do_not_expose_unused_update_switches {

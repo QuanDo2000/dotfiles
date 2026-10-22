@@ -160,7 +160,7 @@ test_skill_retrospective_is_installed_cross_platform() {
   windows="$(<"$REPO_DIR/dotfile.ps1")"
 
   assert_file_exists "$skill"
-  assert_contains "$windows" "'systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'unslop', 'blast-radius'"
+  assert_contains "$windows" "'systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'blast-radius'"
 }
 
 

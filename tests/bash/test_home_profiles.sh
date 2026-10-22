@@ -150,8 +150,8 @@ test_evaluated_profile_configures_runtime_files_and_activations() {
     assert_equals "$source" "$(_profile_file_meta "$profile" ".pi/agent/locked-extensions/releases/$release_id" | jq -r .source)"
   done
   nixos_files=$(_profile_files nixos); arch_files=$(_profile_files arch-server)
-  _test_present "$nixos_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/unslop' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/bitwarden-picker' '.local/bin/input-method-status' '.local/bin/hyprsunset-status' '.local/bin/show-keybinds'
-  _test_present "$arch_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/unslop' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/restic-recover'
+  _test_present "$nixos_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/bitwarden-picker' '.local/bin/input-method-status' '.local/bin/hyprsunset-status' '.local/bin/show-keybinds'
+  _test_present "$arch_files" '.hermes/SOUL.md' '.agents/skills/systematic-debugging' '.agents/skills/tdd' '.agents/skills/skill-retrospective' '.agents/skills/reflect' '.agents/skills/blast-radius' '.pi/agent/extensions/autoresearch' '.pi/agent/extensions/fast-mode' '.local/bin/restic-recover'
   local sunset_source
   sunset_source=$(_profile_file_meta nixos '.local/bin/hyprsunset-status' | jq -r .source)
   assert_contains "$sunset_source" '-hyprsunset-status-0.1.0/bin/hyprsunset-status'
@@ -206,6 +206,7 @@ test_hermes_workflow_skills_are_separate_and_non_destructive() {
     done
     assert_contains "$(_profile_file_meta "$profile" '.agents/skills/tdd')" 'ai/skills/tdd'
     assert_line_absent "$files" '.agents/skills/test-driven-development'
+    assert_line_absent "$files" '.agents/skills/unslop'
   done
 }
 
