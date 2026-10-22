@@ -3,6 +3,10 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
+test_pi_closure_prefetch_supervision() {
+  python3 "$REPO_DIR/tests/python/test_pi_prefetch.py" 2>&1
+}
+
 test_windows_anki_pin_refresher() {
   python3 "$REPO_DIR/tests/python/test_anki_pins.py" 2>&1
   assert_equals "0" "$?" "Anki pin refresher tests should pass"
