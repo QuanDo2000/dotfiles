@@ -103,6 +103,13 @@ function _install_native_bootstrap_packages {
   esac
 }
 
+function _preflight_arch_service_state_backup {
+  [[ "$DRY" == "true" ]] && return
+  # Check credential readiness, not permission to bypass the installer's sudo gate.
+  sudo -n -v >/dev/null 2>&1 || fail \
+    "Arch backup-unit setup needs sudo before activation. In a local terminal, run sudo -v and rerun dotfile update in that same terminal. Pending update state is preserved."
+}
+
 function _install_arch_service_state_backup {
   local installer="$DOTFILES_DIR/config/arch-server/service-state-backup/install.sh"
   if [[ "$DRY" == "true" ]]; then
@@ -459,6 +466,9 @@ function _update_packages_scope {
     nixos|debian|arch|mac) ;;
     unknown) fail "Unsupported system: $(uname) (could not detect Linux distro)" ;;
   esac
+  if [[ "$platform" == arch && "$scope" != ai ]]; then
+    _preflight_arch_service_state_backup
+  fi
   [[ "$DRY" == "true" ]] || _begin_dependency_update \
     || fail "Another dependency update is already running"
 
@@ -481,6 +491,9 @@ function _update_packages_scope {
   [[ "$DRY" == "true" ]] || _validate_pending_dependency_update "${pending_args[@]}"
   if [[ "$scope" != ai && "$DRY" == "false" ]]; then
     _install_native_bootstrap_packages "$platform"
+  fi
+  if [[ "$platform" == arch && "$scope" != ai ]]; then
+    _preflight_arch_service_state_backup
   fi
   case "$platform" in
     nixos)   DOTFILE_FLAKE_REF="path:$DOTFILES_DIR" _nixos_rebuild_switch ;;
