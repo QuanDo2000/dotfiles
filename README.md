@@ -339,6 +339,22 @@ a newer Pi release awaiting publication.
 Full updates install missing native prerequisites for the detected platform
 before activating its configured profile; installed-state detection does not
 select dependencies.
+Pi extension closure prefetch reports its stage and elapsed time on stderr at
+startup, every 15 seconds even without output, and completion; native Nix stderr
+remains visible. `DOTFILE_PREFETCH_TIMEOUT_SECONDS` sets its wall deadline
+(default `3600`, integer `1`–`86400`, validated before Python batch mutations).
+The bound covers the prefetch client and stdout pipe drain, not the whole update.
+Stdout capture is limited to 1 MiB. Timeout, overflow, nonzero exit, or cancellation
+fails the update before activation, without publishing a new Pi release ID,
+closure hash, or settings. Package/lock edits can remain in the disposable update
+worktree; the outer updater applies only a successful validated patch.
+Cleanup sends TERM to the owned process group, allows up to 2 seconds, then sends
+KILL to that group even if its leader already exited, with a separate bounded
+2-second reap wait. SIGINT/SIGTERM return 130/143 after cleanup; prior handlers
+are restored. Shared Nix daemon work is not killed. Descendants that deliberately
+escape the process group are outside this ownership boundary; if encountered,
+stronger OS-level job containment is needed rather than broader process killing.
+
 Use `dotfile update ai` to update only AI tools and configs. On Unix this
 refreshes Pi release pins, managed AI packages, and Pi extensions with
 the same isolated validation, diff display, and automatic approval. On Windows it

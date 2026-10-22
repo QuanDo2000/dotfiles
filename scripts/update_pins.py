@@ -7,6 +7,8 @@ import hashlib
 import json
 import os
 import re
+import selectors
+import signal
 import shutil
 import subprocess
 import sys
@@ -39,6 +41,114 @@ def die(message: str) -> None:
 def run(*args: str, cwd: Path | None = None) -> str:
     result = subprocess.run(args, cwd=cwd, text=True, stdout=subprocess.PIPE, check=True)
     return result.stdout.strip()
+
+
+PREFETCH_HEARTBEAT_SECONDS = 15
+PREFETCH_STDOUT_LIMIT = 1024 * 1024
+PREFETCH_CLEANUP_SECONDS = 2
+
+
+def prefetch_timeout() -> int:
+    value = os.environ.get("DOTFILE_PREFETCH_TIMEOUT_SECONDS", "3600")
+    if not re.fullmatch(r"[0-9]{1,5}", value) or not 1 <= int(value) <= 86400:
+        die("DOTFILE_PREFETCH_TIMEOUT_SECONDS must be an integer from 1 to 86400")
+    return int(value)
+
+
+def prefetch_pi(lock_path: Path, repo: Path, timeout: int) -> str:
+    """Bound the owned client and its stdout drain, not shared Nix daemon work."""
+    args = ("nix", "run", f"path:{repo}#prefetch-npm-deps", "--", str(lock_path))
+    started = time.monotonic()
+    deadline = started + timeout
+    process = None
+    signals = (signal.SIGINT, signal.SIGTERM)
+    previous = {sig: signal.getsignal(sig) for sig in signals}
+
+    pending_cancel = None
+
+    def cancel(signum, frame):
+        nonlocal pending_cancel
+        if process is None:
+            pending_cancel = signum
+        else:
+            raise SystemExit(128 + signum)
+
+    def progress(state: str) -> None:
+        print(f"Pi closure prefetch: {state}; elapsed {time.monotonic() - started:.1f}s "
+              f"(deadline {timeout}s)", file=sys.stderr, flush=True)
+
+    def stop_owned() -> None:
+        assert process is not None
+        # Do not let a second cancellation interrupt cleanup or mask its cause.
+        for sig in signals:
+            signal.signal(sig, signal.SIG_IGN)
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        end = time.monotonic() + PREFETCH_CLEANUP_SECONDS
+        while time.monotonic() < end:
+            process.poll()  # Reap the leader, but do not equate exit with group exit.
+            try:
+                os.killpg(process.pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(min(.05, max(0, end - time.monotonic())))
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait(timeout=PREFETCH_CLEANUP_SECONDS)
+
+    try:
+        for sig in signals:
+            signal.signal(sig, cancel)
+        progress("starting")
+        # Defer cancellation during spawn until ownership has been recorded.
+        process = subprocess.Popen(args, stdout=subprocess.PIPE, start_new_session=True)
+        assert process.stdout is not None
+        if pending_cancel is not None:
+            raise SystemExit(128 + pending_cancel)
+        captured = bytearray()
+        next_progress = started + PREFETCH_HEARTBEAT_SECONDS
+        with process.stdout, selectors.DefaultSelector() as selector:
+            selector.register(process.stdout, selectors.EVENT_READ)
+            while selector.get_map() or process.poll() is None:
+                now = time.monotonic()
+                if now >= deadline:
+                    die(f"Pi closure prefetch timed out after {timeout}s")
+                if now >= next_progress:
+                    progress("waiting")
+                    next_progress = now + PREFETCH_HEARTBEAT_SECONDS
+                wait = max(0, min(deadline, next_progress) - now)
+                # EOF can precede process exit; poll promptly without busy waiting.
+                if not selector.get_map():
+                    wait = min(wait, .1)
+                events = selector.select(wait)
+                for key, _ in events:
+                    chunk = os.read(key.fd, 65536)
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    if len(captured) + len(chunk) > PREFETCH_STDOUT_LIMIT:
+                        die(f"Pi closure prefetch stdout exceeded {PREFETCH_STDOUT_LIMIT} bytes")
+                    captured.extend(chunk)
+            if process.returncode:
+                raise subprocess.CalledProcessError(process.returncode, args)
+        progress("finished")
+        return captured.decode().strip()
+    except BaseException:
+        if process is not None:
+            try:
+                stop_owned()
+            except Exception as cleanup_error:
+                print(f"Pi closure prefetch cleanup failed: {cleanup_error}", file=sys.stderr)
+        raise
+    finally:
+        if process is not None and process.stdout is not None:
+            process.stdout.close()
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
 
 
 def request(url: str) -> urllib.request.Request:
@@ -173,6 +283,7 @@ def locked_node_version(repo: Path) -> str:
 
 
 def update_pi_extensions(repo: Path) -> None:
+    timeout = prefetch_timeout()  # Validate before even package/lock mutations.
     package_path = repo / "config/shared/ai/pi/extensions/package.json"
     lock_path = package_path.with_name("package-lock.json")
     release_path = repo / "packages/pi-extensions-release.json"
@@ -227,10 +338,8 @@ def update_pi_extensions(repo: Path) -> None:
     if old == updated:
         print(f"Pi extensions already current (Node {node_version}, ABI {abi})")
         return
-    atomic_json(release_path, updated)
-
     if old["releaseId"] != release_id:
-        prefetch = run("nix", "run", f"path:{repo}#prefetch-npm-deps", "--", str(lock_path))
+        prefetch = prefetch_pi(lock_path, repo, timeout)
         matches = re.findall(r"sha256-[A-Za-z0-9+/=]+", prefetch)
         if not matches:
             die("prefetch-npm-deps returned no hash")
@@ -241,6 +350,7 @@ def update_pi_extensions(repo: Path) -> None:
     if old["node"]["version"] != node_version:
         workflow = repo / ".github/workflows/test.yml"
         replace_once(workflow, f'node-version: {old["node"]["version"]}', f"node-version: {node_version}")
+    atomic_json(release_path, updated)
     print(f"updated Pi extensions to {release_id[:12]} (Node {node_version}, ABI {abi})")
 
 
@@ -563,6 +673,12 @@ def main() -> int:
         return 2
     targets, repo_arg = sys.argv[1:-1], sys.argv[-1]
     repo = Path(repo_arg).resolve()
+    if "pi-extensions" in targets:
+        try:
+            prefetch_timeout()  # Reject invalid batch configuration before any target writes.
+        except Exception as error:
+            print(f"pin update failed for pi-extensions: {error}", file=sys.stderr)
+            return 1
     handlers = {
         "pi-extensions": update_pi_extensions,
         "webcord": update_webcord,
