@@ -155,6 +155,19 @@ Options:
   -h, --help  Show this help message
 ```
 
+Full Arch `dotfile update` checks noninteractive sudo credential readiness before
+refreshing pins and again immediately before profile activation. If unavailable,
+run `sudo -v` and rerun the update in the same attended terminal; an existing
+validated pending update is retained for resume. AI-only, other-platform and dry
+updates do not authenticate. This is a conservative credential check, not a grant
+of permission for the installer: its final sudo check remains in place, and a
+long activation can still outlast the credential cache.
+
+- debt: the readiness probe uses `sudo -n -v`, so an installer-only NOPASSWD rule
+  that cannot validate credentials may need an attended update. Upgrade trigger:
+  a supported deployment uses that narrower policy; add a safe exact-command
+  readiness mechanism rather than widening its sudo rights.
+
 `dotfile upgrade` runs `sudo pacman -Syu` on Arch, `sudo apt-get update` plus
 `sudo apt-get upgrade -y` on Debian, or `brew update` plus `brew upgrade --greedy` on
 macOS. NixOS remains declarative; use `dotfile update` there.

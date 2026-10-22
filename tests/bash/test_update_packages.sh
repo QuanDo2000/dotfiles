@@ -21,6 +21,7 @@ test_update_packages_refreshes_and_validates_all_pins_before_activation() {
   local calls="$TEST_TMPDIR/calls.log"
   printf 'ID=arch\n' > "$osrel"
 
+  sudo() { [[ "$*" == '-n -v' ]] || return 99; printf 'privilege\n' >> "$calls"; }
   _update_flake_inputs() {
     printf 'flake\n' >> "$calls"
     printf 'updated\n' > "$DOTFILES_DIR/flake.lock"
@@ -37,11 +38,53 @@ test_update_packages_refreshes_and_validates_all_pins_before_activation() {
 
   OS_RELEASE="$osrel" update_packages >/dev/null 2>&1
 
-  assert_equals "$(printf 'flake\npins\nvalidate\napprove\nnative:arch\nactivate:arch-server:path:%s\nservice-state\nextensions\nneovim\npublish:full' "$DOTFILES_DIR")" "$(<"$calls")"
+  assert_equals "$(printf 'privilege\nflake\npins\nvalidate\napprove\nnative:arch\nprivilege\nactivate:arch-server:path:%s\nservice-state\nextensions\nneovim\npublish:full' "$DOTFILES_DIR")" "$(<"$calls")"
 
   unset -f _update_flake_inputs _update_all_dependency_pins _validate_dependency_update _approve_dependency_update \
     _install_native_bootstrap_packages _home_manager_switch _install_arch_service_state_backup _update_pi_extensions \
     _sync_neovim _publish_dependency_update
+}
+
+test_update_packages_stops_on_missing_or_expired_privilege_before_activation() {
+  DRY=false
+  mock_uname Linux
+  local osrel="$TEST_TMPDIR/os-release" calls fail_at sudo_calls status output
+  printf 'ID=arch\n' > "$osrel"
+  for fail_at in 1 2; do
+    DOTFILES_DIR="$TEST_TMPDIR/update-$fail_at"
+    _init_update_test_repo
+    calls="$TEST_TMPDIR/privilege-$fail_at.log"
+    : > "$calls"
+    sudo_calls=0
+    sudo() {
+      [[ "$*" == '-n -v' ]] || return 99
+      sudo_calls=$((sudo_calls + 1))
+      printf 'privilege\n' >> "$calls"
+      [[ "$sudo_calls" -lt "$fail_at" ]]
+    }
+    _update_flake_inputs() { printf 'refresh\n' >> "$calls"; printf 'updated\n' > "$DOTFILES_DIR/flake.lock"; }
+    _update_all_dependency_pins() { :; }
+    _validate_dependency_update() { :; }
+    _approve_dependency_update() { :; }
+    _install_native_bootstrap_packages() { :; }
+    _home_manager_switch() { printf 'activate\n' >> "$calls"; }
+    _install_arch_service_state_backup() { printf 'install\n' >> "$calls"; }
+    _update_pi_extensions() { :; }
+    _sync_neovim() { :; }
+    _publish_dependency_update() { :; }
+    status=0
+    output="$(OS_RELEASE="$osrel" update_packages 2>&1)" || status=$?
+    assert_equals 1 "$status"
+    assert_not_contains "$(<"$calls")" activate
+    assert_not_contains "$(<"$calls")" install
+    assert_contains "$output" 'sudo -v'
+    if [[ "$fail_at" == 1 ]]; then
+      assert_not_contains "$(<"$calls")" refresh
+    else
+      assert_contains "$(<"$calls")" refresh
+      assert_file_exists "$(_dependency_update_marker full)"
+    fi
+  done
 }
 
 test_update_ai_updates_only_ai_tools_and_configs() {

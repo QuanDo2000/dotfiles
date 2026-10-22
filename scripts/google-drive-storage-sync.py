@@ -30,13 +30,38 @@ EXCLUDED_DIRS = {
 }
 
 
+class RcloneCaptureError(subprocess.CalledProcessError):
+    """Safe captured failure; returncode is rclone's, not the CLI's exit 1."""
+
+    def __str__(self):
+        return f"rclone {self.cmd} failed (exit {self.returncode}): {self.stderr}"
+
+
 def rclone(*args, capture=False):
-    return subprocess.run(
-        [RCLONE, *args],
-        check=True,
-        text=True,
-        capture_output=capture,
-    )
+    try:
+        return subprocess.run(
+            [RCLONE, *args],
+            check=True,
+            text=True,
+            capture_output=capture,
+        )
+    except subprocess.CalledProcessError as error:
+        if not capture:
+            raise
+        # Never echo arbitrary stderr: even unlabeled text can contain secrets.
+        # Inspect only a bounded prefix and emit fixed reason categories, not
+        # matched text or surrounding paths/URLs. This is not general redaction.
+        diagnostic = (error.stderr or "")[:8192].casefold()
+        reason = next((safe for marker, safe in (
+            ("permission denied", "permission denied"),
+            ("invalid_grant", "authentication rejected"),
+            ("rate limit exceeded", "rate limited"),
+            ("connection timed out", "connection timed out"),
+        ) if marker in diagnostic), "withheld; no recognized safe reason")
+        operation = args[0] if args and args[0] in {"lsjson", "md5sum", "lsf"} else "captured operation"
+        # Preserve programmatic failure status, but discard argv and captured
+        # payloads in the replacement exception. Suppress the unsafe traceback.
+        raise RcloneCaptureError(error.returncode, operation, stderr=reason) from None
 
 
 def parse_inventory(items, root):
@@ -215,6 +240,8 @@ def sync_pair(name, remote_root, storage_root, stamp, dry_run):
 
 
 def self_test():
+    import traceback
+
     old, new = 100.0, 200.0
     plan = make_plan(
         {"", "shared", "shared/Recovery", "remote-only"},
@@ -291,6 +318,75 @@ def self_test():
                                 ({}, {private: (1, new), kept: (1, new)})):
             filtered = make_plan(dirs, remote, dirs, storage, excluded_dirs=excluded)
             assert filtered["down"] | filtered["up"] == {kept}
+    # Real subprocess boundary, but never a Drive request or sync. All fixture
+    # state uses tempfile's TMPDIR, and RCLONE is restored for local traversal.
+    global RCLONE
+    original_rclone = RCLONE
+    with tempfile.TemporaryDirectory() as root:
+        fixture = Path(root)
+        fake = fixture / "rclone"
+        config = fixture / "result.json"
+        calls = fixture / "calls"
+        fake.write_text(
+            f"#!{sys.executable}\n"
+            "import json, pathlib, sys\n"
+            "root = pathlib.Path(__file__).parent\n"
+            "with (root / 'calls').open('a') as log: log.write('call\\n')\n"
+            "result = json.loads((root / 'result.json').read_text())\n"
+            "sys.stdout.write(result['stdout'].get(sys.argv[1], ''))\n"
+            "sys.stderr.write(result['stderr'])\n"
+            "sys.exit(result['code'])\n"
+        )
+        fake.chmod(0o700)
+        sentinel = "UNLABELED_SECRET https://private.invalid/token /private/filename"
+        success = {
+            "stdout": {"lsjson": "[]\n", "md5sum": "a" * 32 + "  file\n", "lsf": "keep\n"},
+            "stderr": "", "code": 0,
+        }
+        config.write_text(json.dumps(success))
+        RCLONE = str(fake)
+        try:
+            assert rclone("lsjson", sentinel, capture=True).stdout == "[]\n"
+            assert inventory(sentinel) == ({""}, {})
+            assert matching_hashes(sentinel, sentinel, {"file"}) == {"file"}
+            for operation, diagnostic, reason in (
+                ("lsjson", "permission denied " + sentinel, "permission denied"),
+                ("md5sum", "invalid_grant " + sentinel, "authentication rejected"),
+                ("lsf", sentinel, "withheld; no recognized safe reason"),
+                ("lsjson", "x" * 8192 + "permission denied " + sentinel,
+                 "withheld; no recognized safe reason"),
+            ):
+                config.write_text(json.dumps({"stdout": {}, "stderr": diagnostic, "code": 7}))
+                before = len(calls.read_text().splitlines())
+                try:
+                    rclone(operation, sentinel, "--config", sentinel, capture=True)
+                except subprocess.CalledProcessError as error:
+                    assert error.returncode == 7  # Not the CLI's exit status.
+                    message = str(error)
+                    assert message == f"rclone {operation} failed (exit 7): {reason}", message
+                    assert len(message) < 200
+                    assert error.output is None
+                    assert "UNLABELED_SECRET" not in repr(vars(error))
+                    rendered = "".join(traceback.format_exception(error))
+                    for private_text in ("UNLABELED_SECRET", "private.invalid", "/private/filename", str(fake)):
+                        assert private_text not in rendered
+                else:
+                    raise AssertionError("captured failure must remain an exception")
+                assert len(calls.read_text().splitlines()) == before + 1  # No retry.
+            # Exercise the script entry point, including its final stderr and
+            # exit semantics, without invoking any installed rclone or service.
+            config.write_text(json.dumps({"stdout": {}, "stderr": "permission denied " + sentinel, "code": 7}))
+            before = len(calls.read_text().splitlines())
+            result = subprocess.run(
+                [sys.executable, __file__, "--dry-run"],
+                env={**os.environ, "RCLONE": str(fake)}, capture_output=True, text=True,
+            )
+            assert result.returncode == 1  # Unhandled failures previously exited 1 too.
+            assert result.stdout == ""
+            assert result.stderr == "rclone lsjson failed (exit 7): permission denied\n", result.stderr
+            assert len(calls.read_text().splitlines()) == before + 1
+        finally:
+            RCLONE = original_rclone
     print("SELF_TEST_OK")
 
 
@@ -313,4 +409,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except RcloneCaptureError as error:
+        # Preserve the script's historical failure exit 1, not rclone's code.
+        raise SystemExit(str(error)) from None
