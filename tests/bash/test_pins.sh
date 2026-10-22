@@ -43,6 +43,55 @@ PY
 
 
 
+test_pin_json_fetch_retries_transient_failures_but_stops() {
+  PYTHONPATH="$REPO_DIR/scripts" python3 - <<'PY' 2>>"$ERROR_FILE"
+import io
+from unittest.mock import patch
+from urllib.error import HTTPError, URLError
+import update_pins
+
+url = "https://registry.npmjs.org/example"
+for error in (HTTPError(url, 502, "Bad Gateway", {}, None), URLError("timed out")):
+    with patch("urllib.request.urlopen", side_effect=[error, io.BytesIO(b'{"ok":true}')]) as fetch:
+        with patch("time.sleep"), patch("sys.stderr", new_callable=io.StringIO):
+            assert update_pins.fetch_json(url) == {"ok": True}
+        assert fetch.call_count == 2
+
+for status, attempts in ((503, 3), (404, 1)):
+    error = HTTPError(url, status, "fixture", {}, None)
+    with patch("urllib.request.urlopen", side_effect=error) as fetch:
+        with patch("time.sleep"), patch("sys.stderr", new_callable=io.StringIO):
+            try:
+                update_pins.fetch_json(url)
+            except HTTPError as caught:
+                assert caught.code == status
+            else:
+                raise AssertionError("failed fetch must not succeed")
+        assert fetch.call_count == attempts
+PY
+}
+
+test_pin_npm_version_reads_validated_latest_tag() {
+  PYTHONPATH="$REPO_DIR/scripts" python3 - <<'PY' 2>>"$ERROR_FILE"
+from unittest.mock import patch
+import update_pins
+
+url = "https://registry.npmjs.org/@scope/example"
+assert update_pins.request(url).get_header("Accept") == "application/vnd.npm.install-v1+json"
+with patch.object(update_pins, "fetch_json", return_value={"dist-tags": {"latest": "1.2.3"}, "version": "9.9.9"}) as fetch:
+    assert update_pins.npm_latest("@scope/example") == "1.2.3"
+    fetch.assert_called_once_with(url)
+for value in (None, 123, "", "1.2.3/../../other"):
+    with patch.object(update_pins, "fetch_json", return_value={"dist-tags": {"latest": value}}):
+        try:
+            update_pins.npm_latest("@scope/example")
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError(f"accepted invalid version: {value}")
+PY
+}
+
 test_mason_pin_extraction_requires_every_reviewed_tool() {
   PYTHONPATH="$REPO_DIR/scripts" python3 - <<'PY' 2>>"$ERROR_FILE"
 import update_pins
