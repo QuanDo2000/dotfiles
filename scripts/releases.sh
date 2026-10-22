@@ -94,9 +94,13 @@ function _update_lix_installer_pins {
 function _latest_npm_package_version {
   local package metadata version
   package="$1"
-  metadata="$(curl -fsSL "https://registry.npmjs.org/$package/latest")" \
+  # npm's abbreviated package metadata avoids the separately cached /latest endpoint.
+  metadata="$(curl -fsSL --connect-timeout 10 --max-time 30 \
+    --retry 2 --retry-delay 1 --retry-max-time 65 \
+    -H 'Accept: application/vnd.npm.install-v1+json' \
+    "https://registry.npmjs.org/$package")" \
     || fail "Failed to check latest $package release"
-  version="$(jq -er '.version | strings | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"))' <<< "$metadata")" \
+  version="$(jq -er '.["dist-tags"].latest | strings | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"))' <<< "$metadata")" \
     || fail "Failed to parse latest $package version"
   printf '%s\n' "$version"
 }
