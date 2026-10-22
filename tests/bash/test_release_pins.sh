@@ -3,13 +3,13 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
-test_npm_version_reads_root_field_not_lifecycle_script() {
-  curl() { printf '%s\n' '{"version":"1.2.3","scripts":{"version":"node build.js"}}'; }
+test_npm_version_reads_latest_dist_tag_not_other_versions() {
+  curl() { printf '%s\n' '{"dist-tags":{"latest":"1.2.3","next":"2.0.0"},"version":"9.9.9"}'; }
   assert_equals '1.2.3' "$(_latest_npm_package_version fixture)"
 }
 
 test_npm_version_preserves_prerelease_and_build_suffixes() {
-  curl() { printf '%s\n' '{"version":"1.2.3-rc.1+build.42"}'; }
+  curl() { printf '%s\n' '{"dist-tags":{"latest":"1.2.3-rc.1+build.42"}}'; }
   assert_equals '1.2.3-rc.1+build.42' "$(_latest_npm_package_version fixture)"
 }
 
@@ -17,13 +17,13 @@ test_npm_version_rejects_invalid_metadata() {
   local response output status
   curl() { printf '%s\n' "$response"; }
   for response in \
-    '{"scripts":{"version":"1.2.3"}}' \
-    '{"version":null}' \
-    '{"version":123}' \
-    '{"version":""}' \
-    '{"version":"node build.js"}' \
-    '{"version":"1.2.3/../../other"}' \
-    '{"version":"1.2.3"'; do
+    '{"version":"1.2.3"}' \
+    '{"dist-tags":{"latest":null}}' \
+    '{"dist-tags":{"latest":123}}' \
+    '{"dist-tags":{"latest":""}}' \
+    '{"dist-tags":{"latest":"node build.js"}}' \
+    '{"dist-tags":{"latest":"1.2.3/../../other"}}' \
+    '{"dist-tags":{"latest":"1.2.3"'; do
     status=0
     output="$(_latest_npm_package_version fixture 2>&1)" || status=$?
     assert_equals 1 "$status"
@@ -955,7 +955,7 @@ EOF
 
   curl() {
     case "$*" in
-      *pi-coding-agent/latest*) printf '{"version":"0.80.7"}' ;;
+      *pi-coding-agent) printf '{"dist-tags":{"latest":"0.80.7"}}' ;;
       *pi-coding-agent-0.80.7.tgz*) echo "Pi archive downloaded twice" >> "$ERROR_FILE"; return 1 ;;
       *pi-agent-core/0.80.7*) printf '{"dist":{"integrity":"sha512-core"}}' ;;
       *pi-ai/0.80.7*) printf '{"dist":{"integrity":"sha512-ai"}}' ;;
@@ -1060,7 +1060,7 @@ EOF
 
   curl() {
     case "$*" in
-      *registry.npmjs.org/obsidian-headless/latest*) printf '{"version":"0.0.13"}' ;;
+      *registry.npmjs.org/obsidian-headless) printf '{"dist-tags":{"latest":"0.0.13"}}' ;;
       *obsidian-headless-0.0.13.tgz*) echo "Obsidian archive downloaded twice" >> "$ERROR_FILE"; return 1 ;;
       *) echo "unexpected curl: $*" >> "$ERROR_FILE"; return 1 ;;
     esac
@@ -1118,7 +1118,7 @@ EOF
 
   curl() {
     case "$*" in
-      *registry.npmjs.org/obsidian-headless/latest*) printf '{"version":"0.0.13"}' ;;
+      *registry.npmjs.org/obsidian-headless) printf '{"dist-tags":{"latest":"0.0.13"}}' ;;
       *obsidian-headless-0.0.13.tgz*) echo "Obsidian archive downloaded twice" >> "$ERROR_FILE"; return 1 ;;
       *) echo "unexpected curl: $*" >> "$ERROR_FILE"; return 1 ;;
     esac
