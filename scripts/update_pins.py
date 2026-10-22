@@ -12,6 +12,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -43,14 +45,25 @@ def request(url: str) -> urllib.request.Request:
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     host = (urllib.parse.urlparse(url).hostname or "").lower()
+    if host == "registry.npmjs.org":
+        headers["Accept"] = "application/vnd.npm.install-v1+json"
     if token and (host == "github.com" or host.endswith(".github.com") or host.endswith(".githubusercontent.com")):
         headers["Authorization"] = f"Bearer {token}"
     return urllib.request.Request(url, headers=headers)
 
 
 def fetch_json(url: str) -> dict:
-    with urllib.request.urlopen(request(url), timeout=60) as response:
-        return json.load(response)
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request(url), timeout=60) as response:
+                return json.load(response)
+        except (urllib.error.URLError, TimeoutError) as error:
+            if isinstance(error, urllib.error.HTTPError) and error.code not in (408, 429, 500, 502, 503, 504):
+                raise
+            if attempt == 2:
+                raise
+            print(f"Retrying metadata fetch for {url}: {error}", file=sys.stderr)
+            time.sleep(1)
 
 
 def download(url: str, destination: Path) -> None:
@@ -141,8 +154,9 @@ def locked_node(repo: Path) -> tuple[str, str]:
 
 def npm_latest(package: str) -> str:
     encoded = urllib.parse.quote(package, safe="@/")
-    version = fetch_json(f"https://registry.npmjs.org/{encoded}/latest").get("version", "")
-    if not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?", version):
+    tags = fetch_json(f"https://registry.npmjs.org/{encoded}").get("dist-tags", {})
+    version = tags.get("latest") if isinstance(tags, dict) else None
+    if not isinstance(version, str) or not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?", version):
         die(f"unexpected npm version for {package}: {version}")
     return version
 
