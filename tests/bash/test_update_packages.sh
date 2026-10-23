@@ -13,6 +13,42 @@ _init_update_test_repo() {
   git -C "$DOTFILES_DIR" commit -qm initial
 }
 
+test_updates_reject_linked_worktrees_before_locking() {
+  _init_update_test_repo
+  local repo="$DOTFILES_DIR" linked="$TEST_TMPDIR/linked" output status command
+  git -C "$repo" worktree add -qb fixture "$linked"
+  DOTFILES_DIR="$linked"
+  DRY=false
+  detect_platform() { printf 'debian\n'; }
+  for command in update_packages update_ai; do
+    status=0
+    output="$("$command" 2>&1)" || status=$?
+    assert_equals 1 "$status"
+    assert_contains "$output" 'Linked worktrees are unsupported'
+    assert_contains "$output" 'standalone checkout'
+    assert_not_contains "$output" 'Another dependency update is already running'
+    [[ ! -e "$repo/.git/dotfile-dependency-update.flock" ]] \
+      || echo '  linked preflight acquired a lock' >> "$ERROR_FILE"
+    assert_equals '' "$(git -C "$repo" status --porcelain)"
+  done
+}
+
+test_updates_preserve_actual_lock_contention_diagnostic() {
+  _init_update_test_repo
+  DRY=false
+  detect_platform() { printf 'debian\n'; }
+  _acquire_dependency_update_lock
+  local output status command
+  for command in update_packages update_ai; do
+    status=0
+    output="$(DEPENDENCY_UPDATE_LOCK=; exec 8>&-; "$command" 2>&1)" || status=$?
+    assert_equals 1 "$status"
+    assert_contains "$output" 'Another dependency update is already running'
+    assert_not_contains "$output" 'Linked worktrees are unsupported'
+  done
+  _release_dependency_update_lock
+}
+
 test_update_packages_refreshes_and_validates_all_pins_before_activation() {
   _init_update_test_repo
   DRY=false

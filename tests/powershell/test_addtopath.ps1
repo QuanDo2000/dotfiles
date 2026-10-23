@@ -1,6 +1,5 @@
-# AddToUserPath — only exercises branches that do NOT persist to the user
-# environment. Dry mode and "already-present" short-circuit before the
-# SetEnvironmentVariable call, so they're safe to run in CI.
+# Exercise real PATH logic with the suite's in-memory User PATH boundary.
+# Native persistence is not tested against the logged-in account.
 
 function TestSetup {
     $script:_OrigProcessPath = $env:Path
@@ -20,11 +19,8 @@ function test_addtouserpath_dry_mode_does_not_modify_process_path {
 
 function test_addtouserpath_already_present_does_not_duplicate_process_path {
     $script:Dry = $false
-    # Use the first existing user PATH entry so we hit the "already present"
-    # branch without having to write to the user registry.
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $existing = @($userPath -split ';' | Where-Object { $_ })[0]
-    if (-not $existing) { Skip-Test 'user PATH has no entries'; return }
+    $existing = 'C:\test-fixture-user-bin'
+    Set-UserPath $existing
     if (-not (($env:Path -split ';') -contains $existing)) {
         $env:Path = "$env:Path;$existing"
     }
@@ -34,4 +30,14 @@ function test_addtouserpath_already_present_does_not_duplicate_process_path {
     $after = ($env:Path -split ';') | Where-Object { $_ -eq $existing } | Measure-Object
 
     Assert-Equals $before.Count $after.Count
+    Assert-Equals $existing (Get-UserPath)
+}
+
+function test_addtouserpath_appends_once_to_isolated_user_and_process_path {
+    Set-UserPath 'C:\existing'
+    $env:Path = 'C:\process'
+    AddToUserPath 'C:\new'
+    AddToUserPath 'C:\new'
+    Assert-Equals 'C:\existing;C:\new' (Get-UserPath)
+    Assert-Equals 'C:\process;C:\new' $env:Path
 }
