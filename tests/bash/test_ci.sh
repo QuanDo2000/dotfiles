@@ -114,6 +114,10 @@ for variable, expression in (("BASE_SHA", "${{ github.event.pull_request.base.sh
 for name, job in jobs.items():
     assert type(job["timeout-minutes"]) is int and job["timeout-minutes"] > 0, name
     assert job.get("permissions", workflow["permissions"]) == {"contents": "read"}, name
+    cache_steps = [step for step in job.get("steps", [])
+                   if step.get("uses", "").startswith("cachix/cachix-action@")]
+    if name in ("bash-linux", "bash-macos", "nix"):
+        assert len(cache_steps) == 1, f"{name}: expected one shared Nix cache setup"
     for step in job.get("steps", []):
         if step.get("uses", "").startswith("cachix/cachix-action@"):
             options = step["with"]
