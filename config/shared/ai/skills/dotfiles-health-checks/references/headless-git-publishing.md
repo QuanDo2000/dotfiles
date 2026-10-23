@@ -36,6 +36,17 @@ printf 'Signing availability check\n' | gpg --local-user <fingerprint> --armor -
 
 The passphrase belongs only in pinentry. A successful signature establishes that key's current signing availability; a public-key listing alone does not. A missing secret key is a provisioning/token-access issue, not an unlock problem. Keep backend configuration, key availability, and agent unlock state as separate diagnoses.
 
+## Scoped SSH signature verification
+
+If signing succeeded but `git verify-commit` reports a missing `gpg.ssh.allowedSignersFile`, preserve the commit and signing configuration. Supply an existing, explicitly trusted verification file for this invocation only:
+
+```sh
+git -c gpg.ssh.allowedSignersFile=/path/to/independently-trusted-allowed-signers \
+  verify-commit <exact-commit-sha>
+```
+
+An artifact-local allowed-signers file is valid; entries use `<trusted-principal> <key-type> <public-key>` syntax. Establish the principal/public-key binding from an independently trusted identity source before creating or using it. Do not obtain trust from the unverified commit, pick the first agent key, or assume an arbitrary configured signing key is trusted. Success proves cryptographic validity against that selected trust file, not broader identity ownership. Retain the exact SHA, result and trust-source rationale in task evidence. Missing trust is not signing failure: do not change machine-wide verification trust, distribute a machine-specific key, disable signing, or claim verification without a successful check. If independent trust is unavailable, report that boundary rather than manufacturing it.
+
 ## Concurrent writers and partial staging
 
 When unrelated work lands in the same dirty files, file-level staging is unsafe:
