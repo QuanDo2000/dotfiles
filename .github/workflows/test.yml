@@ -16,6 +16,8 @@ permissions:
   contents: read
 
 jobs:
+  # Security-pinned Node overrides build from source on hosted runners.
+  # Give Nix jobs a bounded cold-build budget; keep all tests enabled.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -43,7 +45,7 @@ jobs:
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.macos == 'true' }}
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -56,7 +58,7 @@ jobs:
           tests_pid=$!
           nix eval --raw .#darwinConfigurations.mac.system.drvPath &
           darwin_pid=$!
-          nix build .#pi-extensions --no-link &
+          nix build .#pi-extensions --no-link --print-build-logs &
           packages_pid=$!
 
           status=0
@@ -120,7 +122,7 @@ jobs:
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.linux == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -159,7 +161,7 @@ jobs:
     needs: changes
     if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.nix == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -175,4 +177,4 @@ jobs:
         run: nix flake check --no-build --all-systems
 
       - name: Build custom packages
-        run: nix build .#obsidian-headless .#pi-agent .#pi-extensions --no-link
+        run: nix build .#obsidian-headless .#pi-agent .#pi-extensions --no-link --print-build-logs
