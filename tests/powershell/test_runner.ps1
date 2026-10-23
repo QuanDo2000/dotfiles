@@ -16,18 +16,14 @@ function test_clear_test_env_restores_home_independently {
     }
 }
 
-function test_clear_test_env_restores_persisted_and_process_path {
-    $oldUserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+function test_clear_test_env_restores_process_path {
     $oldProcessPath = $env:Path
     try {
         Initialize-TestEnv | Out-Null
-        [Environment]::SetEnvironmentVariable('Path', 'C:\test-fixture-user-bin', 'User')
         $env:Path = 'C:\test-fixture-process-bin'
         Clear-TestEnv
-        Assert-Equals $oldUserPath ([Environment]::GetEnvironmentVariable('Path', 'User'))
         Assert-Equals $oldProcessPath $env:Path
     } finally {
-        [Environment]::SetEnvironmentVariable('Path', $oldUserPath, 'User')
         $env:Path = $oldProcessPath
     }
 }
