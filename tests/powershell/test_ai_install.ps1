@@ -328,8 +328,11 @@ function Assert-PiVerifiedInstall([switch]$WithoutEmbeddedLock, [switch]$Mismatc
         Assert-False (Test-Path (Join-Path $env:LOCALAPPDATA 'dotfiles\pi\bin\pi.cmd')) 'failed install must not publish a launcher'
         return
     }
+    $bin = Join-Path $env:LOCALAPPDATA 'dotfiles\pi\bin'
+    Set-UserPath "C:\existing;$bin;C:\other;$bin"
     InstallPi
 
+    Assert-Equals "$bin;C:\existing;C:\other" (Get-UserPath)
     Assert-Contains $script:NpmArgs 'ci --prefix'
     Assert-Contains $script:NpmArgs '--omit=dev --ignore-scripts'
     Assert-False $script:NpmSawDevDependencies 'npm ci manifest must match production-only reviewed shrinkwrap'

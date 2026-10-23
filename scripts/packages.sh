@@ -469,8 +469,7 @@ function _update_packages_scope {
   if [[ "$platform" == arch && "$scope" != ai ]]; then
     _preflight_arch_service_state_backup
   fi
-  [[ "$DRY" == "true" ]] || _begin_dependency_update \
-    || fail "Another dependency update is already running"
+  [[ "$DRY" == "true" ]] || _begin_dependency_update
 
   if [[ "$DRY" == "true" ]]; then
     "$refresh"

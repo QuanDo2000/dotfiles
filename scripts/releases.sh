@@ -593,10 +593,12 @@ function _release_dependency_update_lock {
 
 function _begin_dependency_update {
   local git_dir common
-  git_dir="$(git -C "$DOTFILES_DIR" rev-parse --absolute-git-dir)" || return 1
-  common="$(_dependency_git_common_dir)" || return 1
-  [[ "$git_dir" == "$common" ]] || return 1
-  _acquire_dependency_update_lock || return 1
+  git_dir="$(git -C "$DOTFILES_DIR" rev-parse --absolute-git-dir)" \
+    || fail "Failed to inspect dependency repository"
+  common="$(_dependency_git_common_dir)" || fail "Failed to inspect dependency repository"
+  [[ "$git_dir" == "$common" ]] \
+    || fail "Linked worktrees are unsupported for dependency updates; use a safe standalone checkout"
+  _acquire_dependency_update_lock || fail "Another dependency update is already running"
   trap '_release_dependency_update_lock "${DEPENDENCY_UPDATE_LOCK:-}"' EXIT
   trap '_release_dependency_update_lock "${DEPENDENCY_UPDATE_LOCK:-}"; exit 1' HUP INT TERM
 }

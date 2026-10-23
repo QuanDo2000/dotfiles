@@ -83,6 +83,7 @@ function Reset-DotfileState {
     $script:OverwriteAll = $false
     $script:BackupAll = $false
     $script:SkipAll = $false
+    $script:TestUserPath = ''
 }
 
 # Create an isolated temp dir + fake HOME. Returns the temp dir path.
@@ -94,7 +95,6 @@ function Initialize-TestEnv {
     $script:_OrigDotfiles = $env:DOTFILES_DIR
     $script:_OrigAppData = $env:APPDATA
     $script:_OrigLocalAppData = $env:LOCALAPPDATA
-    $script:_OrigUserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
     $script:_OrigProcessPath = $env:Path
     $env:USERPROFILE = Join-Path $script:_TestTmp.FullName 'home'
     $env:HOME = $env:USERPROFILE
@@ -130,8 +130,13 @@ function Clear-CommandMock {
     Remove-Item "function:global:$Name" -ErrorAction SilentlyContinue
 }
 
+# Install these once when loading the suite, not only in Initialize-TestEnv:
+# tests without a HOME fixture must be isolated too. Never restore native User
+# persistence in teardown; interruption must be harmless to the real account.
+Set-FunctionMock 'Get-UserPath' { $script:TestUserPath }
+Set-FunctionMock 'Set-UserPath' { param($Value) $script:TestUserPath = $Value }
+
 function Clear-TestEnv {
-    [Environment]::SetEnvironmentVariable('Path', $script:_OrigUserPath, 'User')
     $env:Path = $script:_OrigProcessPath
     if ($null -eq $script:_OrigHome) { Remove-Item Env:USERPROFILE -ErrorAction SilentlyContinue } else { $env:USERPROFILE = $script:_OrigHome }
     if ($null -eq $script:_OrigHomeEnv) { Remove-Item Env:HOME -ErrorAction SilentlyContinue } else { $env:HOME = $script:_OrigHomeEnv }

@@ -359,7 +359,7 @@ function InstallFiraCodeNerdFont {
 
 function Refresh-ProcessPath {
     $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $userPath = Get-UserPath
     $env:Path = (@($env:Path, $machinePath, $userPath) -split ';' | Where-Object { $_ } | Select-Object -Unique) -join ';'
 }
 
@@ -832,9 +832,9 @@ function InstallPi {
             "@echo off`r`nnode `"$release\dist\bundle\cli.js`" %*" | Set-Content -LiteralPath $launcherTemporary -Encoding ascii
             Move-Item -LiteralPath $launcherTemporary -Destination $launcher -Force
         } finally { Remove-Item -LiteralPath $launcherTemporary -Force -ErrorAction SilentlyContinue }
-        $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+        $userPath = Get-UserPath
         $entries = @($userPath -split ';' | Where-Object { $_ -and $_ -ine $bin })
-        [Environment]::SetEnvironmentVariable('Path', (@($bin) + $entries) -join ';', 'User')
+        Set-UserPath ((@($bin) + $entries) -join ';')
         $processEntries = @($env:Path -split ';' | Where-Object { $_ -and $_ -ine $bin })
         $env:Path = (@($bin) + $processEntries) -join ';'
     } finally { $guard.Dispose() }
@@ -1294,18 +1294,23 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
     Success $(if ($aiOnly) { "Finished AI update" } else { "Finished updating packages" })
 }
 
+# Keep native persistence at a small, mockable boundary. A fake HOME does not
+# redirect the Windows User environment registry.
+function Get-UserPath { [Environment]::GetEnvironmentVariable('Path', 'User') }
+function Set-UserPath($Value) { [Environment]::SetEnvironmentVariable('Path', $Value, 'User') }
+
 function AddToUserPath($dir) {
     Info "Ensuring $dir is on user PATH"
     if ($script:Dry) { return }
 
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $userPath = Get-UserPath
     $entries = @()
-    if ($userPath) { $entries = $userPath.Split(';') | Where-Object { $_ -ne "" } }
+    if ($userPath) { $entries = @($userPath.Split(';') | Where-Object { $_ -ne "" }) }
     if ($entries -contains $dir) {
         Success "$dir already on user PATH"
     } else {
         $newPath = (($entries + $dir) -join ';')
-        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        Set-UserPath $newPath
         Success "Added $dir to user PATH"
     }
 
