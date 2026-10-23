@@ -251,7 +251,7 @@ def github_asset(release: dict, name: str) -> dict:
 def locked_node(repo: Path) -> tuple[str, str]:
     expression = (
         f'let f = builtins.getFlake "path:{repo}"; '
-        "in (import f.inputs.nixpkgs { system = builtins.currentSystem; }).nodejs"
+        "in f.packages.${builtins.currentSystem}.nodejs"
     )
     output = run("nix", "build", "--no-link", "--print-out-paths", "--impure", "--expr", expression)
     node = Path(output.splitlines()[-1]) / "bin/node"
@@ -274,7 +274,7 @@ def npm_latest(package: str) -> str:
 def locked_node_version(repo: Path) -> str:
     expression = (
         f'let f = builtins.getFlake "path:{repo}"; '
-        "in (import f.inputs.nixpkgs { system = builtins.currentSystem; }).nodejs.version"
+        "in f.packages.${builtins.currentSystem}.nodejs.version"
     )
     version = run("nix", "eval", "--raw", "--impure", "--expr", expression)
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
