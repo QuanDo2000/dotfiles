@@ -66,6 +66,11 @@ activation, so the first switch can download custom Node outputs (including
 build-time headers) before the daemon's permanent cache settings take effect.
 The official cache and signature verification remain enabled.
 
+macOS enables Touch ID for interactive `sudo`, including inside tmux, after
+nix-darwin activation. Enroll a fingerprint in System Settings first; password
+authentication remains available. To test from a local terminal, run `sudo -k`
+(to expire cached sudo credentials), then `sudo -v` and authenticate with Touch ID.
+
 ### Linux with Nix/Home Manager
 
 Arch and Debian use the native package manager only for bootstrap packages,
