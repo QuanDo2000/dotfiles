@@ -179,9 +179,22 @@ function Invoke-Winget($FailureMessage, [string[]]$Arguments) {
     if ($Arguments -contains 'Anki.Anki') { Assert-AnkiClosed }
     if ($Arguments -contains 'Obsidian.Obsidian') { Assert-ObsidianClosed }
     winget @Arguments --disable-interactivity --accept-package-agreements --accept-source-agreements
+    $exitCode = $LASTEXITCODE
     # WinGet reports an already-current package as APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE.
-    if ($Arguments[0] -eq 'upgrade' -and $LASTEXITCODE -eq -1978335189) { return }
-    if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
+    if ($Arguments[0] -eq 'upgrade' -and $exitCode -eq -1978335189) { return }
+    if ($exitCode -eq -1978335212 -and $Arguments.Count -eq 4 -and
+        $Arguments[0] -eq 'upgrade' -and $Arguments[1] -eq '--id' -and $Arguments[3] -eq '--exact') {
+        # ID lookup can fail when the installed release is newer than the catalog.
+        # Export still correlates it and marks its version as "> <catalog version>".
+        try { $installed = @(Get-InstalledWingetPackages -IncludeVersions) }
+        catch { throw "$FailureMessage; installed-version check failed: $($_.Exception.Message)" }
+        $package = @($installed | Where-Object { $_.PackageIdentifier -eq $Arguments[2] })
+        if ($package.Count -eq 1 -and $package[0].Version -match '^> \S+$') {
+            Warn "Skipped upgrade for $($Arguments[2]): installed version is newer than the WinGet catalog ($($package[0].Version))"
+            return
+        }
+    }
+    if ($exitCode -ne 0) { throw $FailureMessage }
 }
 
 function UpdateRepo {
@@ -194,11 +207,14 @@ function UpdateRepo {
 }
 
 function Get-InstalledWingetPackages {
+    param([switch]$IncludeVersions)
     $output = Join-Path ([IO.Path]::GetTempPath()) "winget-$([Guid]::NewGuid().ToString('N')).json"
     try {
         winget export --output $output --include-versions --disable-interactivity --accept-source-agreements | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'winget package inventory failed' }
-        return @((Get-Content -Raw -LiteralPath $output | ConvertFrom-Json).Sources.Packages.PackageIdentifier)
+        $packages = @((Get-Content -Raw -LiteralPath $output | ConvertFrom-Json).Sources.Packages)
+        if ($IncludeVersions) { return $packages }
+        return @($packages.PackageIdentifier)
     } finally {
         Remove-Item -LiteralPath $output -Force -ErrorAction SilentlyContinue
     }
