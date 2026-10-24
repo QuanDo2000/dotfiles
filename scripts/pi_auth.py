@@ -55,7 +55,7 @@ def main():
     # Native Pi owns OAuth callbacks, secret entry and credential persistence.
     result = subprocess.run(
         [pi, "--offline", "--no-session", "--no-extensions", "--no-mcp", "--no-skills",
-         "--no-prompt-templates", "--no-context-files", "--no-tools"],
+         "--no-prompt-templates", "--no-context-files", "--no-approve", "--no-tools"],
         env=env, timeout=900, check=False,
     )
     if result.returncode != 0:
