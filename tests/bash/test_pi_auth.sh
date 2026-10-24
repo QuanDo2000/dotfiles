@@ -44,3 +44,24 @@ test_pi_auth_dry_run_does_not_launch_login() {
   assert_contains "$output" 'Checking Pi Codex subscription and OpenRouter authentication'
   assert_not_contains "$output" 'Pi setup failed'
 }
+
+test_pi_auth_widget_guides_only_missing_providers() {
+  assert_exit_code 0 node - "$REPO_DIR/scripts/pi_auth_ui.js" <<'JS'
+const assert = require('node:assert/strict');
+const extension = require(process.argv[2]);
+for (const missing of ['openai-codex', 'openrouter', 'openai-codex,openrouter']) {
+  process.env.DOTFILE_PI_AUTH_MISSING = missing;
+  let widget;
+  extension({ on(event, callback) {
+    assert.equal(event, 'session_start');
+    callback({}, { hasUI: true, ui: { setWidget(key, lines) { widget = { key, lines }; } } });
+  } });
+  assert.equal(widget.key, 'dotfile-provider-login');
+  const text = widget.lines.join('\n');
+  for (const provider of ['openai-codex', 'openrouter']) {
+    assert.equal(text.includes('/login ' + provider), missing.split(',').includes(provider));
+  }
+  assert.match(text, /\/quit.*verify/);
+}
+JS
+}

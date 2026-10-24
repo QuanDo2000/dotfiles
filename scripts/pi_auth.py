@@ -4,6 +4,7 @@
 import argparse
 import json
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import sys
@@ -53,9 +54,11 @@ def main():
         print("Run dotfile pi-auth (Windows: ./dotfile.ps1 pi-auth) in a local terminal to finish setup.", file=sys.stderr)
         return 1
     # Native Pi owns OAuth callbacks, secret entry and credential persistence.
+    env["DOTFILE_PI_AUTH_MISSING"] = ",".join(missing)
     result = subprocess.run(
         [pi, "--offline", "--no-session", "--no-extensions", "--no-mcp", "--no-skills",
-         "--no-prompt-templates", "--no-context-files", "--no-approve", "--no-tools"],
+         "--no-prompt-templates", "--no-context-files", "--no-approve", "--no-tools",
+         "--extension", str(Path(__file__).with_name("pi_auth_ui.js"))],
         env=env, timeout=900, check=False,
     )
     if result.returncode != 0:
