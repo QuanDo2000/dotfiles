@@ -333,18 +333,24 @@ function _run_nix_managed_switch {
 function _darwin_rebuild_switch {
   local target
   target="${DOTFILE_FLAKE_REF:-$DOTFILES_DIR}#mac"
+  # Bootstrap the signed cache before config/darwin.nix activates it permanently.
+  # Keep these values aligned with that module (checked by test_mac_install.sh).
+  local cache_options=(
+    --option extra-substituters https://quando-dotfiles.cachix.org
+    --option extra-trusted-public-keys quando-dotfiles.cachix.org-1:i6zSDlDRojslWeg2UgGcS25jpOs/km8ctjWABaN1h3Y=
+  )
   if [[ "$DRY" == "true" ]]; then
-    _dry_run_nix_managed_switch sudo HOME=/var/root darwin-rebuild switch --flake "$target"
+    _dry_run_nix_managed_switch sudo HOME=/var/root darwin-rebuild switch --flake "$target" "${cache_options[@]}"
     return
   fi
 
   _ensure_nix
   if command -v darwin-rebuild >/dev/null 2>&1; then
     _run_nix_managed_switch "darwin-rebuild switch failed" \
-      sudo HOME=/var/root darwin-rebuild switch --flake "$target"
+      sudo HOME=/var/root darwin-rebuild switch --flake "$target" "${cache_options[@]}"
   else
     _run_nix_managed_switch "nix-darwin bootstrap switch failed" \
-      sudo HOME=/var/root nix run "$DOTFILES_DIR#darwin-rebuild" -- switch --flake "$target"
+      sudo HOME=/var/root nix run "$DOTFILES_DIR#darwin-rebuild" -- switch --flake "$target" "${cache_options[@]}"
   fi
   _refresh_managed_path
 }
