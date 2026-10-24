@@ -372,14 +372,16 @@ set -eu
 shift 4
 exec "$@"
 EOF
-  chmod +x "$bin/git" "$bin/nix"
+  # Fix the timestamp so repeated runs must randomize their log names.
+  printf '#!/usr/bin/env bash\nprintf "20261024T000000Z\\n"\n' > "$bin/date"
+  chmod +x "$bin/git" "$bin/nix" "$bin/date"
   local output status=0
   output=$(DOTFILE_REEXEC=false DOTFILES_DIR="$root" PATH="$bin:$PATH" bash "$DOTFILE_CMD" --force --quiet update 2>&1) || status=$?
   if [[ "$status" != 0 ]]; then printf 'reexec output: %s\n' "$output" >> "$ERROR_FILE"; fi
   assert_equals "0" "$status"
   assert_equals "1" "$(grep -c 'pull --rebase --autostash' "$root/git.calls" 2>/dev/null || true)"
   assert_equals 'fresh:true:true' "$(<"$root/operation")"
-  local logs=("$HOME/.local/state/dotfile/logs/"*.log)
+  local logs=("$HOME/.local/state/dotfile/logs/"update-*)
   assert_equals 1 "${#logs[@]}"
   assert_file_exists "${logs[0]}"
   if [[ -f "${logs[0]}" ]]; then
@@ -388,6 +390,11 @@ EOF
     assert_contains "$(<"${logs[0]}")" 'exit status: 0'
     assert_equals '-rw-------' "$(LC_ALL=C ls -l "${logs[0]}" | awk '{print substr($1, 1, 10)}')"
   fi
+  status=0
+  output=$(DOTFILE_REEXEC=true DOTFILES_DIR="$root" PATH="$bin:$PATH" bash "$DOTFILE_CMD" --force --quiet update 2>&1) || status=$?
+  assert_equals 0 "$status"
+  logs=("$HOME/.local/state/dotfile/logs/"update-*)
+  assert_equals 2 "${#logs[@]}"
 }
 
 test_update_logs_nix_failure_without_losing_exit_status() {
@@ -418,7 +425,7 @@ EOF
   assert_equals 42 "$status"
   assert_contains "$output" 'nix develop -L'
   assert_contains "$output" 'nix log /nix/store/'
-  local logs=("$TEST_HOME/state dir/dotfile/logs/"*.log)
+  local logs=("$TEST_HOME/state dir/dotfile/logs/"update-*)
   assert_file_exists "${logs[0]}"
   if [[ -f "${logs[0]}" ]]; then
     assert_contains "$(<"${logs[0]}")" 'example-nodejs.drv'

@@ -70,7 +70,7 @@ function _ensure_update_environment {
 # Logs are private because native tool output can contain machine-local details.
 function _run_logged_update {
   local log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/dotfile/logs" log
-  log="$(umask 077; mkdir -p "$log_dir" && mktemp "$log_dir/update-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX.log")" \
+  log="$(umask 077; mkdir -p "$log_dir" && mktemp "$log_dir/update-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")" \
     || fail "Cannot create update log in $log_dir"
   printf 'Update log: %s\n' "$log"
   local statuses
