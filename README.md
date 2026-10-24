@@ -155,13 +155,16 @@ Options:
   -h, --help  Show this help message
 ```
 
-Full Arch `dotfile update` checks noninteractive sudo credential readiness before
-refreshing pins and again immediately before profile activation. If unavailable,
-run `sudo -v` and rerun the update in the same attended terminal; an existing
-validated pending update is retained for resume. AI-only, other-platform and dry
-updates do not authenticate. This is a conservative credential check, not a grant
-of permission for the installer: its final sudo check remains in place, and a
-long activation can still outlast the credential cache.
+Full Arch `dotfile update` checks sudo credential readiness before refreshing
+pins and again immediately before profile activation. If credentials are missing
+or expired, it prompts through sudo when standard input and standard error are
+terminals, then continues automatically. Unattended runs fail without prompting;
+run `sudo -v` and rerun the update in the same attended terminal. Failed or
+cancelled authentication stops the update; an existing validated pending update
+is retained for resume. AI-only, other-platform and dry updates do not
+authenticate. This is a conservative credential check, not a grant of permission
+for the installer: its final sudo check remains in place, and a long activation
+can still outlast the credential cache.
 
 - debt: the readiness probe uses `sudo -n -v`, so an installer-only NOPASSWD rule
   that cannot validate credentials may need an attended update. Upgrade trigger:
