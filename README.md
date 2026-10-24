@@ -280,6 +280,25 @@ Pi discovers that standard location natively. Windows copies the same reviewed, 
 plugins, packages, hooks, and generated runtime state
 such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
 
+### Pi provider login (Mac and Windows)
+
+Full setup (`dotfile all` or `./dotfile.ps1 all`) checks Pi's Codex subscription
+and OpenRouter authentication after installation. Already-ready credentials are
+left alone. When a login is missing, setup prints the needed `/login` commands
+and opens Pi's native UI. Follow the Codex browser link and enter an OpenRouter
+key only in Pi's login UI, then use `/quit` to let setup check again. No keys or
+OAuth tokens are copied into dotfiles or shared between machines.
+
+To finish authentication independently, run `dotfile pi-auth` on Mac or
+`./dotfile.ps1 pi-auth` on Windows. This does not install/update packages or
+change model defaults. Noninteractive runs report missing logins and fail rather
+than claim authentication succeeded; updates do not launch the login UI.
+The shared model shortlist contains only Codex subscription and OpenRouter
+routes. After updating an existing machine, apply the configuration through the
+normal setup flow; an already-running Pi session may need restarting. Resumed
+sessions that explicitly selected Vercel need switching to a configured model.
+Readiness checks do not send inference requests or prove provider key validity.
+
 Note: Home Manager owns the `lazy.nvim` bootstrap package, and tracked
 `lazy-lock.json` pins raw Neovim plugin state. Neovim uses Snacks pickers on all
 platforms; `dotfile packages` and `dotfile update` restore the locked plugin set.
