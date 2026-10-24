@@ -67,6 +67,34 @@ test_install_mac_bootstraps_nix_darwin_without_brew() {
 
 
 
+test_mac_rebuild_uses_declared_signed_cache_before_activation() {
+  DRY=false
+  local mode calls="$TEST_TMPDIR/cache-bootstrap.calls" cache_options output
+  # Consume the actual module values so bootstrap and persistent trust cannot drift.
+  cache_options="$(nix eval --raw --file "$REPO_DIR/config/darwin.nix" --apply '
+    module: let settings = (module { pkgs = {}; }).nix.settings; in
+    "--option extra-substituters ${builtins.concatStringsSep " " settings.extra-substituters} --option extra-trusted-public-keys ${builtins.concatStringsSep " " settings.extra-trusted-public-keys}"
+  ')"
+  _ensure_nix() { :; }
+  _refresh_managed_path() { :; }
+  command() {
+    if [[ "${1:-}" == -v && "${2:-}" == darwin-rebuild ]]; then
+      [[ "$mode" == installed ]]
+      return
+    fi
+    builtin command "$@"
+  }
+  sudo() { printf '%s\n' "$*" > "$calls"; }
+
+  for mode in installed bootstrap; do
+    _darwin_rebuild_switch
+    output="$(<"$calls")"
+    assert_contains "$output" 'HOME=/var/root'
+    assert_contains "$output" "switch --flake $DOTFILES_DIR#mac $cache_options"
+  done
+  unset -f _ensure_nix _refresh_managed_path command sudo
+}
+
 test_darwin_rebuild_refreshes_managed_path_after_switch() {
   DRY=false
   local calls="$TEST_TMPDIR/path-refresh.log"

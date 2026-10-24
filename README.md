@@ -61,6 +61,11 @@ After Home Manager applies, the `dotfile` command is available in your PATH:
 dotfile
 ```
 
+macOS rebuilds pass the declared signed binary cache to `darwin-rebuild` before
+activation, so the first switch can download custom Node outputs (including
+build-time headers) before the daemon's permanent cache settings take effect.
+The official cache and signature verification remain enabled.
+
 ### Linux with Nix/Home Manager
 
 Arch and Debian use the native package manager only for bootstrap packages,
