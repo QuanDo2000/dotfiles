@@ -144,7 +144,7 @@ let
     forgejo-cli
     nil
     nixfmt
-    nodejs_26
+    nodejs
     odin
     rustc
     cargo
