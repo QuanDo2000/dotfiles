@@ -145,7 +145,16 @@ function run_checked_flow {
 function setup_dotfiles {
   info "Setting up dotfiles..."
   run_checked_flow true false install_packages
+  if [[ "$(detect_platform)" == mac ]]; then
+    setup_pi_auth
+  fi
   success "Done!"
+}
+
+function setup_pi_auth {
+  info "Checking Pi Codex subscription and OpenRouter authentication..."
+  [[ "$DRY" == "true" ]] && return 0
+  nix develop "path:$DOTFILES_DIR" -c python3 "$SCRIPTS_DIR/pi_auth.py"
 }
 
 function usage {
@@ -161,6 +170,7 @@ Commands:
   symlinks    Activate Home Manager config on Debian/Arch (also applies other user settings)
   upgrade     Upgrade native system packages
   obsidian    Bootstrap Obsidian Sync login and vault setup
+  pi-auth     Set up missing Pi Codex subscription and OpenRouter logins
   lix-installer
               Update pinned Lix installer checksums
   obsidian-headless
@@ -262,6 +272,10 @@ upgrade)
 obsidian)
   [[ $# -eq 1 ]] || fail "Unexpected obsidian argument: ${2:-}"
   setup_obsidian
+  ;;
+pi-auth)
+  [[ $# -eq 1 ]] || fail "Unexpected pi-auth argument: ${2:-}"
+  setup_pi_auth
   ;;
 lix-installer)
   [[ $# -eq 1 ]] || fail "Unexpected lix-installer argument: ${2:-}"

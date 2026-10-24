@@ -1555,7 +1555,17 @@ function SetupDotfiles([switch]$AfterRepoUpdate) {
     SetupSymlinks
     Sync-NeovimPlugins
     if (-not $script:Dry) { Assert-WindowsHealthy }
+    SetupPiAuth
     Success "Done!"
+}
+
+function SetupPiAuth {
+    Info 'Checking Pi Codex subscription and OpenRouter authentication...'
+    if ($script:Dry) { return }
+    Refresh-ProcessPath
+    Invoke-NativeChecked 'Pi authentication setup incomplete; rerun ./dotfile.ps1 pi-auth in a local terminal' {
+        py -3.14 (Join-Path $script:DotfilesDir 'scripts/pi_auth.py')
+    }
 }
 
 function ShowUsage {
@@ -1570,6 +1580,7 @@ Commands:
   upgrade     Upgrade native WinGet packages without pulling the repo
   symlinks    Link managed Windows config files (no package installation)
   doctor      Verify Windows installation
+  pi-auth     Set up missing Pi Codex subscription and OpenRouter logins
 
 Options:
   -d, --dry     Dry run (no changes made)
@@ -1592,6 +1603,7 @@ if (-not $NoMain) {
         "upgrade"   { UpgradeNativePackages }
         "symlinks"  { SetupSymlinks }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
+        "pi-auth"   { SetupPiAuth }
         default     { Fail "Unknown command: $Command" }
     }
 }

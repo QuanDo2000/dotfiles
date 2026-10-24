@@ -10,10 +10,7 @@
     "openai-codex/gpt-6-astra",
     "openrouter/deepseek/deepseek-v4-flash-0731",
     "openrouter/z-ai/glm-5.3-flash",
-    "openrouter/deepseek/deepseek-v4.1-flash",
-    "vercel-ai-gateway/deepseek/deepseek-v4-flash-0731",
-    "vercel-ai-gateway/zai/glm-5.3-flash",
-    "vercel-ai-gateway/deepseek/deepseek-v4.1-flash"
+    "openrouter/deepseek/deepseek-v4.1-flash"
   ],
   "followUpMode": "all",
   "hideThinkingBlock": true,

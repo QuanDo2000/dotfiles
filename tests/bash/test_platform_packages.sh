@@ -91,7 +91,8 @@ test_pi_defaults_to_sol_with_medium_thinking() {
     .defaultModel == "gpt-6.1-sol" and
     .defaultThinkingLevel == "medium" and
     (.enabledModels | index("openai-codex/gpt-6.1-sol") != null) and
-    (.enabledModels | index("openai-codex/gpt-6-astra") != null)
+    (.enabledModels | index("openai-codex/gpt-6-astra") != null) and
+    (.enabledModels | all(startswith("openai-codex/") or startswith("openrouter/")))
   ' "$settings"
 }
 
