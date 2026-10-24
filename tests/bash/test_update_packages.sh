@@ -123,6 +123,10 @@ test_update_packages_stops_on_missing_or_expired_privilege_before_activation() {
   done
 }
 
+test_arch_sudo_preflight_prompts_in_terminal_and_stops_on_cancellation() {
+  TEST_TMPDIR="$TEST_TMPDIR" python3 "$REPO_DIR/tests/fixtures/arch-sudo-preflight.py"
+}
+
 test_update_ai_updates_only_ai_tools_and_configs() {
   _init_update_test_repo
   DRY=false

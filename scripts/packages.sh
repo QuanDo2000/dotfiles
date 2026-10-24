@@ -106,8 +106,12 @@ function _install_native_bootstrap_packages {
 function _preflight_arch_service_state_backup {
   [[ "$DRY" == "true" ]] && return
   # Check credential readiness, not permission to bypass the installer's sudo gate.
-  sudo -n -v >/dev/null 2>&1 || fail \
-    "Arch backup-unit setup needs sudo before activation. In a local terminal, run sudo -v and rerun dotfile update in that same terminal. Pending update state is preserved."
+  sudo -n -v >/dev/null 2>&1 && return
+  if [[ -t 0 && -t 2 ]]; then
+    info "Arch backup-unit setup needs sudo; authenticate to continue the update."
+    sudo -v && return
+  fi
+  fail "Arch backup-unit setup needs sudo before activation. In a local terminal, run sudo -v and rerun dotfile update in that same terminal. Pending update state is preserved."
 }
 
 function _install_arch_service_state_backup {
