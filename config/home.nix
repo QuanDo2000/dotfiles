@@ -514,7 +514,7 @@ in
   };
 
   programs.tmux = {
-    enable = true;
+    enable = pkgs.stdenv.hostPlatform.isLinux;
     terminal = "tmux-256color";
     keyMode = "vi";
     mouse = true;
@@ -733,15 +733,6 @@ in
       done
     '');
 
-  home.activation.installGhosttyTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    terminfo_source="/Applications/Ghostty.app/Contents/Resources/terminfo/78/xterm-ghostty"
-    terminfo_target="$HOME/.local/share/terminfo/78/xterm-ghostty"
-    if [ -f "$terminfo_source" ]; then
-      mkdir -p "$(dirname "$terminfo_target")"
-      cp "$terminfo_source" "$terminfo_target"
-    fi
-  '';
-
   # A narrow upstream-compatible patch preserves all independently updated assets.
   home.activation.patchHermesSecurityReference = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     "${pkgs.bash}/bin/bash" "${../scripts/apply_hermes_skill_fixes.sh}" \
@@ -811,7 +802,7 @@ in
     '';
   };
 
-  xdg.configFile."ghostty/config" = lib.mkIf (pkgs.stdenv.hostPlatform.isDarwin || (desktop && pkgs.stdenv.hostPlatform.isLinux)) (forceSource ./unix/config/ghostty/config);
+  xdg.configFile."ghostty/config" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ./unix/config/ghostty/config);
 
   xdg.configFile."hypr" = linuxConfig ./unix/config/hypr;
 

@@ -66,7 +66,20 @@ activation, so the first switch can download custom Node outputs (including
 build-time headers) before the daemon's permanent cache settings take effect.
 The official cache and signature verification remain enabled.
 
-macOS enables Touch ID for interactive `sudo`, including inside tmux, after
+macOS uses [Rex](https://www.superlogical.com/rex/docs/installation) for the
+terminal and persistent sessions instead of Ghostty/tmux. Install Rex Beta in
+`/Applications` using the tester download (Discord login required); the app and
+its updates remain native, not Nix-managed. Open Rex to start working; no tmux
+auto-attach runs on macOS. Rex supplies its own `rex` CLI inside its terminals,
+and the shell preserves that CLI ahead of the Nix PATH. Linux retains tmux and,
+on desktop profiles, Ghostty.
+
+Rex works without a configuration file. Customize `~/.config/rex/init.lua` only
+as needed, validate with `rex config check`, and apply with `rex config reload`.
+Existing Ghostty installations and running tmux sessions are not removed or
+stopped by this migration; close or uninstall them separately when no longer needed.
+
+macOS enables Touch ID for interactive `sudo`, including detached sessions, after
 nix-darwin activation. Enroll a fingerprint in System Settings first; password
 authentication remains available. To test from a local terminal, run `sudo -k`
 (to expire cached sudo credentials), then `sudo -v` and authenticate with Touch ID.

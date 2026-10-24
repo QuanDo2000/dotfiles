@@ -291,7 +291,9 @@ function doctor {
   _check_release_transactions
   info "Verifying symlinks..."
   _check_symlink .zshrc "$platform"
-  _check_symlink .config/tmux/tmux.conf "$platform"
+  if [[ "$platform" != mac ]]; then
+    _check_symlink .config/tmux/tmux.conf "$platform"
+  fi
   _check_symlink .config/git/config "$platform"
   _check_symlink .config/nvim/init.lua "$platform"
   _check_neovim_runtime
