@@ -297,16 +297,19 @@ such as `skills-lock.json`, caches, and sessions stay native and out of the repo
 
 Full setup (`dotfile all` or `./dotfile.ps1 all`) checks Pi's Codex subscription
 and OpenRouter authentication after installation. Already-ready credentials are
-left alone. When a login is missing, setup prints the needed `/login` commands
-and opens Pi's native UI with a persistent login guide above the editor. Only
-missing providers are shown in that guide. Follow the Codex browser link and enter an OpenRouter
-key only in Pi's login UI, then use `/quit` to let setup check again. No keys or
-OAuth tokens are copied into dotfiles or shared between machines.
+left alone. When a login is missing, setup uses plain terminal prompts rather
+than opening Pi's full-screen interface. Codex offers its native browser or
+headless device-code login; OpenRouter asks for its API key with input hidden.
+Complete the browser approval or terminal prompt and setup checks both providers
+again automatically. Ctrl+C cancels. Pi's installed native authentication and
+locked credential store own the login and persistence; no credentials are copied
+between applications or machines, and the standalone development CLI's basic
+`auth.json` writer is not used.
 
 To finish authentication independently, run `dotfile pi-auth` on Mac or
 `./dotfile.ps1 pi-auth` on Windows. This does not install/update packages or
 change model defaults. Noninteractive runs report missing logins and fail rather
-than claim authentication succeeded; updates do not launch the login UI.
+than claim authentication succeeded; updates do not start login.
 The shared model shortlist contains only Codex subscription and OpenRouter
 routes. After updating an existing machine, apply the configuration through the
 normal setup flow; an already-running Pi session may need restarting. Resumed
