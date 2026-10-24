@@ -1,5 +1,4 @@
 # Targeted security updates until the nixpkgs pin includes eMudhra distrust.
-# https://nodejs.org/en/blog/release/v26.12.1
 # https://nodejs.org/en/blog/release/v24.22.1
 final: prev:
 let
@@ -30,9 +29,6 @@ let
       });
 in
 {
-  nodejs-slim_26 =
-    updateNode prev.nodejs-slim_26 "26.12.1"
-      "053e3b296859b6d8d93f99ef97fa9cec1c4ee171c72968100c649978c1dbd38c";
   nodejs-slim_24 =
     updateNode prev.nodejs-slim_24 "24.22.1"
       "4f5379796280cdaeb0c2f358fd04b6a16cc4fb7dfa83b5a8c91a9d963b435231";
