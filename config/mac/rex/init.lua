@@ -25,7 +25,7 @@ for index = 1, 9 do
   rex.bind("ctrl+b>" .. index, "client.tab.goto", { index = index })
 end
 
--- Import once, then select Catppuccin Macchiato in Rex's theme picker.
+-- Explicit reapply; activation/first Rex shell imports and selects it once.
 rex.bind("ctrl+b>shift+t", "client.theme.import", {
   path = os.getenv("HOME") .. "/.config/rex/Catppuccin Macchiato.conf",
 })

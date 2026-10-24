@@ -309,6 +309,73 @@ test_bisync_hooks_preserve_smb_acl() {
   fi
 }
 
+test_rex_theme_setup_is_once_only_and_preserves_failed_attempts() {
+  REPO_DIR="$REPO_DIR" python3 - <<'PY' 2>>"$ERROR_FILE"
+import fcntl
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+with tempfile.TemporaryDirectory() as directory:
+    root = Path(directory)
+    home = root / "home"
+    home.mkdir()
+    theme = root / "Catppuccin Macchiato.conf"
+    theme.write_text("background = 24273a\n")
+    calls = root / "calls.jsonl"
+    rex = root / "rex"
+    rex.write_text(f"#!{sys.executable}\n" + '''
+import json, os, sys
+with open(os.environ["CALLS"], "a") as calls:
+    calls.write(json.dumps(sys.argv[1:]) + "\\n")
+mode = os.environ["REX_TEST_MODE"]
+if "client.perform" in sys.argv:
+    if mode == "refused":
+        print("private diagnostic: code=refused", file=sys.stderr)
+        sys.exit(1)
+    if mode == "failed":
+        sys.exit(2)
+    request = json.loads(sys.argv[-1])
+    assert request["action"] == "client.theme.import"
+    assert request["args"]["path"] == os.environ["THEME"]
+    print(json.dumps({"performed_by": request["client_id"]}))
+else:
+    app = {"client_id": "client:local", "info": {"kind": "app", "platform": "macos"},
+           "principal": {"transport": "unix", "uid": os.getuid()}}
+    print(json.dumps({"clients": [] if mode == "absent" else [app, app] if mode == "ambiguous" else [app]}))
+''')
+    rex.chmod(0o755)
+    env = {**os.environ, "HOME": str(home), "XDG_STATE_HOME": "", "CALLS": str(calls),
+           "THEME": str(theme.resolve()), "REX_SERVER": "tcp://unrelated", "REX_HOME": "tcp://unrelated"}
+    command = [sys.executable, os.environ["REPO_DIR"] + "/scripts/rex_theme.py", "--rex", str(rex), "--theme", str(theme)]
+    marker = home / ".local/state/dotfiles/rex-theme-initialized"
+    for mode, expected in (("absent", 0), ("ambiguous", 0), ("refused", 0), ("failed", 1)):
+        result = subprocess.run(command, env={**env, "REX_TEST_MODE": mode}, capture_output=True, text=True, timeout=10)
+        assert result.returncode == expected, result.stderr
+        if mode == "refused":
+            assert "Remote Control" in result.stdout and "private diagnostic" not in result.stdout + result.stderr
+        assert not marker.exists()
+    with (marker.parent / "rex-theme.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        before = calls.read_text()
+        result = subprocess.run(command, env={**env, "REX_TEST_MODE": "success"}, capture_output=True, timeout=10)
+        assert result.returncode == 0 and calls.read_text() == before
+    result = subprocess.run(command, env={**env, "REX_TEST_MODE": "success"}, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert marker.read_text() == "catppuccin-macchiato-v1\n"
+    before = calls.read_text()
+    # Later GUI choices must not trigger any CLI calls or another import.
+    result = subprocess.run(command, env={**env, "REX_TEST_MODE": "refused"}, capture_output=True, timeout=10)
+    assert result.returncode == 0 and calls.read_text() == before
+    for args in map(json.loads, before.splitlines()):
+        assert args[0] == "--server" and args[1].startswith("unix://")
+        assert str(home) in args[1] and "--autostart=false" in args
+PY
+}
+
 test_platform_profiles_have_expected_ghostty_config() {
   local generic_files arch_files nixos_config darwin_config
   generic_files=$(_profile_files linux); arch_files=$(_profile_files arch-server); nixos_config=$(_profile_xdg_files nixos); darwin_config=$(_profile_xdg_files darwin)

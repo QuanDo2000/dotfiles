@@ -76,7 +76,9 @@ After `dotfile packages`, open `~/Applications/Home Manager Apps/Rex Beta.app`
 rather than any older `/Applications` copy. No running app or server is stopped
 by activation: switch applications only after saving work and closing old
 sessions yourself. Remove the old app separately when it is no longer needed.
-See [Rex setup and migration limits](config/mac/rex/README.md) for theme import,
+Catppuccin is imported and selected once automatically at activation, or in the
+next new Rex shell if the app is closed; later GUI theme choices are preserved.
+See [Rex setup and migration limits](config/mac/rex/README.md) for tracked settings,
 tmux-style shortcuts, and native agent status tracking.
 
 macOS enables Touch ID for interactive `sudo`, including detached sessions, after
