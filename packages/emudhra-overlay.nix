@@ -33,15 +33,6 @@ in
     updateNode prev.nodejs-slim_24 "24.22.1"
       "4f5379796280cdaeb0c2f358fd04b6a16cc4fb7dfa83b5a8c91a9d963b435231";
 
-  # Keep the build-time dependency graph unchanged; select this for user TLS.
-  emudhra-cacert = prev.cacert.override {
-    blacklist = [
-      "emSign Root CA - C1"
-      "emSign ECC Root CA - C3"
-      "emSign ECC Root CA - G3"
-    ];
-  };
-
   # 1.4.2 accepts the compromised-chain probe; 1.4.4 rejects it (CERT_REVOKED).
   bun =
     if final.lib.versionAtLeast prev.bun.version "1.4.4" then

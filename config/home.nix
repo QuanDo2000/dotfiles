@@ -193,9 +193,9 @@ in
     "${homeDir}/.local/bin"
   ];
   home.sessionVariables.PI_MEMORY_EXIT_SUMMARY = "0";
-  # Explicit user trust store: do not retain the pinned pre-distrust Nix bundle.
-  home.sessionVariables.SSL_CERT_FILE = "${pkgs.emudhra-cacert}/etc/ssl/certs/ca-no-trust-rules-bundle.crt";
-  home.sessionVariables.NIX_SSL_CERT_FILE = "${pkgs.emudhra-cacert}/etc/ssl/certs/ca-no-trust-rules-bundle.crt";
+  # Explicit user trust store: use the current pinned bundle, not an inherited one.
+  home.sessionVariables.SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-no-trust-rules-bundle.crt";
+  home.sessionVariables.NIX_SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-no-trust-rules-bundle.crt";
   home.packages = devTerminalPackages
   ++ lib.optionals (!nixosSystem) [
     pkgs.nerd-fonts.fira-code
