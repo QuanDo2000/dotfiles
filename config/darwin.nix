@@ -16,6 +16,12 @@ in
     ];
   };
 
+  security.pam.services.sudo_local = {
+    touchIdAuth = true;
+    # The interactive shell starts tmux; reconnect sudo to its GUI session.
+    reattach = true;
+  };
+
   users.users.${machine.username} = {
     home = "/Users/${machine.username}";
     shell = pkgs.zsh;
