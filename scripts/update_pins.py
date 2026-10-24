@@ -19,6 +19,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 USER_AGENT = "dotfiles-pin-updater/1"
@@ -354,6 +355,54 @@ def update_pi_extensions(repo: Path) -> None:
     print(f"updated Pi extensions to {release_id[:12]} (Node {node_version}, ABI {abi})")
 
 
+def update_rex(repo: Path) -> None:
+    feed = "https://blob.superlogical.com/public/rex-app/preview/appcast.xml"
+    with urllib.request.urlopen(request(feed), timeout=60) as response:
+        data = response.read(1024 * 1024 + 1)
+    if len(data) > 1024 * 1024:
+        die("Rex appcast exceeds 1 MiB")
+    item = ET.fromstring(data).find("./channel/item")
+    if item is None:
+        die("Rex appcast has no release")
+    namespace = "{http://www.andymatuschak.org/xml-namespaces/sparkle}"
+    version = item.findtext(namespace + "shortVersionString", "")
+    build = item.findtext(namespace + "version", "")
+    if not re.fullmatch(r"[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}", version) or not re.fullmatch(r"[0-9]{1,10}", build):
+        die("invalid Rex release version")
+    url = f"https://blob.superlogical.com/public/rex-app/preview/Rex-{version}-{build}.dmg"
+    enclosure = item.find("enclosure")
+    if enclosure is None or enclosure.get("url") != url:
+        die("unexpected Rex download URL")
+    size = int(enclosure.get("length", "0"))
+    if not 0 < size <= 128 * 1024 * 1024:
+        die("Rex download exceeds 128 MiB ceiling")
+    pin = repo / "packages/rex-release.json"
+    current = json.loads(pin.read_text())
+    if int(build) < int(current["build"]):
+        die("refusing Rex build downgrade")
+    with tempfile.TemporaryDirectory(prefix="dotfiles-rex-") as temporary:
+        hashes = []
+        for attempt in range(2):
+            archive = Path(temporary) / f"rex-{attempt}.dmg"
+            with urllib.request.urlopen(request(url), timeout=120) as response, archive.open("wb") as output:
+                remaining = size
+                deadline = time.monotonic() + 180
+                while remaining:
+                    if time.monotonic() >= deadline:
+                        die("Rex download exceeded deadline")
+                    chunk = response.read(min(1024 * 1024, remaining))
+                    if not chunk:
+                        die("truncated Rex download")
+                    output.write(chunk)
+                    remaining -= len(chunk)
+                if response.read(1):
+                    die("Rex download exceeds advertised size")
+            hashes.append(nix_hash(archive))
+        if hashes[0] != hashes[1]:
+            die("repeated Rex downloads differ")
+    atomic_json(pin, {"version": version, "build": build, "url": url, "hash": hashes[0]})
+
+
 def update_webcord(repo: Path) -> None:
     package = repo / "packages/webcord-release.nix"
     text = package.read_text(encoding="utf-8")
@@ -682,6 +731,7 @@ def main() -> int:
     handlers = {
         "pi-extensions": update_pi_extensions,
         "webcord": update_webcord,
+        "rex": update_rex,
         "anki-zoom": update_anki_zoom,
         "anki-addons": update_anki_addons,
         "firacode": update_firacode,

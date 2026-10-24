@@ -12,6 +12,43 @@ test_windows_anki_pin_refresher() {
   assert_equals "0" "$?" "Anki pin refresher tests should pass"
 }
 
+test_rex_pin_refresh_preserves_pin_on_incomplete_or_changed_download() {
+  PYTHONPATH="$REPO_DIR/scripts" python3 - <<'PY' 2>>"$ERROR_FILE"
+import io
+import json
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+import update_pins
+
+feed = b'''<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><item>
+<sparkle:version>1408</sparkle:version><sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+<enclosure url="https://blob.superlogical.com/public/rex-app/preview/Rex-0.1.0-1408.dmg" length="3"/>
+</item></channel></rss>'''
+with tempfile.TemporaryDirectory() as directory:
+    repo = Path(directory)
+    (repo / "packages").mkdir()
+    pin = repo / "packages/rex-release.json"
+    original = '{"build":"1407"}\n'
+    for payloads in ((b"a",), (b"abc", b"xyz")):
+        pin.write_text(original)
+        responses = [io.BytesIO(feed), *(io.BytesIO(data) for data in payloads)]
+        with patch("urllib.request.urlopen", side_effect=responses):
+            try:
+                update_pins.update_rex(repo)
+            except RuntimeError:
+                pass
+            else:
+                raise AssertionError("broken release must fail")
+        assert pin.read_text() == original
+    with patch("urllib.request.urlopen", side_effect=[io.BytesIO(feed), io.BytesIO(b"abc"), io.BytesIO(b"abc")]):
+        update_pins.update_rex(repo)
+    release = json.loads(pin.read_text())
+    assert release["build"] == "1408"
+    assert release["hash"] == "sha256-ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0="
+PY
+}
+
 test_pin_updater_python_is_syntax_valid() {
   PYTHONPYCACHEPREFIX="$TEST_TMPDIR/pycache" python3 -m py_compile "$REPO_DIR/scripts/update_pins.py" 2>>"$ERROR_FILE"
 }

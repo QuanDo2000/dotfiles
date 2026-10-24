@@ -314,6 +314,10 @@ test_platform_profiles_have_expected_ghostty_config() {
   generic_files=$(_profile_files linux); arch_files=$(_profile_files arch-server); nixos_config=$(_profile_xdg_files nixos); darwin_config=$(_profile_xdg_files darwin)
   _test_absent "$generic_files" '.config/ghostty/config'; _test_absent "$arch_files" '.config/ghostty/config'; assert_line_present "$nixos_config" ghostty/config; _test_absent "$darwin_config" ghostty/config tmux/tmux.conf
   _test_absent "$(_profile_packages darwin)" tmux
+  assert_line_present "$(_profile_packages darwin)" rex
+  _test_present "$darwin_config" rex/init.lua 'rex/Catppuccin Macchiato.conf'
+  _test_absent "$(_profile_packages linux)" rex
+  _test_absent "$(_profile_xdg_files linux)" rex/init.lua
   assert_line_present "$(_profile_xdg_files linux)" tmux/tmux.conf
 }
 

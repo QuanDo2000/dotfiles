@@ -68,6 +68,7 @@ SH
         assert_contains "$calls" 'nix develop .#ci -c bash'
         assert_contains "$calls" 'nix eval --raw .#darwinConfigurations.mac.system.drvPath'
         assert_contains "$calls" 'nix build .#pi-extensions --no-link'
+        assert_contains "$calls" 'nix build .#rex --no-link'
         failures='tests eval build' ;;
       nix)
         assert_contains "$calls" 'nix flake check --no-build --all-systems'
@@ -102,6 +103,12 @@ for name, output in (("bash-linux", "linux"), ("bash-macos", "macos"),
     assert "changes" in (needs if isinstance(needs, list) else [needs]), name
     assert job["if"] == "${{ github.event_name != 'pull_request' || needs.changes.outputs." + output + " == 'true' }}", name
     assert jobs["changes"]["outputs"][output] == "${{ steps.filter.outputs." + output + " }}", output
+# Proprietary Rex outputs must predate the public cache's post-build hook.
+mac_steps = jobs["bash-macos"]["steps"]
+rex_step = next(i for i, step in enumerate(mac_steps) if step.get("name") == "Verify Rex package")
+cache_step = next(i for i, step in enumerate(mac_steps) if step.get("uses", "").startswith("cachix/cachix-action@"))
+assert rex_step < cache_step
+assert mac_steps[cache_step]["with"]["useDaemon"] is True
 steps = jobs["changes"]["steps"]
 checkout = next(step for step in steps if step.get("uses", "").startswith("actions/checkout@"))
 filter_step = next(step for step in steps if step.get("id") == "filter")

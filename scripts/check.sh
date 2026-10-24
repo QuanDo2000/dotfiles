@@ -23,6 +23,7 @@ fi
 run nix flake check "$flake" --no-build --all-systems
 if [[ "$(uname -s)" == "Darwin" ]]; then
   run nix eval --raw "$flake#darwinConfigurations.mac.system.drvPath"
+  run nix build "$flake#rex" --no-link
 else
   username="$(nix eval --raw --file "$repo_dir/config/host.nix" username)"
   run nix eval --raw "$flake#homeConfigurations.\"$username@linux\".activationPackage.drvPath"
