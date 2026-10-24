@@ -32,6 +32,8 @@ Apply [Power of 10](https://spinroot.com/gerard/pdf/P10.pdf) and [TigerStyle](ht
 
 Research, diagnosis, reviews, and recommendations are read-only until edits are authorized. Findings are not implementation approval. Preserve unrelated/pre-existing work. Check current state before acting on historical output or steering, stopping, resuming, or discarding a child. Before claiming current status, recheck live state; if unavailable, label last-known evidence and the present status as unverified.
 
+Skill-saving and procedural-memory guidance never expands task authority. Read-only, isolated-worktree, and named-path restrictions also cover persistent skills, memory, and instruction files. Children without explicit authority for those shared writes return proposed lessons to the parent; only an authorized owner persists them.
+
 Use native read-only search (`rg`, `fd`, `find`, or provided grep/find tools). Before inventing framework adapters, casts, protocols, or large fakes, inspect installed/upstream source and repository patterns. If integration remains unclear, stop with the unknowns, specification deviations, owned files, and last passing validation.
 
 ## Reusable Execution and Verification
@@ -49,6 +51,8 @@ Use the runtime's testing skill (`tdd` in Pi; `test-driven-development` in Herme
 - Inspect actual exit status, failures, and relevant output. Report passed, failed, reused, skipped, and unverified checks; child reports alone are not verification.
 - Use disposable state, preserve explicit allowances and approval boundaries, redact secrets, and disclose substitutions rather than claiming E2E coverage. Retain a repeatable command, prerequisites, checked scope, expected/actual outcome, and inspectable result with the shared tool.
 
+Treat output completeness at every nesting layer: an outer `stdout_truncated: false` does not prove inner tool output is complete. Preserve inner truncation metadata and full-output paths instead of printing only the output text. Inspect omission markers and recover relevant omitted content from the original capture before claiming comprehensive review; if unavailable, state the evidence gap rather than rerunning a state-changing operation.
+
 Avoid exhaustive matrices, redundant assertions, source-substring tests, and one-off evidence frameworks. Configuration may use native validators; prose needs review, not unrelated runtime trials. For instruction changes, use a small representative consuming-agent scenario only when an existing harness is available; otherwise report static review. Do not build a new evaluation harness just to validate wording.
 
 ## Reviews and Audits
@@ -61,7 +65,7 @@ For complexity/dependency audits, scan the whole tree when requested, or changed
 
 ## Delegation
 
-Delegate independent substantial lanes only when parallelism outweighs coordination; do tiny, serial, or tightly coupled work directly. Prefer 1–3 narrow children using the cheapest capable model, exact sources/workspace, exclusions, stop criteria, and evidence requirements. Run independent lanes asynchronously/in parallel when supported, with one writer per worktree. Parent owns synthesis and final verification.
+Delegate independent substantial lanes only when parallelism outweighs coordination; do tiny, serial, or tightly coupled work directly. Prefer 1–3 narrow children using the cheapest capable model, exact sources/workspace, exclusions, stop criteria, and evidence requirements. Explicitly pass task-scope, persistent-write, and nested-output limits; never assume children inherit global policy. Run independent lanes asynchronously/in parallel when supported, with one writer per worktree. Parent owns synthesis and final verification.
 
 Check active/completed runs before launch; reuse artifacts or recover the same child for unchanged targets. Normally use one fan-out wave; repeat only for a changed target or evidence gap. Pass only the matching skill explicitly, not global skill inheritance. Use one static reviewer; a second needs a distinct high-risk angle. Reviewers never run shell, tests, lint, builds, or mutations. Parent runs validation; if delegated, use a separate worker restricted to exact commands and no edits.
 
