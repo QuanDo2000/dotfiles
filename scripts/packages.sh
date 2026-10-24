@@ -107,7 +107,8 @@ function _preflight_arch_service_state_backup {
   [[ "$DRY" == "true" ]] && return
   # Check credential readiness, not permission to bypass the installer's sudo gate.
   sudo -n -v >/dev/null 2>&1 && return
-  if [[ -t 0 && -t 2 ]]; then
+  # The update logger retains the original stderr on FD 7 before piping output.
+  if [[ -t 0 ]] && { [[ -t 2 ]] || [[ -n "${DOTFILE_UPDATE_LOG:-}" && -t 7 ]]; }; then
     info "Arch backup-unit setup needs sudo; authenticate to continue the update."
     sudo -v && return
   fi

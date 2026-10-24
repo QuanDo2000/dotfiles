@@ -342,6 +342,17 @@ a newer Pi release awaiting publication.
 Full updates install missing native prerequisites for the detected platform
 before activating its configured profile; installed-state detection does not
 select dependencies.
+
+Unix `dotfile update` and `dotfile update ai` print a private transcript path under
+`${XDG_STATE_HOME:-$HOME/.local/state}/dotfile/logs/`. Each non-dry run records
+start/end timestamps, its exit status, and native tool output across re-execution.
+Shell failures include command/location context; failures also print a Nix log
+retrieval hint. The initial pinned development shell streams build output (`-L`).
+Read a failed build's saved compiler output without rebuilding it with
+`nix log /nix/store/<failed-derivation>.drv`, using the `.drv` path in the error.
+Transcripts are not automatically deleted; remove old logs as needed and review
+them for sensitive tool output before sharing. Dry runs do not create logs.
+
 Pi extension closure prefetch reports its stage and elapsed time on stderr at
 startup, every 15 seconds even without output, and completion; native Nix stderr
 remains visible. `DOTFILE_PREFETCH_TIMEOUT_SECONDS` sets its wall deadline

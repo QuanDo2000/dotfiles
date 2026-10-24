@@ -59,10 +59,38 @@ function update_repo {
 function _ensure_update_environment {
   [[ "$DRY" == "false" ]] || return 0
   if [[ "${DOTFILE_UPDATE_ENV:-}" != true ]]; then
-    DOTFILE_UPDATE_ENV=true exec nix develop "path:$DOTFILES_DIR" -c \
+    DOTFILE_UPDATE_ENV=true nix develop -L "path:$DOTFILES_DIR" -c \
       bash "$DOTFILES_DIR/dotfile" "${ORIGINAL_ARGS[@]}"
+    exit 0
   fi
   command -v python3 >/dev/null || fail "Pinned update environment is missing python3"
+}
+
+# One supervisor retains the full transcript across Git and Nix re-execution.
+# Logs are private because native tool output can contain machine-local details.
+function _run_logged_update {
+  local log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/dotfile/logs" log
+  log="$(umask 077; mkdir -p "$log_dir" && mktemp "$log_dir/update-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX.log")" \
+    || fail "Cannot create update log in $log_dir"
+  printf 'Update log: %s\n' "$log"
+  local statuses
+  set +e
+  (
+    printf 'Update started: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    DOTFILE_UPDATE_LOG="$log" bash "$(_resolve)" "${ORIGINAL_ARGS[@]}"
+    status=$?
+    printf 'Update finished: %s; exit status: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$status"
+    if [[ "$status" != 0 ]]; then
+      printf 'Full update log: %s\n' "$log"
+      printf 'For a failed Nix build, use: nix log /nix/store/<failed-derivation>.drv\n'
+      printf 'Use the .drv path from the error above; reading its log does not rebuild it.\n'
+    fi
+    exit "$status"
+  ) 7>&2 2>&1 | tee "$log"
+  statuses=("${PIPESTATUS[@]}")
+  set -e
+  [[ "${statuses[0]}" == 0 ]] || return "${statuses[0]}"
+  return "${statuses[1]}"
 }
 
 function run_checked_flow {
@@ -175,6 +203,14 @@ all)
   setup_dotfiles
   ;;
 update)
+  if [[ "$DRY" == false && -z "${DOTFILE_UPDATE_LOG:-}" ]]; then
+    _run_logged_update
+    exit 0
+  fi
+  if [[ -n "${DOTFILE_UPDATE_LOG:-}" ]]; then
+    set -E
+    trap 'printf "Failed (exit %s) at %s:%s: %s\n" "$?" "${BASH_SOURCE[0]}" "$LINENO" "$BASH_COMMAND" >&2' ERR
+  fi
   case "${2:-}" in
     "") run_checked_flow true true update_packages ;;
     ai)
