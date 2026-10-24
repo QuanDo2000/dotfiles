@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-22-rotten-expert",
-  "registrySha256": "923b06ace2d146bcd2db26338dadb0439eccc5aac47faa52e7da5968e827b940",
+  "registryVersion": "2026-10-24-hearty-chime",
+  "registrySha256": "68717fa1b2acad58a39fdfb9b4517a1db6108c27ba31e0c333c103b05db839b7",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
