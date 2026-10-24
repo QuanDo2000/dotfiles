@@ -1,10 +1,10 @@
 {
-  "registryVersion": "2026-10-24-hearty-chime",
-  "registrySha256": "68717fa1b2acad58a39fdfb9b4517a1db6108c27ba31e0c333c103b05db839b7",
+  "registryVersion": "2026-10-24-costly-mars",
+  "registrySha256": "07abe2229f913aac006da75f9aa3028d3608d7c36ab760139b1f052bfcc54a4a",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
-    "markdownlint-cli2": "0.23.3",
+    "markdownlint-cli2": "0.24.0",
     "marksman": "2026-02-08",
     "prettier": "3.9.10",
     "stylua": "v2.6.0",
