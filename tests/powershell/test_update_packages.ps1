@@ -299,6 +299,41 @@ function test_invokewinget_accepts_no_applicable_upgrade {
     Assert-False $threw 'Winget no-applicable-update exit should be accepted for upgrades'
 }
 
+function test_invokewinget_accepts_only_confirmed_newer_installed_package {
+    Set-CommandMock 'winget' {
+        if ($args[0] -eq 'export') {
+            $output = $args[[Array]::IndexOf($args, '--output') + 1]
+            $script:InventoryJson | Set-Content -LiteralPath $output
+            $global:LASTEXITCODE = 0
+        } else {
+            $global:LASTEXITCODE = -1978335212
+        }
+    }
+
+    foreach ($case in @(
+        @{ Id = 'Python.Python.3.14'; Version = '> 3.14.7'; Accept = $true }
+        @{ Id = 'Python.Python.3.14'; Version = '3.14.7'; Accept = $false }
+        @{ Id = 'Python.Python.3.14'; Version = 'Unknown'; Accept = $false }
+        @{ Id = 'Python.Python.3.14'; Version = ''; Accept = $false }
+        @{ Id = 'Python.Launcher'; Version = '> 3.14.7'; Accept = $false }
+    )) {
+        $script:InventoryJson = @{ Sources = @(@{ Packages = @(@{
+            PackageIdentifier = $case.Id; Version = $case.Version
+        }) }) } | ConvertTo-Json -Depth 5
+        $threw = $false
+        try {
+            Invoke-Winget 'upgrade failed' @('upgrade', '--id', 'Python.Python.3.14', '--exact') 6>&1 | Out-Null
+        } catch { $threw = $true }
+        Assert-Equals (-not $case.Accept) $threw "Unexpected result for $($case.Id) version '$($case.Version)'"
+    }
+}
+
+function test_invokewinget_does_not_hide_inventory_failure_or_missing_install {
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = -1978335212 }
+    Assert-Throws { Invoke-Winget 'upgrade failed' @('upgrade', '--id', 'Python.Python.3.14', '--exact') }
+    Assert-Throws { Invoke-Winget 'install failed' @('install', '--id', 'Python.Python.3.14', '--exact') }
+}
+
 function test_installpackages_adds_compiler_tools_to_user_path {
     $script:Dry = $false
     $script:AddedUserPaths = @()
