@@ -56,11 +56,42 @@ test_zsh_vi_insert_mode_can_delete_pasted_text() {
   assert_contains "$config" "bindkey -M viins '^H' backward-delete-char"
 }
 
-test_tmux_autostart_on_mac_requires_ghostty() {
-  local config
-  config="$(<"$REPO_DIR/config/unix/.zshrc.base")"
+test_mac_uses_rex_without_tmux_autostart() {
+  REPO_DIR="$REPO_DIR" python3 - <<'PY' || echo 'Rex shell integration failed' >> "$ERROR_FILE"
+import os
+import pathlib
+import pty
+import subprocess
+import tempfile
 
-  assert_contains "$config" '&& ( "$OSTYPE" != darwin* || "$TERM_PROGRAM" == "ghostty" )'
+with tempfile.TemporaryDirectory() as tmp:
+    root = pathlib.Path(tmp)
+    tmux = root / "tmux"
+    tmux.write_text('#!/bin/sh\necho unexpected-tmux\n')
+    tmux.chmod(0o755)
+    master, slave = pty.openpty()
+    try:
+        result = subprocess.run(
+            ["zsh", "-fic", '''
+                OSTYPE=darwin
+                TERM_PROGRAM=ghostty
+                gpg-connect-agent() { :; }
+                source "$1/config/unix/.zshrc.base"
+                [[ "${path[1]}" == "$REX_BIN_DIR" ]] || exit 1
+                (( ! ${+functions[tmux]} )) || exit 1
+            ''', "test", os.environ["REPO_DIR"]],
+            env={**os.environ, "PATH": tmp + ":" + os.environ["PATH"],
+                 "REX_BIN_DIR": tmp + "/rex-bin", "TMUX": "", "NO_TMUX": "",
+                 "ZSH_TMUX_STARTED": "", "INSIDE_EMACS": "", "VIMRUNTIME": ""},
+            stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, timeout=10,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "unexpected-tmux" not in result.stdout, result.stdout
+    finally:
+        os.close(slave)
+        os.close(master)
+PY
 }
 
 test_tmux_autostart_has_explicit_opt_out() {

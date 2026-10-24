@@ -312,7 +312,9 @@ test_bisync_hooks_preserve_smb_acl() {
 test_platform_profiles_have_expected_ghostty_config() {
   local generic_files arch_files nixos_config darwin_config
   generic_files=$(_profile_files linux); arch_files=$(_profile_files arch-server); nixos_config=$(_profile_xdg_files nixos); darwin_config=$(_profile_xdg_files darwin)
-  _test_absent "$generic_files" '.config/ghostty/config'; _test_absent "$arch_files" '.config/ghostty/config'; assert_line_present "$nixos_config" ghostty/config; assert_line_present "$darwin_config" ghostty/config
+  _test_absent "$generic_files" '.config/ghostty/config'; _test_absent "$arch_files" '.config/ghostty/config'; assert_line_present "$nixos_config" ghostty/config; _test_absent "$darwin_config" ghostty/config tmux/tmux.conf
+  _test_absent "$(_profile_packages darwin)" tmux
+  assert_line_present "$(_profile_xdg_files linux)" tmux/tmux.conf
 }
 
 # Local case-sensitive patterns remain writable and outside the managed baseline.

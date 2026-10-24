@@ -18,7 +18,7 @@ in
 
   security.pam.services.sudo_local = {
     touchIdAuth = true;
-    # The interactive shell starts tmux; reconnect sudo to its GUI session.
+    # Preserve Touch ID in detached terminal sessions, including Rex.
     reattach = true;
   };
 
