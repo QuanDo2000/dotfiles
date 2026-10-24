@@ -28,6 +28,11 @@ let
   hermesSoul = pkgs.writeText "hm_SOUL.md"
     ((builtins.readFile ./shared/ai/SOUL.md) + "\n" + commonAgentPolicy);
   linuxConfig = source: lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource source);
+  rexThemeSetup = pkgs.writeShellScript "rex-theme-setup" ''
+    exec ${pkgs.python3}/bin/python3 ${../scripts/rex_theme.py} \
+      --rex ${pkgs.rex}/bin/rex \
+      --theme "${./mac/rex}/Catppuccin Macchiato.conf"
+  '';
   networkServiceHardening = {
     UMask = "0077";
     NoNewPrivileges = true;
@@ -488,7 +493,14 @@ in
       share = true;
     };
     setOptions = [ "INC_APPEND_HISTORY" "HIST_VERIFY" ];
-    initContent = lib.mkOrder 550 (builtins.readFile ./unix/.zshrc.base);
+    initContent = lib.mkOrder 550 ((builtins.readFile ./unix/.zshrc.base)
+      + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
+        # If activation found no GUI, seed the theme in the first Rex shell.
+        # Do not delay the prompt, start a server, or repeat after success.
+        if [[ -n "$REX_BIN_DIR" && ! -e "''${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/rex-theme-initialized" ]]; then
+          (${rexThemeSetup}) &!
+        fi
+      '');
     completionInit = ''
       () {
         setopt local_options extended_glob
@@ -738,6 +750,11 @@ in
   home.activation.setupRexAgents = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin
     (lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       run ${pkgs.rex}/bin/rex --autostart=false skill setup --agent pi
+    '');
+
+  home.activation.seedRexTheme = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin
+    (lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      run ${rexThemeSetup}
     '');
 
   # A narrow upstream-compatible patch preserves all independently updated assets.
