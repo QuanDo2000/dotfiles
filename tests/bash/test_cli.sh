@@ -433,6 +433,11 @@ EOF
   fi
 }
 
+test_update_logging_preserves_terminal_colors_and_plain_transcripts() {
+  is_windows_bash && return 0
+  TEST_HOME="$TEST_HOME" python3 "$REPO_DIR/tests/fixtures/update-log-colors.py"
+}
+
 test_update_logging_preserves_interactive_sudo_preflight() {
   is_windows_bash && return 0
   local root="$TEST_HOME/interactive" bin="$TEST_HOME/bin" output

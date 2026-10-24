@@ -346,6 +346,8 @@ select dependencies.
 Unix `dotfile update` and `dotfile update ai` print a private transcript path under
 `${XDG_STATE_HOME:-$HOME/.local/state}/dotfile/logs/`. Each non-dry run records
 start/end timestamps, its exit status, and native tool output across re-execution.
+Dotfile status colors remain enabled on terminals (respecting `NO_COLOR` and
+`TERM=dumb`); saved transcripts have terminal escape sequences removed.
 Shell failures include command/location context; failures also print a Nix log
 retrieval hint. The initial pinned development shell streams build output (`-L`).
 Read a failed build's saved compiler output without rebuilding it with
