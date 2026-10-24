@@ -112,7 +112,7 @@ function _preflight_arch_service_state_backup {
     info "Arch backup-unit setup needs sudo; authenticate to continue the update."
     sudo -v && return
   fi
-  fail "Arch backup-unit setup needs sudo before activation. In a local terminal, run sudo -v and rerun dotfile update in that same terminal. Pending update state is preserved."
+  fail "Arch backup-unit setup needs sudo before activation. In a local terminal, run sudo -v and rerun dotfile update in that same terminal. Any existing pending update state is preserved."
 }
 
 function _install_arch_service_state_backup {
