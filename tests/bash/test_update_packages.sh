@@ -114,6 +114,7 @@ test_update_packages_stops_on_missing_or_expired_privilege_before_activation() {
     assert_not_contains "$(<"$calls")" activate
     assert_not_contains "$(<"$calls")" install
     assert_contains "$output" 'sudo -v'
+    assert_contains "$output" 'Any existing pending update state is preserved.'
     if [[ "$fail_at" == 1 ]]; then
       assert_not_contains "$(<"$calls")" refresh
     else
