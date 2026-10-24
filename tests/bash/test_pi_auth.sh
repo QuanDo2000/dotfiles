@@ -45,23 +45,82 @@ test_pi_auth_dry_run_does_not_launch_login() {
   assert_not_contains "$output" 'Pi setup failed'
 }
 
-test_pi_auth_widget_guides_only_missing_providers() {
-  assert_exit_code 0 node - "$REPO_DIR/scripts/pi_auth_ui.js" <<'JS'
-const assert = require('node:assert/strict');
-const extension = require(process.argv[2]);
-for (const missing of ['openai-codex', 'openrouter', 'openai-codex,openrouter']) {
-  process.env.DOTFILE_PI_AUTH_MISSING = missing;
-  let widget;
-  extension({ on(event, callback) {
-    assert.equal(event, 'session_start');
-    callback({}, { hasUI: true, ui: { setWidget(key, lines) { widget = { key, lines }; } } });
-  } });
-  assert.equal(widget.key, 'dotfile-provider-login');
-  const text = widget.lines.join('\n');
-  for (const provider of ['openai-codex', 'openrouter']) {
-    assert.equal(text.includes('/login ' + provider), missing.split(',').includes(provider));
-  }
-  assert.match(text, /\/quit.*verify/);
+test_pi_auth_resolves_managed_mac_and_windows_packages() {
+  assert_exit_code 0 python3 - "$REPO_DIR/scripts/pi_auth.py" <<'PY'
+import importlib.util
+import json
+import os
+from pathlib import Path
+import tempfile
+from unittest.mock import patch
+import sys
+import shutil
+spec = importlib.util.spec_from_file_location('pi_auth', sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+with tempfile.TemporaryDirectory(dir=os.environ.get('TMPDIR')) as directory, patch.dict(os.environ, {'PI_PACKAGE_DIR': ''}):
+    prefix = Path(directory)
+    root = prefix / 'lib/node_modules/@earendil-works/pi-coding-agent'
+    (root / 'dist/core').mkdir(parents=True)
+    (root / 'dist/core/auth-storage.js').touch()
+    (root / 'package.json').write_text(json.dumps({'name': '@earendil-works/pi-coding-agent'}))
+    (prefix / 'bin').mkdir()
+    pi = prefix / 'bin/pi'
+    pi.touch()
+    assert module.package_directory(pi) == root
+    release = prefix / 'releases/1.4.0'
+    shutil.copytree(root, release)
+    launcher = prefix / 'bin/pi.cmd'
+    launcher.write_text('@echo off\nnode "' + str(release) + '/dist/bundle/cli.js" %*\n')
+    assert module.package_directory(launcher) == release
+PY
 }
-JS
+
+test_pi_auth_native_credential_store() {
+  assert_exit_code 0 python3 - "$REPO_DIR/scripts/pi_auth.py" "$REPO_DIR/tests/fixtures/pi-auth-store.mjs" <<'PY'
+import importlib.util
+import shutil
+import subprocess
+import sys
+spec = importlib.util.spec_from_file_location("pi_auth", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+subprocess.run(["node", sys.argv[2], str(module.package_directory(shutil.which("pi")))], check=True, timeout=30)
+PY
+}
+
+test_pi_auth_missing_login_uses_terminal_helper_not_agent_ui() {
+  assert_exit_code 0 python3 - "$REPO_DIR/scripts/pi_auth.py" <<'PY'
+import importlib.util
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+from unittest.mock import patch
+
+spec = importlib.util.spec_from_file_location("pi_auth", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+with tempfile.TemporaryDirectory(dir=os.environ.get('TMPDIR')) as directory:
+    root = Path(directory)
+    (root / 'package.json').write_text(json.dumps({'name': '@earendil-works/pi-coding-agent'}))
+    (root / 'dist/core').mkdir(parents=True)
+    (root / 'dist/core/auth-storage.js').touch()
+    def launch(command, **kwargs):
+        assert Path(command[0]).name == 'node', 'Login must not launch the Pi agent UI'
+        assert Path(command[1]).name == 'pi_auth_login.mjs'
+        assert command[2:] == [str(root), 'openrouter']
+        assert 'DOTFILE_PI_AUTH_MISSING' not in kwargs['env']
+        return subprocess.CompletedProcess(command, 0)
+    with patch.dict(os.environ, {'PI_PACKAGE_DIR': str(root)}), \
+         patch.object(sys, 'argv', ['pi_auth.py']), \
+         patch.object(sys.stdin, 'isatty', return_value=True), \
+         patch.object(sys.stdout, 'isatty', return_value=True), \
+         patch.object(module.shutil, 'which', side_effect=lambda name: '/tools/' + name), \
+         patch.object(module, 'missing_providers', side_effect=[['openrouter'], []]), \
+         patch.object(module.subprocess, 'run', side_effect=launch):
+        assert module.main() == 0
+PY
 }
