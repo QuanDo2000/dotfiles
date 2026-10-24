@@ -67,12 +67,12 @@ with tempfile.TemporaryDirectory(dir=os.environ.get('TMPDIR')) as directory, pat
     (prefix / 'bin').mkdir()
     pi = prefix / 'bin/pi'
     pi.touch()
-    assert module.package_directory(pi) == root
+    assert module.package_directory(pi) == root.resolve()
     release = prefix / 'releases/1.4.0'
     shutil.copytree(root, release)
     launcher = prefix / 'bin/pi.cmd'
     launcher.write_text('@echo off\nnode "' + str(release) + '/dist/bundle/cli.js" %*\n')
-    assert module.package_directory(launcher) == release
+    assert module.package_directory(launcher) == release.resolve()
 PY
 }
 
@@ -111,7 +111,7 @@ with tempfile.TemporaryDirectory(dir=os.environ.get('TMPDIR')) as directory:
     def launch(command, **kwargs):
         assert Path(command[0]).name == 'node', 'Login must not launch the Pi agent UI'
         assert Path(command[1]).name == 'pi_auth_login.mjs'
-        assert command[2:] == [str(root), 'openrouter']
+        assert command[2:] == [str(root.resolve()), 'openrouter']
         assert 'DOTFILE_PI_AUTH_MISSING' not in kwargs['env']
         return subprocess.CompletedProcess(command, 0)
     with patch.dict(os.environ, {'PI_PACKAGE_DIR': str(root)}), \
