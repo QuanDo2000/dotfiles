@@ -200,6 +200,7 @@ in
   ++ lib.optionals (!nixosSystem) [
     pkgs.nerd-fonts.fira-code
   ]
+  ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.rex ]
   ++ lib.optionals standaloneLinux standaloneLinuxPackages
   ++ lib.optionals standaloneLinux [ (lib.hiPrio guardedHomeManager) ]
   ++ lib.optionals (desktop && pkgs.stdenv.hostPlatform.isLinux) desktopPackages
@@ -733,6 +734,12 @@ in
       done
     '');
 
+  # Native Rex owns its dynamic agent guide; never overwrite a foreign skill.
+  home.activation.setupRexAgents = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin
+    (lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      run ${pkgs.rex}/bin/rex --autostart=false skill setup --agent pi
+    '');
+
   # A narrow upstream-compatible patch preserves all independently updated assets.
   home.activation.patchHermesSecurityReference = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     "${pkgs.bash}/bin/bash" "${../scripts/apply_hermes_skill_fixes.sh}" \
@@ -800,6 +807,13 @@ in
       export QT_IM_MODULE=fcitx
       export XMODIFIERS=@im=fcitx
     '';
+  };
+
+  xdg.configFile."rex/init.lua" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+    source = ./mac/rex/init.lua;
+  };
+  xdg.configFile."rex/Catppuccin Macchiato.conf" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+    source = ./mac/rex + "/Catppuccin Macchiato.conf";
   };
 
   xdg.configFile."ghostty/config" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ./unix/config/ghostty/config);

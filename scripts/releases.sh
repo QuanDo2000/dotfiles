@@ -520,6 +520,7 @@ function _update_all_dependency_pins {
   _run_python_pin_batch \
     pi-extensions "Pi extension closure" \
     webcord "WebCord release" \
+    rex "Rex macOS release" \
     anki-zoom "Anki Zoom add-on" \
     anki-addons "Windows Anki add-ons" \
     firacode "FiraCode Nerd Font" \

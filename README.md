@@ -67,17 +67,17 @@ build-time headers) before the daemon's permanent cache settings take effect.
 The official cache and signature verification remain enabled.
 
 macOS uses [Rex](https://www.superlogical.com/rex/docs/installation) for the
-terminal and persistent sessions instead of Ghostty/tmux. Install Rex Beta in
-`/Applications` using the tester download (Discord login required); the app and
-its updates remain native, not Nix-managed. Open Rex to start working; no tmux
-auto-attach runs on macOS. Rex supplies its own `rex` CLI inside its terminals,
-and the shell preserves that CLI ahead of the Nix PATH. Linux retains tmux and,
-on desktop profiles, Ghostty.
+terminal and persistent sessions instead of Ghostty/tmux. Nix installs the signed
+Rex Beta app and CLI, pinned by `packages/rex-release.json`; `dotfile update`
+refreshes that pin from the official preview feed. Sparkle updates are disabled
+for the immutable bundle. Linux retains tmux and desktop Ghostty.
 
-Rex works without a configuration file. Customize `~/.config/rex/init.lua` only
-as needed, validate with `rex config check`, and apply with `rex config reload`.
-Existing Ghostty installations and running tmux sessions are not removed or
-stopped by this migration; close or uninstall them separately when no longer needed.
+After `dotfile packages`, open `~/Applications/Home Manager Apps/Rex Beta.app`
+rather than any older `/Applications` copy. No running app or server is stopped
+by activation: switch applications only after saving work and closing old
+sessions yourself. Remove the old app separately when it is no longer needed.
+See [Rex setup and migration limits](config/mac/rex/README.md) for theme import,
+tmux-style shortcuts, and native agent status tracking.
 
 macOS enables Touch ID for interactive `sudo`, including detached sessions, after
 nix-darwin activation. Enroll a fingerprint in System Settings first; password

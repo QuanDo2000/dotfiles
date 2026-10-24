@@ -28,6 +28,7 @@
           pi-agent = final.callPackage ./packages/pi-agent.nix { };
           pi-extensions = final.callPackage ./packages/pi-extensions.nix { };
           webcord = final.callPackage ./packages/webcord-release.nix { };
+          rex = final.callPackage ./packages/rex.nix { };
         })
       ];
       linuxPkgs = import nixpkgs {
@@ -78,6 +79,7 @@
       packages.x86_64-linux.pi-extensions = linuxPkgs.pi-extensions;
       packages.x86_64-linux.prefetch-npm-deps = linuxPkgs.prefetch-npm-deps;
       packages.aarch64-darwin.pi-extensions = darwinPkgs.pi-extensions;
+      packages.aarch64-darwin.rex = darwinPkgs.rex;
       packages.aarch64-darwin.nodejs = darwinPkgs.nodejs;
       packages.aarch64-darwin.prefetch-npm-deps = darwinPkgs.prefetch-npm-deps;
 
