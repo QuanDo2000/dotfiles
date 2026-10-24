@@ -68,11 +68,18 @@ function _ensure_update_environment {
 
 # One supervisor retains the full transcript across Git and Nix re-execution.
 # Logs are private because native tool output can contain machine-local details.
-function _run_logged_update {
+_run_logged_update() (
   local log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/dotfile/logs" log
   log="$(umask 077; mkdir -p "$log_dir" && mktemp "$log_dir/update-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")" \
     || fail "Cannot create update log in $log_dir"
   printf 'Update log: %s\n' "$log"
+  # Keep screen output byte-for-byte; strip terminal escapes only from the log.
+  # A named pipe lets Bash 3 wait for the filter and report write failures.
+  local log_pipe="$log.pipe" log_filter_pid log_filter_status
+  mkfifo -m 600 "$log_pipe" || fail "Cannot create update log pipe"
+  trap 'rm -f -- "$log_pipe" || printf "Could not remove log pipe: %s\n" "$log_pipe" >&2' EXIT
+  LC_ALL=C sed $'s/\033\\[[0-?]*[ -/]*[@-~]//g' < "$log_pipe" > "$log" &
+  log_filter_pid=$!
   local statuses
   set +e
   (
@@ -86,12 +93,15 @@ function _run_logged_update {
       printf 'Use the .drv path from the error above; reading its log does not rebuild it.\n'
     fi
     exit "$status"
-  ) 7>&2 2>&1 | tee "$log"
+  ) 7>&2 2>&1 | tee "$log_pipe"
   statuses=("${PIPESTATUS[@]}")
+  wait "$log_filter_pid"
+  log_filter_status=$?
   set -e
   [[ "${statuses[0]}" == 0 ]] || return "${statuses[0]}"
-  return "${statuses[1]}"
-}
+  [[ "${statuses[1]}" == 0 ]] || return "${statuses[1]}"
+  return "$log_filter_status"
+) 6>&1
 
 function run_checked_flow {
   local pull_repo="$1"

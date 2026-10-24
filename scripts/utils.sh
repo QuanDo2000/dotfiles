@@ -11,7 +11,9 @@ _log() {
   local label="$1" message="$2" color="$3" line first=true
   while IFS= read -r line; do
     if [[ "$first" == true ]]; then
-      if [[ -t 1 && "${TERM:-}" != dumb && -z "${NO_COLOR:-}" ]]; then
+      # Logged updates retain the original stdout on FD 6 before piping it.
+      if { [[ -t 1 ]] || [[ -n "${DOTFILE_UPDATE_LOG:-}" && -t 6 ]]; } \
+        && [[ "${TERM:-}" != dumb && -z "${NO_COLOR:-}" ]]; then
         printf '  [\033[%sm%s\033[0m] %s\n' "$color" "$label" "$line"
       else
         printf '  [%s] %s\n' "$label" "$line"
