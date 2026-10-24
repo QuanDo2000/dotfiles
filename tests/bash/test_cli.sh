@@ -367,18 +367,118 @@ EOF
   cat > "$bin/nix" <<'EOF'
 #!/usr/bin/env bash
 set -eu
-[[ "$1" == develop && "$2" == "path:$DOTFILES_DIR" && "$3" == -c ]]
+[[ "$1" == develop && "$2" == -L && "$3" == "path:$DOTFILES_DIR" && "$4" == -c ]]
 [[ -s "$DOTFILES_DIR/git.calls" ]]
-shift 3
+shift 4
 exec "$@"
 EOF
-  chmod +x "$bin/git" "$bin/nix"
+  # Fix the timestamp so repeated runs must randomize their log names.
+  printf '#!/usr/bin/env bash\nprintf "20261024T000000Z\\n"\n' > "$bin/date"
+  chmod +x "$bin/git" "$bin/nix" "$bin/date"
   local output status=0
   output=$(DOTFILE_REEXEC=false DOTFILES_DIR="$root" PATH="$bin:$PATH" bash "$DOTFILE_CMD" --force --quiet update 2>&1) || status=$?
   if [[ "$status" != 0 ]]; then printf 'reexec output: %s\n' "$output" >> "$ERROR_FILE"; fi
   assert_equals "0" "$status"
   assert_equals "1" "$(grep -c 'pull --rebase --autostash' "$root/git.calls" 2>/dev/null || true)"
   assert_equals 'fresh:true:true' "$(<"$root/operation")"
+  local logs=("$HOME/.local/state/dotfile/logs/"update-*)
+  assert_equals 1 "${#logs[@]}"
+  assert_file_exists "${logs[0]}"
+  if [[ -f "${logs[0]}" ]]; then
+    assert_contains "$(<"${logs[0]}")" 'Update started:'
+    assert_contains "$(<"${logs[0]}")" 'Update finished:'
+    assert_contains "$(<"${logs[0]}")" 'exit status: 0'
+    assert_equals '-rw-------' "$(LC_ALL=C ls -l "${logs[0]}" | awk '{print substr($1, 1, 10)}')"
+  fi
+  status=0
+  output=$(DOTFILE_REEXEC=true DOTFILES_DIR="$root" PATH="$bin:$PATH" bash "$DOTFILE_CMD" --force --quiet update 2>&1) || status=$?
+  assert_equals 0 "$status"
+  logs=("$HOME/.local/state/dotfile/logs/"update-*)
+  assert_equals 2 "${#logs[@]}"
+}
+
+test_update_logs_nix_failure_without_losing_exit_status() {
+  local root="$TEST_HOME/logging" bin="$TEST_HOME/bin" output status=0
+  mkdir -p "$root/scripts" "$bin"
+  cp "$DOTFILE_CMD" "$root/dotfile"
+  for module in utils platform packages releases pins doctor obsidian; do
+    printf ':\n' > "$root/scripts/$module.sh"
+  done
+  cat > "$root/scripts/utils.sh" <<'EOF'
+info() { :; }
+success() { :; }
+fail() { exit 1; }
+doctor() { :; }
+EOF
+  cat > "$root/scripts/releases.sh" <<'EOF'
+_dependency_update_markers_conflict() { return 1; }
+_dependency_update_pending() { return 0; }
+EOF
+  cat > "$bin/nix" <<'EOF'
+#!/usr/bin/env bash
+printf "error: builder for '/nix/store/example-nodejs.drv' failed\n" >&2
+exit 42
+EOF
+  chmod +x "$bin/nix"
+  output=$(XDG_STATE_HOME="$TEST_HOME/state dir" DOTFILES_DIR="$root" PATH="$bin:$PATH" \
+    bash "$root/dotfile" update ai 2>&1) || status=$?
+  assert_equals 42 "$status"
+  assert_contains "$output" 'nix develop -L'
+  assert_contains "$output" 'nix log /nix/store/'
+  local logs=("$TEST_HOME/state dir/dotfile/logs/"update-*)
+  assert_file_exists "${logs[0]}"
+  if [[ -f "${logs[0]}" ]]; then
+    assert_contains "$(<"${logs[0]}")" 'example-nodejs.drv'
+    assert_contains "$(<"${logs[0]}")" 'exit status: 42'
+  fi
+}
+
+test_update_logging_preserves_interactive_sudo_preflight() {
+  is_windows_bash && return 0
+  local root="$TEST_HOME/interactive" bin="$TEST_HOME/bin" output
+  mkdir -p "$root/scripts" "$bin"
+  cp "$DOTFILE_CMD" "$root/dotfile"
+  cp "$REPO_DIR/scripts/packages.sh" "$root/scripts/"
+  for module in platform releases pins doctor obsidian; do
+    printf ':\n' > "$root/scripts/$module.sh"
+  done
+  cat > "$root/scripts/utils.sh" <<'EOF'
+info() { printf '%s\n' "$*"; }
+success() { :; }
+fail() { printf '%s\n' "$*" >&2; exit 1; }
+doctor() { :; }
+host_config_value() { :; }
+EOF
+  cat > "$root/scripts/obsidian.sh" <<'EOF'
+_dependency_update_markers_conflict() { return 1; }
+_dependency_update_pending() { return 0; }
+update_packages() { _preflight_arch_service_state_backup; }
+EOF
+  cat > "$bin/sudo" <<'EOF'
+#!/usr/bin/env bash
+[[ "$*" != '-n -v' ]] || exit 1
+printf 'interactive sudo validated\n'
+EOF
+  chmod +x "$bin/sudo"
+  output=$(DOTFILES_DIR="$root" DOTFILE_UPDATE_ENV=true PATH="$bin:$PATH" python3 - <<'PY'
+import os
+import pty
+import subprocess
+
+master, slave = pty.openpty()
+try:
+    result = subprocess.run(
+        ["bash", os.environ["DOTFILES_DIR"] + "/dotfile", "update"],
+        stdin=slave, stderr=slave, stdout=subprocess.PIPE, text=True, timeout=20,
+    )
+    print(result.stdout)
+    raise SystemExit(result.returncode)
+finally:
+    os.close(slave)
+    os.close(master)
+PY
+  )
+  assert_contains "$output" 'interactive sudo validated'
 }
 
 test_update_does_not_pull_dirty_repository() {
@@ -579,8 +679,8 @@ EOF
 #!/usr/bin/env bash
 set -eu
 [[ -z "${TEST_UPDATE_SHELL:-}" ]]
-[[ "$1" == develop && "$2" == "path:$DOTFILES_DIR" && "$3" == -c ]]
-shift 3
+[[ "$1" == develop && "$2" == -L && "$3" == "path:$DOTFILES_DIR" && "$4" == -c ]]
+shift 4
 export TEST_UPDATE_SHELL=true
 printf 'entered pinned shell\n'
 exec "$@"
