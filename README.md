@@ -298,7 +298,8 @@ such as `skills-lock.json`, caches, and sessions stay native and out of the repo
 Full setup (`dotfile all` or `./dotfile.ps1 all`) checks Pi's Codex subscription
 and OpenRouter authentication after installation. Already-ready credentials are
 left alone. When a login is missing, setup prints the needed `/login` commands
-and opens Pi's native UI. Follow the Codex browser link and enter an OpenRouter
+and opens Pi's native UI with a persistent login guide above the editor. Only
+missing providers are shown in that guide. Follow the Codex browser link and enter an OpenRouter
 key only in Pi's login UI, then use `/quit` to let setup check again. No keys or
 OAuth tokens are copied into dotfiles or shared between machines.
 
