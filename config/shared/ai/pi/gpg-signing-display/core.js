@@ -84,7 +84,7 @@ function gpgSigningDisplayExtension(pi, dependencies = {}) {
 
         if (exitCode !== 0) throw new Error(`Command exited with code ${exitCode}`);
         return {
-          content: [{ type: "text", text: "Interactive signing command completed successfully." }],
+          content: [{ type: "text", text: "Interactive shell exited with code 0. Terminal output was not captured; this does not establish signature verification or the success of each command in a compound shell string. Run readback and signature verification in a separate captured Bash call." }],
           details: undefined,
         };
       },

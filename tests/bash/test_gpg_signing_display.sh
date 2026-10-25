@@ -61,7 +61,7 @@ const ctx = {
 
 (async () => {
   const result = await registered.execute("call", { command: "git add -A && git commit -m test" }, undefined, undefined, ctx);
-  assert.equal(result.content[0].text, "Interactive signing command completed successfully.");
+  assert.equal(result.content[0].text, "Interactive shell exited with code 0. Terminal output was not captured; this does not establish signature verification or the success of each command in a compound shell string. Run readback and signature verification in a separate captured Bash call.");
   assert.equal(baseCalls, 0);
   assert.deepEqual(terminalEvents, ["stop", "spawn", "start"]);
 })();
