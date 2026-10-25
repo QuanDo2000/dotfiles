@@ -22,7 +22,9 @@ Apply [Power of 10](https://spinroot.com/gerard/pdf/P10.pdf) and [TigerStyle](ht
 
 - Prefer explicit branches, iteration, guard clauses, and small cohesive functions. Keep orchestration, state transitions, ownership, lifetimes, and cleanup visible; minimize mutable state and aliases.
 - Bound externally driven work, retries, input growth, queues, and concurrency; define failure/backpressure. Use deadlines/cancellation for external waits. Service loops need bounded per-iteration work and explicit shutdown.
-- Validate untrusted inputs and expected failures at runtime. Use meaningful side-effect-free assertions for invariants, never debug-only validation or assertion quotas. Check data before persistence and after loading.
+- Validate untrusted inputs at the boundary that owns them, then pass validated values inward. Avoid redundant checks for invariants already guaranteed by that boundary; revalidate at new trust or persistence boundaries. Handle expected failures at runtime. Use meaningful side-effect-free assertions for invariants, never debug-only validation or assertion quotas. Check data before persistence and after loading.
+- Do not extract single-use helpers merely to shorten a function. Extract when a helper names a meaningful concept, isolates a complex boundary, or materially clarifies orchestration.
+- Change authoritative sources and run the repository's generator instead of hand-editing generated outputs. Include and verify required generated changes.
 - Check fallible calls and subprocess exits. Propagate useful context; justify ignored results. Preserve cleanup, rollback, and the initiating failure without exposing secrets or continuing with corrupt state.
 - Make types, units, ownership, rounding, lengths, overflow, and narrowing explicit where relevant. Specify safety-sensitive library options.
 - Estimate resource costs before choosing architecture; measure representative performance before claims. Do not add caching, concurrency, abstractions, or dependencies without observed need. Prefer native/standard tools, deletion, or reduced scope over unsafe complexity.
