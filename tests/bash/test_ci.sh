@@ -77,7 +77,14 @@ SH
     esac
     for failure in $failures; do
       CI_FAIL="$failure"
-      assert_exit_code 1 _ci_run_job "$job" "$root"
+      local output status=0
+      # Expected workflow failures must not become real Actions annotations.
+      output="$(_ci_run_job "$job" "$root" 2>&1)" || status=$?
+      assert_equals 1 "$status"
+      if [[ "$status" != 1 ]]; then
+        printf 'Unexpected %s/%s replay output:\n%s\n' \
+          "$job" "$failure" "${output//::/: :}" >> "$ERROR_FILE"
+      fi
     done
   done
 }
