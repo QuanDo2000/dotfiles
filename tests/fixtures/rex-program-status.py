@@ -49,7 +49,7 @@ exit 0
     env = {**os.environ, "HOME": str(home), "ZDOTDIR": str(home),
            "REX_BIN_DIR": str(home / 'rex-bin') if rex else '',
            "TMUX": 'fixture' if tmux else '', "NO_TMUX": '1',
-           "TERM": 'xterm-256color'}
+           "TERM": 'xterm-256color', "PS1": '__REX_STATUS_READY__ '}
     master, slave = pty.openpty()
     process = None
     output = bytearray()
@@ -68,27 +68,35 @@ exit 0
         slave = -1
         script_bytes = script.encode()
         assert len(script_bytes) < 4096
-        assert os.write(master, script_bytes) == len(script_bytes)
+        sent = False
+        read_fds = [master] if terminal else [master, output_fd]
         deadline = time.monotonic() + 15
-        while time.monotonic() < deadline:
-            ready, _, _ = select.select([output_fd], [], [], 0.1)
+        while read_fds and time.monotonic() < deadline:
+            ready, _, _ = select.select(read_fds, [], [], 0.1)
             if not ready:
                 if process.poll() is not None:
                     break
                 continue
-            try:
-                data = os.read(output_fd, 8192)
-            except OSError as error:
-                if error.errno == errno.EIO:
-                    break
-                raise
-            if not data:
-                break
-            output.extend(data)
-            if len(output) >= 65536:
-                raise RuntimeError('Zsh output exceeds capture limit')
+            for fd in ready:
+                try:
+                    data = os.read(fd, 8192)
+                except OSError as error:
+                    if error.errno != errno.EIO:
+                        raise
+                    data = b''
+                if not data:
+                    read_fds.remove(fd)
+                    continue
+                output.extend(data)
+                # Zsh may write its initial prompt directly to /dev/tty even
+                # with redirected stdout. Wait for tty setup before typeahead.
+                if not sent and b'__REX_STATUS_READY__' in output:
+                    assert os.write(master, script_bytes) == len(script_bytes)
+                    sent = True
+                if len(output) >= 65536:
+                    raise RuntimeError('Zsh output exceeds capture limit')
         if process.poll() is None and time.monotonic() >= deadline:
-            raise RuntimeError(f'Zsh deadline exceeded: {bytes(output[-4000:])!r}')
+            raise RuntimeError(f'Zsh deadline exceeded ({rex=}, {tmux=}, {terminal=}, {sent=}): {bytes(output[-4000:])!r}')
         assert process.wait(timeout=max(0.1, deadline - time.monotonic())) == 0
         return bytes(output)
     finally:
