@@ -79,10 +79,11 @@ test_arch_install_flow_installs_system_backup_after_home_manager_activation() {
 
   export DRY=false
   _install_native_bootstrap_packages() { :; }
+  _ensure_rex_auth() { printf 'auth\n' >> "$calls"; }
   _home_manager_switch() { printf 'switch\n' >> "$calls"; }
   _install_arch_service_state_backup() { printf 'install\n' >> "$calls"; }
 
   install_arch
 
-  assert_equals $'switch\ninstall' "$(<"$calls")"
+  assert_equals $'auth\nswitch\ninstall' "$(<"$calls")"
 }

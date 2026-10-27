@@ -192,6 +192,27 @@ test_debian_bootstrap_skips_apt_when_packages_are_installed() {
   unset -f dpkg-query sudo
 }
 
+test_rex_token_storage_and_redirect_safety() {
+  python3 "$REPO_DIR/tests/python/test_rex_auth.py"
+}
+
+test_rex_setup_prompts_only_when_credential_missing() {
+  DRY=false
+  local calls="$TEST_TMPDIR/rex-auth.log"
+  sudo() {
+    printf '%s\n' "$*" >> "$calls"
+    [[ "$*" != *--check ]]
+  }
+  _ensure_rex_auth >/dev/null
+  assert_contains "$(<"$calls")" 'rex_auth.py --check'
+  assert_equals 2 "$(wc -l < "$calls" | tr -d ' ')"
+  : > "$calls"
+  sudo() { printf '%s\n' "$*" >> "$calls"; }
+  _ensure_rex_auth >/dev/null
+  assert_equals 1 "$(wc -l < "$calls" | tr -d ' ')"
+  unset -f sudo
+}
+
 test_install_arch_bootstraps_nix_and_switches_home_manager() {
   DRY=false
   local calls="$TEST_TMPDIR/calls.log"

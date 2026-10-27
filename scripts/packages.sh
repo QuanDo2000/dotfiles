@@ -14,6 +14,7 @@ function install_debian {
   info "Installing packages and programs for Debian..."
   if [[ "$DRY" == "false" ]]; then
     _install_native_bootstrap_packages debian
+    _ensure_rex_auth
     _home_manager_switch linux
   fi
   success "Finished install for Debian"
@@ -124,11 +125,38 @@ function _install_arch_service_state_backup {
   sudo bash "$installer" || fail "Failed to install Arch server service-state backup units"
 }
 
+function _rex_auth_python {
+  # Bootstrap Nix first, including /etc/nix, before saving its credentials.
+  _ensure_nix >&2 || return
+  if command -v python3 >/dev/null 2>&1; then
+    command -v python3
+    return
+  fi
+  local package
+  package="$(nix build "path:$DOTFILES_DIR#rex-auth-python" --no-link --print-out-paths)" || return
+  printf '%s/bin/python3\n' "$package"
+}
+
+function _ensure_rex_auth {
+  if [[ "$DRY" == true ]]; then
+    info "Would check Rex credentials and securely prompt if missing"
+    return
+  fi
+  local python
+  python="$(_rex_auth_python)" || fail "Cannot prepare Python for Rex token setup"
+  if sudo "$python" "$DOTFILES_DIR/scripts/rex_auth.py" --check; then
+    return
+  fi
+  info "Rex needs the package token from the signed-in Linux installation page."
+  sudo "$python" "$DOTFILES_DIR/scripts/rex_auth.py" || fail "Rex token setup failed; rerun dotfile rex-auth in a terminal"
+}
+
 function install_arch {
   info "Installing packages and programs for Arch Linux..."
   if [[ "$DRY" == "false" ]]; then
     _install_native_bootstrap_packages arch
   fi
+  _ensure_rex_auth
   _home_manager_switch arch-server
   _install_arch_service_state_backup
   success "Finished install for Arch Linux"
@@ -424,6 +452,7 @@ function _nixos_rebuild_switch {
 # Usage: install_nixos
 function install_nixos {
   info "Installing packages for NixOS..."
+  _ensure_rex_auth
   _nixos_rebuild_switch
   [[ "${NIXOS_WSL_RESTART_REQUIRED:-false}" == "true" ]] && return
   success "Finished install for NixOS"
