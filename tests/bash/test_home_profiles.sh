@@ -388,6 +388,15 @@ test_platform_profiles_have_expected_ghostty_config() {
   for profile in linux arch-server nixos nixos-wsl; do
     assert_line_present "$(_profile_packages "$profile")" rex
     assert_line_present "$(_profile_services "$profile")" rex
+    local rex_command
+    rex_command="$(_profile_service "$profile" rex | jq -r .execStart)"
+    assert_not_contains "$rex_command" --allow-anonymous
+    assert_not_contains "$rex_command" --tailnet-allow-identified
+    if [[ "$profile" == arch-server ]]; then
+      assert_contains "$rex_command" tailnet://:7297
+    else
+      assert_not_contains "$rex_command" --extra-listen
+    fi
     _test_present "$(_profile_xdg_files "$profile")" rex/init.lua 'rex/Catppuccin Macchiato.conf'
   done
   assert_line_present "$(_profile_xdg_files linux)" tmux/tmux.conf

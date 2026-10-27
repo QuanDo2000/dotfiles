@@ -134,7 +134,11 @@
           storageOffsiteBackup = true;
           systemCompiler = true;
         };
-        modules = [ ./config/home.nix rex-linux.homeManagerModules.default ./config/rex-linux.nix ];
+        modules = [
+          ./config/home.nix rex-linux.homeManagerModules.default ./config/rex-linux.nix
+          # Arch only: existing tailscaled identifies callers; node owner only.
+          { services.rex.extraListen = [ "tailnet://:7297" ]; }
+        ];
       };
 
       apps.x86_64-linux.home-manager = {
