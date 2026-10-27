@@ -88,6 +88,52 @@ if [[ -n "$REX_BIN_DIR" ]]; then
   export PATH="$REX_BIN_DIR:$PATH"
 fi
 
+# OSC 7501 reports only these existing foreground tools, never their arguments.
+# Shell hooks leave command execution, stdout/stderr and exit status untouched.
+if [[ -o interactive && -n "$REX_BIN_DIR" && -z "$TMUX" ]]; then
+  _dotfile_status_start() {
+    local -a words
+    local word app
+    _dotfile_status_app=
+    [[ -t 1 && ${#1} -le 4096 && "$1" != *$'\n'* ]] || return 0
+    words=( ${(z)1} )
+    app="${(Q)words[1]}"
+    app="${app:t}"
+    case "$app" in
+      dotfile|iib|cn2epub) ;;
+      *) return 0 ;;
+    esac
+    # A compound/background command has no single foreground tool result.
+    for word in "${words[@]}"; do
+      case "$word" in
+        ';'|'&'|'&&'|'||'|'|'|'|&'|'&!'|'&|'|'('|')'|'{'|'}') return 0 ;;
+      esac
+    done
+    _dotfile_status_app="$app"
+    printf '\033]7501;state=working:app=%s\033\\' "$app"
+    return 0
+  }
+
+  _dotfile_status_finish() {
+    local result=$? state=done
+    [[ -n "$_dotfile_status_app" ]] || return 0
+    if (( result == 130 || result == 143 )); then
+      state=idle
+    elif (( result != 0 )); then
+      state=error
+    fi
+    if [[ -t 1 ]]; then
+      printf '\033]7501;state=%s:app=%s\033\\' "$state" "$_dotfile_status_app"
+    fi
+    _dotfile_status_app=
+    return 0
+  }
+
+  autoload -Uz add-zsh-hook
+  add-zsh-hook preexec _dotfile_status_start
+  add-zsh-hook precmd _dotfile_status_finish
+fi
+
 bindkey -M viins '^[[A' history-beginning-search-backward
 bindkey -M viins '^[[B' history-beginning-search-forward
 bindkey -M viins '^[OA' history-beginning-search-backward
