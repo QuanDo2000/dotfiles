@@ -1,13 +1,13 @@
 # Rex on macOS and Linux
 
-Rex is the default managed session system on both Unix platforms. Shell startup
-does not start/attach tmux, and no `tmux` shell function is installed. Linux keeps
-the package and legacy config for explicit fallback; running processes are never
-transferred or terminated by this configuration migration.
+macOS uses Rex. Linux retains tmux auto-attach/create of `main` and the bare
+`tmux` convenience wrapper until a Linux Rex client is available. Shells already
+inside Rex skip both; existing nested/embedded-shell guards and `NO_TMUX=1`
+opt-out remain. Running processes are never transferred or terminated.
 
 **Accepted Linux limitation:** only the server/automation CLI is released. There
 is no interactive `rex attach` or public Linux GUI client yet. Linux/SSH starts
-a normal shell. Use the Mac app for interactive Rex sessions; this cutover does
+tmux on eligible interactive logins. Use the Mac app for interactive Rex sessions; this cutover does
 not configure remote network access.
 
 `debt:` a native Linux interactive cutover is limited by the released server-only

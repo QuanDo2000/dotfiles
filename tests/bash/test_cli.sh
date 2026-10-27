@@ -56,7 +56,7 @@ test_zsh_vi_insert_mode_can_delete_pasted_text() {
   assert_contains "$config" "bindkey -M viins '^H' backward-delete-char"
 }
 
-test_unix_shells_use_rex_without_tmux_autostart() {
+test_unix_shells_keep_linux_tmux_until_rex_client() {
   REPO_DIR="$REPO_DIR" python3 - <<'PY' || echo 'Rex shell integration failed' >> "$ERROR_FILE"
 import os
 import pathlib
@@ -82,7 +82,11 @@ with tempfile.TemporaryDirectory() as tmp:
                         if [[ -n "$REX_BIN_DIR" ]]; then
                             [[ "${path[1]}" == "$REX_BIN_DIR" ]] || exit 1
                         fi
-                        (( ! ${+functions[tmux]} )) || exit 1
+                        if [[ "$OSTYPE" == linux* && -z "$REX_BIN_DIR" ]]; then
+                            (( ${+functions[tmux]} )) || exit 1
+                        else
+                            (( ! ${+functions[tmux]} )) || exit 1
+                        fi
                     ''', "test", os.environ["REPO_DIR"]],
                     env={**os.environ, "PATH": tmp + ":" + os.environ["PATH"],
                          "TEST_OSTYPE": platform,
@@ -93,7 +97,8 @@ with tempfile.TemporaryDirectory() as tmp:
                     text=True, timeout=10,
                 )
                 assert result.returncode == 0, (platform, in_rex, result.stderr)
-                assert "unexpected-tmux" not in result.stdout, result.stdout
+                expect_tmux = platform == "linux-gnu" and not in_rex
+                assert ("unexpected-tmux" in result.stdout) == expect_tmux, (platform, in_rex, result.stdout)
     finally:
         os.close(slave)
         os.close(master)

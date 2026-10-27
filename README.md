@@ -71,7 +71,8 @@ terminal and persistent sessions instead of Ghostty/tmux. Nix installs the signe
 Rex Beta app and CLI, pinned by `packages/rex-release.json`; `dotfile update`
 refreshes that pin from the official preview feed. Sparkle updates are disabled
 for the immutable bundle. Linux retains desktop Ghostty, and tmux remains
-installed for explicit fallback use only; no Unix shell autostarts it.
+installed with automatic attach/create of `main` on eligible interactive Linux
+shells until a Linux Rex client is available. macOS stays on Rex.
 
 After `dotfile packages`, open `~/Applications/Home Manager Apps/Rex Beta.app`
 rather than any older `/Applications` copy. No running app or server is stopped
@@ -94,14 +95,16 @@ All currently declared Linux profiles install the Rex CLI and a personal
 Arch server, NixOS, and NixOS-WSL (currently x86-64). It runs only on the account's Unix socket; no TCP listener,
 Tailscale node, root login server, or extra account is enabled. macOS and Linux
 share the Rex Ctrl+B keybindings and Catppuccin theme source in `config/rex/`.
-Unix shell startup never starts/attaches tmux, and the bare-`tmux` attach wrapper
-is removed. Its package/config remain for explicit fallback use. Existing running
-sessions are not stopped or converted.
+Linux shell startup attaches to (or creates) tmux session `main`; bare `tmux`
+does the same. macOS and shells already inside Rex do not autostart tmux.
+Existing nested/embedded-shell guards and `NO_TMUX=1` opt-out remain supported.
+Existing running sessions are not stopped or converted.
 
 **Linux is server/automation-only for now:** upstream has not released its Linux
 interactive client, and the CLI has no `attach` command. A new Linux terminal/SSH
-connection opens a normal shell, not a Rex terminal. This limitation is accepted
-for this cutover; no anonymous network listener or new Tailscale node is enabled.
+connection therefore keeps tmux auto-attach, not a Rex terminal. Revisit this
+fallback when the Linux client is released; no anonymous network listener or
+new Tailscale node is enabled.
 macOS continues to use the Rex app. See the [migration notes](config/rex/README.md).
 
 `dotfile` / `dotfile packages` checks for the package credential during Linux setup
