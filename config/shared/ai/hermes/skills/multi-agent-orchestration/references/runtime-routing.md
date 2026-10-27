@@ -11,7 +11,7 @@ Choose by ownership/lifecycle, then inspect the installed runtime. Defaults, API
 | Tracked background CLI | a bounded mission outlives the current turn | explicit workdir/ownership, output and process supervision; not durable |
 | Kanban/cron | work must survive resets, retry, or deliver later | persisted ownership/retry/delivery, with extra overhead |
 
-Do not nest runtimes unless their distinct capabilities justify it. Native delegation or supervised tmux is usually simpler for same-machine work.
+Do not nest runtimes unless their distinct capabilities justify it. Native delegation or an already-supervised Rex/tmux terminal is usually simpler for same-machine work.
 
 ## Hermes
 
@@ -27,7 +27,7 @@ Inspect `pi --version`, `pi list`, live settings, project overrides, and install
 
 Use `pi-concurrency-and-model-scope.md` for concurrency lifetime and deployment safeguards, and `pi-model-routing.md` for effective selection. Run deadlines, parent waits, per-run limits, and session-wide caps are different contracts; inspect async status, events, logs, result artifacts, and completion notification.
 
-For an existing tmux agent, follow `pi-tmux-agent-operations.md`; identify the socket, pane, and current task before sending input, then verify delivery.
+For an existing terminal agent, follow `pi-terminal-agent-operations.md`; use Rex native process/status/capture/send operations when it runs in Rex, and retain tmux operations for agents already in tmux (including Linux SSH). Identify the server/socket, full pane IDs and current task before sending input, then verify delivery. Do not move running agents or create optional workspaces as part of this choice.
 
 ## Codex
 

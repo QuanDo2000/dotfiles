@@ -38,7 +38,7 @@ Evaluation is not installation approval. Before adding a bridge, explain package
 - `references/hermes-model-routing.md`: main, child, auxiliary, and fallback routing.
 - `references/pi-model-routing.md`: effective role precedence, availability, auth, and managed state.
 - `references/pi-concurrency-and-model-scope.md`: concurrency lifetimes and scope enforcement; version-specific claims require installed-source verification.
-- `references/pi-tmux-agent-operations.md`: discover, inspect, and steer the correct existing pane.
+- `references/pi-terminal-agent-operations.md`: discover, inspect and steer the correct existing Rex or tmux pane, preserving its current backend.
 - `references/subagent-portfolio-audit.md`: bounded evidence before disabling roles; diagnose orchestration waste first.
 
 ## Verify the changed contract
