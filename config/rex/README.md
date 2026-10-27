@@ -1,4 +1,33 @@
-# Rex on macOS
+# Rex on macOS and Linux
+
+macOS uses Rex. Linux retains tmux auto-attach/create of `main` and the bare
+`tmux` convenience wrapper until a Linux Rex client is available. Shells already
+inside Rex skip both; existing nested/embedded-shell guards and `NO_TMUX=1`
+opt-out remain. Running processes are never transferred or terminated.
+
+**Accepted Linux limitation:** only the server/automation CLI is released. There
+is no interactive `rex attach` or public Linux GUI client yet. Linux/SSH starts
+tmux on eligible interactive logins. Use the Mac app for interactive Rex sessions; this cutover does
+not configure remote network access.
+
+`debt:` a native Linux interactive cutover is limited by the released server-only
+package. Revisit terminal launch/session entry when upstream releases its Linux
+client; do not invent a capture/send terminal emulator or enable anonymous HTTP.
+
+## Shared configuration
+
+`config/rex/init.lua` and `Catppuccin Macchiato.conf` deploy as the same two
+Home Manager links on macOS and every Linux profile. Theme selection is still a
+macOS client action; sharing the theme file does not theme Ghostty or a headless
+Linux server. Linux package/service ownership remains in `config/rex-linux.nix`.
+
+After activation, open a fresh shell; existing shells keep already-defined
+functions until exited. Validate with `rex config check`, then explicitly run
+`rex config reload` to apply the shared bindings without restarting sessions.
+On macOS this requires running the managed app/version; Nix activation here is
+not remote Mac deployment.
+
+## macOS installation
 
 ## Ownership and activation
 
@@ -9,7 +38,7 @@
 
 ### Which settings are tracked?
 
-Git owns the keybindings and Catppuccin theme source (`config/mac/rex/`), native preferences (`config/darwin.nix`), and release pin (`packages/rex-release.json`). The native theme import is a one-time seed, not continuous enforcement. Later GUI changes, imported theme storage, window layouts, sessions, and permissions are not exported back into Git or overwritten by the seed. Native preference defaults are reapplied by nix-darwin activation; edit their tracked source to change the managed baseline.
+Git owns the keybindings and Catppuccin theme source (`config/rex/`), native preferences (`config/darwin.nix`), and release pin (`packages/rex-release.json`). The native theme import is a one-time seed, not continuous enforcement. Later GUI changes, imported theme storage, window layouts, sessions, and permissions are not exported back into Git or overwritten by the seed. Native preference defaults are reapplied by nix-darwin activation; edit their tracked source to change the managed baseline.
 
 The saved baseline includes FiraCode Nerd Font at 14 pt and its fallbacks, Merino Light for light mode, focus-follows-mouse, compact panes, active-pane borders, fading both inactive-pane aspects, standard inactive-window pane styling, a left sidebar with vertical tabs and no icon tint, and copy-on-select. Agent session naming and developer mode are enabled; the server uses bundled mode with automatic restart enabled and plugin reload unblocked. The dark Catppuccin theme remains a portable one-time import, not a machine-specific theme UUID.
 
@@ -19,7 +48,7 @@ Run `dotfile packages`, then open `~/Applications/Home Manager Apps/Rex Beta.app
 
 For an already running app, `rex config check` validates the linked file and `rex config reload` applies its shortcuts without restarting terminals. Reload is explicit, not an activation side effect.
 
-## Ghostty appearance
+## macOS appearance
 
 The native font preferences retain **FiraCode Nerd Font** and the existing Noto/symbol/emoji fallback list. macOS uses installed fallback faces; unavailable families fall back to the system. Nix already supplies the primary FiraCode Nerd Font.
 
@@ -57,7 +86,7 @@ Splits and tabs use Rex's native current-directory behavior. Copy/paste use nati
 
 ## Agents and status tracking
 
-Activation runs the pinned CLI's **`rex skill setup --agent pi`**, without `--force`. Rex owns the dynamic guide in `~/.agents/skills/rex`; a foreign skill is preserved. It calls the installed `rex skill show`, so instructions follow the installed version. Pi and other harnesses reading this shared directory can discover it. This is not a copied/vendored custom skill, and no Codex/Claude hook files are edited.
+On macOS and Linux, activation runs the platform's pinned CLI's **`rex skill setup --agent pi`**, without `--force`. Rex owns the dynamic guide in `~/.agents/skills/rex`; a foreign skill is preserved. It calls the installed `rex skill show`, so instructions follow the installed version. Pi and other harnesses reading this shared directory can discover it. This is not a copied/vendored custom skill, and no Codex/Claude hook files are edited.
 
 The pinned Pi already implements Rex's **Program Status Protocol (OSC 7501)** natively: working, blocked (dialogs/login), done, error, and idle. Detection is automatic inside Rex. No extension, title scraping, polling daemon, or extra `PI_PROGRAM_STATUS` override is needed. Reports contain status/session labels, not prompts or model output. Start a fresh Pi session inside Rex to discover the skill.
 

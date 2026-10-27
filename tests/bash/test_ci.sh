@@ -169,7 +169,7 @@ test_ci_filters_known_platform_owned_paths_without_skipping_shared_consumers() {
     output="$(printf '%s\n' "$path" | bash "$filter")"
     assert_equals $'linux=true\nmacos=false\nwindows=false\nnix=true' "$output"
   done
-  for path in scripts/packages.sh scripts/check-update.sh scripts/update_pins.py packages/pi-extensions.nix tests/ai/pi-web-activation-smoke.mjs; do
+  for path in config/rex/init.lua scripts/packages.sh scripts/check-update.sh scripts/update_pins.py packages/pi-extensions.nix tests/ai/pi-web-activation-smoke.mjs; do
     output="$(printf '%s\n' "$path" | bash "$filter")"
     assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=true' "$output"
   done

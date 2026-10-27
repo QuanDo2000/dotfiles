@@ -62,9 +62,10 @@ alias gstp='git stash pop'
 # exiting tmux drops back to this shell (old ZSH_TMUX_AUTOQUIT=false). Guards
 # avoid nested tmux and embedded shells (VS Code, Emacs, Vim). NO_TMUX is an
 # explicit client opt-out for small terminals such as Termux. Rex manages
-# sessions itself, so macOS never autostarts tmux.
+# sessions itself, so macOS and shells inside Rex never autostart tmux.
+# debt: Linux keeps tmux auto-attach until an interactive Rex client is released.
 if [[ -t 0 && -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" && -z "$NO_TMUX" \
-      && "$OSTYPE" != darwin* \
+      && "$OSTYPE" == linux* && -z "$REX_BIN_DIR" \
       && "$TERM_PROGRAM" != "vscode" && -z "$INSIDE_EMACS" && -z "$VIMRUNTIME" ]] \
    && command -v tmux >/dev/null 2>&1; then
   export ZSH_TMUX_STARTED=1
@@ -72,7 +73,7 @@ if [[ -t 0 && -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" && -z "$NO_
 fi
 
 # Bare `tmux` on Linux attaches to (or creates) "main".
-if [[ "$OSTYPE" != darwin* ]]; then
+if [[ "$OSTYPE" == linux* && -z "$REX_BIN_DIR" ]]; then
   tmux() {
     if [ $# -eq 0 ]; then
       command tmux attach -t main 2>/dev/null || command tmux new -s main

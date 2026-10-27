@@ -14,7 +14,7 @@ while IFS= read -r path; do
       nix=true
       continue
       ;;
-    packages/pi-extensions.nix | scripts/apply_hermes_skill_fixes.sh | scripts/check.sh | scripts/check-update.sh | scripts/doctor.sh | scripts/host_config.sh | scripts/obsidian.sh | scripts/packages.sh | scripts/pins.sh | scripts/platform.sh | scripts/releases.sh | scripts/update_pins.py | scripts/utils.sh | tests/ai/pi-web-activation-smoke.mjs)
+    config/rex/* | packages/pi-extensions.nix | scripts/apply_hermes_skill_fixes.sh | scripts/check.sh | scripts/check-update.sh | scripts/doctor.sh | scripts/host_config.sh | scripts/obsidian.sh | scripts/packages.sh | scripts/pins.sh | scripts/platform.sh | scripts/releases.sh | scripts/update_pins.py | scripts/utils.sh | tests/ai/pi-web-activation-smoke.mjs)
       linux=true
       macos=true
       nix=true

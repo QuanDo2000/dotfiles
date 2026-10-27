@@ -388,8 +388,8 @@ test_platform_profiles_have_expected_ghostty_config() {
   for profile in linux arch-server nixos nixos-wsl; do
     assert_line_present "$(_profile_packages "$profile")" rex
     assert_line_present "$(_profile_services "$profile")" rex
+    _test_present "$(_profile_xdg_files "$profile")" rex/init.lua 'rex/Catppuccin Macchiato.conf'
   done
-  _test_absent "$(_profile_xdg_files linux)" rex/init.lua
   assert_line_present "$(_profile_xdg_files linux)" tmux/tmux.conf
 }
 
