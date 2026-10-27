@@ -182,6 +182,7 @@ Commands:
   upgrade     Upgrade native system packages
   obsidian    Bootstrap Obsidian Sync login and vault setup
   rex-auth    Securely prompt for and validate the Rex package token (Linux)
+  rex-work    Create a local Rex Dotfiles workspace (editor + shell + checks)
   pi-auth     Set up missing Pi Codex subscription and OpenRouter logins
   lix-installer
               Update pinned Lix installer checksums
@@ -284,6 +285,23 @@ upgrade)
 obsidian)
   [[ $# -eq 1 ]] || fail "Unexpected obsidian argument: ${2:-}"
   setup_obsidian
+  ;;
+rex-work)
+  [[ $# -eq 1 ]] || fail "Unexpected rex-work argument: ${2:-}"
+  if [[ "$DRY" == true ]]; then
+    info "Would create local Rex session dotfiles: Neovim, project shell, checks shell in $DOTFILES_DIR (no tests run)"
+  else
+    command -v rex >/dev/null || fail "Rex is required; run dotfile packages first"
+    command -v nvim >/dev/null || fail "Neovim is required; run dotfile packages first"
+    command -v zsh >/dev/null || fail "Zsh is required; run dotfile packages first"
+    case "$(uname -s)" in
+      Darwin) endpoint="unix://$HOME/Library/Application Support/rex/server.sock" ;;
+      Linux) endpoint="unix://${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/rex/server.sock" ;;
+      *) fail "rex-work supports macOS and Linux only" ;;
+    esac
+    rex --server "$endpoint" --autostart=false --timeout 10s \
+      'do' "$SCRIPTS_DIR/rex-work.lua" --json
+  fi
   ;;
 rex-auth)
   [[ $# -eq 1 ]] || fail "Unexpected rex-auth argument: ${2:-}"

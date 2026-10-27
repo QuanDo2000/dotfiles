@@ -84,6 +84,47 @@ Splits and tabs use Rex's native current-directory behavior. Copy/paste use nati
 
 `debt:` Lua config does not expose persistent font/theme defaults. Fonts use the pinned app's native preference keys; theme setup uses the native client action and standard macOS local socket. The automation ceiling is one connected local app and an activation or new Rex shell; custom sockets or reopening only restored shells defer setup. Extend discovery/launch integration when those workflows are requested, or replace the seed with a declarative appearance API when Rex publishes one. Config validation alone does not establish font/rendering parity.
 
+## Dotfiles project workspace
+
+Run `dotfile rex-work` on the machine whose checkout you want to edit. Use
+`dotfile -d rex-work` to preview without connecting to Rex. The command creates
+one session named **dotfiles**, containing a Workspace tab:
+
+- Left 60%: Neovim opened at the checkout (`nvim .`).
+- Upper right: an interactive Zsh project shell.
+- Lower right: another Zsh shell labelled Checks. Run `./scripts/check.sh`
+  there when ready; the launcher never starts checks, agents, or services.
+
+All panes start in the checkout owning the invoked `dotfile`, including an
+explicit `DOTFILES_DIR` override. A pre-existing session with that name causes a
+clear refusal, not extra panes, command replay, or session replacement. Select
+the existing session in Rex, or rename it deliberately before launching another.
+The native session/layout creation is transactional; later program exits are
+normal terminal behavior, not a reason to destroy the workspace.
+
+The command targets only the standard **local** Unix socket, ignoring remote
+`REX_SERVER`/home selections. It requires an already-running Rex server and the
+managed `rex`, `nvim`, and `zsh` commands. On Mac, open the managed Rex app first;
+on Linux, use the existing managed user service. It never changes networking,
+starts a separate server, or changes Linux SSH/tmux startup.
+
+Creation prints the session/window/block IDs; it does **not** select a GUI
+client or attach an SSH terminal. On Mac, choose **dotfiles** in Rex's session
+picker (Ctrl+B, then `s`). Linux still needs a supported client for interactive
+viewing. Session state and editor buffers remain native and are not Git-managed.
+
+`debt:` this launcher covers one local checkout/workspace and sequential
+invocations; simultaneous launches can race the name check. Add serialization
+only when concurrent launch is needed, or use native unique-session creation if
+Rex exposes it. Custom sockets, remote paths and additional project templates
+are intentionally outside this launcher's scope.
+
+Repeatable native smoke check: `bash tests/rex-work-smoke.sh` with Rex, Neovim,
+Zsh, jq and a writable `TMPDIR`. It uses an isolated Unix socket/server, checks
+live process names and working directories, verifies duplicate/missing-server
+refusals and cleans up its own server. macOS CI runs this with the pinned app;
+Linux runs require the authenticated installed Linux package.
+
 ## Agents and status tracking
 
 On macOS and Linux, activation runs the platform's pinned CLI's **`rex skill setup --agent pi`**, without `--force`. Rex owns the dynamic guide in `~/.agents/skills/rex`; a foreign skill is preserved. It calls the installed `rex skill show`, so instructions follow the installed version. Pi and other harnesses reading this shared directory can discover it. This is not a copied/vendored custom skill, and no Codex/Claude hook files are edited.

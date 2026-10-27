@@ -52,6 +52,10 @@ kind=core
 [[ "$1" != test_neovim.sh ]] || kind=neovim
 [[ "$CI_FAIL" != tests && "$CI_FAIL" != "$kind" ]]
 SH
+  cat > "$root/tests/rex-work-smoke.sh" <<'SH'
+printf 'rex-work smoke\n' >> "$CI_CALLS"
+[[ "$CI_FAIL" != rex-work ]]
+SH
   for job in bash-linux bash-macos nix; do
     CI_FAIL=; : > "$CI_CALLS"
     assert_exit_code 0 _ci_run_job "$job" "$root"
@@ -69,7 +73,8 @@ SH
         assert_contains "$calls" 'nix eval --raw .#darwinConfigurations.mac.system.drvPath'
         assert_contains "$calls" 'nix build .#pi-extensions --no-link'
         assert_contains "$calls" 'nix build .#rex --no-link'
-        failures='tests eval build' ;;
+        assert_contains "$calls" 'rex-work smoke'
+        failures='tests eval build rex-work' ;;
       nix)
         assert_contains "$calls" 'nix flake check --no-build --all-systems'
         assert_contains "$calls" 'nix build .#obsidian-headless .#pi-agent .#pi-extensions --no-link'
@@ -169,7 +174,7 @@ test_ci_filters_known_platform_owned_paths_without_skipping_shared_consumers() {
     output="$(printf '%s\n' "$path" | bash "$filter")"
     assert_equals $'linux=true\nmacos=false\nwindows=false\nnix=true' "$output"
   done
-  for path in config/rex/init.lua scripts/packages.sh scripts/check-update.sh scripts/update_pins.py packages/pi-extensions.nix tests/ai/pi-web-activation-smoke.mjs; do
+  for path in config/rex/init.lua scripts/rex-work.lua tests/rex-work-smoke.sh scripts/packages.sh scripts/check-update.sh scripts/update_pins.py packages/pi-extensions.nix tests/ai/pi-web-activation-smoke.mjs; do
     output="$(printf '%s\n' "$path" | bash "$filter")"
     assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=true' "$output"
   done

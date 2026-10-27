@@ -646,7 +646,7 @@ test_explicit_all_rejects_extra_arguments() {
 
 test_leaf_commands_reject_extra_arguments() {
   local command output exit_code
-  for command in all packages upgrade obsidian obsidian-headless check; do
+  for command in all packages upgrade obsidian obsidian-headless check rex-work; do
     output=$(bash "$DOTFILE_CMD" --dry "$command" extra 2>&1) || exit_code=$?
     assert_equals "1" "$exit_code"
     assert_contains "$output" "Unexpected $command argument: extra"

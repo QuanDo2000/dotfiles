@@ -56,6 +56,11 @@ jobs:
       - name: Verify Rex package
         run: nix build .#rex --no-link --print-build-logs
 
+      - name: Verify native Rex workspace launcher
+        run: |
+          rex_path="$(nix build .#rex --no-link --print-out-paths)"
+          PATH="$rex_path/bin:$PATH" nix develop .#ci -c bash tests/rex-work-smoke.sh
+
       - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
         with:
           name: ${{ vars.CACHIX_CACHE_NAME }}
