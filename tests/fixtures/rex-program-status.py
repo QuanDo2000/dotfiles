@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise managed Zsh hooks, real dotfile help/errors and harmless tool stand-ins."""
 import errno
+import fcntl
 import os
 import pathlib
 import pty
@@ -11,7 +12,14 @@ import signal
 import subprocess
 import sys
 import tempfile
+import termios
 import time
+
+
+def claim_terminal():
+    # Popen has created the session and duped the slave onto stdin. Claim it
+    # explicitly: setsid alone leaves Darwin Zsh without a controlling terminal.
+    fcntl.ioctl(0, termios.TIOCSCTTY, 0)
 
 
 def run(config, home, rex, tmux, terminal):
@@ -49,7 +57,8 @@ exit 0
         process = subprocess.Popen(['zsh', '-dfi'], stdin=slave,
                                    stdout=slave if terminal else subprocess.PIPE,
                                    stderr=slave if terminal else subprocess.STDOUT,
-                                   env=env, start_new_session=True)
+                                   env=env, start_new_session=True,
+                                   preexec_fn=claim_terminal)
         if terminal:
             output_fd = master
         else:
