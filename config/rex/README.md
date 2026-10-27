@@ -7,12 +7,58 @@ opt-out remain. Running processes are never transferred or terminated.
 
 **Accepted Linux limitation:** only the server/automation CLI is released. There
 is no interactive `rex attach` or public Linux GUI client yet. Linux/SSH starts
-tmux on eligible interactive logins. Use the Mac app for interactive Rex sessions; this cutover does
-not configure remote network access.
+tmux on eligible interactive logins. Use the Mac app for interactive Rex sessions; Arch remote access is described below.
 
 `debt:` a native Linux interactive cutover is limited by the released server-only
 package. Revisit terminal launch/session entry when upstream releases its Linux
 client; do not invent a capture/send terminal emulator or enable anonymous HTTP.
+
+## Mac → Arch remote access
+
+The Arch-server Home Manager profile in `flake.nix` adds
+`services.rex.extraListen = [ "tailnet://:7297" ];`. Other Linux profiles remain
+Unix-socket-only. The native listener binds only the host's Tailscale addresses
+and asks the existing host tailscaled to identify callers. Rex's default
+node-owner check remains in force: neither `--allow-anonymous` nor
+`--tailnet-allow-identified` is enabled. No embedded Rex Tailscale device, Serve
+proxy, Funnel, firewall opening, login server or SSH configuration change is used.
+
+On the Mac, connect Tailscale using the same account that owns QuanArch, then
+open the managed Rex app and choose **Add Remote Host…**:
+
+```text
+http://quanarch.tail28b036.ts.net:7297
+```
+
+If MagicDNS is unavailable, use `http://100.98.211.17:7297`. HTTP is carried
+inside the encrypted Tailscale connection; it is not an anonymous LAN listener.
+A successful connection permits programs to run as the Arch account, so never
+replace this with anonymous HTTP or grant all identified users for convenience.
+
+A Mac CLI probe, when its Rex CLI is installed, is:
+
+```sh
+rex --server http://quanarch.tail28b036.ts.net:7297 --autostart=false --timeout 5s whoami --json
+```
+
+`rex hosts add` configures CLI host selection only; it does **not** add the GUI
+remote host. An offline Mac cannot complete acceptance testing. From Arch,
+`rex --server unix:///run/user/$(id -u)/rex/server.sock --autostart=false client ls`
+can confirm a newly connected client and its identity. A same-host TCP probe may
+be refused because local loopback traffic is not classified as a tailnet caller;
+that is not a reason to disable authentication.
+
+Before first activation or any listener change, inspect sessions and coordinate
+the required Rex restart; a restart ends its sessions. Existing linger must be
+enabled for login-independent use (`loginctl show-user "$(id -u)" -p Linger`).
+This setup does not silently enable lingering or alter tailnet ACLs. If the Mac
+cannot connect, check online/account state and applicable ACLs before changing
+policy.
+
+Rollback: remove only the Arch `extraListen` stanza, build and reactivate through
+the normal Arch `dotfile symlinks` route after preserving/closing Rex sessions.
+Verify port 7297 is no longer listening and the local Unix socket still works.
+Do not reset Tailscale Serve, change SSH, or remove the host's Tailscale identity.
 
 ## Shared configuration
 

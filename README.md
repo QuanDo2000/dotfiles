@@ -92,8 +92,11 @@ authentication remains available. To test from a local terminal, run `sudo -k`
 
 All currently declared Linux profiles install the Rex CLI and a personal
 `rex.service` through the upstream Home Manager module: generic Linux/Debian,
-Arch server, NixOS, and NixOS-WSL (currently x86-64). It runs only on the account's Unix socket; no TCP listener,
-Tailscale node, root login server, or extra account is enabled. macOS and Linux
+Arch server, NixOS, and NixOS-WSL (currently x86-64). Generic Linux, NixOS and
+WSL listen only on the account's Unix socket. **Arch server additionally enables
+`tailnet://:7297`**, using the host's existing Tailscale daemon to admit only
+the node owner. No anonymous listener, embedded Tailscale node, root login
+server or extra account is enabled. macOS and Linux
 share the Rex Ctrl+B keybindings and Catppuccin theme source in `config/rex/`.
 Linux shell startup attaches to (or creates) tmux session `main`; bare `tmux`
 does the same. macOS and shells already inside Rex do not autostart tmux.
@@ -105,7 +108,10 @@ interactive client, and the CLI has no `attach` command. A new Linux terminal/SS
 connection therefore keeps tmux auto-attach, not a Rex terminal. Revisit this
 fallback when the Linux client is released; no anonymous network listener or
 new Tailscale node is enabled.
-macOS continues to use the Rex app. See the [migration notes](config/rex/README.md).
+macOS continues to use the Rex app. To reach Arch from the same Tailscale
+account, choose **Add Remote Host…** and enter
+`http://quanarch.tail28b036.ts.net:7297`. See the
+[remote-access and migration notes](config/rex/README.md).
 
 `dotfile` / `dotfile packages` checks for the package credential during Linux setup
 and securely prompts when it is missing. Retrieve the token by signing into the
