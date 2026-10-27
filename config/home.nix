@@ -28,10 +28,11 @@ let
   hermesSoul = pkgs.writeText "hm_SOUL.md"
     ((builtins.readFile ./shared/ai/SOUL.md) + "\n" + commonAgentPolicy);
   linuxConfig = source: lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource source);
+  rexPackage = if pkgs.stdenv.hostPlatform.isDarwin then pkgs.rex else config.programs.rex.package;
   rexThemeSetup = pkgs.writeShellScript "rex-theme-setup" ''
     exec ${pkgs.python3}/bin/python3 ${../scripts/rex_theme.py} \
       --rex ${pkgs.rex}/bin/rex \
-      --theme "${./mac/rex}/Catppuccin Macchiato.conf"
+      --theme "${./rex}/Catppuccin Macchiato.conf"
   '';
   networkServiceHardening = {
     UMask = "0077";
@@ -747,10 +748,9 @@ in
     '');
 
   # Native Rex owns its dynamic agent guide; never overwrite a foreign skill.
-  home.activation.setupRexAgents = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin
-    (lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      run ${pkgs.rex}/bin/rex --autostart=false skill setup --agent pi
-    '');
+  home.activation.setupRexAgents = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${rexPackage}/bin/rex --autostart=false skill setup --agent pi
+  '';
 
   home.activation.seedRexTheme = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin
     (lib.hm.dag.entryAfter [ "linkGeneration" ] ''
@@ -826,12 +826,8 @@ in
     '';
   };
 
-  xdg.configFile."rex/init.lua" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
-    source = ./mac/rex/init.lua;
-  };
-  xdg.configFile."rex/Catppuccin Macchiato.conf" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
-    source = ./mac/rex + "/Catppuccin Macchiato.conf";
-  };
+  xdg.configFile."rex/init.lua".source = ./rex/init.lua;
+  xdg.configFile."rex/Catppuccin Macchiato.conf".source = ./rex + "/Catppuccin Macchiato.conf";
 
   xdg.configFile."ghostty/config" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ./unix/config/ghostty/config);
 

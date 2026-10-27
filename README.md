@@ -70,7 +70,8 @@ macOS uses [Rex](https://www.superlogical.com/rex/docs/installation) for the
 terminal and persistent sessions instead of Ghostty/tmux. Nix installs the signed
 Rex Beta app and CLI, pinned by `packages/rex-release.json`; `dotfile update`
 refreshes that pin from the official preview feed. Sparkle updates are disabled
-for the immutable bundle. Linux retains tmux and desktop Ghostty.
+for the immutable bundle. Linux retains desktop Ghostty, and tmux remains
+installed for explicit fallback use only; no Unix shell autostarts it.
 
 After `dotfile packages`, open `~/Applications/Home Manager Apps/Rex Beta.app`
 rather than any older `/Applications` copy. No running app or server is stopped
@@ -78,7 +79,7 @@ by activation: switch applications only after saving work and closing old
 sessions yourself. Remove the old app separately when it is no longer needed.
 Catppuccin is imported and selected once automatically at activation, or in the
 next new Rex shell if the app is closed; later GUI theme choices are preserved.
-See [Rex setup and migration limits](config/mac/rex/README.md) for tracked settings,
+See [Rex setup and migration limits](config/rex/README.md) for tracked settings,
 tmux-style shortcuts, and native agent status tracking.
 
 macOS enables Touch ID for interactive `sudo`, including detached sessions, after
@@ -91,8 +92,17 @@ authentication remains available. To test from a local terminal, run `sudo -k`
 All currently declared Linux profiles install the Rex CLI and a personal
 `rex.service` through the upstream Home Manager module: generic Linux/Debian,
 Arch server, NixOS, and NixOS-WSL (currently x86-64). It runs only on the account's Unix socket; no TCP listener,
-Tailscale node, root login server, or extra account is enabled. Existing tmux
-configuration and shell autostart remain unchanged for a later migration.
+Tailscale node, root login server, or extra account is enabled. macOS and Linux
+share the Rex Ctrl+B keybindings and Catppuccin theme source in `config/rex/`.
+Unix shell startup never starts/attaches tmux, and the bare-`tmux` attach wrapper
+is removed. Its package/config remain for explicit fallback use. Existing running
+sessions are not stopped or converted.
+
+**Linux is server/automation-only for now:** upstream has not released its Linux
+interactive client, and the CLI has no `attach` command. A new Linux terminal/SSH
+connection opens a normal shell, not a Rex terminal. This limitation is accepted
+for this cutover; no anonymous network listener or new Tailscale node is enabled.
+macOS continues to use the Rex app. See the [migration notes](config/rex/README.md).
 
 `dotfile` / `dotfile packages` checks for the package credential during Linux setup
 and securely prompts when it is missing. Retrieve the token by signing into the

@@ -57,30 +57,9 @@ alias gcl='git clone --recurse-submodules'
 alias gsta='git stash'
 alias gstp='git stash pop'
 
-# tmux autostart: on an interactive shell not already inside tmux, attach to
-# (or create) the "main" session. Replaces the omz tmux plugin. Not exec'd, so
-# exiting tmux drops back to this shell (old ZSH_TMUX_AUTOQUIT=false). Guards
-# avoid nested tmux and embedded shells (VS Code, Emacs, Vim). NO_TMUX is an
-# explicit client opt-out for small terminals such as Termux. Rex manages
-# sessions itself, so macOS never autostarts tmux.
-if [[ -t 0 && -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" && -z "$NO_TMUX" \
-      && "$OSTYPE" != darwin* \
-      && "$TERM_PROGRAM" != "vscode" && -z "$INSIDE_EMACS" && -z "$VIMRUNTIME" ]] \
-   && command -v tmux >/dev/null 2>&1; then
-  export ZSH_TMUX_STARTED=1
-  tmux attach -t main 2>/dev/null || tmux new -s main
-fi
-
-# Bare `tmux` on Linux attaches to (or creates) "main".
-if [[ "$OSTYPE" != darwin* ]]; then
-  tmux() {
-    if [ $# -eq 0 ]; then
-      command tmux attach -t main 2>/dev/null || command tmux new -s main
-    else
-      command tmux "$@"
-    fi
-  }
-fi
+# Rex owns persistent sessions on macOS and Linux. Do not start or attach tmux
+# from shell startup; Linux currently has only the Rex server/automation CLI.
+# The tmux package/config remain available for explicit fallback use.
 
 # nix-darwin resets PATH; keep the CLI matching Rex's server first.
 if [[ -n "$REX_BIN_DIR" ]]; then

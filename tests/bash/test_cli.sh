@@ -56,7 +56,7 @@ test_zsh_vi_insert_mode_can_delete_pasted_text() {
   assert_contains "$config" "bindkey -M viins '^H' backward-delete-char"
 }
 
-test_mac_uses_rex_without_tmux_autostart() {
+test_unix_shells_use_rex_without_tmux_autostart() {
   REPO_DIR="$REPO_DIR" python3 - <<'PY' || echo 'Rex shell integration failed' >> "$ERROR_FILE"
 import os
 import pathlib
@@ -71,34 +71,33 @@ with tempfile.TemporaryDirectory() as tmp:
     tmux.chmod(0o755)
     master, slave = pty.openpty()
     try:
-        result = subprocess.run(
-            ["zsh", "-fic", '''
-                OSTYPE=darwin
-                TERM_PROGRAM=ghostty
-                gpg-connect-agent() { :; }
-                source "$1/config/unix/.zshrc.base"
-                [[ "${path[1]}" == "$REX_BIN_DIR" ]] || exit 1
-                (( ! ${+functions[tmux]} )) || exit 1
-            ''', "test", os.environ["REPO_DIR"]],
-            env={**os.environ, "PATH": tmp + ":" + os.environ["PATH"],
-                 "REX_BIN_DIR": tmp + "/rex-bin", "TMUX": "", "NO_TMUX": "",
-                 "ZSH_TMUX_STARTED": "", "INSIDE_EMACS": "", "VIMRUNTIME": ""},
-            stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, timeout=10,
-        )
-        assert result.returncode == 0, result.stderr
-        assert "unexpected-tmux" not in result.stdout, result.stdout
+        for platform in ("darwin", "linux-gnu"):
+            for in_rex in (False, True):
+                result = subprocess.run(
+                    ["zsh", "-fic", '''
+                        OSTYPE="$TEST_OSTYPE"
+                        TERM_PROGRAM=ghostty
+                        gpg-connect-agent() { :; }
+                        source "$1/config/unix/.zshrc.base"
+                        if [[ -n "$REX_BIN_DIR" ]]; then
+                            [[ "${path[1]}" == "$REX_BIN_DIR" ]] || exit 1
+                        fi
+                        (( ! ${+functions[tmux]} )) || exit 1
+                    ''', "test", os.environ["REPO_DIR"]],
+                    env={**os.environ, "PATH": tmp + ":" + os.environ["PATH"],
+                         "TEST_OSTYPE": platform,
+                         "REX_BIN_DIR": tmp + "/rex-bin" if in_rex else "",
+                         "TMUX": "", "NO_TMUX": "", "ZSH_TMUX_STARTED": "",
+                         "INSIDE_EMACS": "", "VIMRUNTIME": ""},
+                    stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    text=True, timeout=10,
+                )
+                assert result.returncode == 0, (platform, in_rex, result.stderr)
+                assert "unexpected-tmux" not in result.stdout, result.stdout
     finally:
         os.close(slave)
         os.close(master)
 PY
-}
-
-test_tmux_autostart_has_explicit_opt_out() {
-  local config
-  config="$(<"$REPO_DIR/config/unix/.zshrc.base")"
-
-  assert_contains "$config" '-z "$NO_TMUX"'
 }
 
 test_help_exits_zero() {

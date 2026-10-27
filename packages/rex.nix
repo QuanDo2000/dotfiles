@@ -32,7 +32,7 @@ stdenvNoCC.mkDerivation {
     /usr/bin/codesign --verify --deep --strict \
       --test-requirement='=anchor apple generic and certificate leaf[subject.OU] = "AG92C3PT77"' "$app"
     "$app/Contents/Helpers/Rex Server.rex/Contents/MacOS/rex" version
-    "$app/Contents/Helpers/Rex Server.rex/Contents/MacOS/rex" config check ${../config/mac/rex/init.lua}
+    "$app/Contents/Helpers/Rex Server.rex/Contents/MacOS/rex" config check ${../config/rex/init.lua}
   '';
 
   meta = {
