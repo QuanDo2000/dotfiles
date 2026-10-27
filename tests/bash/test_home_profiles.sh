@@ -19,6 +19,7 @@ _profile_summary() {
     case "$profile" in
       linux|arch-server) expression="$(_profile_expr "$profile")" ;;
       nixos) expression="nixosConfigurations.\"$PROFILE_HOSTNAME\".config.home-manager.users.$PROFILE_USERNAME" ;;
+      nixos-wsl) expression="nixosConfigurations.\"$PROFILE_HOSTNAME-wsl\".config.home-manager.users.$PROFILE_USERNAME" ;;
       darwin) expression="darwinConfigurations.mac.config.home-manager.users.$PROFILE_USERNAME" ;;
       *) return 1 ;;
     esac
@@ -383,7 +384,11 @@ test_platform_profiles_have_expected_ghostty_config() {
   _test_absent "$(_profile_packages darwin)" tmux
   assert_line_present "$(_profile_packages darwin)" rex
   _test_present "$darwin_config" rex/init.lua 'rex/Catppuccin Macchiato.conf'
-  _test_absent "$(_profile_packages linux)" rex
+  local profile
+  for profile in linux arch-server nixos nixos-wsl; do
+    assert_line_present "$(_profile_packages "$profile")" rex
+    assert_line_present "$(_profile_services "$profile")" rex
+  done
   _test_absent "$(_profile_xdg_files linux)" rex/init.lua
   assert_line_present "$(_profile_xdg_files linux)" tmux/tmux.conf
 }

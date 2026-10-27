@@ -15,9 +15,15 @@
       url = "github:nix-community/NixOS-WSL/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Immutable upstream storage URL resolved after authenticating to the Rex
+    # package host. No credentials are needed during evaluation or CI.
+    rex-linux = {
+      url = "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/snapshot/0.0.1793075605-gf47cf6.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, home-manager, nix-darwin, nixos-wsl, ... }:
+  outputs = { nixpkgs, home-manager, nix-darwin, nixos-wsl, rex-linux, ... }:
     let
       machine = import ./config/host.nix;
       overlays = [
@@ -73,6 +79,8 @@
     in
     {
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
+      packages.x86_64-linux.rex = rex-linux.packages.x86_64-linux.rex;
+      packages.x86_64-linux.rex-auth-python = linuxPkgs.python3;
       packages.x86_64-linux.nodejs = linuxPkgs.nodejs;
       packages.x86_64-linux.hyprsunset-status = linuxPkgs.hyprsunset-status;
       packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent;
@@ -89,6 +97,7 @@
           { nixpkgs.overlays = overlays; }
           ./config/nixos/configuration.nix
           home-manager.nixosModules.home-manager
+          { home-manager.sharedModules = [ rex-linux.homeManagerModules.default ./config/rex-linux.nix ]; }
         ];
       };
 
@@ -99,6 +108,7 @@
           nixos-wsl.nixosModules.default
           ./config/nixos-wsl/configuration.nix
           home-manager.nixosModules.home-manager
+          { home-manager.sharedModules = [ rex-linux.homeManagerModules.default ./config/rex-linux.nix ]; }
         ];
       };
 
@@ -113,7 +123,7 @@
 
       homeConfigurations."${machine.username}@linux" = home-manager.lib.homeManagerConfiguration {
         pkgs = linuxPkgs;
-        modules = [ ./config/home.nix ];
+        modules = [ ./config/home.nix rex-linux.homeManagerModules.default ./config/rex-linux.nix ];
       };
 
       homeConfigurations."${machine.username}@arch-server" = home-manager.lib.homeManagerConfiguration {
@@ -124,7 +134,7 @@
           storageOffsiteBackup = true;
           systemCompiler = true;
         };
-        modules = [ ./config/home.nix ];
+        modules = [ ./config/home.nix rex-linux.homeManagerModules.default ./config/rex-linux.nix ];
       };
 
       apps.x86_64-linux.home-manager = {

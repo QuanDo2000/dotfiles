@@ -86,6 +86,48 @@ nix-darwin activation. Enroll a fingerprint in System Settings first; password
 authentication remains available. To test from a local terminal, run `sudo -k`
 (to expire cached sudo credentials), then `sudo -v` and authenticate with Touch ID.
 
+### Rex on Linux
+
+All currently declared Linux profiles install the Rex CLI and a personal
+`rex.service` through the upstream Home Manager module: generic Linux/Debian,
+Arch server, NixOS, and NixOS-WSL (currently x86-64). It runs only on the account's Unix socket; no TCP listener,
+Tailscale node, root login server, or extra account is enabled. Existing tmux
+configuration and shell autostart remain unchanged for a later migration.
+
+`dotfile` / `dotfile packages` checks for the package credential during Linux setup
+and securely prompts when it is missing. Retrieve the token by signing into the
+[Rex Linux installation page](https://www.superlogical.com/rex/docs/linux/installation).
+To configure it separately, run `dotfile rex-auth`. Input is hidden, validated
+with HTTPS, and atomically saved in root-owned `/etc/nix/netrc` (`0600`), outside
+Git and the Nix store. Redirects never receive the token. Existing unrelated
+credentials are preserved; use `sudoedit /etc/nix/netrc` for token rotation.
+If Python is absent, setup builds the pinned Nix Python just for this helper.
+This credential flow supports Lix/upstream Nix, not Determinate Nix's separate
+credential-merging configuration.
+
+The immutable upstream flake URL in `flake.nix` is the public storage destination
+returned by the authenticated package endpoint; `flake.lock` pins its NAR hash.
+This avoids requiring user-readable credentials for flake evaluation on Lix or
+CI. The binary is likewise fetched from upstream's public, hash-pinned archive.
+The macOS app and its existing release updater are unchanged.
+
+After activation:
+
+```bash
+rex version
+rex server status
+systemctl --user status rex
+journalctl --user -u rex
+```
+
+For persistence across logout, `loginctl enable-linger` is required (already
+enabled on the current Arch server). No running tmux sessions are migrated.
+
+**debt:** Linux Rex remains on a reviewed snapshot rather than following the
+channel automatically. Add an authenticated Linux pin updater when routine
+channel updates are wanted; resolve the new immutable upstream storage URL and
+update only `rex-linux` in `flake.lock`. `dotfile update` preserves this pin.
+
 ### Linux with Nix/Home Manager
 
 Arch and Debian use the native package manager only for bootstrap packages,
