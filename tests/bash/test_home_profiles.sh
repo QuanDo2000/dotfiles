@@ -55,8 +55,8 @@ sync_packages=(obsidian-headless rclone)
 arch_sync_packages=(obsidian-headless rclone)
 storage_packages=(restic)
 desktop_services=(hyprpolkitagent hyprsunset wl-clip-persist)
-arch_services=(obsidian-sync google-drive-mount google-drive-bisync google-drive-storage-sync storage-offsite-backup storage-offsite-maintenance)
-arch_timers=(google-drive-bisync google-drive-storage-sync storage-offsite-backup storage-offsite-maintenance)
+arch_services=(obsidian-sync google-drive-mount google-drive-bisync google-drive-storage-sync storage-offsite-backup storage-offsite-maintenance qbittorrent-calendar-retention)
+arch_timers=(google-drive-bisync google-drive-storage-sync storage-offsite-backup storage-offsite-maintenance qbittorrent-calendar-retention)
 
 _test_present_array() { _test_present "$1" "${@:2}"; }
 _test_absent_array() { _test_absent "$1" "${@:2}"; }
