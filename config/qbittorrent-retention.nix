@@ -15,9 +15,9 @@
     };
   };
   systemd.user.timers.qbittorrent-calendar-retention = {
-    Unit.Description = "Check calendar-age torrent retention hourly";
+    Unit.Description = "Check calendar-age torrent retention daily";
     Timer = {
-      OnCalendar = "hourly";
+      OnCalendar = "daily";
       Persistent = true;
       Unit = "qbittorrent-calendar-retention.service";
     };
