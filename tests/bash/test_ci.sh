@@ -112,6 +112,10 @@ assert workflow["concurrency"]["cancel-in-progress"] is True
 jobs = workflow["jobs"]
 assert jobs["changes"]["if"] == "${{ github.event_name == 'pull_request' }}"
 windows_steps = jobs["powershell"]["steps"]
+cache_env = next(i for i, step in enumerate(windows_steps) if step.get("name") == "Set npm download cache")
+node_setup = next(i for i, step in enumerate(windows_steps) if step.get("uses", "").startswith("actions/setup-node@"))
+assert cache_env < node_setup
+assert windows_steps[cache_env]["shell"] == "pwsh"
 node_step = next(step for step in windows_steps if step.get("uses", "").startswith("actions/setup-node@"))
 assert node_step["with"]["cache"] == "npm"
 assert node_step["with"]["cache-dependency-path"] == "config/shared/ai/pi/extensions/package-lock.json"
