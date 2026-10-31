@@ -19,6 +19,7 @@ jobs:
   # Security-pinned Node overrides build from source on hosted runners.
   # Give Nix jobs a bounded cold-build budget; keep all tests enabled.
   changes:
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -27,13 +28,11 @@ jobs:
       windows: ${{ steps.filter.outputs.windows }}
       nix: ${{ steps.filter.outputs.nix }}
     steps:
-      - if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - id: filter
-        if: ${{ github.event_name == 'pull_request' }}
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -43,7 +42,7 @@ jobs:
 
   bash-macos:
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.macos == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs.macos == 'true')) }}
     runs-on: macos-26
     timeout-minutes: 180
     steps:
@@ -66,11 +65,11 @@ jobs:
       - name: Run macOS checks in parallel
         shell: bash
         run: |
-          nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh test_release_pins.sh &
+          (TIMEFORMAT="::notice::macOS portability including environment: %3R seconds"; time nix develop .#ci -c bash ./tests/bash/runner.sh test_cli.sh test_doctor.sh test_mac_install.sh test_tmux.sh test_release_pins.sh) &
           tests_pid=$!
-          nix eval --raw .#darwinConfigurations.mac.system.drvPath &
+          (TIMEFORMAT="::notice::nix-darwin evaluation: %3R seconds"; time nix eval --raw .#darwinConfigurations.mac.system.drvPath) &
           darwin_pid=$!
-          nix build .#pi-extensions --no-link --print-build-logs &
+          (TIMEFORMAT="::notice::macOS package builds: %3R seconds"; time nix build .#pi-extensions --no-link --print-build-logs) &
           packages_pid=$!
 
           status=0
@@ -81,7 +80,7 @@ jobs:
 
   powershell:
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.windows == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs.windows == 'true')) }}
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -110,10 +109,16 @@ jobs:
             [pscustomobject]@{ Name = 'Neovim integration'; Path = './tests/powershell/integration_neovim.ps1' }
           )
           $jobs = foreach ($check in $checks) {
-            Start-Job -Name $check.Name -WorkingDirectory $PWD -ArgumentList $check.Path -ScriptBlock {
-              param($path)
-              & $path
-              if ($LASTEXITCODE -ne 0) { throw "$path exited with code $LASTEXITCODE" }
+            Start-Job -Name $check.Name -WorkingDirectory $PWD -ArgumentList $check.Path, $check.Name -ScriptBlock {
+              param($path, $name)
+              $timer = [System.Diagnostics.Stopwatch]::StartNew()
+              try {
+                & $path
+                if ($LASTEXITCODE -ne 0) { throw "$path exited with code $LASTEXITCODE" }
+              } finally {
+                $timer.Stop()
+                Write-Host ("::notice::{0}: {1:F3} seconds" -f $name, $timer.Elapsed.TotalSeconds)
+              }
             }
           }
 
@@ -132,7 +137,7 @@ jobs:
 
   bash-linux:
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.linux == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs.linux == 'true')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -150,28 +155,32 @@ jobs:
         run: |
           # shellcheck disable=SC2016
           nix develop . -c bash -c '
-            shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh &
+            echo "::notice::Linux check environment ready"
+            (TIMEFORMAT="::notice::ShellCheck: %3R seconds"; time shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh) &
             shellcheck_pid=$!
 
             core_tests=()
             for test in ./tests/bash/test_*.sh; do
-              [[ "$test" == */test_neovim.sh ]] || core_tests+=("${test##*/}")
+              case "$test" in
+                */test_neovim.sh | */test_home_profiles.sh) ;;
+                *) core_tests+=("${test##*/}") ;;
+              esac
             done
-            DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh &
-            neovim_pid=$!
-            bash ./tests/bash/runner.sh "${core_tests[@]}" &
+            (TIMEFORMAT="::notice::Linux Neovim and profile tests: %3R seconds"; time DOTFILE_NEOVIM_TEST_CACHE=false bash ./tests/bash/runner.sh test_neovim.sh test_home_profiles.sh) &
+            profiles_pid=$!
+            (TIMEFORMAT="::notice::Linux core tests: %3R seconds"; time bash ./tests/bash/runner.sh "${core_tests[@]}") &
             core_pid=$!
 
             status=0
             wait "$shellcheck_pid" || { echo "::error::ShellCheck failed"; status=1; }
-            wait "$neovim_pid" || { echo "::error::Linux Neovim tests failed"; status=1; }
+            wait "$profiles_pid" || { echo "::error::Linux Neovim or profile tests failed"; status=1; }
             wait "$core_pid" || { echo "::error::Linux core tests failed"; status=1; }
             exit "$status"
           '
 
   nix:
     needs: changes
-    if: ${{ github.event_name != 'pull_request' || needs.changes.outputs.nix == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs.nix == 'true')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:

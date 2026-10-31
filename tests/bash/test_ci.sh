@@ -45,7 +45,7 @@ test_ci_bash_jobs_use_pinned_tools_and_propagate_each_failure() {
   local root="$TEST_TMPDIR/ci" job failure failures
   export CI_CALLS="$TEST_TMPDIR/ci-calls" CI_FAIL=
   mkdir -p "$root/tests/bash"
-  touch "$root/tests/bash/test_neovim.sh" "$root/tests/bash/test_core.sh"
+  touch "$root/tests/bash/test_neovim.sh" "$root/tests/bash/test_home_profiles.sh" "$root/tests/bash/test_core.sh"
   cat > "$root/tests/bash/runner.sh" <<'SH'
 printf 'tests %s\n' "$*" >> "$CI_CALLS"
 kind=core
@@ -61,8 +61,9 @@ SH
       bash-linux)
         assert_contains "$calls" 'nix develop . -c bash'
         assert_contains "$calls" 'shellcheck -S warning'
-        assert_contains "$calls" 'tests test_neovim.sh'
+        assert_contains "$calls" 'tests test_neovim.sh test_home_profiles.sh'
         assert_contains "$calls" 'tests test_core.sh'
+        assert_equals 1 "$(grep -c '^tests .*test_home_profiles.sh' "$CI_CALLS")"
         failures='shellcheck neovim core' ;;
       bash-macos)
         assert_contains "$calls" 'nix develop .#ci -c bash'
@@ -103,12 +104,13 @@ assert events["schedule"]
 assert workflow["permissions"] == {"contents": "read"}
 assert workflow["concurrency"]["cancel-in-progress"] is True
 jobs = workflow["jobs"]
+assert jobs["changes"]["if"] == "${{ github.event_name == 'pull_request' }}"
 for name, output in (("bash-linux", "linux"), ("bash-macos", "macos"),
                      ("powershell", "windows"), ("nix", "nix")):
     job = jobs[name]
     needs = job["needs"]
     assert "changes" in (needs if isinstance(needs, list) else [needs]), name
-    assert job["if"] == "${{ github.event_name != 'pull_request' || needs.changes.outputs." + output + " == 'true' }}", name
+    assert job["if"] == "${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs." + output + " == 'true')) }}", name
     assert jobs["changes"]["outputs"][output] == "${{ steps.filter.outputs." + output + " }}", output
 # Proprietary Rex outputs must predate the public cache's post-build hook.
 mac_steps = jobs["bash-macos"]["steps"]
@@ -120,8 +122,7 @@ steps = jobs["changes"]["steps"]
 checkout = next(step for step in steps if step.get("uses", "").startswith("actions/checkout@"))
 filter_step = next(step for step in steps if step.get("id") == "filter")
 assert checkout["with"]["fetch-depth"] == 0
-for step in (checkout, filter_step):
-    assert step["if"] == "${{ github.event_name == 'pull_request' }}"
+
 for variable, expression in (("BASE_SHA", "${{ github.event.pull_request.base.sha }}"),
                              ("HEAD_SHA", "${{ github.event.pull_request.head.sha }}")):
     assert filter_step["env"][variable] == expression, variable
