@@ -28,10 +28,24 @@ function lock.load()
 end
 package.preload["lazy.manage.lock"] = function() return lock end
 
+local spawn_failure = false
+local native_spawn = function() return not spawn_failure end
+local task_module = { spawn = native_spawn }
+package.preload["lazy.manage.task"] = function() return task_module end
+local failed_task = {
+  has_errors = function(self) return self.message ~= nil end,
+  error = function(self, message) self.message = message end,
+  output = function(self) return self.message or "" end,
+}
+
 local function runner(name)
   return {
     wait = function(self)
       calls[#calls + 1] = name
+      if spawn_failure then
+        task_module.spawn(failed_task, "git", {})
+        plugins.sample._.tasks = { failed_task }
+      end
       return self
     end,
   }
@@ -108,6 +122,7 @@ local sync = dofile(module)
 sync.plugins(true)
 assert(vim.deep_equal(calls, { "install", "restore", "clean" }), "plugin sync must install, restore, then clean")
 assert(vim.fn.readfile(lockfile)[1] == "reviewed", "plugin sync must preserve reviewed lock")
+assert(task_module.spawn == native_spawn, "successful sync must restore native spawn")
 
 plugins.sample._.tasks = {
   {
@@ -118,6 +133,14 @@ plugins.sample._.tasks = {
 local ok, err = pcall(sync.plugins, false)
 assert(not ok and tostring(err):find("build exploded", 1, true), "Lazy task errors must fail sync")
 assert(vim.fn.readfile(lockfile)[1] == "reviewed", "failed plugin sync must preserve reviewed lock")
+plugins.sample._.tasks = {}
+assert(task_module.spawn == native_spawn, "task failure must restore native spawn")
+spawn_failure = true
+ok, err = pcall(sync.plugins, false)
+assert(not ok and tostring(err):find("Native command failed", 1, true), "false native spawn result must fail sync")
+assert(task_module.spawn == native_spawn, "native failure must restore native spawn")
+assert(vim.fn.readfile(lockfile)[1] == "reviewed", "native failure must preserve reviewed lock")
+spawn_failure = false
 plugins.sample._.tasks = {}
 
 sync.tools()

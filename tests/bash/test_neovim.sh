@@ -235,16 +235,21 @@ test_raw_neovim_headless_config() {
   mkdir -p "$data/config" "$lazy_dir" "$(dirname "$lazy_package")"
   cp -R "$REPO_DIR/config/shared/config/nvim" "$data/config/nvim"
 
+  printf 'RAW_NEOVIM_PHASE cache-seed\n' >&2
   if [[ "${DOTFILE_NEOVIM_TEST_CACHE:-true}" == true ]]; then
     _raw_neovim_cache_seed "$cache_base" "$lock_hash" "$lazy_dir" || true
   fi
   ln -s "$source_lazy" "$lazy_package"
+  printf 'RAW_NEOVIM_PHASE plugins-config\n' >&2
+  # Keep output in the owner's bounded capture on cancellation, and in the
+  # assertion variable. The runner's pipefail preserves Neovim's exit status.
   set +e
   output="$(DOTFILE_NVIM_SYNC=1 XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" \
     nvim --headless \
       -c "lua require('config.sync').plugins(true); print('RAW_PLUGIN_SYNC_OK')" \
-      -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1)"
+      -c "lua dofile('$REPO_DIR/tests/nvim/raw_config.lua')" +qa 2>&1 | tee -a /dev/stderr)"
   status=$?
+  printf '\n' >&2
   set -e
   if [[ "$status" -eq 0 && "$output" == *"RAW_PLUGIN_SYNC_OK"* && "$output" == *"RAW_CONFIG_OK"* \
     && ! -f "$marker" && "${DOTFILE_NEOVIM_TEST_FRESH:-false}" != true \
@@ -255,12 +260,14 @@ test_raw_neovim_headless_config() {
   assert_contains "$output" "RAW_PLUGIN_SYNC_OK"
   assert_contains "$output" "RAW_CONFIG_OK"
 
+  printf 'RAW_NEOVIM_PHASE initial-bigfile\n' >&2
   bigfile="$(cd "$data" && pwd -P)/big.lua"
   head -c 1600000 </dev/zero | tr '\0' x > "$bigfile"
   set +e
   output="$(XDG_CONFIG_HOME="$data/config" XDG_DATA_HOME="$data/data" nvim --headless "$bigfile" \
-    -c "lua assert(vim.bo.filetype == 'bigfile', 'initial big file was not protected'); assert(vim.b.completion == false, 'completion remained enabled for initial big file'); print('INITIAL_BIGFILE_OK')" +qa 2>&1)"
+    -c "lua assert(vim.bo.filetype == 'bigfile', 'initial big file was not protected'); assert(vim.b.completion == false, 'completion remained enabled for initial big file'); print('INITIAL_BIGFILE_OK')" +qa 2>&1 | tee -a /dev/stderr)"
   status=$?
+  printf '\n' >&2
   set -e
   assert_equals "0" "$status"
   assert_contains "$output" "INITIAL_BIGFILE_OK"

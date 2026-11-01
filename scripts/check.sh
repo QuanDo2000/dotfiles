@@ -9,35 +9,16 @@ if [[ "${DOTFILE_CHECK_IN_DEV_SHELL:-}" != "1" ]]; then
   exec nix develop "$flake" -c env DOTFILE_CHECK_IN_DEV_SHELL=1 bash "$repo_dir/scripts/check.sh"
 fi
 
-run() {
-  printf '\n==> %s\n' "$*"
-  "$@"
-}
-
-run bash "$repo_dir/tests/bash/runner.sh"
-
-if command -v pwsh >/dev/null 2>&1; then
-  run pwsh "$repo_dir/tests/powershell/runner.ps1"
-fi
-
-run nix flake check "$flake" --no-build --all-systems
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  run nix eval --raw "$flake#darwinConfigurations.mac.system.drvPath"
-  run nix build "$flake#rex" --no-link
-else
-  username="$(nix eval --raw --file "$repo_dir/config/host.nix" username)"
-  run nix eval --raw "$flake#homeConfigurations.\"$username@linux\".activationPackage.drvPath"
-  run nix eval --raw "$flake#homeConfigurations.\"$username@arch-server\".activationPackage.drvPath"
-fi
-packages=(
-  "$flake#pi-extensions"
-)
-if [[ "$(uname -s)" == "Linux" ]]; then
-  packages+=("$flake#obsidian-headless" "$flake#pi-agent" "$flake#rex")
-fi
-run nix build "${packages[@]}" --no-link
-if [[ "$(uname -s)" == "Linux" ]]; then
-  status_package=$(nix build "$flake#hyprsunset-status" --no-link --print-out-paths)
-  HYPRSUNSET_CANDIDATE="$status_package/bin/hyprsunset-status" run python3 "$repo_dir/tests/rust/hyprsunset_oracle.py"
-fi
-run shellcheck -S warning -e SC1090,SC1091,SC2034,SC2088,SC2120 dotfile scripts/*.sh tests/bash/*.sh
+# All four stages read the same source and own their disposable mutable state.
+# Three admission slots bound overlap: start Bash, PowerShell and Nix, then
+# admit lint as a slot frees. Leaf worker limits are unchanged. These are
+# source-independent stages, not prerequisites: collect all results even on
+# failure. Nix still owns build-before-oracle ordering internally, including
+# upstream's platform-specific Rex builds and Linux status oracle.
+# Argument order preserves failure priority: Bash, PowerShell, Nix, then lint.
+# The outer 5s grace exceeds Bash/lint's 3s and Nix/PS's 1s grace.
+command=(python3 "$repo_dir/scripts/test_jobs.py" --jobs 3 --shared-run --cleanup-seconds 5 \
+  --timeout 10800 --total-timeout 10803)
+printf '\n==> %s\n' "${command[*]}"
+exec "${command[@]}" --files "$repo_dir/scripts/check_bash.sh" "$repo_dir/scripts/check_powershell.sh" \
+  "$repo_dir/scripts/check_nix.sh" "$repo_dir/scripts/check_lint.sh" -- bash

@@ -15,7 +15,7 @@ teardown() {
 # debt: replay supports unconditional Bash run steps; extend it if these jobs
 # gain per-step conditions, environment overrides, or another shell.
 _ci_run_job() (
-  local job="$1" root="$2"
+  local root="$1"
   nix() {
     printf 'nix %s\n' "$*" >> "$CI_CALLS"
     if [[ "$1" == develop && "$3" == -c ]]; then
@@ -30,13 +30,6 @@ _ci_run_job() (
     [[ "$CI_FAIL" != shellcheck ]]
   }
   export -f nix shellcheck
-  python3 - "$REPO_DIR/.github/workflows/test.yml" "$job" > "$root/job.sh" <<'PY' || exit 1
-import sys
-from pathlib import Path
-import yaml
-job = yaml.safe_load(Path(sys.argv[1]).read_text())["jobs"][sys.argv[2]]
-print("\n".join(step["run"] for step in job["steps"] if "run" in step))
-PY
   cd "$root" || exit 1
   bash -e -o pipefail job.sh
 )
@@ -53,10 +46,19 @@ kind=core
 [[ "$CI_FAIL" != tests && "$CI_FAIL" != "$kind" ]]
 SH
   for job in bash-linux bash-macos nix; do
+    # The workflow/job input is unchanged across its success/failure replays.
+    # Extract once per job; still execute every original Bash replay separately.
+    python3 - "$REPO_DIR/.github/workflows/test.yml" "$job" > "$root/job.sh" <<'PY' || return 1
+import sys
+from pathlib import Path
+import yaml
+job = yaml.safe_load(Path(sys.argv[1]).read_text())["jobs"][sys.argv[2]]
+print("\n".join(step["run"] for step in job["steps"] if "run" in step))
+PY
     CI_FAIL=; : > "$CI_CALLS"
     status=0
     # Mock timings must not become real Actions annotations, even on success.
-    output="$(_ci_run_job "$job" "$root" 2>&1)" || status=$?
+    output="$(_ci_run_job "$root" 2>&1)" || status=$?
     assert_equals 0 "$status"
     if [[ "$status" != 0 ]]; then
       printf 'Unexpected %s/success replay output:\n%s\n' \
@@ -86,7 +88,7 @@ SH
       CI_FAIL="$failure"
       status=0
       # Expected workflow failures must not become real Actions annotations.
-      output="$(_ci_run_job "$job" "$root" 2>&1)" || status=$?
+      output="$(_ci_run_job "$root" 2>&1)" || status=$?
       assert_equals 1 "$status"
       if [[ "$status" != 1 ]]; then
         printf 'Unexpected %s/%s replay output:\n%s\n' \

@@ -1074,7 +1074,8 @@ function Test-DirectoryMatchesSource($Source, $Destination) {
             $_.Attributes -band [IO.FileAttributes]::ReparsePoint
         } | Select-Object -First 1
         if ($targetReparsePoint -or $targetItems.Count -ne $sourceItems.Count) { return $false }
-        foreach ($sourceItem in $sourceItems | Select-Object -Skip 1) {
+        for ($sourceIndex = 1; $sourceIndex -lt $sourceItems.Count; $sourceIndex++) {
+            $sourceItem = $sourceItems[$sourceIndex]
             $relative = $sourceItem.FullName.Substring($sourceItems[0].FullName.Length + 1)
             $targetItem = Get-Item -LiteralPath (Join-Path $Destination $relative) -Force -ErrorAction Stop
             if ($sourceItem.PSIsContainer -ne $targetItem.PSIsContainer) { return $false }

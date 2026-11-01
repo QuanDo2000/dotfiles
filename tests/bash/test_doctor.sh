@@ -40,11 +40,19 @@ link_valid_core_dotfiles() {
   mkdir -p "$HOME/.config/tmux" "$HOME/.config/git" "$HOME/.config/nvim" "$HOME/.config/systemd/user" "$HOME/.pi/agent"
   local store_target="" candidate
   if [[ "$root" == /nix/store/* ]]; then
-    for candidate in /nix/store/*; do
-      [[ -e "$candidate" ]] || continue
+    # The pinned shell supplies an existing target; its identity is not asserted.
+    if [[ "${LAZY_NVIM_PATH:-}" == /nix/store/* ]] &&
+        candidate="$(readlink -f "$LAZY_NVIM_PATH" 2>/dev/null)" &&
+        [[ "$candidate" == /nix/store/* && -e "$candidate" ]]; then
       store_target="$candidate"
-      break
-    done
+    else
+      # debt: standalone fallback scans the whole store; replace if setup dominates.
+      for candidate in /nix/store/*; do
+        [[ -e "$candidate" ]] || continue
+        store_target="$candidate"
+        break
+      done
+    fi
   else
     mkdir -p "$root/.config/nvim" "$root/.config/systemd/user" "$root/bin"
     touch "$root/.zshrc" "$root/.tmux.conf" "$root/.gitconfig" "$root/.config/nvim/init.lua" "$root/.config/systemd/user/obsidian-sync.service" "$root/bin/dotfile"

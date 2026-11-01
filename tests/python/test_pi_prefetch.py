@@ -51,6 +51,8 @@ while True: time.sleep(1)
 @unittest.skipUnless(os.name == 'posix', 'POSIX process groups required')
 class PiPrefetchTests(unittest.TestCase):
     def setUp(self):
+        self.handlers = {}
+        self.addCleanup(self.restore_handlers)
         self.temp = tempfile.TemporaryDirectory(prefix='pi-prefetch-test-')
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -75,21 +77,73 @@ class PiPrefetchTests(unittest.TestCase):
                         DOTFILE_PREFETCH_TIMEOUT_SECONDS='1',
                         CHILD_PID=str(self.root / 'child'), LEADER_PID=str(self.root / 'leader'))
         self.processes = []
+        self.spawning = False
+        self.pending_cancel = None
         self.addCleanup(self.cleanup_processes)
+        self.handlers = {sig: signal.signal(sig, self.cancel_runner)
+                         for sig in (signal.SIGINT, signal.SIGTERM)}
 
-    def cleanup_processes(self):
+    def restore_handlers(self):
+        for sig, handler in self.handlers.items():
+            signal.signal(sig, handler)
+
+    def cancel_runner(self, signum, _frame):
+        self.pending_cancel = signum
+        if self.spawning:
+            return  # Record ownership before forwarding cancellation.
+        for sig in self.handlers:
+            signal.signal(sig, signal.SIG_IGN)
+        try:
+            self.cleanup_processes(wait_seconds=2.3)
+        except Exception as error:
+            print(f'fixture cancellation cleanup failed: {error}', file=sys.stderr, flush=True)
+        finally:
+            self.temp.cleanup()
+        # unittest catches SystemExit as a test error. Signal cancellation is
+        # not a test failure/success; all owned cleanup has been attempted.
+        os._exit(128 + signum)
+
+    def cleanup_processes(self, wait_seconds=5):
         for process in self.processes:
             if process.poll() is None:
-                os.killpg(process.pid, signal.SIGKILL)
-            process.communicate(timeout=5)
-        # Baseline has no dedicated prefetch session; clean its inherited group
-        # above. Patched prefetch leaders have their own groups.
-        leader = self.root / 'leader'
-        if leader.exists():
-            try:
-                os.killpg(int(leader.read_text()), signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+        # The CLI already owns its detached prefetch group. Let its unchanged
+        # two-second production cleanup finish before reaping the fixture.
+        try:
+            for process in self.processes:
+                process.communicate(timeout=wait_seconds)
+        finally:
+            # Keep a failure-path fallback even if the production supervisor
+            # regresses. Bind PID-file signals to this private fake executable,
+            # not a stale PID that could now belong to an unrelated process.
+            prefix = f'{sys.executable} {self.root / "bin/nix"} '
+            for name in ('leader', 'child'):
+                path = self.root / name
+                if not path.exists():
+                    continue
+                text = path.read_text().strip()
+                if not text:
+                    continue
+                pid = int(text)
+                result = subprocess.run(['ps', '-ww', '-p', str(pid), '-o', 'command='],
+                                        capture_output=True, text=True, timeout=1)
+                if result.returncode not in (0, 1):
+                    raise RuntimeError(f'cannot inspect owned fixture PID {pid}')
+                if result.stdout.strip().startswith(prefix):
+                    try:
+                        os.killpg(os.getpgid(pid), signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+            for process in self.processes:
+                if process.poll() is None:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                process.communicate(timeout=5)
 
     def start(self, mode, shortened_heartbeat=False):
         env = dict(self.env, PREFETCH_MODE=mode)
@@ -100,9 +154,15 @@ class PiPrefetchTests(unittest.TestCase):
                        'update_pins.PREFETCH_HEARTBEAT_SECONDS=.05; '
                        'raise SystemExit(update_pins.main())', str(SCRIPT.parent),
                        'pi-extensions', str(self.repo)]
-        process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, text=True, start_new_session=True)
-        self.processes.append(process)
+        self.spawning = True
+        try:
+            process = subprocess.Popen(command, env=env, stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE, text=True, start_new_session=True)
+            self.processes.append(process)
+        finally:
+            self.spawning = False
+        if self.pending_cancel is not None:
+            self.cancel_runner(self.pending_cancel, None)
         return process
 
     def finish(self, process):
@@ -200,4 +260,23 @@ class PiPrefetchTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    if sys.argv[1:] == ['--list-tests']:
+        # Native discovery of ALL module cases, not a maintained selection.
+        loader = unittest.TestLoader()
+        pending = [loader.loadTestsFromModule(sys.modules[__name__])]
+        names = []
+        while pending:
+            test = pending.pop()
+            if isinstance(test, unittest.TestSuite):
+                pending.extend(reversed(list(test)))
+            else:
+                names.append(test.id().removeprefix('__main__.'))
+            # debt: shared executor ceiling is 256 cases; raise/revalidate
+            # before case 257. Overflow/discovery errors never omit cases.
+            if len(pending) + len(names) > 256:
+                sys.exit('prefetch discovery exceeds 256 cases')
+        if loader.errors or not names:
+            sys.exit(f'prefetch discovery failed: {loader.errors}')
+        print('\n'.join(names))
+    else:
+        unittest.main()
