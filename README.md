@@ -94,9 +94,9 @@ All currently declared Linux profiles install the Rex CLI and a personal
 `rex.service` through the upstream Home Manager module: generic Linux/Debian,
 Arch server, NixOS, and NixOS-WSL (currently x86-64). Generic Linux, NixOS and
 WSL listen only on the account's Unix socket. **Arch server additionally enables
-`tailnet://:7297`**, using the host's existing Tailscale daemon to admit only
-the node owner. No anonymous listener, embedded Tailscale node, root login
-server or extra account is enabled. macOS and Linux
+Rex's embedded Tailscale**, named `rex-quanarch`, admitting only the enrolling
+Tailscale account. No anonymous listener, root login server or extra account is
+enabled. macOS and Linux
 share the Rex Ctrl+B keybindings and Catppuccin theme source in `config/rex/`.
 Linux shell startup attaches to (or creates) tmux session `main`; bare `tmux`
 does the same. macOS and shells already inside Rex do not autostart tmux.
@@ -106,12 +106,13 @@ Existing running sessions are not stopped or converted.
 **Linux is server/automation-only for now:** upstream has not released its Linux
 interactive client, and the CLI has no `attach` command. A new Linux terminal/SSH
 connection therefore keeps tmux auto-attach, not a Rex terminal. Revisit this
-fallback when the Linux client is released; no anonymous network listener or
-new Tailscale node is enabled.
-macOS continues to use the Rex app. To reach Arch from the same Tailscale
-account, choose **Add Remote Host…** and enter
-`http://quanarch.tail28b036.ts.net:7297`. See the
-[remote-access and migration notes](config/rex/README.md).
+fallback when the Linux client is released; it does not change network access.
+macOS continues to use the Rex app. nix-darwin manages the Mac's CLI-only Tailscale
+client, launchd daemon, and MagicDNS resolver. Enroll that client using the same
+Tailscale account, then choose **Add Remote Host…** and enter
+`https://rex-quanarch.tail28b036.ts.net`. Do not also connect the older Tailscale
+GUI app. See the [remote-access and migration notes](config/rex/README.md) for
+activation, enrollment, verification, and rollback.
 
 `dotfile` / `dotfile packages` checks for the package credential during Linux setup
 and securely prompts when it is missing. Retrieve the token by signing into the
