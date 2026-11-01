@@ -30,9 +30,12 @@ in
   };
   programs.zsh.enable = true;
 
-  # Nix owns the CLI-only client, launchd daemon, and split-DNS resolver.
+  # Nix owns the CLI-only client and launchd daemon, not its writable state.
   # Enrollment/state stay outside the store; do not also connect the GUI app.
   services.tailscale.enable = true;
+  # debt: tailscaled's confined resolver writes reject nix-darwin's store symlink.
+  # Let tailscaled own this file until the upstream module supports writable DNS.
+  environment.etc."resolver/ts.net".enable = false;
 
   # Rex's native macOS preferences; init.lua only defines bindings.
   # Keep permissions, network exposure, and session/runtime state machine-local.
