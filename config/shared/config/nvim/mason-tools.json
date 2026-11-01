@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-10-24-costly-mars",
-  "registrySha256": "07abe2229f913aac006da75f9aa3028d3608d7c36ab760139b1f052bfcc54a4a",
+  "registryVersion": "2026-11-01-exact-racing",
+  "registrySha256": "4004048eb2ae76f84328c2d5992cc92618aeebbadc2dacc1caba1cc985d2b6d0",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
