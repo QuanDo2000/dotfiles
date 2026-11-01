@@ -27,8 +27,10 @@
     let
       machine = import ./config/host.nix;
       overlays = [
-        (import ./packages/emudhra-overlay.nix)
         (final: _prev: {
+          # Select the pinned upstream runtime; no security source override.
+          nodejs = final.nodejs_26;
+          nodejs-slim = final.nodejs-slim_26;
           obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
           hyprsunset-status = final.callPackage ./packages/hyprsunset-status.nix { };
           pi-agent = final.callPackage ./packages/pi-agent.nix { };

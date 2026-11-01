@@ -101,11 +101,11 @@ test_profile_files_and_markers_are_composed_by_role() {
   for flag in desktop personalApps obsidianSync googleDriveSync storageOffsiteBackup; do assert_contains "$darwin_marker" "$flag=false"; done
 }
 
-test_unix_profiles_provide_node24_without_bun() {
+test_unix_profiles_provide_node26_without_bun() {
   local profile summary
   for profile in linux arch-server nixos darwin; do
     summary="$(_profile_summary "$profile")"
-    assert_equals '["24"]' "$(jq -c '.nodeVersions | map(split(".")[0])' <<< "$summary")"
+    assert_equals '["26"]' "$(jq -c '.nodeVersions | map(split(".")[0])' <<< "$summary")"
     _test_absent "$(jq -r '.packages[]' <<< "$summary")" bun
   done
 }
