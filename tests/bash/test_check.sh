@@ -474,3 +474,77 @@ test_bash_runner_uses_repo_working_directory() {
   assert_equals 0 "$status"
   assert_contains "$output" '0 failed'
 }
+
+test_profile_fixture_requires_materialized_snapshot_before_workers() {
+  REPO_DIR="$REPO_DIR" METADATA_TEST_TMPDIR="$TEST_TMPDIR" python3 - <<'PY' 2>>"$ERROR_FILE"
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+repo = Path(os.environ['REPO_DIR'])
+with tempfile.TemporaryDirectory(dir=os.environ['METADATA_TEST_TMPDIR']) as directory:
+    root = Path(directory)
+    binary = root / 'bin'
+    binary.mkdir()
+    native = binary / 'nix'
+    native.write_text('''#!/usr/bin/env python3
+import json, os, sys
+args = sys.argv[1:]
+with open(os.environ['SNAPSHOT_CALLS'], 'a') as output:
+    output.write(json.dumps(args) + "\\n")
+digest = 'sha256-' + 'A'*43 + '='
+store = '/nix/store/' + '0'*32 + '-source'
+origin = {'type': 'path', 'path': os.environ['REPO_DIR']}
+if args[:2] == ['flake', 'metadata']:
+    # Selected Determinate CmdFlakeMetadata may omit path and return an
+    # attempted, not necessarily locked, URL. Do not invent storePath here.
+    metadata = {'url': 'path:' + os.environ['REPO_DIR'], 'original': origin, 'locked': origin}
+    if os.environ['SNAPSHOT_MODE'] == 'legacy':
+        metadata.update(path=store, url='path:/fixture?lastModified=42&narHash=sha256-' + 'A'*43 + '%3D')
+    print(json.dumps(metadata))
+    raise SystemExit(0)
+if args[:2] == ['flake', 'prefetch']:
+    # CmdFlakePrefetch explicitly fetches to the store and queries its NAR hash.
+    print(json.dumps({'storePath': store, 'hash': digest if os.environ['SNAPSHOT_MODE'] != 'malformed' else 'invalid',
+                      'original': origin, 'locked': {**origin, 'narHash': digest, 'lastModified': 42}}))
+    raise SystemExit(0)
+# Deliberately fail only the mock evaluator: this check owns metadata admission,
+# not a fake Home DTO. The real supervisor still retires every admitted worker.
+raise SystemExit(42)
+''')
+    native.chmod(0o755)
+    owner = root / 'owner.sh'
+    owner.write_text('set -euo pipefail\nunset -f nix 2>/dev/null || true\n'
+                     'source "$REPO_DIR/tests/bash/test_home_profiles.sh"\n_profile_fixture\n')
+    for mode in ('lazy', 'legacy', 'malformed'):
+        calls_file = root / (mode + '.jsonl')
+        environment = {**os.environ, 'PATH': str(binary) + os.pathsep + os.environ['PATH'],
+                       'SNAPSHOT_MODE': mode, 'SNAPSHOT_CALLS': str(calls_file)}
+        for name in ('TEST_JOBS_SHARED_DIR', 'TEST_JOBS_SHARED_ROLE'):
+            environment.pop(name, None)
+        result = subprocess.run([sys.executable, str(repo / 'scripts/test_jobs.py'),
+                                 '--jobs', '1', '--timeout', '10', '--total-timeout', '12',
+                                 '--cleanup-seconds', '1', '--files', str(owner), '--', 'bash'],
+                                env=environment, capture_output=True, timeout=18)
+        assert result.returncode != 0, 'intentional mock failure was lost'
+        calls = [json.loads(line) for line in calls_file.read_text().splitlines()]
+        snapshots = [args for args in calls if args[:2] == ['flake', 'prefetch']]
+        evaluations = [args for args in calls if args[:1] == ['eval']]
+        if mode == 'malformed':
+            assert not evaluations, 'incomplete snapshot reached pure workers'
+        else:
+            from urllib.parse import parse_qs
+            assert len(evaluations) == 4, (mode, len(evaluations))
+            for args in evaluations:
+                assert 'true' == args[args.index('pure-eval') + 1]
+                expression = args[args.index('--expr') + 1]
+                reference, _ = json.JSONDecoder().raw_decode(expression.split('builtins.getFlake ', 1)[1])
+                path, _, query = reference.partition('?')
+                assert path == 'path:/nix/store/' + '0'*32 + '-source', (mode, reference)
+                assert parse_qs(query) == {'narHash': ['sha256-' + 'A'*43 + '='], 'lastModified': ['42']}
+        assert len(snapshots) == 1 and not any(args[:2] == ['flake', 'metadata'] for args in calls), calls
+PY
+}

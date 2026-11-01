@@ -11,7 +11,8 @@ teardown() { cleanup_test_env; }
 
 _profile_fixture() {
   [[ ! -d "$PROFILE_CACHE/ready" ]] || return 0
-  local metadata flake_ref profile group projection probe_status
+  local flake_ref profile group projection probe_status
+  local TIMEFORMAT='PROFILE_SNAPSHOT_PREFETCH_SECONDS=%3R'
   local include_platform=false
   if [[ "$(uname -s)" == Linux && -n "${TEST_JOBS_SHARED_DIR:-}" && "${TEST_JOBS_SHARED_ROLE:-}" == 0 ]]; then
     if bash "$REPO_DIR/scripts/check_profile.sh" --platform-observations probe "$REPO_DIR"; then
@@ -23,11 +24,12 @@ _profile_fixture() {
   fi
   # Snapshot THIS run's source, then evaluate it purely. Never reuse observations
   # across gates; the private cache is deleted when this file runner exits.
-  metadata="$(nix flake metadata --json "path:$REPO_DIR")" || return
-  flake_ref="$(jq -r '"path:" + .path + "?" + (.url | split("?")[1]) | @json' <<< "$metadata")" || return
   mkdir -p "$PROFILE_CACHE/pending" || return
+  # Metadata may describe an unmaterialized lazy tree. Prefetch's native API
+  # fetches this root to the store and returns its actual NAR hash on all clients.
+  time nix flake prefetch --json "path:$REPO_DIR" > "$PROFILE_CACHE/pending/snapshot.json" || return
+  flake_ref="$(bash "$REPO_DIR/scripts/check_profile.sh" --snapshot-reference "$PROFILE_CACHE/pending/snapshot.json")" || return
   if [[ "$include_platform" == true ]]; then
-    printf '%s\n' "$metadata" > "$PROFILE_CACHE/pending/metadata.json" || return
     printf '%s\n' "$flake_ref" > "$PROFILE_CACHE/pending/flake-ref.json" || return
   fi
   # Authenticate the immutable flake before importing its producer in pure mode.

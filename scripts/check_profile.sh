@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Internal profile-data worker/boundary, owned by the bounded test executor.
 set -euo pipefail
-if [[ "${1:-}" == --platform-observations ]]; then
-  [[ ( $# == 3 && "$2" == probe ) || ( $# == 4 && ( "$2" == publish || "$2" == read ) ) ]] || exit 2
+if [[ "${1:-}" == --platform-observations || "${1:-}" == --snapshot-reference ]]; then
+  if [[ "$1" == --snapshot-reference ]]; then
+    [[ $# == 2 ]] || exit 2
+  else
+    [[ ( $# == 3 && "$2" == probe ) || ( $# == 4 && ( "$2" == publish || "$2" == read ) ) ]] || exit 2
+  fi
   python3 - "$@" <<'PY'
 import base64
 import hashlib
@@ -12,7 +16,7 @@ from pathlib import Path
 import stat
 import sys
 import time
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 
 def unique_object(pairs):
@@ -49,7 +53,38 @@ def digest(path):
     return hashlib.sha256(data).hexdigest()
 
 
+def prefetched_snapshot(metadata):
+    # This is CmdFlakePrefetch's result, not an alias for optional metadata.path.
+    if not isinstance(metadata, dict) or not {'storePath', 'hash'} <= metadata.keys():
+        raise ValueError('invalid native flake prefetch schema')
+    snapshot = Path(text(metadata['storePath']))
+    nar_hash = text(metadata['hash'])
+    if snapshot.parent != Path('/nix/store') or not snapshot.is_absolute():
+        raise ValueError('invalid immutable snapshot path')
+    if not nar_hash.startswith('sha256-') or len(base64.b64decode(nar_hash[7:], validate=True)) != 32:
+        raise ValueError('invalid prefetched NAR digest')
+    parameters = [('narHash', nar_hash)]
+    # Newer clients also expose locked attributes; retain their source timestamp.
+    if 'locked' in metadata:
+        locked = metadata['locked']
+        if not isinstance(locked, dict) or locked.get('type') != 'path':
+            raise ValueError('invalid prefetched path attributes')
+        if 'narHash' in locked and locked['narHash'] != nar_hash:
+            raise ValueError('prefetch store/locked NAR mismatch')
+        if 'lastModified' in locked:
+            modified = locked['lastModified']
+            if type(modified) is not int or not 0 <= modified <= 2**63 - 1:
+                raise ValueError('invalid source timestamp')
+            parameters.append(('lastModified', str(modified)))
+    reference = 'path:' + str(snapshot) + '?' + urlencode(parameters)
+    return snapshot, nar_hash, reference
+
+
 def main():
+    if sys.argv[1] == '--snapshot-reference':
+        _, _, reference = prefetched_snapshot(load(Path(sys.argv[2])))
+        print(json.dumps(reference))
+        return 0
     action = sys.argv[2]
     role = '2' if action == 'read' else '0'
     shared_value = os.environ.get('TEST_JOBS_SHARED_DIR')
@@ -112,21 +147,18 @@ def main():
     destination = shared / 'platform-observations.json'
     if action == 'publish':
         ready = Path(sys.argv[4])
-        metadata = load(ready / 'metadata.json', 1048576)
+        metadata = load(ready / 'snapshot.json')
         reference = load(ready / 'flake-ref.json')
         # debt: private fixture JSON <=64MiB; raise/revalidate before real data reaches it.
         fixture = load(ready / 'fixture.json', 64 * 1024 * 1024)
         observations = fixture['platformDrvPaths']
         if not isinstance(observations, dict) or set(observations) != {'username', 'linux', 'arch-server'}:
             raise ValueError('incomplete native platform observations')
-        snapshot = Path(text(metadata['path']))
-        if snapshot.parent != Path('/nix/store'):
-            raise ValueError('invalid producer snapshot')
-        expected_reference = 'path:' + str(snapshot) + '?' + metadata['url'].split('?', 1)[1]
+        snapshot, nar_hash, expected_reference = prefetched_snapshot(metadata)
         if reference != expected_reference:
             raise ValueError('producer reference mismatch')
         record = {'protocol': 'native-platform-observations-v1', 'id': header['id'], 'origin': str(repo),
-                  'snapshot': str(snapshot), 'narHash': metadata['locked']['narHash'], 'flakeRef': reference,
+                  'snapshot': str(snapshot), 'narHash': nar_hash, 'flakeRef': reference,
                   'lockSha256': digest(snapshot / 'flake.lock'), 'hostSha256': digest(snapshot / 'config/host.nix'),
                   'username': observations['username'],
                   'targets': {key: observations[key] for key in ('linux', 'arch-server')}}
