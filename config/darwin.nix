@@ -50,6 +50,7 @@ in
       "Noto Color Emoji"
     ];
     "Workspace.lightThemeID" = "merino-light";
+    "Workspace.interfaceStyle" = "useTheme";
     "Workspace.focusFollowsMouse" = true;
     "Workspace.inactivePaneFadeMode" = "both";
     "Workspace.paneDensity" = "compact";
