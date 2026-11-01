@@ -61,6 +61,7 @@
           shellcheck
           tree-sitter
           tmux
+          unzip
           zsh
         ];
       };
