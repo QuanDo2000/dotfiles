@@ -24,11 +24,14 @@ Funnel, public firewall opening, or login server is used. MagicDNS and HTTPS
 certificates must be enabled for the tailnet.
 
 On the Mac, `config/darwin.nix` enables `services.tailscale.enable`. The pinned
-nix-darwin module owns the CLI-only package, the boot-started launchd service
-`com.tailscale.tailscaled`, and `/etc/resolver/ts.net`. It does not force all DNS
-through Tailscale (`overrideLocalDns` stays false), configure an exit node, or
-advertise routes. Login credentials, device identity, and runtime preferences
-remain in the daemon's native state outside Git and the Nix store.
+nix-darwin module owns the CLI-only package and the boot-started launchd service
+`com.tailscale.tailscaled`. We disable its static `/etc/resolver/ts.net` link:
+Tailscale's confined resolver writes reject a symlink outside `/etc/resolver`
+with `openat ts.net: path escapes from parent`. Tailscale owns and updates its
+resolver files instead. It does not force all DNS through Tailscale
+(`overrideLocalDns` stays false), configure an exit node, or advertise routes.
+Login credentials, device identity, resolver files, and runtime preferences
+remain native writable state outside Git and the Nix store.
 
 Rex's embedded Tailscale exposes its server; it is not a documented outgoing
 transport for the Mac client. The Mac's system Tailscale connection is still
@@ -41,8 +44,8 @@ needed to reach Arch, even if the Mac Rex server itself is enrolled.
    connected at once; their identities are separate and are not migrated here.
 2. Run `dotfile packages` from the updated checkout (set `DOTFILES_DIR` explicitly
    if using a task checkout). This uses the normal nix-darwin activation route
-   and requires local sudo authentication. It starts the new daemon and installs
-   the managed resolver; it does not restart Rex.
+   and requires local sudo authentication. It starts the new daemon; Tailscale
+   writes its own resolver files after enrollment. It does not restart Rex.
 3. Enroll the Nix-managed client using the same Tailscale account that enrolled
    `rex-quanarch`:
 
@@ -63,6 +66,19 @@ needed to reach Arch, even if the Mac Rex server itself is enrolled.
    dscacheutil -q host -a name rex-quanarch.tail28b036.ts.net
    rex --server https://rex-quanarch.tail28b036.ts.net --autostart=false --timeout 5s whoami --json
    ```
+
+If upgrading from the earlier static-resolver configuration, activation removes
+only the stale Nix symlink. Restart the daemon once so it recreates its resolver
+files (this briefly interrupts tailnet connections, but does not restart Rex):
+
+```sh
+sudo launchctl kickstart -k system/com.tailscale.tailscaled
+/run/current-system/sw/bin/tailscale status
+```
+
+The DNS health warning should clear and `/etc/resolver/ts.net` should be a regular
+file, not a Nix symlink. Tailnet policy must separately allow TCP 443 from your
+Mac to the Rex device; a successful `tailscale ping` alone does not verify that.
 
 Then open the managed Rex app and choose **Add Remote Host…**:
 
