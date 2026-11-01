@@ -221,7 +221,19 @@ in
   home.file = (lib.optionalAttrs (personalApps && pkgs.stdenv.hostPlatform.isLinux) obsidianFiles) // {
     ".config/dotfiles/profile" = profileFile;
     "${homeDir}/.config/jj/config.toml".force = true;
-    ".ssh/config" = forceSource ./shared/.ssh/config;
+    ".ssh/config" = {
+      text = builtins.readFile ./shared/.ssh/config + ''
+
+        # Unix clients reuse interactive homelab connections for five idle minutes.
+        # Keep the socket in the user's protected SSH directory; %C separates targets.
+        # Use ssh -S none HOST for a fresh authentication/forwarding context.
+        Host quanarch quanarchRemote nixos
+            ControlMaster auto
+            ControlPath ~/.ssh/cm-%C
+            ControlPersist 5m
+      '';
+      force = true;
+    };
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".hermes/SOUL.md" = forceSource hermesSoul;
     # Hermes adaptations stay separate from the shared Codex/Pi skills.

@@ -58,6 +58,31 @@ test_ssh_config_keeps_required_forwarding_without_unused_ports() {
   assert_equals "3" "$(grep -c '^[[:space:]]*ForwardAgent yes$' <<< "$SSH_CONFIG")"
 }
 
+test_ssh_connection_reuse_is_scoped_to_unix_homelab_aliases() {
+  local username target config output host nix_bin
+  nix_bin="$(type -P nix)" || return
+  username="$("$nix_bin" eval --raw --file "$REPO_DIR/config/host.nix" username)" || return
+  if [[ "$(uname -s)" == Darwin ]]; then
+    target="darwinConfigurations.mac.config.home-manager.users.\"$username\""
+  else
+    target="homeConfigurations.\"$username@arch-server\".config"
+  fi
+  config="$TEST_TMPDIR/ssh-client.conf"
+  "$nix_bin" eval --raw "path:$REPO_DIR#$target.home.file.\".ssh/config\".text" > "$config" || return
+  for host in quanarch quanarchRemote nixos; do
+    output="$(ssh -F "$config" -G -T "$host")" || return
+    assert_contains "$output" 'controlmaster auto'
+    assert_contains "$output" 'controlpersist 300'
+    assert_contains "$output" '/.ssh/cm-'
+    assert_contains "$output" 'forwardagent yes'
+  done
+  for host in github.com unrelated.invalid 192.168.1.200; do
+    output="$(ssh -F "$config" -G -T "$host")" || return
+    assert_contains "$output" 'controlmaster false'
+    assert_contains "$output" 'controlpersist no'
+  done
+}
+
 
 
 test_arch_packages_are_bootstrap_only() {
