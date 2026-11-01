@@ -16,6 +16,11 @@ let
     inherit source;
     force = true;
   };
+  # Generate against the pinned binaries, not on every interactive shell start.
+  # Store paths invalidate automatically when the package changes.
+  starshipZshInit = pkgs.runCommand "starship-init.zsh" { } ''
+    STARSHIP_CACHE="$TMPDIR" ${lib.getExe config.programs.starship.package} init zsh --print-full-init > "$out"
+  '';
   # AGENTS.md owns the cross-agent policy. SOUL.md owns Hermes identity only;
   # compose the complete Hermes startup file without including Pi-only sections.
   sharedAgentPolicy = builtins.readFile ./shared/ai/AGENTS.md;
@@ -455,6 +460,7 @@ in
 
   programs.starship = {
     enable = true;
+    enableZshIntegration = false;
     settings = builtins.fromTOML (builtins.readFile ./shared/config/starship.toml);
   };
 
@@ -493,14 +499,21 @@ in
       share = true;
     };
     setOptions = [ "HIST_VERIFY" ];
-    initContent = lib.mkOrder 550 ((builtins.readFile ./unix/.zshrc.base)
-      + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
-        # If activation found no GUI, seed the theme in the first Rex shell.
-        # Do not delay the prompt, start a server, or repeat after success.
-        if [[ -n "$REX_BIN_DIR" && ! -e "''${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/rex-theme-initialized" ]]; then
-          (${rexThemeSetup}) &!
+    initContent = lib.mkMerge [
+      (lib.mkOrder 550 ((builtins.readFile ./unix/.zshrc.base)
+        + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
+          # If activation found no GUI, seed the theme in the first Rex shell.
+          # Do not delay the prompt, start a server, or repeat after success.
+          if [[ -n "$REX_BIN_DIR" && ! -e "''${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/rex-theme-initialized" ]]; then
+            (${rexThemeSetup}) &!
+          fi
+        ''))
+      (lib.mkOrder 1000 ''
+        if [[ $TERM != "dumb" ]]; then
+          source ${starshipZshInit}
         fi
-      '');
+      '')
+    ];
     completionInit = ''
       autoload -U compinit && compinit
 
