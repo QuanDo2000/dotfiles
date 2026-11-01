@@ -444,10 +444,12 @@ test_platform_profiles_have_expected_ghostty_config() {
     rex_command="$(_profile_service "$profile" rex | jq -r .execStart)"
     assert_not_contains "$rex_command" --allow-anonymous
     assert_not_contains "$rex_command" --tailnet-allow-identified
+    assert_not_contains "$rex_command" --tailscale-allow-tailnet-members
+    assert_not_contains "$rex_command" --extra-listen
     if [[ "$profile" == arch-server ]]; then
-      assert_contains "$rex_command" tailnet://:7297
+      assert_contains "$rex_command" '--tailscale --tailscale-hostname rex-quanarch'
     else
-      assert_not_contains "$rex_command" --extra-listen
+      assert_not_contains "$rex_command" --tailscale
     fi
     _test_present "$(_profile_xdg_files "$profile")" rex/init.lua 'rex/Catppuccin Macchiato.conf'
   done

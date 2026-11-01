@@ -16,6 +16,11 @@ let
     inherit source;
     force = true;
   };
+  # Generate against the pinned binaries, not on every interactive shell start.
+  # Store paths invalidate automatically when the package changes.
+  starshipZshInit = pkgs.runCommand "starship-init.zsh" { } ''
+    STARSHIP_CACHE="$TMPDIR" ${lib.getExe config.programs.starship.package} init zsh --print-full-init > "$out"
+  '';
   # AGENTS.md owns the cross-agent policy. SOUL.md owns Hermes identity only;
   # compose the complete Hermes startup file without including Pi-only sections.
   sharedAgentPolicy = builtins.readFile ./shared/ai/AGENTS.md;
@@ -216,7 +221,19 @@ in
   home.file = (lib.optionalAttrs (personalApps && pkgs.stdenv.hostPlatform.isLinux) obsidianFiles) // {
     ".config/dotfiles/profile" = profileFile;
     "${homeDir}/.config/jj/config.toml".force = true;
-    ".ssh/config" = forceSource ./shared/.ssh/config;
+    ".ssh/config" = {
+      text = builtins.readFile ./shared/.ssh/config + ''
+
+        # Unix clients reuse interactive homelab connections for five idle minutes.
+        # Keep the socket in the user's protected SSH directory; %C separates targets.
+        # Use ssh -S none HOST for a fresh authentication/forwarding context.
+        Host quanarch quanarchRemote nixos
+            ControlMaster auto
+            ControlPath ~/.ssh/cm-%C
+            ControlPersist 5m
+      '';
+      force = true;
+    };
     ".pi/agent/AGENTS.md" = forceSource ./shared/ai/AGENTS.md;
     ".hermes/SOUL.md" = forceSource hermesSoul;
     # Hermes adaptations stay separate from the shared Codex/Pi skills.
@@ -455,6 +472,7 @@ in
 
   programs.starship = {
     enable = true;
+    enableZshIntegration = false;
     settings = builtins.fromTOML (builtins.readFile ./shared/config/starship.toml);
   };
 
@@ -493,14 +511,21 @@ in
       share = true;
     };
     setOptions = [ "HIST_VERIFY" ];
-    initContent = lib.mkOrder 550 ((builtins.readFile ./unix/.zshrc.base)
-      + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
-        # If activation found no GUI, seed the theme in the first Rex shell.
-        # Do not delay the prompt, start a server, or repeat after success.
-        if [[ -n "$REX_BIN_DIR" && ! -e "''${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/rex-theme-initialized" ]]; then
-          (${rexThemeSetup}) &!
+    initContent = lib.mkMerge [
+      (lib.mkOrder 550 ((builtins.readFile ./unix/.zshrc.base)
+        + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
+          # If activation found no GUI, seed the theme in the first Rex shell.
+          # Do not delay the prompt, start a server, or repeat after success.
+          if [[ -n "$REX_BIN_DIR" && ! -e "''${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/rex-theme-initialized" ]]; then
+            (${rexThemeSetup}) &!
+          fi
+        ''))
+      (lib.mkOrder 1000 ''
+        if [[ $TERM != "dumb" ]]; then
+          source ${starshipZshInit}
         fi
-      '');
+      '')
+    ];
     completionInit = ''
       autoload -U compinit && compinit
 
