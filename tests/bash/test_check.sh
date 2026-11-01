@@ -127,6 +127,57 @@ test_check_script_collects_all_stage_failures() {
   assert_contains "$(<"$CHECK_CALLS")" 'shellcheck '
 }
 
+test_profile_worker_transfers_bounded_pure_expression() {
+  REPO_DIR="$REPO_DIR" python3 - <<'PY' 2>>"$ERROR_FILE"
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+worker = Path(os.environ['REPO_DIR']) / 'scripts/check_profile.sh'
+with tempfile.TemporaryDirectory() as directory:
+    root = Path(directory)
+    binary = root / 'bin'
+    binary.mkdir()
+    calls = root / 'argv.json'
+    mock = binary / 'nix'
+    mock.write_text('''#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ['PROFILE_ARGV'], 'w') as output:
+    json.dump(sys.argv[1:], output)
+print('{"worker":true}')
+sys.exit(int(os.environ.get('PROFILE_EXIT', '0')))
+''')
+    mock.chmod(0o755)
+    source = root / 'projection.nix'
+    env = {**os.environ, 'PATH': str(binary) + os.pathsep + os.environ['PATH'],
+           'PROFILE_ARGV': str(calls), 'PROFILE_EXIT': '0'}
+    for payload in ('{ sample = "λ"; }\n\n'.encode(), b'"' + b'a' * 16381 + b'"\n'):
+        source.write_bytes(payload)
+        result = subprocess.run(['bash', str(worker), str(source)], env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+        assert result.returncode == 0, result.stderr
+        arguments = json.loads(calls.read_text())
+        assert arguments[:-1] == ['eval', '--option', 'pure-eval', 'true', '--json', '--expr'], arguments[:-1]
+        assert arguments[-1].encode('utf-8') == payload
+        assert json.loads(source.with_suffix('.json').read_text()) == {'worker': True}
+    for payload, reason in ((b'"\xff"', b'utf-8'), (b'"\0"', b'NUL'),
+                            (b'"' + b'a' * 16383 + b'"', b'16KiB')):
+        calls.unlink(missing_ok=True)
+        source.write_bytes(payload)
+        result = subprocess.run(['bash', str(worker), str(source)], env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+        assert result.returncode == 125 and reason in result.stderr, result.stderr
+        assert not calls.exists(), 'refused input reached Nix'
+        assert source.with_suffix('.json').read_bytes() == b''
+    source.write_text('{}')
+    result = subprocess.run(['bash', str(worker), str(source)], env={**env, 'PROFILE_EXIT': '42'},
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+    assert result.returncode == 42, result.stderr
+PY
+}
+
 test_bash_runner_accepts_multiple_test_files() {
   local fixtures="$TEST_TMPDIR/fixtures" output
   mkdir -p "$fixtures"

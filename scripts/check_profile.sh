@@ -182,4 +182,22 @@ PY
   exit "$?"
 fi
 [[ $# == 1 && "$1" == *.nix && -f "$1" ]] || exit 2
-nix eval --option pure-eval true --json --file "$1" > "${1%.nix}.json"
+python3 - "$1" <<'PY' > "${1%.nix}.json"
+import os
+import sys
+
+try:
+    # debt: expressions are at most 16KiB; revisit only when a producer needs more.
+    with open(sys.argv[1], 'rb') as source:
+        expression = source.read(16385)
+    if len(expression) > 16384:
+        raise ValueError('expression exceeds 16KiB')
+    if b'\0' in expression:
+        raise ValueError('expression contains NUL')
+    expression.decode('utf-8')  # Validate, but pass the original bytes without locale conversion.
+    os.execvp(b'nix', [b'nix', b'eval', b'--option', b'pure-eval', b'true',
+                      b'--json', b'--expr', expression])
+except (OSError, ValueError) as error:
+    print(f'Profile expression refused: {error}', file=sys.stderr)
+    sys.exit(125)
+PY

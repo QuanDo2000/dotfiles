@@ -11,7 +11,7 @@ teardown() { cleanup_test_env; }
 
 _profile_fixture() {
   [[ ! -d "$PROFILE_CACHE/ready" ]] || return 0
-  local metadata snapshot flake_ref profile group projection producer probe_status
+  local metadata flake_ref profile group projection probe_status
   local include_platform=false
   if [[ "$(uname -s)" == Linux && -n "${TEST_JOBS_SHARED_DIR:-}" && "${TEST_JOBS_SHARED_ROLE:-}" == 0 ]]; then
     if bash "$REPO_DIR/scripts/check_profile.sh" --platform-observations probe "$REPO_DIR"; then
@@ -24,14 +24,13 @@ _profile_fixture() {
   # Snapshot THIS run's source, then evaluate it purely. Never reuse observations
   # across gates; the private cache is deleted when this file runner exits.
   metadata="$(nix flake metadata --json "path:$REPO_DIR")" || return
-  snapshot="$(jq -r .path <<< "$metadata")" || return
   flake_ref="$(jq -r '"path:" + .path + "?" + (.url | split("?")[1]) | @json' <<< "$metadata")" || return
   mkdir -p "$PROFILE_CACHE/pending" || return
   if [[ "$include_platform" == true ]]; then
     printf '%s\n' "$metadata" > "$PROFILE_CACHE/pending/metadata.json" || return
     printf '%s\n' "$flake_ref" > "$PROFILE_CACHE/pending/flake-ref.json" || return
   fi
-  producer="$(jq -Rn --arg path "$snapshot/tests/nix/profile-fixture.nix" '$path')" || return
+  # Authenticate the immutable flake before importing its producer in pure mode.
   # Project the unchanged lazy producer on the SAME immutable snapshot. Each
   # worker writes only its own JSON; nothing is published until all succeed.
   for group in home nixos nixos-wsl darwin; do
@@ -46,7 +45,7 @@ _profile_fixture() {
       nixos-wsl) projection='{ profiles.nixos-wsl = data.profiles.nixos-wsl; }' ;;
       darwin) projection='{ profiles.darwin = data.profiles.darwin; packageSources.darwin = data.packageSources.darwin; }' ;;
     esac
-    printf 'let data = (import %s) { flakeRef = %s; includePlatformDrvPaths = %s; }; in %s\n' "$producer" "$flake_ref" "$include_platform" "$projection" > "$PROFILE_CACHE/pending/$group.nix" || return
+    printf 'let sourceFlake = builtins.getFlake %s; data = (import (sourceFlake.outPath + "/tests/nix/profile-fixture.nix")) { flakeRef = %s; includePlatformDrvPaths = %s; }; in %s\n' "$flake_ref" "$flake_ref" "$include_platform" "$projection" > "$PROFILE_CACHE/pending/$group.nix" || return
   done
   python3 "$REPO_DIR/scripts/test_jobs.py" --jobs 3 --cleanup-seconds 1 --timeout 300 --total-timeout 300 \
     --files "$PROFILE_CACHE/pending/home.nix" "$PROFILE_CACHE/pending/nixos.nix" \
