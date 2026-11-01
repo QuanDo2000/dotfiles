@@ -66,14 +66,14 @@ if [[ -t 0 && -z "$TMUX" && -o interactive && -z "$ZSH_TMUX_STARTED" && -z "$NO_
       && "$TERM_PROGRAM" != "vscode" && -z "$INSIDE_EMACS" && -z "$VIMRUNTIME" ]] \
    && command -v tmux >/dev/null 2>&1; then
   export ZSH_TMUX_STARTED=1
-  tmux attach -t main 2>/dev/null || tmux new -s main
+  tmux new-session -A -s main
 fi
 
 # Bare `tmux` on Linux attaches to (or creates) "main".
 if [[ "$OSTYPE" == linux* && -z "$REX_BIN_DIR" ]]; then
   tmux() {
     if [ $# -eq 0 ]; then
-      command tmux attach -t main 2>/dev/null || command tmux new -s main
+      command tmux new-session -A -s main
     else
       command tmux "$@"
     fi
