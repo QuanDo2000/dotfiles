@@ -65,7 +65,10 @@ test_tmux_config_parses_and_applies_theme() {
     assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix k)" 'select-pane -U'
     assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix l)" 'select-pane -R'
     local key
-    for key in C-h C-j C-k C-l; do
+    assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix p)" 'previous-window'
+    assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix n)" 'next-window'
+    assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix b)" 'last-window'
+    for key in C-h C-j C-k C-l C-p C-n; do
       if env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix "$key" >/dev/null 2>&1; then
         echo "Unexpected prefix binding: $key" >> "$ERROR_FILE"
       fi
