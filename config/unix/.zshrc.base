@@ -142,13 +142,3 @@ bindkey -M viins '^[OB' history-beginning-search-forward
 bindkey -M viins '^?' backward-delete-char
 bindkey -M viins '^H' backward-delete-char
 export KEYTIMEOUT=10
-_set_cursor_shape() {
-  case "$KEYMAP" in
-    vicmd|visual) printf '\e[2 q' ;;  # block cursor in normal mode
-    *)            printf '\e[6 q' ;;  # beam cursor in insert mode
-  esac
-}
-zle-keymap-select() { _set_cursor_shape }
-zle-line-init() { _set_cursor_shape }
-zle -N zle-keymap-select
-zle -N zle-line-init
