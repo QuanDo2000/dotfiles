@@ -509,12 +509,6 @@ in
     '';
     autosuggestion.enable = true;
     fastSyntaxHighlighting.enable = true;
-    plugins = [
-      {
-        name = "fzf-tab";
-        src = "${pkgs.zsh-fzf-tab}/share/fzf-tab";
-      }
-    ];
   };
 
   programs.tmux = {
