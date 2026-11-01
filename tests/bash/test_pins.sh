@@ -4,7 +4,70 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
 test_pi_closure_prefetch_supervision() {
-  python3 "$REPO_DIR/tests/python/test_pi_prefetch.py" 2>&1
+  local platform cases name index=0 directory="$TEST_TMPDIR/prefetch-cases"
+  local jobs=()
+  platform="$(python3 -c 'import os; print(os.name)')" || return
+  if [[ "$platform" != posix ]]; then
+    # Preserve the native unittest's own platform skip, not the Unix dispatcher.
+    python3 "$REPO_DIR/tests/python/test_pi_prefetch.py"
+    return
+  fi
+  cases="$(python3 "$REPO_DIR/tests/python/test_pi_prefetch.py" --list-tests)" || return
+  mkdir -p "$directory" || return
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || return 1
+    printf '%q ' python3 "$REPO_DIR/tests/python/test_pi_prefetch.py" "$name" -v > "$directory/$index.sh" || return
+    printf '\n' >> "$directory/$index.sh" || return
+    jobs+=("$directory/$index.sh")
+    index=$((index + 1))
+  done <<< "$cases"
+  # Each case retains its own real CLI/session supervision and production 2s
+  # grace. Fixture cancellation finishes within 2.5s, before the owner (3s).
+  python3 "$REPO_DIR/scripts/test_jobs.py" --jobs 3 --cleanup-seconds 2.5 --timeout 300 --total-timeout 300 \
+    --files "${jobs[@]}" -- bash
+}
+
+test_pi_closure_prefetch_preserves_non_posix_entry_and_failures() {
+  local trace="$TEST_TMPDIR/interpreter-calls" real_python
+  local probe_status=0 standalone_status=0
+  real_python="$(type -P python3)" || return
+  # Model only interpreter capability/routing. The real POSIX case above still
+  # runs every native subprocess scenario; this is not Windows E2E coverage.
+  python3() {
+    case "$1" in
+      -c)
+        printf 'probe\n' >> "$trace"
+        (( probe_status == 0 )) || return "$probe_status"
+        printf 'nt\n' ;;
+      "$REPO_DIR/tests/python/test_pi_prefetch.py")
+        if (( $# == 1 )); then
+          printf 'standalone\n' >> "$trace"
+          return "$standalone_status"
+        fi
+        [[ $# == 2 && "$2" == --list-tests ]] || return 98
+        printf 'discovery\n' >> "$trace"
+        command "$real_python" "$@" ;;
+      "$REPO_DIR/scripts/test_jobs.py")
+        printf 'unsupported-dispatcher\n' >> "$trace"
+        return 2 ;;
+      *) return 99 ;;
+    esac
+  }
+
+  : > "$trace"
+  assert_exit_code 0 test_pi_closure_prefetch_supervision
+  assert_equals $'probe\nstandalone' "$(<"$trace")"
+
+  : > "$trace"
+  probe_status=17
+  assert_exit_code 17 test_pi_closure_prefetch_supervision
+  assert_equals probe "$(<"$trace")"
+
+  : > "$trace"
+  probe_status=0
+  standalone_status=19
+  assert_exit_code 19 test_pi_closure_prefetch_supervision
+  assert_equals $'probe\nstandalone' "$(<"$trace")"
 }
 
 test_windows_anki_pin_refresher() {

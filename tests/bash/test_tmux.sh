@@ -42,15 +42,29 @@ test_tmux_owns_catppuccin_theme_without_plugin() {
 }
 
 test_tmux_config_parses_and_applies_theme() {
-  local socket="$TEST_TMPDIR/tmux.sock" config="$HOME/.config/tmux/tmux.conf"
+  # Unix socket addresses are length-limited even when nested TMPDIRs are valid
+  # file paths. Own a short private socket directory, independent of that depth.
+  local socket_dir
+  socket_dir="$(mktemp -d /tmp/dotfiles-tmux.XXXXXX)" || return
+  local socket="$socket_dir/tmux.sock" config="$HOME/.config/tmux/tmux.conf"
   local stderr="$TEST_TMPDIR/tmux.stderr" status=0
+  _cleanup_tmux_test() {
+    trap - EXIT INT TERM
+    env HOME="$1" TMUX= tmux -S "$2" kill-server >/dev/null 2>&1 || true
+    rm -rf -- "$3"
+  }
+  # The file runner may be cancelled; a detached test server needs its owner
+  # to clean up on shell exit, not only on a normal function return.
+  # These belong to the per-test shell, so they remain live after this
+  # function returns and its locals are gone.
+  TMUX_TEST_HOME="$HOME"
+  TMUX_TEST_SOCKET="$socket"
+  TMUX_TEST_SOCKET_DIR="$socket_dir"
+  trap '_cleanup_tmux_test "$TMUX_TEST_HOME" "$TMUX_TEST_SOCKET" "$TMUX_TEST_SOCKET_DIR"' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
   mkdir -p "$(dirname "$config")"
   cp "$REPO_DIR/config/unix/.tmux.conf" "$config"
-  _cleanup_tmux_test() {
-    trap - RETURN
-    env HOME="$HOME" TMUX= tmux -S "$socket" kill-server >/dev/null 2>&1 || true
-  }
-  trap _cleanup_tmux_test RETURN
 
   env HOME="$HOME" TMUX= tmux -S "$socket" -f "$config" new-session -d -s audit 'sleep 30' 2> "$stderr" || status=$?
 

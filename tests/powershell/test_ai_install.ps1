@@ -8,9 +8,6 @@ function TestSetup {
     $script:OriginalGetFileSha256 = (Get-Command Get-FileSha256).ScriptBlock
     $windowsTarExpander = Get-Command Expand-WindowsTarArchive -ErrorAction SilentlyContinue
     $script:OriginalExpandWindowsTarArchive = if ($windowsTarExpander) { $windowsTarExpander.ScriptBlock } else { $null }
-    $pythonLauncher = Get-Command py -ErrorAction SilentlyContinue
-    $script:PythonCommand = if ($pythonLauncher) { $pythonLauncher.Source } else { (Get-Command python3 -ErrorAction Stop).Source }
-    $script:PythonArguments = if ($pythonLauncher) { @('-3.14') } else { @() }
     Set-CommandMock 'RepairPiCompactionSteering' {}
 }
 

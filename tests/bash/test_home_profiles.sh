@@ -4,28 +4,76 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 PROFILE_CACHE="$(mktemp -d)"
-PROFILE_USERNAME="$(nix eval --raw --file "$REPO_DIR/config/host.nix" username)"
-PROFILE_HOSTNAME="$(nix eval --raw --file "$REPO_DIR/config/host.nix" hostName)"
-PROFILE_APPLY="$(<"$REPO_DIR/tests/nix/profile-summary.nix")"
 trap 'rm -rf "$PROFILE_CACHE"' EXIT
 
 setup() { init_test_env; }
 teardown() { cleanup_test_env; }
 
-_profile_expr() { printf 'homeConfigurations."%s@%s".config' "$PROFILE_USERNAME" "$1"; }
-_profile_summary() {
-  local profile="$1" expression cache="$PROFILE_CACHE/$1.json"
-  if [[ ! -f "$cache" ]]; then
-    case "$profile" in
-      linux|arch-server) expression="$(_profile_expr "$profile")" ;;
-      nixos) expression="nixosConfigurations.\"$PROFILE_HOSTNAME\".config.home-manager.users.$PROFILE_USERNAME" ;;
-      nixos-wsl) expression="nixosConfigurations.\"$PROFILE_HOSTNAME-wsl\".config.home-manager.users.$PROFILE_USERNAME" ;;
-      darwin) expression="darwinConfigurations.mac.config.home-manager.users.$PROFILE_USERNAME" ;;
-      *) return 1 ;;
-    esac
-    nix eval --json "path:$REPO_DIR#$expression" --apply "$PROFILE_APPLY" > "$cache" || return
+_profile_fixture() {
+  [[ ! -d "$PROFILE_CACHE/ready" ]] || return 0
+  local flake_ref profile group projection probe_status
+  local TIMEFORMAT='PROFILE_SNAPSHOT_PREFETCH_SECONDS=%3R'
+  local include_platform=false
+  if [[ "$(uname -s)" == Linux && -n "${TEST_JOBS_SHARED_DIR:-}" && "${TEST_JOBS_SHARED_ROLE:-}" == 0 ]]; then
+    if bash "$REPO_DIR/scripts/check_profile.sh" --platform-observations probe "$REPO_DIR"; then
+      include_platform=true
+    else
+      probe_status=$?
+      [[ "$probe_status" == 3 ]] || return "$probe_status"
+    fi
   fi
-  cat "$cache"
+  # Snapshot THIS run's source, then evaluate it purely. Never reuse observations
+  # across gates; the private cache is deleted when this file runner exits.
+  mkdir -p "$PROFILE_CACHE/pending" || return
+  # Metadata may describe an unmaterialized lazy tree. Prefetch's native API
+  # fetches this root to the store and returns its actual NAR hash on all clients.
+  time nix flake prefetch --json "path:$REPO_DIR" > "$PROFILE_CACHE/pending/snapshot.json" || return
+  flake_ref="$(bash "$REPO_DIR/scripts/check_profile.sh" --snapshot-reference "$PROFILE_CACHE/pending/snapshot.json")" || return
+  if [[ "$include_platform" == true ]]; then
+    printf '%s\n' "$flake_ref" > "$PROFILE_CACHE/pending/flake-ref.json" || return
+  fi
+  # Authenticate the immutable flake before importing its producer in pure mode.
+  # Project the unchanged lazy producer on the SAME immutable snapshot. Each
+  # worker writes only its own JSON; nothing is published until all succeed.
+  for group in home nixos nixos-wsl darwin; do
+    case "$group" in
+      home)
+        projection='{ profiles = { inherit (data.profiles) linux arch-server; }; inherit (data) storageGuard; packageSources.linux = data.packageSources.linux; __schema = { root = builtins.attrNames data; profiles = builtins.attrNames data.profiles; sources = builtins.attrNames data.packageSources; }; }'
+        if [[ "$include_platform" == true ]]; then
+          projection="($projection) // { inherit (data) platformDrvPaths; }"
+        fi
+        ;;
+      nixos) projection='{ profiles.nixos = data.profiles.nixos; inherit (data) nixosWrappers homePackageContracts; }' ;;
+      nixos-wsl) projection='{ profiles.nixos-wsl = data.profiles.nixos-wsl; }' ;;
+      darwin) projection='{ profiles.darwin = data.profiles.darwin; packageSources.darwin = data.packageSources.darwin; }' ;;
+    esac
+    printf 'let sourceFlake = builtins.getFlake %s; data = (import (sourceFlake.outPath + "/tests/nix/profile-fixture.nix")) { flakeRef = %s; includePlatformDrvPaths = %s; }; in %s\n' "$flake_ref" "$flake_ref" "$include_platform" "$projection" > "$PROFILE_CACHE/pending/$group.nix" || return
+  done
+  python3 "$REPO_DIR/scripts/test_jobs.py" --jobs 3 --cleanup-seconds 1 --timeout 300 --total-timeout 300 \
+    --files "$PROFILE_CACHE/pending/home.nix" "$PROFILE_CACHE/pending/nixos.nix" \
+      "$PROFILE_CACHE/pending/nixos-wsl.nix" "$PROFILE_CACHE/pending/darwin.nix" \
+    -- bash "$REPO_DIR/scripts/check_profile.sh" >&2 || return
+  # Fail closed if the producer grows: never silently omit a new root/profile.
+  jq -es 'reduce .[] as $part ({}; . * $part) |
+    .__schema as $schema | del(.__schema) |
+    if (keys == $schema.root and (.profiles | keys? // []) == $schema.profiles and
+        (.packageSources | keys? // []) == $schema.sources and
+        (.profiles | keys? // []) == ["arch-server", "darwin", "linux", "nixos", "nixos-wsl"] and
+        (.packageSources | keys? // []) == ["darwin", "linux"] and
+        has("storageGuard") and has("nixosWrappers")) then . else null end' \
+    "$PROFILE_CACHE/pending/home.json" "$PROFILE_CACHE/pending/nixos.json" "$PROFILE_CACHE/pending/nixos-wsl.json" "$PROFILE_CACHE/pending/darwin.json" > "$PROFILE_CACHE/pending/fixture.json" || return
+  for profile in linux arch-server nixos nixos-wsl darwin; do
+    jq -e --arg profile "$profile" '.profiles[$profile]' "$PROFILE_CACHE/pending/fixture.json" > "$PROFILE_CACHE/pending/$profile.json" || return
+  done
+  # Publish only after every profile and extra observation evaluated successfully.
+  mv "$PROFILE_CACHE/pending" "$PROFILE_CACHE/ready" || return
+  if [[ "$include_platform" == true ]]; then
+    bash "$REPO_DIR/scripts/check_profile.sh" --platform-observations publish "$REPO_DIR" "$PROFILE_CACHE/ready" || return
+  fi
+}
+_profile_summary() {
+  _profile_fixture || return
+  cat "$PROFILE_CACHE/ready/$1.json"
 }
 _profile_lines() { _profile_summary "$1" | jq -r ".$2[]" | sort -u; }
 _profile_packages() { _profile_lines "$1" packages; }
@@ -65,6 +113,9 @@ test_profile_packages_and_services_are_composed_by_role() {
   local generic_packages arch_packages generic_service_names arch_service_names
   generic_packages="$(_profile_packages linux)"; arch_packages="$(_profile_packages arch-server)"
   generic_service_names="$(_profile_services linux)"; arch_service_names="$(_profile_services arch-server)"
+  _profile_fixture
+  assert_equals '{"overlay":{"allowUnfree":true,"jqName":"home-pkgs-overlay-witness"},"pkgsArgument":{"allowUnfree":true,"jqName":"home-pkgs-argument-witness"},"unfree":{"allowUnfree":false,"jqName":"jq"},"unusedPredicate":{"allowUnfree":true,"jqName":"jq"}}' \
+    "$(jq -cS '.homePackageContracts' "$PROFILE_CACHE/ready/fixture.json")"
   _test_present_array "$generic_packages" "${common_packages[@]}"
   _test_absent "$generic_packages" codex
   _test_absent "$arch_packages" codex
@@ -135,16 +186,18 @@ test_profile_activation_targets_are_complete() {
 
 test_profile_desktop_units_and_nixos_fuse_wrapper() {
   local generic arch nixos_wrappers
-  local wrapper_expr="nixosConfigurations.\"$PROFILE_HOSTNAME\".config.security.wrappers"
-  generic=$(_profile_services linux); arch=$(_profile_services arch-server); nixos_wrappers=$(nix eval --json "path:$REPO_DIR#$wrapper_expr" | jq -r 'keys[]')
+  generic=$(_profile_services linux); arch=$(_profile_services arch-server)
+  _profile_fixture
+  nixos_wrappers=$(jq -r '.nixosWrappers[]' "$PROFILE_CACHE/ready/fixture.json")
   _test_absent "$generic" "${desktop_services[@]}"; _test_absent "$arch" "${desktop_services[@]}"; assert_line_present "$nixos_wrappers" fusermount3
 }
 
 test_evaluated_profile_configures_runtime_files_and_activations() {
   local nixos_files arch_files activations profile release_id linux_source darwin_source source
   release_id="$(jq -r .releaseId "$REPO_DIR/packages/pi-extensions-release.json")"
-  linux_source="$(nix eval --raw "path:$REPO_DIR#packages.x86_64-linux.pi-extensions.outPath")"
-  darwin_source="$(nix eval --raw "path:$REPO_DIR#packages.aarch64-darwin.pi-extensions.outPath")"
+  _profile_fixture
+  linux_source="$(jq -r .packageSources.linux "$PROFILE_CACHE/ready/fixture.json")"
+  darwin_source="$(jq -r .packageSources.darwin "$PROFILE_CACHE/ready/fixture.json")"
   for profile in linux arch-server nixos darwin; do
     source="$linux_source"
     [[ "$profile" != darwin ]] || source="$darwin_source"
@@ -416,7 +469,7 @@ test_offsite_local_exclusions_fail_closed_without_overwriting() {
   for profile in linux nixos darwin; do
     assert_equals null "$(_profile_activation "$profile" checkStorageOffsiteLocalExcludes)"
   done
-  guard=$(nix eval --json "path:$REPO_DIR#$(_profile_expr arch-server).home.activation.checkStorageOffsiteLocalExcludes")
+  guard=$(jq -c .storageGuard "$PROFILE_CACHE/ready/fixture.json")
   assert_contains "$(jq -r '.before[]' <<< "$guard")" writeBoundary
   activation=$(_profile_activation arch-server checkStorageOffsiteLocalExcludes)
   assert_not_contains "$activation" 'mkdir'

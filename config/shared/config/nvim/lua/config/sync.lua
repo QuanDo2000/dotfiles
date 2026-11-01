@@ -37,11 +37,21 @@ function M.plugins(clean)
   options.git.timeout = 600
   local lockfile = options.lockfile
   local reviewed_lock = vim.fn.readfile(lockfile, "b")
+  local Task = require("lazy.manage.task")
   local function run(operation)
+    local spawn = Task.spawn
+    -- debt: Lazy 11.17.5 streams headless failures without marking task errors.
+    -- Remove this guard when the pinned Lazy propagates failed headless spawns.
+    Task.spawn = function(task, command, opts)
+      local success = spawn(task, command, opts)
+      if not success and not task:has_errors() then task:error("Native command failed") end
+      return success
+    end
     local ok, err = pcall(function()
       operation():wait()
       lazy_errors()
     end)
+    Task.spawn = spawn
     restore_lock(lockfile, reviewed_lock)
     if not ok then error(err, 0) end
   end
