@@ -105,11 +105,6 @@ with tempfile.TemporaryDirectory() as tmp:
 PY
 }
 
-test_rex_foreground_command_status() {
-  python3 "$REPO_DIR/tests/fixtures/rex-program-status.py" "$REPO_DIR/config/unix/.zshrc.base" \
-    || echo "Rex program status integration failed" >> "$ERROR_FILE"
-}
-
 test_help_exits_zero() {
   local output status=0
   output=$(bash "$DOTFILE_CMD" -h 2>&1) || status=$?

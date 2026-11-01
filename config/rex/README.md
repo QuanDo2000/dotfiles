@@ -62,45 +62,8 @@ Do not reset Tailscale Serve, change SSH, or remove the host's Tailscale identit
 
 ## Command status in Rex shells
 
-The managed interactive Zsh configuration automatically reports OSC 7501 status
-for a **single foreground invocation** of `dotfile`, `iib` or `cn2epub`, including
-an absolute executable path. Run commands normally; no wrapper command or Rex CLI
-call is required. Reports contain only the fixed application name and state—never
-arguments, filenames, usernames or credentials.
-
-- Starting a command reports `working`.
-- Returning zero reports `done`; other failures report `error`.
-- Ctrl-C / conventional cancellation exit codes 130 and 143 report `idle`.
-
-Hooks do not replace commands or change their streams, arguments or exit codes.
-They are inactive outside Rex, inside nested tmux, and when shell stdout is not a
-terminal. Pi and other programs keep their native reporting; they are not added
-to the shell's allowlist. Existing shell sessions need a new shell to load this
-configuration. Arch activation does not deploy the Mac's shell configuration;
-update/activate the Mac dotfiles there as usual.
-
-`debt:` Shell-only reporting has no visibility into application prompts, progress,
-intermediate phases or jobs after they leave the foreground. It deliberately
-skips compound commands, pipelines, background launches, multiline commands,
-commands longer than 4096 characters, and interpreter/prefix forms such as
-`python app.py` or `sudo dotfile`. Add native application-level reporting when
-reliable blocked/auth/progress information or noninteractive execution is needed;
-do not infer it by scraping output. No application source, cron or systemd job
-was changed by this shell integration.
-
-Repeatable shell/PTY check (real `dotfile` help and invalid-command paths;
-`iib`/`cn2epub` use harmless stand-ins, not downloads or book conversions):
-
-```sh
-python3 tests/fixtures/rex-program-status.py config/unix/.zshrc.base
-```
-
-For a native Rex check, use a disposable Zsh session, source the candidate config,
-run `dotfile -h` / an invalid dotfile command, and query only that block using
-`rex block call -s SESSION -b BLOCK program_status`. A short harmless delay before
-invoking dotfile permits inspection of `working`; interrupt that delay to check
-`idle`. Delete only the disposable session afterward. GUI indicators still need
-an online Mac client for visual verification.
+Zsh does not synthesize command-status reports for `dotfile`, `iib`, or
+`cn2epub`. Programs such as Pi retain their native Rex status reporting.
 
 ## Shared configuration
 
