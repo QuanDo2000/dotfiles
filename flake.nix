@@ -140,8 +140,13 @@
         modules = [
           ./config/home.nix rex-linux.homeManagerModules.default ./config/rex-linux.nix
           ./config/qbittorrent-retention.nix
-          # Arch only: existing tailscaled identifies callers; node owner only.
-          { services.rex.extraListen = [ "tailnet://:7297" ]; }
+          # Arch only: Rex joins the tailnet itself; node owner only.
+          {
+            services.rex.tailscale = {
+              enable = true;
+              hostname = "rex-quanarch";
+            };
+          }
         ];
       };
 
