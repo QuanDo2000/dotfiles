@@ -67,8 +67,7 @@ test_ssh_connection_reuse_is_scoped_to_unix_homelab_aliases() {
   else
     target="homeConfigurations.\"$username@arch-server\".config"
   fi
-  config="$TEST_TMPDIR/ssh-client.conf"
-  "$nix_bin" eval --raw "path:$REPO_DIR#$target.home.file.\".ssh/config\".text" > "$config" || return
+  config="$("$nix_bin" build --no-link --print-out-paths "path:$REPO_DIR#$target.home.file.\".ssh/config\".source")" || return
   for host in quanarch quanarchRemote nixos; do
     output="$(ssh -F "$config" -G -T "$host")" || return
     assert_contains "$output" 'controlmaster auto'
