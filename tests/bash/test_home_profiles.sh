@@ -60,7 +60,7 @@ _profile_fixture() {
         (.profiles | keys? // []) == ["arch-server", "darwin", "linux", "nixos", "nixos-wsl"] and
         (.packageSources | keys? // []) == ["darwin", "linux"] and
         has("storageGuard") and has("nixosWrappers")) then . else null end' \
-    "$PROFILE_CACHE/pending/home.json" "$PROFILE_CACHE/pending/nixos.json" "$PROFILE_CACHE/pending/darwin.json" > "$PROFILE_CACHE/pending/fixture.json" || return
+    "$PROFILE_CACHE/pending/home.json" "$PROFILE_CACHE/pending/nixos.json" "$PROFILE_CACHE/pending/nixos-wsl.json" "$PROFILE_CACHE/pending/darwin.json" > "$PROFILE_CACHE/pending/fixture.json" || return
   for profile in linux arch-server nixos nixos-wsl darwin; do
     jq -e --arg profile "$profile" '.profiles[$profile]' "$PROFILE_CACHE/pending/fixture.json" > "$PROFILE_CACHE/pending/$profile.json" || return
   done
