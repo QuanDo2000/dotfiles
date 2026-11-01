@@ -834,7 +834,18 @@ in
     '';
   };
 
-  xdg.configFile."rex/init.lua".source = ./rex/init.lua;
+  xdg.configFile."rex/init.lua".source =
+    if pkgs.stdenv.hostPlatform.isDarwin then pkgs.writeText "rex-init.lua" ''
+      ${builtins.readFile ./rex/init.lua}
+
+      -- Keep the saved host's identity; native GUI/API overrides remain intact.
+      rex.host{
+        id = "host:203ab58b-10af-4632-a605-871f5d453a87",
+        label = "rex-quanarch",
+        endpoint = "https://rex-quanarch.tail28b036.ts.net",
+        icon = "server.rack",
+      }
+    '' else ./rex/init.lua;
   xdg.configFile."rex/Catppuccin Macchiato.conf".source = ./rex + "/Catppuccin Macchiato.conf";
 
   xdg.configFile."ghostty/config" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ./unix/config/ghostty/config);

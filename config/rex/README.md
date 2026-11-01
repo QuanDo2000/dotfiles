@@ -80,7 +80,14 @@ The DNS health warning should clear and `/etc/resolver/ts.net` should be a regul
 file, not a Nix symlink. Tailnet policy must separately allow TCP 443 from your
 Mac to the Rex device; a successful `tailscale ping` alone does not verify that.
 
-Then open the managed Rex app and choose **Add Remote Host…**:
+The Mac's Nix-generated `init.lua` declares `rex-quanarch` with native
+`rex.host{...}`. Activate through `dotfile packages`, then run `rex config reload`
+if Rex is already running; no restart or host-add script is needed. The stable
+host ID reuses the existing saved entry, avoiding duplicates. Native GUI/API
+edits remain overrides; the declaration supplies the host on fresh setups.
+Other Linux profiles keep the shared config without this declaration.
+
+Open the managed Rex app and select `rex-quanarch`. Its endpoint is:
 
 ```text
 https://rex-quanarch.tail28b036.ts.net
@@ -88,8 +95,8 @@ https://rex-quanarch.tail28b036.ts.net
 
 A successful connection permits programs to run as the Arch account, so never
 replace this with anonymous HTTP or grant all tailnet users for convenience.
-The saved host is application-owned state; adding a CLI host does not establish
-that the GUI has added it. From Arch, `rex --autostart=false client ls` can confirm
+The saved overrides and other manually added hosts remain application-owned
+state. From Arch, `rex --autostart=false client ls` can confirm
 a newly connected client and its identity. If the Mac cannot connect, check
 online/account state, MagicDNS, HTTPS readiness, and ACLs before changing policy.
 
@@ -115,8 +122,9 @@ Zsh does not synthesize command-status reports for `dotfile`, `iib`, or
 
 ## Shared configuration
 
-`config/rex/init.lua` and `Catppuccin Macchiato.conf` deploy as the same two
-Home Manager links on macOS and every Linux profile. Theme selection is still a
+`config/rex/init.lua` supplies the shared keybindings on every Unix profile.
+Home Manager appends the Arch host declaration only on macOS; Linux links the
+shared Lua file unchanged. `Catppuccin Macchiato.conf` remains a shared link. Theme selection is still a
 macOS client action; sharing the theme file does not theme Ghostty or a headless
 Linux server. Linux package/service ownership remains in `config/rex-linux.nix`.
 
@@ -141,7 +149,7 @@ Git owns the keybindings and Catppuccin theme source (`config/rex/`), native pre
 
 The saved baseline includes FiraCode Nerd Font at 14 pt and its fallbacks, Merino Light for light mode, focus-follows-mouse, compact panes, active-pane borders, fading both inactive-pane aspects, standard inactive-window pane styling, a left sidebar with vertical tabs and no icon tint, and copy-on-select. Agent session naming and developer mode are enabled; the server uses bundled mode with automatic restart enabled and plugin reload unblocked. The dark Catppuccin theme remains a portable one-time import, not a machine-specific theme UUID.
 
-Remote-control permission, tailnet exposure, web-client origin permissions, sync hosts, cached server routes, onboarding/update history, window geometry, and session/activity state remain machine-local. These are not exported into Git. Sparkle automatic checks and installs remain disabled even if the live app changed them: Nix owns updates.
+Remote-control permission, tailnet exposure, web-client origin permissions, other saved hosts and host overrides, cached server routes, onboarding/update history, window geometry, and session/activity state remain machine-local. These are not exported into Git. Sparkle automatic checks and installs remain disabled even if the live app changed them: Nix owns updates.
 
 Run `dotfile packages`, then open `~/Applications/Home Manager Apps/Rex Beta.app`. Do not run it beside the older `/Applications` copy expecting a separate server: both use Rex's native account state. Save work and close the old sessions/app yourself before switching; provisioning does not terminate them.
 

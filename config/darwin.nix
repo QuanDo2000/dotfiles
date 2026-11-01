@@ -37,7 +37,7 @@ in
   # Let tailscaled own this file until the upstream module supports writable DNS.
   environment.etc."resolver/ts.net".enable = false;
 
-  # Rex's native macOS preferences; init.lua only defines bindings.
+  # Rex's native macOS preferences; init.lua defines bindings and hosts.
   # Keep permissions, network exposure, and session/runtime state machine-local.
   system.defaults.CustomUserPreferences."com.superlogical.rex" = {
     "Workspace.terminalFontName" = "FiraCode Nerd Font";
@@ -50,6 +50,7 @@ in
       "Noto Color Emoji"
     ];
     "Workspace.lightThemeID" = "merino-light";
+    "Workspace.interfaceStyle" = "useTheme";
     "Workspace.focusFollowsMouse" = true;
     "Workspace.inactivePaneFadeMode" = "both";
     "Workspace.paneDensity" = "compact";
