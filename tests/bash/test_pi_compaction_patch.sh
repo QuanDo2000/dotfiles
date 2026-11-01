@@ -73,7 +73,7 @@ test_pi_package_patches_after_npm_dependency_fetch() {
   assert_contains "$post_patch" '${lib.getExe nodejs} -e'
   assert_contains "$post_patch" 'delete packageJson.devDependencies'
   assert_not_contains "$post_patch" 'patch_pi_compaction.py'
-  assert_contains "$pre_install" "python3 \${../scripts/patch_pi_compaction.py} dist/core/agent-session.js"
+  assert_contains "$pre_install" "python3 \${../scripts/patch_pi_compaction.py} dist/core/agent-session.js dist/bundle"
 }
 
 test_pi_compaction_patch_delivers_late_steering_after_input_hook() {
@@ -318,4 +318,65 @@ PYTHON
   assert_equals 1 "$status"
   assert_contains "$(<"$TEST_TMPDIR/patch-error")" 'Pi compaction patch source drift'
   assert_equals "$before" "$(sha256sum "$target")"
+}
+
+# Exact minified 1.4.0 boundaries; chunk names deliberately differ from the pin.
+write_bundle_fixture() {
+  mkdir -p "$1/chunks"
+  printf '%s\n' 'createRequire(import.meta.url)("./cli-runtime.js");' > "$1/cli.js"
+  printf '%s\n' 'import{main}from"./chunks/chunk-test.js";main();' > "$1/cli-runtime.js"
+  cat > "$1/chunks/chunk-test.js" <<'EOF'
+async _runAutoCompaction(reason,willRetry){
+return this._emit({type:"compaction_end",reason,result,aborted:!1,willRetry}),willRetry?!0:this.agent.hasQueuedMessages()
+this._emit({type:"compaction_end",reason,result:void 0,aborted,willRetry:!1,errorMessage:errorMessage5}),await this._emitSessionCompactFailed
+}
+let{text:currentText,images:currentImages}=processedInput,expandedText=currentText;
+EOF
+}
+
+test_pi_compaction_patch_includes_shipped_bundle_and_is_idempotent() {
+  local sdk="$TEST_TMPDIR/sdk.js" bundle="$TEST_TMPDIR/bundle" before
+  write_099_fixture "$sdk"
+  write_bundle_fixture "$bundle"
+  python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$sdk" "$bundle" 2>>"$ERROR_FILE"
+  assert_contains "$(<"$bundle/chunks/chunk-test.js")" 'this._autoCompactionAbortController=void 0,this._emit'
+  assert_contains "$(<"$bundle/chunks/chunk-test.js")" 'await this.waitForIdle();let{text:'
+  before="$(sha256sum "$sdk" "$bundle/chunks/chunk-test.js")"
+  python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$sdk" "$bundle" 2>>"$ERROR_FILE"
+  assert_equals "$before" "$(sha256sum "$sdk" "$bundle/chunks/chunk-test.js")"
+}
+
+test_pi_compaction_patch_bundle_drift_fails_before_sdk_write() {
+  local sdk="$TEST_TMPDIR/sdk.js" bundle="$TEST_TMPDIR/bundle" before status variant
+  for variant in missing duplicate partial extra_original patched_extra_original unlinked; do
+    rm -rf "$bundle"
+    write_099_fixture "$sdk"
+    write_bundle_fixture "$bundle"
+    python3 - "$bundle" "$variant" <<'PYTHON'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1]); variant = sys.argv[2]
+f = p / "chunks/chunk-test.js"; s = f.read_text()
+if variant == "missing": s = s.replace('aborted:!1,willRetry}', 'aborted:!0,willRetry}')
+if variant == "duplicate": (p / "chunks/duplicate.js").write_text(s)
+if variant == "partial": s = s.replace('return this._emit', 'return this._autoCompactionAbortController=void 0,this._emit')
+if variant == "extra_original": s += s
+if variant == "patched_extra_original":
+    success = 'this._emit({type:"compaction_end",reason,result,aborted:!1,willRetry})'
+    error = 'this._emit({type:"compaction_end",reason,result:void 0,aborted,willRetry:!1,errorMessage:errorMessage5})'
+    boundary = 'let{text:currentText,images:currentImages}=processedInput,expandedText=currentText;'
+    for emit in (success, error):
+        s = s.replace(emit, 'this._autoCompactionAbortController=void 0,' + emit)
+    s = s.replace(boundary, 'if(this.isStreaming&&!this.agent.state.isStreaming)await this.waitForIdle();' + boundary)
+    s += success
+if variant == "unlinked": (p / "cli-runtime.js").write_text('import "./chunks/other.js";')
+f.write_text(s)
+PYTHON
+    before="$(sha256sum "$sdk" "$bundle/chunks/chunk-test.js")"
+    status=0
+    python3 "$REPO_DIR/scripts/patch_pi_compaction.py" "$sdk" "$bundle" 2>"$TEST_TMPDIR/patch-error" || status=$?
+    assert_equals 1 "$status"
+    assert_contains "$(<"$TEST_TMPDIR/patch-error")" 'Pi compaction patch source drift'
+    assert_equals "$before" "$(sha256sum "$sdk" "$bundle/chunks/chunk-test.js")"
+  done
 }

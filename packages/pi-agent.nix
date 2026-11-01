@@ -20,7 +20,7 @@ buildNpmPackage rec {
   '';
 
   preInstall = ''
-    python3 ${../scripts/patch_pi_compaction.py} dist/core/agent-session.js
+    python3 ${../scripts/patch_pi_compaction.py} dist/core/agent-session.js dist/bundle
   '';
 
   postFixup = ''
