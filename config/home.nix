@@ -146,7 +146,6 @@ let
   '';
   devTerminalPackages = with pkgs; [
     bash-language-server
-    bun
     forgejo-cli
     nil
     nixfmt
