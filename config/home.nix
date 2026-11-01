@@ -503,17 +503,7 @@ in
         fi
       '');
     completionInit = ''
-      () {
-        setopt local_options extended_glob
-        autoload -Uz compinit
-        _zcompdump="''${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
-        mkdir -p "''${_zcompdump:h}"
-        if [[ ! -f "$_zcompdump" || -n "$_zcompdump"(#qN.mh+24) ]]; then
-          compinit -d "$_zcompdump"
-        else
-          compinit -C -d "$_zcompdump"
-        fi
-      }
+      autoload -U compinit && compinit
 
       zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'l:|=* r:|=*'
     '';
