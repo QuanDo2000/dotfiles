@@ -493,7 +493,7 @@ in
       ignoreSpace = true;
       share = true;
     };
-    setOptions = [ "INC_APPEND_HISTORY" "HIST_VERIFY" ];
+    setOptions = [ "HIST_VERIFY" ];
     initContent = lib.mkOrder 550 ((builtins.readFile ./unix/.zshrc.base)
       + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
         # If activation found no GUI, seed the theme in the first Rex shell.
