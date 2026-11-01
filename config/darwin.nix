@@ -30,6 +30,10 @@ in
   };
   programs.zsh.enable = true;
 
+  # Nix owns the CLI-only client, launchd daemon, and split-DNS resolver.
+  # Enrollment/state stay outside the store; do not also connect the GUI app.
+  services.tailscale.enable = true;
+
   # Rex's native macOS preferences; init.lua only defines bindings.
   # Keep permissions, network exposure, and session/runtime state machine-local.
   system.defaults.CustomUserPreferences."com.superlogical.rex" = {

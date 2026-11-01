@@ -15,50 +15,82 @@ client; do not invent a capture/send terminal emulator or enable anonymous HTTP.
 
 ## Mac → Arch remote access
 
-The Arch-server Home Manager profile in `flake.nix` adds
-`services.rex.extraListen = [ "tailnet://:7297" ];`. Other Linux profiles remain
-Unix-socket-only. The native listener binds only the host's Tailscale addresses
-and asks the existing host tailscaled to identify callers. Rex's default
-node-owner check remains in force: neither `--allow-anonymous` nor
-`--tailnet-allow-identified` is enabled. No embedded Rex Tailscale device, Serve
-proxy, Funnel, firewall opening, login server or SSH configuration change is used.
+The Arch-server Home Manager profile in `flake.nix` enables
+`services.rex.tailscale` with hostname `rex-quanarch`. Rex joins the tailnet as
+its own device; it does not need the host's Tailscale daemon. Other Linux profiles
+remain Unix-socket-only. Access is restricted to the enrolling Tailscale account:
+neither anonymous access nor `allowTailnetMembers` is enabled. No Serve proxy,
+Funnel, public firewall opening, or login server is used. MagicDNS and HTTPS
+certificates must be enabled for the tailnet.
 
-On the Mac, connect Tailscale using the same account that owns QuanArch, then
-open the managed Rex app and choose **Add Remote Host…**:
+On the Mac, `config/darwin.nix` enables `services.tailscale.enable`. The pinned
+nix-darwin module owns the CLI-only package, the boot-started launchd service
+`com.tailscale.tailscaled`, and `/etc/resolver/ts.net`. It does not force all DNS
+through Tailscale (`overrideLocalDns` stays false), configure an exit node, or
+advertise routes. Login credentials, device identity, and runtime preferences
+remain in the daemon's native state outside Git and the Nix store.
+
+Rex's embedded Tailscale exposes its server; it is not a documented outgoing
+transport for the Mac client. The Mac's system Tailscale connection is still
+needed to reach Arch, even if the Mac Rex server itself is enrolled.
+
+### First Mac activation / migration from the GUI app
+
+1. Disconnect the existing Tailscale GUI app, quit it, and disable its launch at
+   login. Leave its app and identity intact for rollback. Do not run both clients
+   connected at once; their identities are separate and are not migrated here.
+2. Run `dotfile packages` from the updated checkout (set `DOTFILES_DIR` explicitly
+   if using a task checkout). This uses the normal nix-darwin activation route
+   and requires local sudo authentication. It starts the new daemon and installs
+   the managed resolver; it does not restart Rex.
+3. Enroll the Nix-managed client using the same Tailscale account that enrolled
+   `rex-quanarch`:
+
+   ```sh
+   sudo /run/current-system/sw/bin/tailscale up --accept-dns=true --accept-routes=false
+   ```
+
+   Follow the login URL yourself. Never put an auth key or copied daemon state
+   in the Nix source/store. The old `/usr/local/bin/tailscale` wrapper may still
+   address the GUI app, so use the explicit managed path during migration.
+4. Verify the real client and DNS/connection boundaries:
+
+   ```sh
+   command -v tailscale
+   sudo launchctl print system/com.tailscale.tailscaled
+   /run/current-system/sw/bin/tailscale status
+   /run/current-system/sw/bin/tailscale ping --timeout=5s rex-quanarch.tail28b036.ts.net
+   dscacheutil -q host -a name rex-quanarch.tail28b036.ts.net
+   rex --server https://rex-quanarch.tail28b036.ts.net --autostart=false --timeout 5s whoami --json
+   ```
+
+Then open the managed Rex app and choose **Add Remote Host…**:
 
 ```text
-http://quanarch.tail28b036.ts.net:7297
+https://rex-quanarch.tail28b036.ts.net
 ```
 
-If MagicDNS is unavailable, use `http://100.98.211.17:7297`. HTTP is carried
-inside the encrypted Tailscale connection; it is not an anonymous LAN listener.
 A successful connection permits programs to run as the Arch account, so never
-replace this with anonymous HTTP or grant all identified users for convenience.
+replace this with anonymous HTTP or grant all tailnet users for convenience.
+The saved host is application-owned state; adding a CLI host does not establish
+that the GUI has added it. From Arch, `rex --autostart=false client ls` can confirm
+a newly connected client and its identity. If the Mac cannot connect, check
+online/account state, MagicDNS, HTTPS readiness, and ACLs before changing policy.
 
-A Mac CLI probe, when its Rex CLI is installed, is:
+Before an Arch listener change, inspect sessions and coordinate the required Rex
+restart; it ends sessions. Existing linger must be enabled for login-independent
+use (`loginctl show-user "$(id -u)" -p Linger`). This setup does not silently enable
+lingering or alter tailnet ACLs.
 
-```sh
-rex --server http://quanarch.tail28b036.ts.net:7297 --autostart=false --timeout 5s whoami --json
-```
+Mac rollback: run `sudo /run/current-system/sw/bin/tailscale down`, revert the
+Mac `services.tailscale.enable` setting, and reactivate through `dotfile packages`
+before reconnecting the preserved GUI app. Confirm the Nix daemon is stopped;
+do not run both clients connected. Preserve both clients' identities.
 
-`rex hosts add` configures CLI host selection only; it does **not** add the GUI
-remote host. An offline Mac cannot complete acceptance testing. From Arch,
-`rex --server unix:///run/user/$(id -u)/rex/server.sock --autostart=false client ls`
-can confirm a newly connected client and its identity. A same-host TCP probe may
-be refused because local loopback traffic is not classified as a tailnet caller;
-that is not a reason to disable authentication.
-
-Before first activation or any listener change, inspect sessions and coordinate
-the required Rex restart; a restart ends its sessions. Existing linger must be
-enabled for login-independent use (`loginctl show-user "$(id -u)" -p Linger`).
-This setup does not silently enable lingering or alter tailnet ACLs. If the Mac
-cannot connect, check online/account state and applicable ACLs before changing
-policy.
-
-Rollback: remove only the Arch `extraListen` stanza, build and reactivate through
-the normal Arch `dotfile symlinks` route after preserving/closing Rex sessions.
-Verify port 7297 is no longer listening and the local Unix socket still works.
-Do not reset Tailscale Serve, change SSH, or remove the host's Tailscale identity.
+Arch rollback: revert only its `services.rex.tailscale` stanza, build and activate
+through `dotfile symlinks` after preserving/closing Rex sessions. Verify the Unix
+socket still works. Do not reset Tailscale Serve, change SSH, or remove either
+the host's or Rex's saved Tailscale identity.
 
 ## Command status in Rex shells
 
