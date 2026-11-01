@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Tests start independent update processes, not continuations of the caller.
+unset DOTFILE_UPDATE_LOG DOTFILE_UPDATE_ENV DOTFILE_REEXEC
+
 # On Git Bash for Windows, enable native symlinks so `ln -s` produces real
 # symlinks instead of file copies. No-op on Linux/macOS where MSYS is unused.
 export MSYS=winsymlinks:nativestrict
