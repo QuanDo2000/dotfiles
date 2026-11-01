@@ -111,9 +111,6 @@ assert workflow["permissions"] == {"contents": "read"}
 assert workflow["concurrency"]["cancel-in-progress"] is True
 jobs = workflow["jobs"]
 assert jobs["changes"]["if"] == "${{ github.event_name == 'pull_request' }}"
-windows_steps = jobs["powershell"]["steps"]
-windows_checks = next(step for step in windows_steps if step.get("name") == "Run Windows checks in parallel")
-assert windows_checks["env"]["NPM_CONFIG_TIMING"] == "true"
 for name, output in (("bash-linux", "linux"), ("bash-macos", "macos"),
                      ("powershell", "windows"), ("nix", "nix")):
     job = jobs[name]

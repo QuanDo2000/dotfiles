@@ -102,8 +102,6 @@ jobs:
 
       - name: Run Windows checks in parallel
         shell: pwsh
-        env:
-          NPM_CONFIG_TIMING: 'true'
         run: |
           $checks = @(
             [pscustomobject]@{ Name = 'PowerShell tests'; Path = './tests/powershell/runner.ps1' }
