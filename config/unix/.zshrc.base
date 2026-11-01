@@ -21,7 +21,6 @@ fi
 alias l='ls -lah'
 alias la='ls -lAh'
 alias ll='ls -lh'
-alias lsa='ls -lah'
 
 # git aliases — common subset of the omz git plugin (it shipped ~197; these are
 # the ones in daily use). helper-dependent omz aliases rewritten HEAD-based.
@@ -51,8 +50,6 @@ alias grh='git reset'
 alias glo='git log --oneline --decorate'
 alias glog='git log --oneline --decorate --graph'
 alias gloga='git log --oneline --decorate --graph --all'
-alias glol='git log --graph --pretty="%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ar) %C(bold blue)<%an>%Creset"'
-alias glola='git log --graph --pretty="%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ar) %C(bold blue)<%an>%Creset" --all'
 alias gcl='git clone --recurse-submodules'
 alias gsta='git stash'
 alias gstp='git stash pop'
