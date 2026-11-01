@@ -110,8 +110,9 @@ fallback when the Linux client is released; it does not change network access.
 macOS continues to use the Rex app. nix-darwin manages the Mac's CLI-only Tailscale
 client and launchd daemon; Tailscale owns its writable MagicDNS resolver files.
 Enroll that client using the same
-Tailscale account, then choose **Add Remote Host…** and enter
-`https://rex-quanarch.tail28b036.ts.net`. Do not also connect the older Tailscale
+Tailscale account, then select the Nix-declared `rex-quanarch` host in Rex
+(`https://rex-quanarch.tail28b036.ts.net`). Reload Rex config after activation
+if the app is already running. Do not also connect the older Tailscale
 GUI app. See the [remote-access and migration notes](config/rex/README.md) for
 activation, enrollment, verification, and rollback.
 
