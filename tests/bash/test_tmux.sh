@@ -60,5 +60,15 @@ test_tmux_config_parses_and_applies_theme() {
     assert_equals "fg=#cad3f5,bold,bg=#6e738d" "$(env HOME="$HOME" TMUX= tmux -S "$socket" show-options -gv menu-selected-style)"
     assert_equals "bg=#24273a,fg=#cad3f5" "$(env HOME="$HOME" TMUX= tmux -S "$socket" show-options -gv popup-style)"
     assert_equals "fg=#494d64" "$(env HOME="$HOME" TMUX= tmux -S "$socket" show-options -gv popup-border-style)"
+    assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix h)" 'select-pane -L'
+    assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix j)" 'select-pane -D'
+    assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix k)" 'select-pane -U'
+    assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix l)" 'select-pane -R'
+    local key
+    for key in C-h C-j C-k C-l; do
+      if env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix "$key" >/dev/null 2>&1; then
+        echo "Unexpected prefix binding: $key" >> "$ERROR_FILE"
+      fi
+    done
   fi
 }
