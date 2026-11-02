@@ -38,6 +38,11 @@ SH
   cat > "$CHECK_ROOT/bin/nix" <<'SH'
 #!/usr/bin/env bash
 printf 'nix %s\n' "$*" >> "$CHECK_CALLS"
+if [[ "$1" == shell ]]; then
+  [[ "${CHECK_FAIL:-}" != shell ]] || exit 42
+  shift 3
+  exec "$@"
+fi
 if [[ "$1" == develop ]]; then
   shift 3
   exec "$@"
@@ -59,6 +64,7 @@ test_check_script_runs_repo_verification() {
   assert_exit_code 0 env -u DOTFILE_CHECK_IN_DEV_SHELL PATH="$CHECK_ROOT/bin:$PATH" bash "$CHECK_ROOT/scripts/check.sh"
   local calls
   calls="$(<"$CHECK_CALLS")"
+  assert_contains "$calls" "nix shell path:$CHECK_ROOT#check-nix -c nix develop path:$CHECK_ROOT -c"
   assert_contains "$calls" "nix develop path:$CHECK_ROOT -c"
   assert_contains "$calls" 'bash-tests'
   assert_contains "$calls" 'pwsh '
@@ -85,6 +91,13 @@ test_check_script_runs_repo_verification() {
   # finishes. The old Bash-before-post barrier times out with 91 here.
   assert_exit_code 0 env -u DOTFILE_CHECK_IN_DEV_SHELL CHECK_SYNC=1 PATH="$CHECK_ROOT/bin:$PATH" bash "$CHECK_ROOT/scripts/check.sh"
   assert_file_exists "$CHECK_ROOT/nix-started"
+}
+
+test_check_script_fails_closed_when_check_runtime_is_unavailable() {
+  _check_fixture
+  assert_exit_code 42 env -u DOTFILE_CHECK_IN_DEV_SHELL CHECK_FAIL=shell PATH="$CHECK_ROOT/bin:$PATH" bash "$CHECK_ROOT/scripts/check.sh"
+  assert_equals 0 "$(grep -c '^nix develop ' "$CHECK_CALLS" || true)"
+  assert_not_contains "$(<"$CHECK_CALLS")" 'bash-tests'
 }
 
 test_check_script_preserves_failed_tests_and_build() {

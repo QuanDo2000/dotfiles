@@ -81,6 +81,10 @@
       };
     in
     {
+      # Checks select this client process-locally; provisioning keeps Lix.
+      packages.x86_64-linux.check-nix = linuxPkgs.nixVersions.latest;
+      packages.aarch64-darwin.check-nix = darwinPkgs.nixVersions.latest;
+
       packages.x86_64-linux.obsidian-headless = linuxPkgs.obsidian-headless;
       packages.x86_64-linux.rex = rex-linux.packages.x86_64-linux.rex;
       packages.x86_64-linux.rex-auth-python = linuxPkgs.python3;
