@@ -81,7 +81,7 @@
       };
     in
     {
-      # Checks select this client process-locally; provisioning keeps Lix.
+      # Checks select this lock-pinned client without replacing a host runtime.
       packages.x86_64-linux.check-nix = linuxPkgs.nixVersions.latest;
       packages.aarch64-darwin.check-nix = darwinPkgs.nixVersions.latest;
 

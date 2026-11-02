@@ -162,11 +162,22 @@ git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
 
 Generic Linux and Debian use `${username}@linux`; Arch uses
 `${username}@arch-server`. `username` comes from `config/host.nix`.
-`dotfile packages` installs Lix/Nix if missing, uses
-an existing `home-manager` when available, and falls back to the pinned
-`~/dotfiles#home-manager` app for bootstrap. Lix installer and package artifacts
-are used only after their tracked SHA-256 matches; review changes from
-`dotfile lix-installer` before committing updated installer pins.
+`dotfile packages` installs upstream Nix only if no Nix client is found after
+loading existing profiles. It uses an existing `home-manager` when available,
+and falls back to the pinned `~/dotfiles#home-manager` app for bootstrap.
+On x86_64 Linux and Apple Silicon macOS, bootstrap downloads the official Nix
+2.35.3 release archive over HTTPS, checks its tracked SHA-256 before extraction
+or execution, and runs its installer explicitly in multi-user mode (`--daemon`),
+accepting the installation prompts as the previous bootstrap did. It enables
+`nix-command flakes` for the following flake bootstrap and adds no floating channel.
+macOS must be version 14 or newer. Bootstrap requires `tar` with xz support and
+`sha256sum` or `shasum`; it does not migrate
+or replace an existing Lix/Nix installation. Other bootstrap platforms fail closed.
+`dotfile nix-installer` refreshes both platform archive hashes for the fixed
+`NIX_BOOTSTRAP_VERSION` in `scripts/packages.sh`, without selecting a newer release
+or installing anything. Full dependency updates use the same pin maintenance.
+Review hash changes before committing; change the version only as a deliberate,
+reviewed release update.
 
 #### Activate an existing Arch server setup from Bash
 
@@ -228,8 +239,8 @@ Commands:
   symlinks    Activate Home Manager config on Debian/Arch (also applies other user settings)
   upgrade     Upgrade native system packages
   obsidian    Bootstrap Obsidian Sync login and vault setup
-  lix-installer
-              Update pinned Lix installer checksums
+  nix-installer
+              Update pinned Nix installer checksums
   obsidian-headless
               Update pinned Obsidian Headless package
   doctor [--fast]

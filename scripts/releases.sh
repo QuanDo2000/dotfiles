@@ -27,66 +27,66 @@ if fallback:
 PY
 }
 
-function _write_lix_installer_pins {
+function _write_nix_installer_pins {
   local linux_hash="$1" darwin_hash="$2"
   local packages_file="${3:-$DOTFILES_DIR/scripts/packages.sh}" tmp
   [[ -f "$packages_file" ]] || return 1
   tmp="$(mktemp "${packages_file}.tmp.XXXXXX")" || return 1
   cp -p "$packages_file" "$tmp" || { rm -f "$tmp"; return 1; }
   if ! sed -E \
-    -e 's#^LIX_INSTALLER_X86_64_LINUX_SHA256="[0-9a-f]+"#LIX_INSTALLER_X86_64_LINUX_SHA256="'"$linux_hash"'"#' \
-    -e 's#^LIX_INSTALLER_AARCH64_DARWIN_SHA256="[0-9a-f]+"#LIX_INSTALLER_AARCH64_DARWIN_SHA256="'"$darwin_hash"'"#' \
+    -e 's#^NIX_INSTALLER_X86_64_LINUX_SHA256="[0-9a-f]+"#NIX_INSTALLER_X86_64_LINUX_SHA256="'"$linux_hash"'"#' \
+    -e 's#^NIX_INSTALLER_AARCH64_DARWIN_SHA256="[0-9a-f]+"#NIX_INSTALLER_AARCH64_DARWIN_SHA256="'"$darwin_hash"'"#' \
     "$packages_file" > "$tmp"; then
     rm -f "$tmp"
     return 1
   fi
-  if ! grep -qxF "LIX_INSTALLER_X86_64_LINUX_SHA256=\"$linux_hash\"" "$tmp" \
-    || ! grep -qxF "LIX_INSTALLER_AARCH64_DARWIN_SHA256=\"$darwin_hash\"" "$tmp"; then
+  if ! grep -qxF "NIX_INSTALLER_X86_64_LINUX_SHA256=\"$linux_hash\"" "$tmp" \
+    || ! grep -qxF "NIX_INSTALLER_AARCH64_DARWIN_SHA256=\"$darwin_hash\"" "$tmp"; then
     rm -f "$tmp"
     return 1
   fi
   mv "$tmp" "$packages_file" || { rm -f "$tmp"; return 1; }
 }
 
-function _update_lix_installer_pins {
+function _update_nix_installer_pins {
   if [[ "$DRY" == "true" ]]; then
-    info "Would update Lix installer checksums from official binaries"
+    info "Would update Nix installer checksums from fixed-version official archives"
     return
   fi
 
   local tmp_dir linux_file darwin_file linux_hash darwin_hash
-  tmp_dir="$(mktemp -d)" || fail "Failed to create Lix installer temp directory"
-  linux_file="$tmp_dir/lix-installer-x86_64-linux"
-  darwin_file="$tmp_dir/lix-installer-aarch64-darwin"
-  _download_lix_installer x86_64-linux "$linux_file" &
+  tmp_dir="$(mktemp -d)" || fail "Failed to create Nix installer temp directory"
+  linux_file="$tmp_dir/nix-installer-x86_64-linux"
+  darwin_file="$tmp_dir/nix-installer-aarch64-darwin"
+  _download_nix_installer x86_64-linux "$linux_file" &
   local linux_pid=$!
-  _download_lix_installer aarch64-darwin "$darwin_file" &
+  _download_nix_installer aarch64-darwin "$darwin_file" &
   local darwin_pid=$!
   local download_failed=false
   wait "$linux_pid" || download_failed=true
   wait "$darwin_pid" || download_failed=true
   if [[ "$download_failed" == true ]]; then
     rm -rf "$tmp_dir"
-    fail "Failed to download Lix installers"
+    fail "Failed to download Nix installer archives"
   fi
   if ! linux_hash="$(_file_sha256 "$linux_file")" \
     || ! darwin_hash="$(_file_sha256 "$darwin_file")"; then
     rm -rf "$tmp_dir"
-    fail "Failed to hash Lix installers"
+    fail "Failed to hash Nix installer archives"
   fi
   if [[ ! "$linux_hash" =~ ^[0-9a-f]{64}$ || ! "$darwin_hash" =~ ^[0-9a-f]{64}$ ]]; then
     rm -rf "$tmp_dir"
-    fail "Invalid Lix installer checksum"
+    fail "Invalid Nix installer checksum"
   fi
-  if [[ "$linux_hash" == "$(_lix_installer_sha256 x86_64-linux)" \
-    && "$darwin_hash" == "$(_lix_installer_sha256 aarch64-darwin)" ]]; then
+  if [[ "$linux_hash" == "$(_nix_installer_sha256 x86_64-linux)" \
+    && "$darwin_hash" == "$(_nix_installer_sha256 aarch64-darwin)" ]]; then
     rm -rf "$tmp_dir"
-    info "Lix installer checksums already current"
+    info "Nix installer checksums already current"
     return
   fi
-  if ! _write_lix_installer_pins "$linux_hash" "$darwin_hash"; then
+  if ! _write_nix_installer_pins "$linux_hash" "$darwin_hash"; then
     rm -rf "$tmp_dir"
-    fail "Failed to update Lix installer checksums"
+    fail "Failed to update Nix installer checksums"
   fi
   rm -rf "$tmp_dir"
 }
@@ -514,7 +514,7 @@ function _update_npm_release_package {
 }
 
 function _update_all_dependency_pins {
-  _update_lix_installer_pins || return $?
+  _update_nix_installer_pins || return $?
   _update_pi_release_package || return $?
   _update_obsidian_headless_package || return $?
   _run_python_pin_batch \
@@ -840,10 +840,10 @@ function _approve_dependency_update {
   info "Automatically approving validated dependency changes"
 }
 
-function update_lix_installer_pins {
-  info "Updating pinned Lix installer checksums..."
-  _update_lix_installer_pins
-  success "Finished updating pinned Lix installer checksums"
+function update_nix_installer_pins {
+  info "Updating pinned Nix installer checksums..."
+  _update_nix_installer_pins
+  success "Finished updating pinned Nix installer checksums"
 }
 
 function update_obsidian_headless_release {

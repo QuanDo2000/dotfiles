@@ -183,8 +183,8 @@ Commands:
   obsidian    Bootstrap Obsidian Sync login and vault setup
   rex-auth    Securely prompt for and validate the Rex package token (Linux)
   pi-auth     Set up missing Pi Codex subscription and OpenRouter logins
-  lix-installer
-              Update pinned Lix installer checksums
+  nix-installer
+              Update pinned Nix installer checksums
   obsidian-headless
               Update pinned Obsidian Headless package
   doctor [--fast]
@@ -293,10 +293,10 @@ pi-auth)
   [[ $# -eq 1 ]] || fail "Unexpected pi-auth argument: ${2:-}"
   setup_pi_auth
   ;;
-lix-installer)
-  [[ $# -eq 1 ]] || fail "Unexpected lix-installer argument: ${2:-}"
+nix-installer)
+  [[ $# -eq 1 ]] || fail "Unexpected nix-installer argument: ${2:-}"
   _ensure_update_environment
-  update_lix_installer_pins
+  update_nix_installer_pins
   ;;
 obsidian-headless)
   [[ $# -eq 1 ]] || fail "Unexpected obsidian-headless argument: ${2:-}"
