@@ -236,7 +236,9 @@ def main():
         pending.replace(path)
 
     try:
-        with tempfile.TemporaryDirectory(prefix='dotfiles-test-jobs-') as directory:
+        # Nested coordinators inherit TMPDIR. Keep each private prefix short:
+        # Neovim percent-encodes complete source paths into cache filenames.
+        with tempfile.TemporaryDirectory(prefix='tj-') as directory:
             shared = Path(directory) / 'shared' if args.shared_run else None
             run_id = Path(directory).name
             if shared is not None:
