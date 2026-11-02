@@ -351,7 +351,11 @@ theme there before using their settings. `update ai` does not touch either app.
 
 Note: Unix dotfiles are managed by Home Manager. `~/.zshrc` is generated from `config/unix/.zshrc.base`.
 
-Run `./scripts/check.sh` from the repo root before pushing changes.
+Run `./scripts/check.sh` from the repo root before pushing changes. The gate
+uses `nix shell .#check-nix` to select upstream Nix from the committed flake lock
+for its dev-shell entry and child checks. It does not replace the host's Lix/Nix
+profile or daemon. A missing client is realized through the normal Nix store;
+selection failure aborts the gate rather than silently changing backends.
 
 Home Manager owns shared global skills under `~/.agents/skills/`.
 Pi discovers that standard location natively. Windows copies the same reviewed, vendored skill set through

@@ -6,7 +6,9 @@ flake="path:$repo_dir"
 cd "$repo_dir"
 
 if [[ "${DOTFILE_CHECK_IN_DEV_SHELL:-}" != "1" ]]; then
-  exec nix develop "$flake" -c env DOTFILE_CHECK_IN_DEV_SHELL=1 bash "$repo_dir/scripts/check.sh"
+  # Bootstrap only this command tree with the lock-pinned upstream client.
+  # Its PATH survives develop; the host profile and daemon stay unchanged.
+  exec nix shell "$flake#check-nix" -c nix develop "$flake" -c env DOTFILE_CHECK_IN_DEV_SHELL=1 bash "$repo_dir/scripts/check.sh"
 fi
 
 # All four stages read the same source and own their disposable mutable state.
