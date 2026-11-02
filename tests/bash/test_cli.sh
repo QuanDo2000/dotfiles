@@ -118,8 +118,8 @@ test_help_exits_zero() {
   assert_contains "$output" "Update only AI tools and configs"
   assert_contains "$output" "upgrade"
   assert_contains "$output" "Upgrade native system packages"
-  assert_contains "$output" "lix-installer"
-  assert_contains "$output" "Update pinned Lix installer checksums"
+  assert_contains "$output" "nix-installer"
+  assert_contains "$output" "Update pinned Nix installer checksums"
   assert_contains "$output" "obsidian-headless"
   assert_contains "$output" "Update pinned Obsidian Headless package"
   assert_contains "$output" "doctor"
@@ -285,8 +285,8 @@ test_readme_matches_key_help_text() {
   assert_contains "$readme_flat" 'On Unix this refreshes Pi release pins, managed AI packages, and Pi extensions with the same isolated validation, diff display, and automatic approval'
   assert_contains "$readme_flat" 'On Windows it activates their published validated pins'
   assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
-  assert_contains "$readme_text" "lix-installer"
-  assert_contains "$readme_text" "Update pinned Lix installer checksums"
+  assert_contains "$readme_text" "nix-installer"
+  assert_contains "$readme_text" "Update pinned Nix installer checksums"
   assert_contains "$readme_text" "obsidian-headless"
   assert_contains "$readme_text" "Update pinned Obsidian Headless package"
   assert_contains "$readme_text" "doctor [--fast]"
@@ -336,24 +336,24 @@ test_dry_run_update_ai_command_only_updates_ai() {
   assert_not_contains "$output" "Updating packages"
 }
 
-test_dry_run_lix_installer_command_updates_checksums_only() {
+test_dry_run_nix_installer_command_updates_checksums_only() {
   is_windows_bash && return 0
 
   local output
-  output=$(bash "$DOTFILE_CMD" --dry lix-installer 2>&1)
+  output=$(bash "$DOTFILE_CMD" --dry nix-installer 2>&1)
 
-  assert_contains "$output" "Updating pinned Lix installer checksums"
-  assert_contains "$output" "Would update Lix installer checksums"
+  assert_contains "$output" "Updating pinned Nix installer checksums"
+  assert_contains "$output" "Would update Nix installer checksums"
   assert_not_contains "$output" "Verifying symlinks"
   assert_not_contains "$output" "Updating packages"
 }
 
-test_lix_installer_rejects_extra_arguments() {
+test_nix_installer_rejects_extra_arguments() {
   local output status=0
-  output=$(bash "$DOTFILE_CMD" --dry lix-installer typo 2>&1) || status=$?
+  output=$(bash "$DOTFILE_CMD" --dry nix-installer typo 2>&1) || status=$?
 
   assert_equals "1" "$status"
-  assert_contains "$output" "Unexpected lix-installer argument: typo"
+  assert_contains "$output" "Unexpected nix-installer argument: typo"
 }
 
 test_dry_run_obsidian_headless_command_updates_release_pin_only() {
@@ -712,7 +712,7 @@ probe() {
 }
 update_packages() { probe; }
 update_ai() { probe; }
-update_lix_installer_pins() { probe; }
+update_nix_installer_pins() { probe; }
 update_obsidian_headless_release() { probe; }
 EOF
   cat > "$bin/nix" <<'EOF'
@@ -736,7 +736,7 @@ EOF
   chmod +x "$bin/nix" "$bin/python3"
   local real_python
   real_python="$(command -v python3)"
-  for command in update ai lix-installer obsidian-headless; do
+  for command in update ai nix-installer obsidian-headless; do
     local args=("$command")
     [[ "$command" != ai ]] || args=(update ai)
     status=0

@@ -186,14 +186,12 @@ function _load_nix_profile {
   done
 }
 
-# Rolling official binaries stay blocked unless their reviewed hashes match.
-LIX_INSTALLER_X86_64_LINUX_SHA256="57564e78a6d57126661fe5e793de70a72bacf9835ddb7c5c0cbfadf3db21545e"
-LIX_INSTALLER_AARCH64_DARWIN_SHA256="3c71fdcfeddac8fa075b626b6e0ddd9ba73af930e47b4fa027e22c7279f596ae"
-LIX_BOOTSTRAP_VERSION="2.95.3"
-LIX_PACKAGE_X86_64_LINUX_SHA256="84a25e2adef9540fa61f77f5ed998c36337751ca27cea6aa6438f83eb38bf0d3"
-LIX_PACKAGE_AARCH64_DARWIN_SHA256="dae1e4653b010549ce20b47ae883a9fd2f389e5652c679a145144f8459c25804"
+# Fixed official release archives; verify before extraction or execution.
+NIX_BOOTSTRAP_VERSION="2.35.3"
+NIX_INSTALLER_X86_64_LINUX_SHA256="6ce3ce3703fdc241b560cba401c5d338042122fe5b1a81e07bf1a623f259eba0"
+NIX_INSTALLER_AARCH64_DARWIN_SHA256="3aa2e1ae2293f0ca6dc2dde74e52809e6b4a186a74302c8b6392f5efd433901d"
 
-function _lix_installer_target {
+function _nix_installer_target {
   case "$(uname -s):$(uname -m)" in
     Linux:x86_64) printf 'x86_64-linux\n' ;;
     Darwin:arm64|Darwin:aarch64) printf 'aarch64-darwin\n' ;;
@@ -201,41 +199,24 @@ function _lix_installer_target {
   esac
 }
 
-function _lix_installer_sha256 {
+function _nix_installer_sha256 {
   case "$1" in
-    x86_64-linux) printf '%s\n' "$LIX_INSTALLER_X86_64_LINUX_SHA256" ;;
-    aarch64-darwin) printf '%s\n' "$LIX_INSTALLER_AARCH64_DARWIN_SHA256" ;;
+    x86_64-linux) printf '%s\n' "$NIX_INSTALLER_X86_64_LINUX_SHA256" ;;
+    aarch64-darwin) printf '%s\n' "$NIX_INSTALLER_AARCH64_DARWIN_SHA256" ;;
     *) return 1 ;;
   esac
 }
 
-function _lix_package_sha256 {
-  case "$1" in
-    x86_64-linux) printf '%s\n' "$LIX_PACKAGE_X86_64_LINUX_SHA256" ;;
-    aarch64-darwin) printf '%s\n' "$LIX_PACKAGE_AARCH64_DARWIN_SHA256" ;;
-    *) return 1 ;;
-  esac
+function _nix_installer_url {
+  printf 'https://releases.nixos.org/nix/nix-%s/nix-%s-%s.tar.xz\n' \
+    "$NIX_BOOTSTRAP_VERSION" "$NIX_BOOTSTRAP_VERSION" "$1"
 }
 
-function _lix_installer_url {
-  printf 'https://install.lix.systems/lix/lix-installer-%s\n' "$1"
-}
-
-function _lix_package_url {
-  printf 'https://releases.lix.systems/lix/lix-%s/lix-%s-%s.tar.xz\n' \
-    "$LIX_BOOTSTRAP_VERSION" "$LIX_BOOTSTRAP_VERSION" "$1"
-}
-
-function _download_lix_installer {
+function _download_nix_installer {
   local target="$1" output="$2"
   curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location --silent --show-error \
-    "$(_lix_installer_url "$target")" --output "$output"
-}
-
-function _download_lix_package {
-  local target="$1" output="$2"
-  curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location --silent --show-error \
-    "$(_lix_package_url "$target")" --output "$output"
+    --connect-timeout 15 --max-time 300 --max-filesize 268435456 \
+    "$(_nix_installer_url "$target")" --output "$output"
 }
 
 function _file_sha256 {
@@ -248,47 +229,45 @@ function _file_sha256 {
   fi
 }
 
-function _install_lix {
-  local target expected actual package_expected package_actual tmp_dir installer package
-  info "Installing Lix/Nix..."
-  target="$(_lix_installer_target)" \
-    || fail "Unsupported Lix installer platform: $(uname -s) $(uname -m)"
-  expected="$(_lix_installer_sha256 "$target")" \
-    || fail "Missing Lix installer checksum for $target"
-  package_expected="$(_lix_package_sha256 "$target")" \
-    || fail "Missing Lix package checksum for $target"
-  tmp_dir="$(mktemp -d)" || fail "Failed to create Lix installer temp directory"
-  installer="$tmp_dir/lix-installer"
-  package="$tmp_dir/lix-package.tar.xz"
-
-  if ! _download_lix_installer "$target" "$installer"; then
-    rm -rf "$tmp_dir"
-    fail "Failed to download Lix installer"
+function _install_nix {
+  if [[ "$DRY" == "true" ]]; then
+    info "Would install upstream Nix $NIX_BOOTSTRAP_VERSION (multi-user)"
+    return
   fi
-  if ! actual="$(_file_sha256 "$installer")"; then
+  local target expected actual tmp_dir archive
+  info "Installing upstream Nix $NIX_BOOTSTRAP_VERSION..."
+  target="$(_nix_installer_target)" \
+    || fail "Unsupported Nix installer platform: $(uname -s) $(uname -m)"
+  expected="$(_nix_installer_sha256 "$target")" \
+    || fail "Missing Nix installer checksum for $target"
+  [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || fail "Invalid Nix installer checksum for $target"
+  tmp_dir="$(mktemp -d)" || fail "Failed to create Nix installer temp directory"
+  archive="$tmp_dir/nix.tar.xz"
+  if ! _download_nix_installer "$target" "$archive"; then
     rm -rf "$tmp_dir"
-    fail "Failed to hash Lix installer"
+    fail "Failed to download Nix installer archive"
+  fi
+  if ! actual="$(_file_sha256 "$archive")"; then
+    rm -rf "$tmp_dir"
+    fail "Failed to hash Nix installer archive"
   fi
   if [[ "$actual" != "$expected" ]]; then
     rm -rf "$tmp_dir"
-    fail "Lix installer checksum mismatch for $target"
+    fail "Nix installer checksum mismatch for $target"
   fi
-  if ! _download_lix_package "$target" "$package"; then
+  if ! tar -xJf "$archive" -C "$tmp_dir"; then
     rm -rf "$tmp_dir"
-    fail "Failed to download Lix package"
+    fail "Failed to extract Nix installer archive"
   fi
-  if ! package_actual="$(_file_sha256 "$package")"; then
+  # The official installer does not enable the flake bootstrap's features.
+  if ! printf 'extra-experimental-features = nix-command flakes\n' > "$tmp_dir/nix.conf"; then
     rm -rf "$tmp_dir"
-    fail "Failed to hash Lix package"
+    fail "Failed to prepare Nix bootstrap configuration"
   fi
-  if [[ "$package_actual" != "$package_expected" ]]; then
+  if ! sh "$tmp_dir/nix-$NIX_BOOTSTRAP_VERSION-$target/install" \
+    --daemon --yes --no-channel-add --nix-extra-conf-file "$tmp_dir/nix.conf"; then
     rm -rf "$tmp_dir"
-    fail "Lix package checksum mismatch for $target"
-  fi
-  chmod 0700 "$installer" || { rm -rf "$tmp_dir"; fail "Failed to prepare Lix installer"; }
-  if ! "$installer" install --no-confirm --nix-package-url "$package"; then
-    rm -rf "$tmp_dir"
-    fail "Failed to install Lix/Nix"
+    fail "Failed to install upstream Nix"
   fi
   rm -rf "$tmp_dir"
 }
@@ -296,7 +275,7 @@ function _install_lix {
 function _ensure_nix {
   _load_nix_profile
   if ! command -v nix >/dev/null 2>&1; then
-    _install_lix
+    _install_nix
     _load_nix_profile
   fi
 }

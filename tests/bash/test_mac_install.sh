@@ -50,7 +50,7 @@ test_install_mac_bootstraps_nix_darwin_without_brew() {
     fi
     builtin command "$@"
   }
-  _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
+  _install_nix() { printf '%s\n' "install-nix" >> "$calls"; }
   _load_nix_profile() { :; }
   sudo() { printf '%s\n' "$*" >> "$calls"; }
 
@@ -58,11 +58,11 @@ test_install_mac_bootstraps_nix_darwin_without_brew() {
 
   local output
   output="$(<"$calls")"
-  assert_contains "$output" "install-lix"
+  assert_contains "$output" "install-nix"
   assert_contains "$output" "HOME=/var/root nix run $DOTFILES_DIR#darwin-rebuild -- switch --flake $DOTFILES_DIR#mac"
   assert_not_contains "$output" "brew"
 
-  unset -f command _install_lix _load_nix_profile sudo
+  unset -f command _install_nix _load_nix_profile sudo
 }
 
 
@@ -129,16 +129,16 @@ test_ensure_nix_loads_profile_before_installing() {
     printf '%s\n' "load-profile" >> "$calls"
     nix_available=true
   }
-  _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
+  _install_nix() { printf '%s\n' "install-nix" >> "$calls"; }
 
   _ensure_nix
 
   local output
   output="$(<"$calls")"
   assert_contains "$output" "load-profile"
-  assert_not_contains "$output" "install-lix"
+  assert_not_contains "$output" "install-nix"
 
-  unset -f command _load_nix_profile _install_lix
+  unset -f command _load_nix_profile _install_nix
 }
 
 test_load_nix_profile_tolerates_unset_zsh_version() {

@@ -250,7 +250,7 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   }
   pacman() { return 1; }
   sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
-  _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
+  _install_nix() { printf '%s\n' "install-nix" >> "$calls"; }
   _load_nix_profile() { :; }
 
   install_arch >/dev/null 2>&1
@@ -258,11 +258,11 @@ test_install_arch_bootstraps_nix_and_switches_home_manager() {
   local output
   output="$(<"$calls")"
   assert_contains "$output" "sudo pacman -S --needed --noconfirm"
-  assert_contains "$output" "install-lix"
+  assert_contains "$output" "install-nix"
   assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@arch-server"
   assert_not_contains "$output" "@linux@linux"
 
-  unset -f command pacman sudo _install_lix _load_nix_profile
+  unset -f command pacman sudo _install_nix _load_nix_profile
 }
 
 
@@ -331,7 +331,7 @@ test_install_debian_bootstraps_nix_and_switches_home_manager() {
   }
   dpkg-query() { return 1; }
   sudo() { printf 'sudo %s\n' "$*" >> "$calls"; }
-  _install_lix() { printf '%s\n' "install-lix" >> "$calls"; }
+  _install_nix() { printf '%s\n' "install-nix" >> "$calls"; }
   _load_nix_profile() { :; }
 
   install_debian >/dev/null 2>&1
@@ -339,12 +339,12 @@ test_install_debian_bootstraps_nix_and_switches_home_manager() {
   local output
   output="$(<"$calls")"
   assert_contains "$output" "sudo apt install -y"
-  assert_contains "$output" "install-lix"
+  assert_contains "$output" "install-nix"
   assert_contains "$output" "nix run $DOTFILES_DIR#home-manager -- switch --flake $DOTFILES_DIR#testuser@linux"
   assert_not_contains "$output" "@linux@linux"
   assert_not_contains "$output" "neovim"
 
-  unset -f command dpkg-query sudo _install_lix _load_nix_profile
+  unset -f command dpkg-query sudo _install_nix _load_nix_profile
 }
 
 

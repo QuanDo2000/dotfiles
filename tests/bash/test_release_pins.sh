@@ -46,7 +46,7 @@ test_release_writer_requires_separate_staging_output() {
 test_update_all_dependency_pins_runs_every_managed_updater() {
   local calls="$TEST_TMPDIR/calls.log" name
   for name in \
-    _update_lix_installer_pins \
+    _update_nix_installer_pins \
     _update_pi_release_package \
     _update_obsidian_headless_package; do
     eval "$name() { printf '%s\\n' '$name' >> '$calls'; }"
@@ -55,10 +55,10 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
   _run_python_pin_batch() { printf '%s\n' _run_python_pin_batch >> "$calls"; }
   _update_all_dependency_pins
 
-  assert_equals $'_update_lix_installer_pins\n_update_pi_release_package\n_update_obsidian_headless_package\n_run_python_pin_batch' "$(<"$calls")"
+  assert_equals $'_update_nix_installer_pins\n_update_pi_release_package\n_update_obsidian_headless_package\n_run_python_pin_batch' "$(<"$calls")"
 
   for name in \
-    _update_lix_installer_pins _update_pi_release_package \
+    _update_nix_installer_pins _update_pi_release_package \
     _update_obsidian_headless_package; do
     unset -f "$name"
   done
@@ -67,7 +67,7 @@ test_update_all_dependency_pins_runs_every_managed_updater() {
 
 test_dependency_refresh_stops_after_failed_release() {
   local calls="$TEST_TMPDIR/calls" status=0
-  _update_lix_installer_pins() { :; }
+  _update_nix_installer_pins() { :; }
   _update_pi_release_package() { return 42; }
   _update_obsidian_headless_package() { echo obsidian >> "$calls"; }
   _run_python_pin_batch() { echo batch >> "$calls"; }
@@ -179,7 +179,7 @@ test_all_dependency_pin_updaters_dry_run_without_network() {
 
   assert_equals "0" "$status"
   for label in \
-    "Lix installer" "Pi package" "Obsidian Headless" \
+    "Nix installer" "Pi package" "Obsidian Headless" \
     "Pi extension closure" "WebCord" "Anki Zoom" "Windows Anki add-ons" \
     "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
     assert_contains "$output" "$label"
