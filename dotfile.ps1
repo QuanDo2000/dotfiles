@@ -253,7 +253,10 @@ function Expand-WindowsTarArchive($Archive, $Destination) {
 }
 
 function InstallPackages {
-    param([switch]$Update)
+    param(
+        [switch]$Update,
+        [System.Collections.Generic.List[string]]$UpgradeFailures
+    )
     Info "Installing packages..."
     if ($script:Dry) { return }
 
@@ -273,7 +276,13 @@ function InstallPackages {
     if ($Update) {
         Info "Upgrading managed winget packages..."
         foreach ($pkg in $wingetPkgs) {
-            Invoke-Winget "winget upgrade $pkg failed" @('upgrade', '--id', $pkg, '--exact')
+            try {
+                Invoke-Winget "winget upgrade $pkg failed" @('upgrade', '--id', $pkg, '--exact')
+            } catch {
+                if ($null -eq $UpgradeFailures) { throw }
+                $UpgradeFailures.Add($_.Exception.Message)
+                Warn "$($_.Exception.Message); continuing with remaining updates"
+            }
         }
     }
 
@@ -1296,10 +1305,11 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
         return
     }
 
+    $upgradeFailures = [System.Collections.Generic.List[string]]::new()
     if ($aiOnly) {
         InstallAi -Update
     } else {
-        InstallPackages -Update
+        InstallPackages -Update -UpgradeFailures $upgradeFailures
         InstallAnkiAddons
         Sync-ObsidianSettings
         InstallFiraCodeNerdFont
@@ -1308,6 +1318,9 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
         Sync-NeovimPlugins
     }
     if (-not $script:Dry -and -not $aiOnly) { Assert-WindowsHealthy }
+    if ($upgradeFailures.Count -gt 0) {
+        throw "Update completed with failed package upgrades: $($upgradeFailures -join '; ')"
+    }
     Success $(if ($aiOnly) { "Finished AI update" } else { "Finished updating packages" })
 }
 

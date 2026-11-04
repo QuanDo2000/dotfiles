@@ -223,6 +223,36 @@ function test_installpackages_update_upgrades_only_managed_packages {
     Assert-Equals 'update stable' $script:RustupCalls[0]
 }
 
+function test_update_continues_after_upgrade_failure_and_reports_at_end {
+    $script:Dry = $false
+    $script:UpdateSteps = [System.Collections.Generic.List[string]]::new()
+    Set-FunctionMock 'Get-InstalledWingetPackages' { return @(Get-WingetPackages) }
+    Set-CommandMock 'winget' {
+        $script:UpdateSteps.Add($args[2])
+        $global:LASTEXITCODE = if ($args[2] -eq 'odin-lang.Odin') { -1978335215 } else { 0 }
+    }
+    Set-CommandMock 'rustup' { $script:UpdateSteps.Add('rustup'); $global:LASTEXITCODE = 0 }
+    $originals = @{}
+    foreach ($name in 'InstallAnkiAddons', 'Sync-ObsidianSettings', 'InstallFiraCodeNerdFont', 'InstallAi', 'SetupSymlinks', 'Sync-NeovimPlugins', 'Assert-WindowsHealthy') {
+        $originals[$name] = (Get-Command $name).ScriptBlock
+        Set-FunctionMock $name ([scriptblock]::Create("`$script:UpdateSteps.Add('$name')"))
+    }
+    $message = ''
+    try {
+        Update-Packages '' -AfterRepoUpdate 6>&1 | Out-Null
+    } catch {
+        $message = $_.Exception.Message
+    } finally {
+        foreach ($name in $originals.Keys) { Set-FunctionMock $name $originals[$name] }
+    }
+    Assert-Contains $message 'odin-lang.Odin'
+    Assert-True ($script:UpdateSteps.Contains('Rustlang.Rustup')) 'later WinGet upgrades must run'
+    Assert-True ($script:UpdateSteps.Contains('rustup')) 'toolchain update must run'
+    Assert-True ($script:UpdateSteps.Contains('InstallAi')) 'AI setup must run'
+    Assert-True ($script:UpdateSteps.Contains('Sync-NeovimPlugins')) 'editor setup must run'
+    Assert-Equals 'Assert-WindowsHealthy' $script:UpdateSteps[-1]
+}
+
 function test_installpackages_update_reports_rust_toolchain_failure {
     $script:Dry = $false
     Set-FunctionMock 'Get-InstalledWingetPackages' { return @(Get-WingetPackages) }
