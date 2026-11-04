@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-11-01-exact-racing",
-  "registrySha256": "4004048eb2ae76f84328c2d5992cc92618aeebbadc2dacc1caba1cc985d2b6d0",
+  "registryVersion": "2026-11-04-mean-kite",
+  "registrySha256": "32b1786f6bc201b3e6da64e8c4d726a4cf40ece233deb4e9c7c5cbfc29d34953",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
