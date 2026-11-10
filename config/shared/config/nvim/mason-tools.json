@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-11-04-mean-kite",
-  "registrySha256": "32b1786f6bc201b3e6da64e8c4d726a4cf40ece233deb4e9c7c5cbfc29d34953",
+  "registryVersion": "2026-11-10-showy-lan",
+  "registrySha256": "8def7c02ff90e0ef750c7ff179072ee8337b074e79f89ce0edbfb46b78ce2e3d",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
