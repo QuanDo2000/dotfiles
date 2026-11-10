@@ -179,7 +179,7 @@ Commands:
               Update only AI tools and configs with 'update ai'
   packages    Install system packages only
   symlinks    Activate Home Manager config on Debian/Arch (also applies other user settings)
-  upgrade     Upgrade native system packages
+  upgrade     Upgrade native system packages and Hermes if installed
   obsidian    Bootstrap Obsidian Sync login and vault setup
   rex-auth    Securely prompt for and validate the Rex package token (Linux)
   pi-auth     Set up missing Pi Codex subscription and OpenRouter logins
@@ -279,7 +279,7 @@ symlinks)
   ;;
 upgrade)
   [[ $# -eq 1 ]] || fail "Unexpected upgrade argument: ${2:-}"
-  upgrade_system_packages
+  upgrade_packages
   ;;
 obsidian)
   [[ $# -eq 1 ]] || fail "Unexpected obsidian argument: ${2:-}"

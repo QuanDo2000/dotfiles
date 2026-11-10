@@ -54,6 +54,22 @@ test_install_packages_fails_unsupported_os() {
   fi
 }
 
+test_upgrade_packages_without_hermes() {
+  source_scripts packages.sh
+  local output
+  output=$(
+    detect_platform() { printf 'arch\n'; }
+    upgrade_system_packages() { printf 'native upgrade\n'; }
+    command() {
+      if [[ "$*" == '-v hermes' ]]; then return 1; fi
+      builtin command "$@"
+    }
+    hermes() { printf 'unexpected Hermes call\n'; return 1; }
+    DRY=false upgrade_packages
+  )
+  assert_equals 'native upgrade' "$output"
+}
+
 test_upgrade_system_packages_arch_dry_run() {
   source_scripts packages.sh
   mock_uname Linux

@@ -42,6 +42,24 @@ function _run_system_package_command {
   fi
 }
 
+function upgrade_packages {
+  if [[ "$(detect_platform)" == nixos ]]; then
+    info "NixOS packages are managed declaratively; use dotfile update"
+  else
+    upgrade_system_packages
+  fi
+
+  if command -v hermes >/dev/null 2>&1; then
+    if [[ "$DRY" == "true" ]]; then
+      info "Would run: hermes update"
+    else
+      info "Updating Hermes (its updater may restart Hermes services)..."
+      hermes update || fail "Hermes update failed"
+      success "Finished updating Hermes"
+    fi
+  fi
+}
+
 function upgrade_system_packages {
   info "Upgrading native system packages..."
   case "$(detect_platform)" in
