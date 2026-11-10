@@ -179,6 +179,27 @@ test_upgrade_command_dispatches_arch_dry_run() {
   unset __MOCK_UNAME
 }
 
+test_upgrade_command_updates_hermes_on_nixos() {
+  mock_uname Linux
+  local osrel="$TEST_HOME/os-release" bin="$TEST_HOME/bin" output status
+  printf 'ID=nixos\n' > "$osrel"
+  mkdir -p "$bin"
+  printf '#!/bin/sh\nprintf "hermes called: %%s\\n" "$*"\nexit "${HERMES_TEST_EXIT:-0}"\n' > "$bin/hermes"
+  chmod +x "$bin/hermes"
+
+  output=$(PATH="$bin:$PATH" OS_RELEASE="$osrel" bash "$DOTFILE_CMD" --dry upgrade 2>&1)
+  assert_contains "$output" 'Would run: hermes update'
+  assert_not_contains "$output" 'hermes called:'
+
+  output=$(PATH="$bin:$PATH" OS_RELEASE="$osrel" bash "$DOTFILE_CMD" upgrade 2>&1)
+  assert_contains "$output" 'hermes called: update'
+
+  status=0
+  output=$(HERMES_TEST_EXIT=7 PATH="$bin:$PATH" OS_RELEASE="$osrel" bash "$DOTFILE_CMD" upgrade 2>&1) || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'Hermes update failed'
+}
+
 test_dotfiles_dir_override_controls_unix_entrypoint() {
   local launcher="$TEST_HOME/dotfile-copy"
   cp "$DOTFILE_CMD" "$launcher"

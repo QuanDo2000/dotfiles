@@ -9,7 +9,7 @@ function test_showusage_mentions_commands_and_flags {
     Assert-True ($output.Contains('update [ai] Pull and activate published reviewed package pins')) 'usage should document update ai'
     Assert-Contains $output 'Update only AI tools and configs with update ai'
     Assert-Contains $output 'packages    Install all managed packages only'
-    Assert-Contains $output 'upgrade     Upgrade native WinGet packages without pulling the repo'
+    Assert-Contains $output 'upgrade     Upgrade native WinGet packages and Hermes if installed, without pulling the repo'
     Assert-Contains $output 'doctor      Verify Windows installation'
     Assert-False ($output -match '(?m)^  (ai|verify)\s') 'redundant commands must not appear in help'
 }

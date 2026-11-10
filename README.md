@@ -237,7 +237,7 @@ Commands:
               Update only AI tools and configs with `update ai`
   packages    Install system packages only
   symlinks    Activate Home Manager config on Debian/Arch (also applies other user settings)
-  upgrade     Upgrade native system packages
+  upgrade     Upgrade native system packages and Hermes if installed
   obsidian    Bootstrap Obsidian Sync login and vault setup
   nix-installer
               Update pinned Nix installer checksums
@@ -289,7 +289,7 @@ Commands:
   update [ai] Pull and activate published reviewed package pins
               Update only AI tools and configs with update ai
   packages    Install all managed packages only
-  upgrade     Upgrade native WinGet packages without pulling the repo
+  upgrade     Upgrade native WinGet packages and Hermes if installed, without pulling the repo
   symlinks    Link managed Windows config files (no package installation)
   doctor      Verify Windows installation
 

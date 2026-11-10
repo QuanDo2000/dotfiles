@@ -2,6 +2,11 @@
 
 function TestSetup {
     Initialize-TestEnv | Out-Null
+    $script:HermesCalls = @()
+    Set-CommandMock 'hermes' {
+        $script:HermesCalls += ,($args -join ' ')
+        $global:LASTEXITCODE = 0
+    }
     Set-CommandMock 'Get-Process' {
         param($Name, $Id)
         if ($Id) { Microsoft.PowerShell.Management\Get-Process -Id $Id }
@@ -15,6 +20,7 @@ function TestSetup {
 
 function TestTeardown {
     Clear-CommandMock 'winget'
+    Clear-CommandMock 'hermes'
     Clear-CommandMock 'rustup'
     Clear-CommandMock 'Get-Process'
     Set-FunctionMock 'Get-InstalledWingetPackages' $script:OriginalGetInstalledWingetPackages
@@ -272,6 +278,7 @@ function test_native_upgrade_dry_run_never_calls_winget {
     UpgradeNativePackages 6>&1 | Out-Null
 
     Assert-False $script:Called 'dry run must not call winget'
+    Assert-Equals 0 $script:HermesCalls.Count
 }
 
 function test_native_upgrade_runs_all_winget_packages_without_setup {
@@ -283,6 +290,7 @@ function test_native_upgrade_runs_all_winget_packages_without_setup {
 
     UpgradeNativePackages 6>&1 | Out-Null
 
+    Assert-Equals 'update' ($script:HermesCalls -join ',')
     Assert-Equals 1 $script:WingetCalls.Count
     Assert-Equals 'upgrade --all --disable-interactivity --accept-package-agreements --accept-source-agreements' $script:WingetCalls[0]
 }
@@ -307,6 +315,12 @@ function test_native_upgrade_fails_before_winget_when_obsidian_is_running {
     try { UpgradeNativePackages 6>&1 | Out-Null } catch { $message = $_.Exception.Message }
     Assert-Contains $message 'Close Obsidian before updating its application'
     Assert-False $script:Called 'upgrade must stop before invoking winget'
+}
+
+function test_native_upgrade_propagates_hermes_failure {
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = 0 }
+    Set-CommandMock 'hermes' { $global:LASTEXITCODE = 1 }
+    Assert-Throws { UpgradeNativePackages 6>&1 | Out-Null } 'Hermes failure must fail upgrade'
 }
 
 function test_native_upgrade_propagates_winget_failure {
