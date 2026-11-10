@@ -298,12 +298,21 @@ function UpgradeNativePackages {
     Info "Upgrading native WinGet packages..."
     if ($script:Dry) {
         Info 'Would run: winget upgrade --all --disable-interactivity --accept-package-agreements --accept-source-agreements'
-        return
+    } else {
+        Assert-AnkiClosed
+        Assert-ObsidianClosed
+        Invoke-Winget 'winget upgrade failed' @('upgrade', '--all')
+        Success 'Finished upgrading native WinGet packages'
     }
-    Assert-AnkiClosed
-    Assert-ObsidianClosed
-    Invoke-Winget 'winget upgrade failed' @('upgrade', '--all')
-    Success 'Finished upgrading native WinGet packages'
+    if (Get-Command hermes -ErrorAction SilentlyContinue) {
+        if ($script:Dry) {
+            Info 'Would run: hermes update'
+        } else {
+            Info 'Updating Hermes (its updater may restart Hermes services)...'
+            Invoke-NativeChecked 'Hermes update failed' { hermes update }
+            Success 'Finished updating Hermes'
+        }
+    }
 }
 
 function Get-StreamSha256($Stream) {
@@ -1607,7 +1616,7 @@ Commands:
   update [ai] Pull and activate published reviewed package pins
               Update only AI tools and configs with update ai
   packages    Install all managed packages only
-  upgrade     Upgrade native WinGet packages without pulling the repo
+  upgrade     Upgrade native WinGet packages and Hermes if installed, without pulling the repo
   symlinks    Link managed Windows config files (no package installation)
   doctor      Verify Windows installation
   pi-auth     Set up missing Pi Codex subscription and OpenRouter logins
