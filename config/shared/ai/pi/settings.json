@@ -24,5 +24,9 @@
     "showTerminalProgress": true,
     "clearOnShrink": false
   },
-  "theme": "dark"
+  "theme": "dark",
+  "extensionChangelogVersions": {
+    "{\"source\":\"./locked-extensions/releases/65ecd79d58fed0a7f52f591d4fdc5d56021511fa000093396a912d49509902c3/node_modules/pi-memory\",\"scope\":\"user\"}": "0.4.2",
+    "{\"source\":\"./locked-extensions/releases/65ecd79d58fed0a7f52f591d4fdc5d56021511fa000093396a912d49509902c3/node_modules/pi-web-access\",\"scope\":\"user\"}": "0.47.0"
+  }
 }
