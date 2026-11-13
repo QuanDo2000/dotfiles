@@ -50,9 +50,12 @@ function test_windows_package_manifests_cover_parity_tools {
 
 function test_windows_terminal_defaults_to_managed_powershell_profile {
     $terminal = Get-Content -Raw -LiteralPath (Join-Path $script:RepoDir 'config/windows/Terminal/settings.json') | ConvertFrom-Json
-    $powershellProfile = $terminal.profiles.list | Where-Object source -eq 'Windows.Terminal.PowershellCore'
+    $powershellProfile = $terminal.profiles.list | Where-Object guid -eq $terminal.defaultProfile
 
-    Assert-Equals $powershellProfile.guid $terminal.defaultProfile
+    # Own the launch command: MSI/MSIX migrations change generated profile IDs.
+    Assert-Equals 'pwsh.exe' $powershellProfile.commandline
+    Assert-Equals '%USERPROFILE%' $powershellProfile.startingDirectory
+    Assert-True ([string]::IsNullOrEmpty($powershellProfile.source)) 'Default shell must not depend on dynamic profile discovery'
 }
 
 function test_windows_firacode_release_is_reviewed_and_immutable {
