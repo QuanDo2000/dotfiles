@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-11-10-showy-lan",
-  "registrySha256": "8def7c02ff90e0ef750c7ff179072ee8337b074e79f89ce0edbfb46b78ce2e3d",
+  "registryVersion": "2026-11-13-rugged-lawyer",
+  "registrySha256": "dccaac6ae8289fa5ce46ec3a7f6801093f99742c7196e07ff9bb895ebd870eba",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
