@@ -191,10 +191,19 @@ def main():
             raise RuntimeError('owned-group inspection lost an unreaped leader')
         return running
 
+    def signal_group(group, sig):
+        try:
+            os.killpg(group, sig)
+        except PermissionError:
+            # Darwin returns EPERM for a group containing only zombies.
+            # Keep the unreaped leader lease and reject any live member.
+            if running_groups({group}, 1, cancelling=True):
+                raise
+
     def stop_groups():
         for process, _log, _start, index in active.values():
             if index not in term_deadlines:
-                os.killpg(process.pid, signal.SIGTERM)
+                signal_group(process.pid, signal.SIGTERM)
                 term_deadlines[index] = time.monotonic() + args.cleanup_seconds
         grace = max(term_deadlines.values(), default=time.monotonic())
         inspection_failed = False
@@ -216,7 +225,7 @@ def main():
         # Signal every still-leased group before reaping any leader. Never
         # inspect/signal a remembered PGID after releasing its leader lease.
         for process, _log, _start, _index in active.values():
-            os.killpg(process.pid, signal.SIGKILL)
+            signal_group(process.pid, signal.SIGKILL)
         for process, _log, _start, _index in active.values():
             process.wait(timeout=args.cleanup_seconds)
         drain_outputs()
@@ -301,10 +310,10 @@ def main():
                             process, log, job_start, _index = active[index]
                             if process.pid in running:
                                 if index not in term_deadlines:
-                                    os.killpg(process.pid, signal.SIGTERM)
+                                    signal_group(process.pid, signal.SIGTERM)
                                     term_deadlines[index] = time.monotonic() + args.cleanup_seconds
                                 elif time.monotonic() >= term_deadlines[index]:
-                                    os.killpg(process.pid, signal.SIGKILL)
+                                    signal_group(process.pid, signal.SIGKILL)
                                     if time.monotonic() >= term_deadlines[index] + args.cleanup_seconds:
                                         aborted = f'owned group survived KILL: {args.files[index]}'
                                         break

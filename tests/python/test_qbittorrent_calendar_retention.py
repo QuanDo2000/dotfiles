@@ -20,7 +20,8 @@ class RetentionTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        # macOS temporary roots may use /tmp or /var symlink aliases.
+        self.root = Path(self.temp.name).resolve()
         self.torrent = {
             "hash": "a" * 40, "progress": 1, "amount_left": 0, "state": "queuedUP",
             "completion_on": NOW - retention.AGE_SECONDS, "content_path": "/downloads/old.mkv",
