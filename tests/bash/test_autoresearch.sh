@@ -560,10 +560,17 @@ try:
     found = True
 except RuntimeError:
     pass
-process.terminate()
-process.wait(5)
-if process.stderr.read() or not found:
-    raise SystemExit("safe JJ activation notification not observed")
+finally:
+    process.terminate()
+    try:
+        _, errors = process.communicate(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        _, errors = process.communicate(timeout=5)
+if errors:
+    raise SystemExit(errors)
+if not found:
+    raise SystemExit("safe JJ activation notification not observed within 10 seconds")
 PY
 }
 
