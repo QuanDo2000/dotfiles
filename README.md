@@ -92,11 +92,11 @@ authentication remains available. To test from a local terminal, run `sudo -k`
 
 All currently declared Linux profiles install the Rex CLI and a personal
 `rex.service` through the upstream Home Manager module: generic Linux/Debian,
-Arch server, NixOS, and NixOS-WSL (currently x86-64). Generic Linux, NixOS and
-WSL listen only on the account's Unix socket. **Arch server additionally enables
-Rex's embedded Tailscale**, named `rex-quanarch`, admitting only the enrolling
-Tailscale account. No anonymous listener, root login server or extra account is
-enabled. macOS and Linux
+Arch server, NixOS, and NixOS-WSL (currently x86-64). All profiles declare
+Unix-socket-only access; Mac → Arch uses native OpenSSH over system Tailscale.
+No embedded Rex Tailscale listener, anonymous listener, root login server or extra
+account is enabled in the source. Existing servers retain their old listener
+until a coordinated session-safe restart. macOS and Linux
 share the Rex Ctrl+B keybindings and Catppuccin theme source in `config/rex/`.
 Linux shell startup attaches to (or creates) tmux session `main`; bare `tmux`
 does the same. macOS and shells already inside Rex do not autostart tmux.
@@ -109,12 +109,11 @@ connection therefore keeps tmux auto-attach, not a Rex terminal. Revisit this
 fallback when the Linux client is released; it does not change network access.
 macOS continues to use the Rex app. nix-darwin manages the Mac's CLI-only Tailscale
 client and launchd daemon; Tailscale owns its writable MagicDNS resolver files.
-Enroll that client using the same
-Tailscale account, then select the Nix-declared `rex-quanarch` host in Rex
-(`https://rex-quanarch.tail28b036.ts.net`). Reload Rex config after activation
-if the app is already running. Do not also connect the older Tailscale
-GUI app. See the [remote-access and migration notes](config/rex/README.md) for
-activation, enrollment, verification, and rollback.
+Keep system Tailscale connected and add `ssh://quando@100.98.211.17` through
+Rex's **Add Remote Host…** on the Mac. CLI host declarations do not currently
+populate the GUI. Do not also connect the older Tailscale GUI app. See the
+[remote-access and migration notes](config/rex/README.md) for verified GUI
+SSH/reconnect behavior, listener retirement, and rollback.
 
 `dotfile` / `dotfile packages` checks for the package credential during Linux setup
 and securely prompts when it is missing. Retrieve the token by signing into the

@@ -15,139 +15,68 @@ client; do not invent a capture/send terminal emulator or enable anonymous HTTP.
 
 ## Mac → Arch remote access
 
-The Arch-server Home Manager profile in `flake.nix` enables
-`services.rex.tailscale` with hostname `rex-quanarch`. Rex joins the tailnet as
-its own device; it does not need the host's Tailscale daemon. Other Linux profiles
-remain Unix-socket-only. Access is restricted to the enrolling Tailscale account:
-neither anonymous access nor `allowTailnetMembers` is enabled. No Serve proxy,
-Funnel, public firewall opening, or login server is used. MagicDNS and HTTPS
-certificates must be enabled for the tailnet.
-
-On the Mac, `config/darwin.nix` enables `services.tailscale.enable`. The pinned
-nix-darwin module owns the CLI-only package and the boot-started launchd service
-`com.tailscale.tailscaled`. We disable its static `/etc/resolver/ts.net` link:
-Tailscale's confined resolver writes reject a symlink outside `/etc/resolver`
-with `openat ts.net: path escapes from parent`. Tailscale owns and updates its
-resolver files instead. It does not force all DNS through Tailscale
-(`overrideLocalDns` stays false), configure an exit node, or advertise routes.
-Login credentials, device identity, resolver files, and runtime preferences
-remain native writable state outside Git and the Nix store.
-
-Rex's embedded Tailscale exposes its server; it is not a documented outgoing
-transport for the Mac client. The Mac's system Tailscale connection is still
-needed to reach Arch, even if the Mac Rex server itself is enrolled.
-
-### First Mac activation / migration from the GUI app
-
-1. Disconnect the existing Tailscale GUI app, quit it, and disable its launch at
-   login. Leave its app and identity intact for rollback. Do not run both clients
-   connected at once; their identities are separate and are not migrated here.
-2. Run `dotfile packages` from the updated checkout (set `DOTFILES_DIR` explicitly
-   if using a task checkout). This uses the normal nix-darwin activation route
-   and requires local sudo authentication. It starts the new daemon; Tailscale
-   writes its own resolver files after enrollment. It does not restart Rex.
-3. Enroll the Nix-managed client using the same Tailscale account that enrolled
-   `rex-quanarch`:
-
-   ```sh
-   sudo /run/current-system/sw/bin/tailscale up --accept-dns=true --accept-routes=false
-   ```
-
-   Follow the login URL yourself. Never put an auth key or copied daemon state
-   in the Nix source/store. The old `/usr/local/bin/tailscale` wrapper may still
-   address the GUI app, so use the explicit managed path during migration.
-4. Verify the real client and DNS/connection boundaries:
-
-   ```sh
-   command -v tailscale
-   sudo launchctl print system/com.tailscale.tailscaled
-   /run/current-system/sw/bin/tailscale status
-   /run/current-system/sw/bin/tailscale ping --timeout=5s rex-quanarch.tail28b036.ts.net
-   dscacheutil -q host -a name rex-quanarch.tail28b036.ts.net
-   rex --server https://rex-quanarch.tail28b036.ts.net --autostart=false --timeout 5s whoami --json
-   ```
-
-If upgrading from the earlier static-resolver configuration, activation removes
-only the stale Nix symlink. Restart the daemon once so it recreates its resolver
-files (this briefly interrupts tailnet connections, but does not restart Rex):
-
-```sh
-sudo launchctl kickstart -k system/com.tailscale.tailscaled
-/run/current-system/sw/bin/tailscale status
-```
-
-The DNS health warning should clear and `/etc/resolver/ts.net` should be a regular
-file, not a Nix symlink. Tailnet policy must separately allow TCP 443 from your
-Mac to the Rex device; a successful `tailscale ping` alone does not verify that.
-
-The Mac's Nix-generated `init.lua` declares `rex-quanarch` with native
-`rex.host{...}`. Activate through `dotfile packages`, then run `rex config reload`
-if Rex is already running; no restart or host-add script is needed. The stable
-host ID reuses the existing saved entry, avoiding duplicates. Native GUI/API
-edits remain overrides; the declaration supplies the host on fresh setups.
-Other Linux profiles keep the shared config without this declaration.
-
-Open the managed Rex app and select `rex-quanarch`. Its endpoint is:
+All Linux profiles declare Unix-socket-only Rex servers. Mac → Arch uses native
+OpenSSH over the machine's existing Tailscale network:
 
 ```text
-https://rex-quanarch.tail28b036.ts.net
+ssh://quando@100.98.211.17
 ```
 
-A successful connection permits programs to run as the Arch account, so never
-replace this with anonymous HTTP or grant all tailnet users for convenience.
-The saved overrides and other manually added hosts remain application-owned
-state. From Arch, `rex --autostart=false client ls` can confirm
-a newly connected client and its identity. If the Mac cannot connect, check
-online/account state, MagicDNS, HTTPS readiness, and ACLs before changing policy.
+The Mac GUI connection and a fresh app quit/reopen were verified against the
+Arch client list: a new Mac app connection used the Unix socket through
+`sshd-session: quando` and reattached to the same session. System Tailscale on
+both machines remains necessary; only Rex's separate embedded Tailscale/HTTPS
+listener is being retired. Do not remove system Tailscale, SSH keys, ACLs, or
+saved Rex Tailscale identity. No anonymous HTTP or public port is introduced.
 
-Before an Arch listener change, inspect sessions and coordinate the required Rex
-restart; it ends sessions. Existing linger must be enabled for login-independent
-use (`loginctl show-user "$(id -u)" -p Linger`). This setup does not silently enable
-lingering or alter tailnet ACLs.
+### Configure the Mac client
 
-Mac rollback: run `sudo /run/current-system/sw/bin/tailscale down`, revert the
-Mac `services.tailscale.enable` setting, and reactivate through `dotfile packages`
-before reconnecting the preserved GUI app. Confirm the Nix daemon is stopped;
-do not run both clients connected. Preserve both clients' identities.
+Use **Add Remote Host…** with the explicit SSH address above. CLI `rex.host`
+declarations do not currently synchronize into the Mac GUI. Home Manager supplies
+`rex-quanarch-ssh` for CLI use only; activating or reloading it is not GUI setup.
+The shared `quanarchRemote` alias resolved on Arch but failed on the actual Mac;
+the explicit account/address avoids relying on unverified client alias setup.
 
-Arch rollback: revert only its `services.rex.tailscale` stanza, build and activate
-through `dotfile symlinks` after preserving/closing Rex sessions. Verify the Unix
-socket still works. Do not reset Tailscale Serve, change SSH, or remove either
-the host's or Rex's saved Tailscale identity.
-
-### Native SSH migration
-
-The Linux package is pinned to `0.1.0-preview.19`; the Mac app is pinned to
-preview build `1973`. The upstream Home Manager service keeps the old server
-running during activation (`X-SwitchMethod = "keep-old"`). A deliberate
-`systemctl --user restart rex` is needed to use the new server, and ends all
-running programs in Rex. Check sessions before restarting. The new upstream
-unit also supplies graceful shutdown and per-terminal cgroup/OOM handling.
-
-The Mac config adds **rex-quanarch-ssh** at `ssh://quanarchRemote`, alongside
-the existing HTTPS host. OpenSSH resolves that alias through our shared
-`~/.ssh/config`, using the existing host Tailscale address and SSH keys. Linux
-Home Manager links `~/.local/bin/rex` to the pinned binary because noninteractive
-SSH shells may not include the Nix profile on PATH. No SSH daemon, key, firewall,
-system Tailscale, or access policy is changed.
-
-After activating the update on the Mac and opening the managed app, run:
+During migration, editing the existing HTTPS entry reverted, while removing and
+re-adding the GUI entry as SSH succeeded. The cause of the reverted edit is
+unknown. Before deliberately removing a saved GUI host, record its URL/name/icon
+for rollback. Removing a GUI host is not a server-session deletion. Read back the
+saved URL, then check the actual transport; seeing the same host or sessions is
+not transport evidence.
 
 ```sh
-ssh -o BatchMode=yes quanarchRemote 'command -v rex; rex version'
-rex -S ssh://quanarchRemote --autostart=false --timeout 10s server status
-rex config reload
+# On the Mac: discovery/CLI check, not GUI acceptance.
+ssh -o BatchMode=yes quando@100.98.211.17 'command -v rex; rex version'
+rex -S ssh://quando@100.98.211.17 --autostart=false --timeout 10s server status
+# On Arch: match the connected macos app, excluding lost entries and CLI probes.
+rex --autostart=false client ls --json
 ```
 
-Select **rex-quanarch-ssh** in the actual Mac GUI and verify a new terminal,
-disconnect/reconnect, existing session continuity, and Pi activity reporting.
-Keep the HTTPS host and embedded Rex Tailscale listener until these checks pass.
-Only then remove the Arch `services.rex.tailscale` stanza and obsolete HTTPS
-declaration, build/activate, and coordinate a session-safe restart. Preserve
-saved identities and overrides for rollback; do not remove system Tailscale.
+Linux Home Manager links `~/.local/bin/rex` to the pinned binary for discovery
+from noninteractive SSH shells. The upstream Home Manager service uses
+`X-SwitchMethod = "keep-old"`; activation does not replace the running server.
 
-**debt:** remote migration remains a parallel SSH/HTTPS setup until the actual
-Mac GUI passes the checks above. A Linux-side SSH probe is not Mac acceptance.
+### Session-safe listener retirement
+
+The source removes `services.rex.tailscale` and the obsolete HTTPS CLI host.
+**The live listener remains until a coordinated, session-safe restart.** Build
+and dry-run the Arch profile before activation. Use the normal role-aware route
+`DOTFILES_DIR=/path/to/reviewed/checkout /path/to/reviewed/checkout/dotfile symlinks`;
+inspect other pending changes before applying a broader profile update.
+
+Before restarting, inspect `rex --autostart=false ls --json` and connected clients.
+A restart terminates all programs in Rex: defer while user sessions are in use.
+After saving work and intentionally closing sessions, activate and deliberately
+run `systemctl --user restart rex`. Verify the unit has no `--tailscale`, system
+Tailscale remains running, and Mac SSH reconnect still reaches Rex. Linger must
+remain enabled (`loginctl show-user "$(id -u)" -p Linger`).
+
+Rollback: restore the prior reviewed `services.rex.tailscale` stanza with hostname
+`rex-quanarch`, build/dry-run/activate through the same route, then coordinate
+another session-safe restart. Retain the embedded identity so re-enrollment is
+not required. The former GUI URL was
+`https://rex-quanarch.tail28b036.ts.net`; it is usable only while that listener
+is running. Do not reset Tailscale Serve or the system daemon.
 
 For native activity, **Ctrl+B, a** opens View Activity. On the Mac, use
 **Show Activity by Priority**, and under **Settings → Notifications → Program
@@ -164,7 +93,7 @@ Zsh does not synthesize command-status reports for `dotfile`, `iib`, or
 ## Shared configuration
 
 `config/rex/init.lua` supplies the shared keybindings on every Unix profile.
-Home Manager appends the Arch host declaration only on macOS; Linux links the
+Home Manager appends the CLI-only Arch SSH host declaration on macOS; Linux links the
 shared Lua file unchanged. `Catppuccin Macchiato.conf` remains a shared link. Theme selection is still a
 macOS client action; sharing the theme file does not theme Ghostty or a headless
 Linux server. Linux package/service ownership remains in `config/rex-linux.nix`.
