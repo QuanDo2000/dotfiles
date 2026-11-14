@@ -838,19 +838,11 @@ in
     if pkgs.stdenv.hostPlatform.isDarwin then pkgs.writeText "rex-init.lua" ''
       ${builtins.readFile ./rex/init.lua}
 
-      -- Keep the saved host's identity; native GUI/API overrides remain intact.
-      rex.host{
-        id = "host:203ab58b-10af-4632-a605-871f5d453a87",
-        label = "rex-quanarch",
-        endpoint = "https://rex-quanarch.tail28b036.ts.net",
-        icon = "server.rack",
-      }
-
-      -- Parallel SSH trial; retain HTTPS until the Mac GUI passes acceptance.
+      -- CLI host only: the Mac GUI host list must be configured separately.
       rex.host{
         id = "host:8a6803b4-154e-4b8c-b5da-0c545f377cac",
         label = "rex-quanarch-ssh",
-        endpoint = "ssh://quanarchRemote",
+        endpoint = "ssh://quando@100.98.211.17",
         icon = "server.rack",
       }
     '' else ./rex/init.lua;
