@@ -80,6 +80,7 @@ Auto-merge only the repositories below, after independent review has no unresolv
 - `github.com/QuanDo2000/dotfiles`
 - `github.com/QuanDo2000/zmk-config`
 - `github.com/QuanDo2000/chrome-puzzle-solver`
+- `github.com/QuanDo2000/pi-superagent`
 - `ssh://git@192.168.1.200:2222/quando/silly-cavern-odin.git`
 
 `~/Documents/insta-image-backup` allows reviewed local merges under the same gates, but no push or remote creation without approval. `~/Documents/celeste-tas-ai` and `~/Documents/cn-novel-converter` have no established repository identity; future repositories require merge confirmation. This list is finite, not an owner wildcard or permission to register projects.
