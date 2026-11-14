@@ -59,24 +59,40 @@ from noninteractive SSH shells. The upstream Home Manager service uses
 ### Session-safe listener retirement
 
 The source removes `services.rex.tailscale` and the obsolete HTTPS CLI host.
-**The live listener remains until a coordinated, session-safe restart.** Build
-and dry-run the Arch profile before activation. Use the normal role-aware route
-`DOTFILES_DIR=/path/to/reviewed/checkout /path/to/reviewed/checkout/dotfile symlinks`;
-inspect other pending changes before applying a broader profile update.
+After actual GUI SSH/reconnect acceptance, inspect sessions and connected clients,
+then use preview.19's local hot-disable API instead of restarting Rex:
 
-Before restarting, inspect `rex --autostart=false ls --json` and connected clients.
-A restart terminates all programs in Rex: defer while user sessions are in use.
-After saving work and intentionally closing sessions, activate and deliberately
-run `systemctl --user restart rex`. Verify the unit has no `--tailscale`, system
-Tailscale remains running, and Mac SSH reconnect still reaches Rex. Linger must
-remain enabled (`loginctl show-user "$(id -u)" -p Linger`).
+```sh
+rex --autostart=false ls --json
+rex --autostart=false client ls --json
+rex api describe server.tailscale.disable
+rex --autostart=false api call server.tailscale.disable
+rex --autostart=false api call server.status
+```
 
-Rollback: restore the prior reviewed `services.rex.tailscale` stanza with hostname
-`rex-quanarch`, build/dry-run/activate through the same route, then coordinate
-another session-safe restart. Retain the embedded identity so re-enrollment is
-not required. The former GUI URL was
-`https://rex-quanarch.tail28b036.ts.net`; it is usable only while that listener
-is running. Do not reset Tailscale Serve or the system daemon.
+This closes embedded-Tailscale connections, but preserves sessions and the saved
+sign-in. It requires the local Unix socket. Verify `tailscale.state` is `disabled`
+and the server PID/instance and session IDs are unchanged. Do not use logout,
+which discards the sign-in, or disable a listener still needed by other clients.
+
+Also remove the managed service's `--tailscale` flags so the next start will not
+re-enable exposure. Build and dry-run the Arch profile, compare its changes with
+the deployed generation, then use the normal role-aware activation route:
+`DOTFILES_DIR=/path/to/reviewed/checkout /path/to/reviewed/checkout/dotfile symlinks`.
+Avoid unrelated dependency/service changes; use a retained deployment baseline
+when necessary. Upstream `keep-old` semantics preserve the running Rex process.
+Verify `systemctl --user show rex -p MainPID -p ExecStart`, the disabled runtime
+state, and `systemctl is-active tailscaled`. No server restart is needed for this
+listener change. Linger must remain enabled (`loginctl show-user "$(id -u)" -p Linger`).
+
+Rollback without ending sessions: inspect `rex api describe server.tailscale.enable`
+and call its local API to reconnect the retained embedded identity. Restore the
+prior reviewed `services.rex.tailscale` stanza with hostname `rex-quanarch` only
+if persistent re-enablement is intended; build/dry-run/activate through the same
+route. The former GUI URL was `https://rex-quanarch.tail28b036.ts.net`; it is usable
+only while that listener is running. Do not reset Tailscale Serve or the system
+daemon. Any separately required Rex restart still terminates its programs and
+must be coordinated after saving work and intentionally closing sessions.
 
 For native activity, **Ctrl+B, a** opens View Activity. On the Mac, use
 **Show Activity by Priority**, and under **Settings → Notifications → Program
