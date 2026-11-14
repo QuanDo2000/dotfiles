@@ -115,6 +115,47 @@ through `dotfile symlinks` after preserving/closing Rex sessions. Verify the Uni
 socket still works. Do not reset Tailscale Serve, change SSH, or remove either
 the host's or Rex's saved Tailscale identity.
 
+### Native SSH migration
+
+The Linux package is pinned to `0.1.0-preview.19`; the Mac app is pinned to
+preview build `1973`. The upstream Home Manager service keeps the old server
+running during activation (`X-SwitchMethod = "keep-old"`). A deliberate
+`systemctl --user restart rex` is needed to use the new server, and ends all
+running programs in Rex. Check sessions before restarting. The new upstream
+unit also supplies graceful shutdown and per-terminal cgroup/OOM handling.
+
+The Mac config adds **rex-quanarch-ssh** at `ssh://quanarchRemote`, alongside
+the existing HTTPS host. OpenSSH resolves that alias through our shared
+`~/.ssh/config`, using the existing host Tailscale address and SSH keys. Linux
+Home Manager links `~/.local/bin/rex` to the pinned binary because noninteractive
+SSH shells may not include the Nix profile on PATH. No SSH daemon, key, firewall,
+system Tailscale, or access policy is changed.
+
+After activating the update on the Mac and opening the managed app, run:
+
+```sh
+ssh -o BatchMode=yes quanarchRemote 'command -v rex; rex version'
+rex -S ssh://quanarchRemote --autostart=false --timeout 10s server status
+rex config reload
+```
+
+Select **rex-quanarch-ssh** in the actual Mac GUI and verify a new terminal,
+disconnect/reconnect, existing session continuity, and Pi activity reporting.
+Keep the HTTPS host and embedded Rex Tailscale listener until these checks pass.
+Only then remove the Arch `services.rex.tailscale` stanza and obsolete HTTPS
+declaration, build/activate, and coordinate a session-safe restart. Preserve
+saved identities and overrides for rollback; do not remove system Tailscale.
+
+**debt:** remote migration remains a parallel SSH/HTTPS setup until the actual
+Mac GUI passes the checks above. A Linux-side SSH probe is not Mac acceptance.
+
+For native activity, **Ctrl+B, a** opens View Activity. On the Mac, use
+**Show Activity by Priority**, and under **Settings → Notifications → Program
+Activity** enable per-pane rows and blocked/error notifications, leaving working
+notifications quiet. These are application-owned choices, not inferred preference
+keys written by Nix. Pi already reports its status natively; no polling dashboard
+or synthetic shell-status hooks are needed.
+
 ## Command status in Rex shells
 
 Zsh does not synthesize command-status reports for `dotfile`, `iib`, or
@@ -181,6 +222,7 @@ Keep Rex's native Cmd shortcuts, plus these sequences (press Ctrl+B, release, th
 | `<` / `>` | Move tab backward / forward |
 | `z` | Zoom pane |
 | `s` | Session picker |
+| `a` | Native program activity picker |
 | `R` | Reload Rex config |
 | Ctrl+B | Send literal Ctrl+B to the terminal |
 | `T` | Import the managed Catppuccin theme |

@@ -15,10 +15,9 @@
       url = "github:nix-community/NixOS-WSL/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Immutable upstream storage URL resolved after authenticating to the Rex
-    # package host. No credentials are needed during evaluation or CI.
+    # Immutable upstream preview URL. Evaluation and CI need no credentials.
     rex-linux = {
-      url = "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/snapshot/0.0.1793075605-gf47cf6.tar.gz";
+      url = "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/preview/0.1.0-preview.19.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

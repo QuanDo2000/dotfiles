@@ -101,14 +101,14 @@
         ]
       },
       "locked": {
-        "lastModified": 1793075605,
-        "narHash": "sha256-kKXtSIV5lCRMG1/uNbRE4alrsXmHXScgBXD5lnuiMe4=",
+        "lastModified": 1794599376,
+        "narHash": "sha256-EXeKXr+NeDEc6JyfZHckVzkJCiCU0/rRkR3EVOFR3vE=",
         "type": "tarball",
-        "url": "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/snapshot/0.0.1793075605-gf47cf6.tar.gz"
+        "url": "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/preview/0.1.0-preview.19.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/snapshot/0.0.1793075605-gf47cf6.tar.gz"
+        "url": "https://wthziax2yejsqc4k.public.blob.vercel-storage.com/public/pkgs/rex/nix/preview/0.1.0-preview.19.tar.gz"
       }
     },
     "root": {
