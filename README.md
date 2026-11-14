@@ -145,7 +145,7 @@ journalctl --user -u rex
 For persistence across logout, `loginctl enable-linger` is required (already
 enabled on the current Arch server). No running tmux sessions are migrated.
 
-**debt:** Linux Rex remains on a reviewed snapshot rather than following the
+**debt:** Linux Rex remains on a reviewed preview rather than following the
 channel automatically. Add an authenticated Linux pin updater when routine
 channel updates are wanted; resolve the new immutable upstream storage URL and
 update only `rex-linux` in `flake.lock`. `dotfile update` preserves this pin.

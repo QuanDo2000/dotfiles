@@ -845,6 +845,14 @@ in
         endpoint = "https://rex-quanarch.tail28b036.ts.net",
         icon = "server.rack",
       }
+
+      -- Parallel SSH trial; retain HTTPS until the Mac GUI passes acceptance.
+      rex.host{
+        id = "host:8a6803b4-154e-4b8c-b5da-0c545f377cac",
+        label = "rex-quanarch-ssh",
+        endpoint = "ssh://quanarchRemote",
+        icon = "server.rack",
+      }
     '' else ./rex/init.lua;
   xdg.configFile."rex/Catppuccin Macchiato.conf".source = ./rex + "/Catppuccin Macchiato.conf";
 

@@ -13,6 +13,7 @@ rex.bind("ctrl+b>-", "pane.split", { direction = "down" })
 rex.bind("ctrl+b>shift+'", "pane.split", { direction = "down" })
 rex.bind("ctrl+b>z", "pane.zoom")
 rex.bind("ctrl+b>s", "session.switch")
+rex.bind("ctrl+b>a", "pane.view_activity")
 rex.bind("ctrl+b>shift+r", "client.config.reload")
 
 for key, direction in pairs({ h = "left", j = "down", k = "up", l = "right" }) do
