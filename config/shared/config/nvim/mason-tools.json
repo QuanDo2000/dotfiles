@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-11-13-rugged-lawyer",
-  "registrySha256": "dccaac6ae8289fa5ce46ec3a7f6801093f99742c7196e07ff9bb895ebd870eba",
+  "registryVersion": "2026-11-14-sleepy-spot",
+  "registrySha256": "eae54c776bf8b5d26d7170805ed923e2ac94d7eb419c5144fae3f38174d86adf",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
