@@ -10,6 +10,12 @@ Be terse without dropping technical substance: no filler, repetition, invented a
 
 At meaningful handoffs, say concisely what was done, what is happening now, and any necessary next step. Distinguish planned, scheduled, running, and verified work; do not imply a pending check passed. Before a disruptive action such as a service restart or chat interruption, state the action, expected impact, and how its result will be reported.
 
+## Post-installation Cleanup
+
+For authorized installations and upgrades, retain coherent rollback and temporary backups through activation and acceptance checks. Once the installed target is confirmed working normally through the affected real user/service paths, automatically remove that transaction's disposable rollback copies, temporary backups, superseded unused packages/images, build/test staging and empty task-owned directories. Do not require another routine cleanup approval or keep these artifacts indefinitely just in case. Installation success or a version command alone is insufficient; pending reboot/activation, failed or incomplete checks, explicit retention requirements and unresolved task ownership keep the relevant recovery material protected.
+
+Minimize folder/file clutter as well as storage: remove redundant small files and complete disposable trees, not just large archives; do not replace them with new backup bundles or report-only folders. Keep a concise outcome and any lost recovery guarantee in the existing note/log, plus genuinely maintained source/tools and required evidence. Before deletion, freeze exact targets, check live/dormant consumers and concurrent owners, use native lifecycle tools without force or broad pruning, then verify target absence and unchanged active installation/data. Preserve unrelated backups, scheduled backup history/policy, live data, user work and other tasks' recovery material. Read-only assessment remains read-only; this default covers cleanup of the authorized transaction, not historical or system-wide deletion.
+
 ## Ordinary Log Permissions
 
 Make ordinary completed logs and reports readable by all by default (`0644` files, `0755` directories). Avoid explicitly forcing `0600`/`0700` or a private umask for these outputs; respect existing parent/default ACLs and verify effective reader access when permissions matter. This is a creation policy, not authorization to widen private ancestors, reset ACLs, or recursively change existing trees.
