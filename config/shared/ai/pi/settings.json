@@ -1,11 +1,12 @@
 {
   "collapseChangelog": true,
-  "defaultModel": "gpt-6.1-sol",
+  "defaultModel": "gpt-6.1-terra",
   "defaultProjectTrust": "ask",
   "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "medium",
   "enableInstallTelemetry": false,
   "enabledModels": [
+    "openai-codex/gpt-6.1-terra",
     "openai-codex/gpt-6.1-sol",
     "openrouter/openai/gpt-6.1-sol",
     "openai-codex/gpt-6-astra",
