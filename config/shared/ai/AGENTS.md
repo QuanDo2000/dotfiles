@@ -10,6 +10,10 @@ Be terse without dropping technical substance: no filler, repetition, invented a
 
 At meaningful handoffs, say concisely what was done, what is happening now, and any necessary next step. Distinguish planned, scheduled, running, and verified work; do not imply a pending check passed. Before a disruptive action such as a service restart or chat interruption, state the action, expected impact, and how its result will be reported.
 
+## Model Tiers
+
+Use Terra 6.1 with medium thinking for ordinary chat, computer use, daily tasks, and routine scheduled jobs. Use Sol 6.1 with medium thinking for demanding quality-sensitive work: complex coding, debugging, security, architecture, and consequential reviews. Explicitly escalate before that work begins; never silently switch the current session's model in place. Hermes delegation defaults stay on Sol; choose the scheduled job's model explicitly for its tier. In Pi, select Sol natively with `--model openai-codex/gpt-6.1-sol --thinking medium` at startup or `/model` in the session, retaining medium thinking. Preserve Astra as a manual special escalation and leave GLM choices unchanged.
+
 ## Post-installation Cleanup
 
 For authorized installations and upgrades, retain coherent rollback and temporary backups through activation and acceptance checks. Once the installed target is confirmed working normally through the affected real user/service paths, automatically remove that transaction's disposable rollback copies, temporary backups, superseded unused packages/images, build/test staging and empty task-owned directories. Do not require another routine cleanup approval or keep these artifacts indefinitely just in case. Installation success or a version command alone is insufficient; pending reboot/activation, failed or incomplete checks, explicit retention requirements and unresolved task ownership keep the relevant recovery material protected.
