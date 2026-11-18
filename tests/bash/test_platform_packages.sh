@@ -114,9 +114,9 @@ test_pi_defaults_to_terra_with_medium_thinking() {
     .defaultProvider == "openai-codex" and
     .defaultModel == "gpt-6.1-terra" and
     .defaultThinkingLevel == "medium" and
-    (.enabledModels | index("openai-codex/gpt-6.1-terra") < index("openai-codex/gpt-6.1-sol")) and
+    (.enabledModels | index("openai-codex/gpt-6.1-terra") < index("openai-codex/gpt-6.2-sol")) and
     (.enabledModels | index("openai-codex/gpt-6.1-terra") != null) and
-    (.enabledModels | index("openai-codex/gpt-6.1-sol") != null) and
+    (.enabledModels | index("openai-codex/gpt-6.2-sol") != null) and
     (.enabledModels | index("openai-codex/gpt-6-astra") != null) and
     (.enabledModels | all(startswith("openai-codex/") or startswith("openrouter/")))
   ' "$settings"
