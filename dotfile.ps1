@@ -1553,21 +1553,12 @@ function Sync-LazyLock {
     (Get-Item -LiteralPath $target).IsReadOnly = $false
 }
 
-function Test-RexDesktopRunning($Executable) {
-    return [bool](Get-Process -Name rex -ErrorAction SilentlyContinue |
-        Where-Object { -not $_.Path -or $_.Path -eq $Executable } | Select-Object -First 1)
-}
-
 function Sync-RexDesktopAppearance {
     $root = Join-Path $env:LOCALAPPDATA 'Superlogical\Rex'
     $executable = Join-Path $root 'rex.exe'
     if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { return }
     Info 'Syncing Windows Rex desktop appearance...'
     if ($script:Dry) { return }
-    if (Test-RexDesktopRunning $executable) {
-        Warn 'Skipping Rex desktop appearance while Rex is running; close Rex and rerun dotfile.ps1 symlinks'
-        return
-    }
 
     $source = Join-Path $script:DotfilesDir 'config\windows\Rex'
     $rootSettings = [ordered]@{}
@@ -1636,14 +1627,10 @@ function Sync-RexDesktopAppearance {
     $temp = "$ini.tmp.$([Guid]::NewGuid().ToString('N'))"
     try {
         [IO.File]::WriteAllText($temp, $updated, [Text.UTF8Encoding]::new($bom, $true))
-        if (Test-RexDesktopRunning $executable) {
-            Warn 'Rex started during appearance sync; close it and rerun dotfile.ps1 symlinks'
-            return
-        }
         if ($exists) {
             $backup = "$ini.backup.$([Guid]::NewGuid().ToString('N'))"
             Assert-NoReparsePointPath $ini 'Rex desktop config'
-            if ((Get-FileSha256 $ini) -ne $originalHash) { throw 'Rex desktop config changed during sync; retry after closing Rex' }
+            if ((Get-FileSha256 $ini) -ne $originalHash) { throw 'Rex desktop config changed during sync; rerun symlinks once the writer has finished' }
             try {
                 [IO.File]::Replace($temp, $ini, $backup)
             } catch {
