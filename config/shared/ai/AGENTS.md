@@ -12,7 +12,7 @@ At meaningful handoffs, say concisely what was done, what is happening now, and 
 
 ## Model Tiers
 
-Use Terra 6.1 with medium thinking for ordinary chat, computer use, daily tasks, and routine scheduled jobs. Use Sol 6.2 with medium thinking for demanding quality-sensitive work: complex coding, debugging, security, architecture, and consequential reviews. Explicitly escalate before that work begins; never silently switch the current session's model in place. Hermes delegation defaults stay on Sol; choose the scheduled job's model explicitly for its tier. In Pi, select Sol natively with `--model openai-codex/gpt-6.2-sol --thinking medium` at startup or `/model` in the session, retaining medium thinking. Preserve Astra as a manual special escalation and leave GLM choices unchanged.
+Pi defaults to Sol 6.2 with medium thinking for new sessions. Terra 6.1 remains a manual option for routine work; if a session is on Terra and the task becomes quality-sensitive, ask the user to switch to Sol before starting. Never silently switch the current session's model. Hermes delegation defaults stay on Sol; choose scheduled job models explicitly (Terra for routine jobs, Sol for demanding work). Preserve Astra as a manual special escalation and leave GLM choices unchanged.
 
 ## Post-installation Cleanup
 

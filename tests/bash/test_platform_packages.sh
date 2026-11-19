@@ -107,14 +107,13 @@ test_pi_web_access_is_pinned() {
   fi
 }
 
-test_pi_defaults_to_terra_with_medium_thinking() {
+test_pi_defaults_to_sol_with_medium_thinking() {
   local settings="$REPO_DIR/config/shared/ai/pi/settings.json"
 
   assert_exit_code 0 jq -e '
     .defaultProvider == "openai-codex" and
-    .defaultModel == "gpt-6.1-terra" and
+    .defaultModel == "gpt-6.2-sol" and
     .defaultThinkingLevel == "medium" and
-    (.enabledModels | index("openai-codex/gpt-6.1-terra") < index("openai-codex/gpt-6.2-sol")) and
     (.enabledModels | index("openai-codex/gpt-6.1-terra") != null) and
     (.enabledModels | index("openai-codex/gpt-6.2-sol") != null) and
     (.enabledModels | index("openai-codex/gpt-6-astra") != null) and

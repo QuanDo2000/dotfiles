@@ -1,6 +1,6 @@
 {
   "collapseChangelog": true,
-  "defaultModel": "gpt-6.1-terra",
+  "defaultModel": "gpt-6.2-sol",
   "defaultProjectTrust": "ask",
   "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "medium",
