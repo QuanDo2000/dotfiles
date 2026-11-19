@@ -41,6 +41,8 @@ Evaluation is not installation approval. Before adding a bridge, explain package
 - `references/pi-terminal-agent-operations.md`: discover, inspect and steer the correct existing Rex or tmux pane, preserving its current backend.
 - `references/subagent-portfolio-audit.md`: bounded evidence before disabling roles; diagnose orchestration waste first.
 
-## Verify the changed contract
+## Qualify the route and verify the work
 
-Run one bounded smoke child with exact sources/output, confirm scope and summary, and inspect resolved budget/routing. For async work, verify artifacts and completion notification, not process disappearance. For mutations inspect the diff and authoritative checks; for durable work verify ownership, retry state, and final delivery. Report untested runtime boundaries explicitly.
+Reuse inspectable evidence that covers the same routing and lifecycle contract under equivalent conditions; do not launch a smoke child just to reconfirm an unchanged, proven route. If the routing or lifecycle contract is changed or unverified and equivalent evidence does not cover it, run one bounded smoke child with exact sources and expected output. Confirm scope and summary, inspect resolved budget and routing, and verify the affected lifecycle behavior. Report untested runtime boundaries explicitly.
+
+Regardless of how the route was qualified, verify the actual work. For async work, verify artifacts and completion notification, not process disappearance. For mutations inspect the diff and authoritative checks; for durable work verify ownership, retry state, and final delivery.
