@@ -28,13 +28,11 @@ Existing files use the standard link conflict prompt. `symlinks`, `all`, and
 full `update` also sync the desktop appearance when the app is installed at
 `%LocalAppData%\Superlogical\Rex`: left-side tabs, FiraCode Nerd Font at 14,
 and Catppuccin Macchiato. Change the tracked defaults in `config/windows/Rex/`.
-The sync updates only those appearance keys and the Dotfiles-owned inline
-palette in the writable `config.ini` via atomic replacement, keeping a backup
-of the prior file. Close Rex and any editors of `config.ini` before syncing.
-If Rex is running, the sync is skipped; close it and rerun `symlinks` before
-reopening. If sync reports that the config changed before replacement, close
-the editor and retry. If the error names a recovery copy, reconcile it with the
-active config before retrying.
+The sync applies those appearance keys and the Dotfiles-owned inline palette
+even while Rex is running. It replaces the writable `config.ini` atomically and
+keeps a backup of the prior file. If sync reports that the config changed before
+replacement, rerun `symlinks` once the writer has finished. If the error names a
+recovery copy, reconcile it with the active config before retrying.
 Hosts, permissions, sessions, and other native settings are not synchronized.
 
 `debt:` The Windows desktop beta tested here does not handle the shared Ctrl+B

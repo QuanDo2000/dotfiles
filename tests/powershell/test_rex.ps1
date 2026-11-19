@@ -22,6 +22,7 @@ function TestSetup {
     }
     Set-CommandMock 'mock-rex-executable' { $script:RexCalls.Add("rex.exe $($args -join ' ')"); $global:LASTEXITCODE = 0 }
     Set-CommandMock 'Get-Process' { return $null }
+    $script:OriginalGetFileSha256 = (Get-Command Get-FileSha256).ScriptBlock
     $script:OriginalGetRexExecutable = (Get-Command Get-RexExecutable).ScriptBlock
     $script:OriginalGetRexPreviewInstallLocation = (Get-Command Get-RexPreviewInstallLocation).ScriptBlock
     Set-FunctionMock 'Get-RexExecutable' { 'mock-rex-executable' }
@@ -30,6 +31,7 @@ function TestSetup {
 
 function TestTeardown {
     foreach ($name in 'Get-Command', 'Get-Item', 'Get-Process', 'mock-rex-executable', 'winget') { Clear-CommandMock $name }
+    Set-FunctionMock 'Get-FileSha256' $script:OriginalGetFileSha256
     Set-FunctionMock 'Get-RexExecutable' $script:OriginalGetRexExecutable
     Set-FunctionMock 'Get-RexPreviewInstallLocation' $script:OriginalGetRexPreviewInstallLocation
     $env:Path = $script:RexOldPath
@@ -107,7 +109,7 @@ function test_failed_rex_upgrade_leaves_skill_setup_for_the_next_run {
     Assert-Equals 3 $script:RexCalls.Count
 }
 
-function test_rex_desktop_sync_preserves_unmanaged_settings_and_is_idempotent {
+function test_rex_desktop_sync_while_running_preserves_unmanaged_settings_and_is_idempotent {
     $root = Join-Path $env:LOCALAPPDATA 'Superlogical\Rex'
     $ini = Join-Path $root 'config.ini'
     Sync-RexDesktopAppearance
@@ -121,9 +123,6 @@ function test_rex_desktop_sync_preserves_unmanaged_settings_and_is_idempotent {
     Assert-Equals $original ([IO.File]::ReadAllText($ini))
     $script:Dry = $false
     Set-CommandMock 'Get-Process' { @{ Name = 'rex' } }
-    Sync-RexDesktopAppearance
-    Assert-Equals $original ([IO.File]::ReadAllText($ini))
-    Set-CommandMock 'Get-Process' { return $null }
     Sync-RexDesktopAppearance
     $current = [IO.File]::ReadAllText($ini)
     Assert-Contains $current "# Keep comment`r`ntab_placement = left`r`n[client]`r`nremote_control = false`r`n[palettes.private]`r`nfont_size = unrelated`r`n[]`r`nfont_family = FiraCode Nerd Font`r`n"
@@ -152,11 +151,12 @@ function test_rex_desktop_sync_preserves_an_edit_during_preflight {
     $start = "tab_placement = above`n# $([char]0x00e9)`n"
     $script:RexConcurrentEdit = "tab_placement = above`n# e$([char]0x0301)`n"
     [IO.File]::WriteAllText($script:RexIni, $start)
-    $script:RexProcessChecks = 0
-    Set-CommandMock 'Get-Process' {
-        if (++$script:RexProcessChecks -eq 2) {
-            [IO.File]::WriteAllText($script:RexIni, $script:RexConcurrentEdit)
+    Set-FunctionMock 'Get-FileSha256' {
+        param($Path)
+        if ($Path -eq $script:RexIni) {
+            [IO.File]::WriteAllText($Path, $script:RexConcurrentEdit)
         }
+        & $script:OriginalGetFileSha256 $Path
     }
     Assert-Throws { Sync-RexDesktopAppearance } 'concurrent sync must report a conflict'
     Assert-True ([string]::Equals($script:RexConcurrentEdit, [IO.File]::ReadAllText($script:RexIni), [StringComparison]::Ordinal)) 'preserve the exact editor change'
