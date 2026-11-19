@@ -69,8 +69,7 @@ client; do not invent a capture/send terminal emulator or enable anonymous HTTP.
 
 ## Mac → Arch remote access
 
-All Linux profiles declare Unix-socket-only Rex servers. Mac → Arch uses native
-OpenSSH over the machine's existing Tailscale network:
+Mac → Arch uses native OpenSSH over the machine's system Tailscale network:
 
 ```text
 ssh://quando@100.98.211.17
@@ -79,9 +78,8 @@ ssh://quando@100.98.211.17
 The Mac GUI connection and a fresh app quit/reopen were verified against the
 Arch client list: a new Mac app connection used the Unix socket through
 `sshd-session: quando` and reattached to the same session. System Tailscale on
-both machines remains necessary; only Rex's separate embedded Tailscale/HTTPS
-listener is being retired. Do not remove system Tailscale, SSH keys, ACLs, or
-saved Rex Tailscale identity. No anonymous HTTP or public port is introduced.
+both machines remains necessary. The separate owner-only Rex HTTPS listener is
+for the Windows GUI; the Mac can keep using SSH.
 
 ### Configure the Mac client
 
@@ -110,43 +108,60 @@ Linux Home Manager links `~/.local/bin/rex` to the pinned binary for discovery
 from noninteractive SSH shells. The upstream Home Manager service uses
 `X-SwitchMethod = "keep-old"`; activation does not replace the running server.
 
-### Session-safe listener retirement
+## Windows ↔ Arch over private Rex HTTPS
 
-The source removes `services.rex.tailscale` and the obsolete HTTPS CLI host.
-After actual GUI SSH/reconnect acceptance, inspect sessions and connected clients,
-then use preview.19's local hot-disable API instead of restarting Rex:
+The Windows GUI beta rejects `ssh://` even though the Rex CLI supports it.
+The Arch server profile enables built-in Tailscale for `rex-quanarch` at the
+next Rex start. Other Linux profiles stay Unix-socket-only. Both Rex listeners
+must be signed into the tailnet as their owner; keep tailnet-member access off.
+Keep system Tailscale connected on both machines for outbound connections.
+
+Use the tailnet policy editor to allow **TCP 443 only**, with separate grants
+from each system Tailscale node to the other machine's embedded Rex node:
+
+| Source | Destination |
+| --- | --- |
+| Windows system node | QuanArch Rex node |
+| QuanArch system node | Windows Rex node |
+
+Use the current node addresses from the Tailscale admin console. Do not confuse
+system and Rex node addresses. Preserve other grants and update policy tests
+that explicitly deny the new connections. These grants give access to the Rex
+server and its sessions as the server account. Dotfiles does not manage the
+policy, machine sign-ins, the Windows listener, or GUI host lists.
+
+- On Windows, use **Add Remote Host…** with
+  `https://rex-quanarch.tail28b036.ts.net`. On Arch, `rex client ls` should show
+  the Windows app over Tailscale.
+- To find the Windows HTTPS URL, query the bundled CLI from PowerShell:
+  ```powershell
+  & "$env:LOCALAPPDATA\Superlogical\Rex\rex.exe" --autostart=false server status
+  ```
+  On Arch, test with `rex --autostart=false -S "$windows_rex_url" ls` after
+  setting `windows_rex_url` to that HTTPS URL. Optionally save it with
+  `rex hosts add windows-rex "$windows_rex_url"`.
+
+### Preserve running sessions
+
+Build and dry-run the Arch profile before applying it through `dotfile symlinks`.
+Check the next-start command with `systemctl --user show rex -p ExecStart`.
+The upstream `keep-old` policy preserves the current process. If the runtime
+listener is still off, enable it from the local Unix socket without restarting:
 
 ```sh
-rex --autostart=false ls --json
-rex --autostart=false client ls --json
-rex api describe server.tailscale.disable
-rex --autostart=false api call server.tailscale.disable
-rex --autostart=false api call server.status
+local_rex="unix:///run/user/$(id -u)/rex/server.sock"
+rex -S "$local_rex" --autostart=false api call server.tailscale.enable '{"hostname":"rex-quanarch","allow_tailnet_members":false}'
+rex -S "$local_rex" --autostart=false server status
 ```
 
-This closes embedded-Tailscale connections, but preserves sessions and the saved
-sign-in. It requires the local Unix socket. Verify `tailscale.state` is `disabled`
-and the server PID/instance and session IDs are unchanged. Do not use logout,
-which discards the sign-in, or disable a listener still needed by other clients.
+Wait for HTTPS to become available, then confirm the same server instance and
+sessions are still running. Keep user linger enabled. To undo the live change,
+first check that no GUI clients still need it, then run
+`rex -S "$local_rex" --autostart=false api call server.tailscale.disable`.
+This disconnects HTTPS clients but preserves sessions and saved sign-in.
+Revert the Arch profile stanza as well if the listener should stay off on restart.
 
-Also remove the managed service's `--tailscale` flags so the next start will not
-re-enable exposure. Build and dry-run the Arch profile, compare its changes with
-the deployed generation, then use the normal role-aware activation route:
-`DOTFILES_DIR=/path/to/reviewed/checkout /path/to/reviewed/checkout/dotfile symlinks`.
-Avoid unrelated dependency/service changes; use a retained deployment baseline
-when necessary. Upstream `keep-old` semantics preserve the running Rex process.
-Verify `systemctl --user show rex -p MainPID -p ExecStart`, the disabled runtime
-state, and `systemctl is-active tailscaled`. No server restart is needed for this
-listener change. Linger must remain enabled (`loginctl show-user "$(id -u)" -p Linger`).
-
-Rollback without ending sessions: inspect `rex api describe server.tailscale.enable`
-and call its local API to reconnect the retained embedded identity. Restore the
-prior reviewed `services.rex.tailscale` stanza with hostname `rex-quanarch` only
-if persistent re-enablement is intended; build/dry-run/activate through the same
-route. The former GUI URL was `https://rex-quanarch.tail28b036.ts.net`; it is usable
-only while that listener is running. Do not reset Tailscale Serve or the system
-daemon. Any separately required Rex restart still terminates its programs and
-must be coordinated after saving work and intentionally closing sessions.
+## Native activity on macOS
 
 For native activity, **Ctrl+B, a** opens View Activity. On the Mac, use
 **Show Activity by Priority**, and under **Settings → Notifications → Program

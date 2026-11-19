@@ -143,6 +143,14 @@
         modules = [
           ./config/home.nix rex-linux.homeManagerModules.default ./config/rex-linux.nix
           ./config/qbittorrent-retention.nix
+          {
+            # The Windows GUI beta needs private HTTPS; other Linux profiles stay socket-only.
+            services.rex.tailscale = {
+              enable = true;
+              hostname = "rex-quanarch";
+              allowTailnetMembers = false;
+            };
+          }
         ];
       };
 

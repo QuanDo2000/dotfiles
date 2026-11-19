@@ -92,11 +92,10 @@ authentication remains available. To test from a local terminal, run `sudo -k`
 
 All currently declared Linux profiles install the Rex CLI and a personal
 `rex.service` through the upstream Home Manager module: generic Linux/Debian,
-Arch server, NixOS, and NixOS-WSL (currently x86-64). All profiles declare
-Unix-socket-only access; Mac → Arch uses native OpenSSH over system Tailscale.
-No embedded Rex Tailscale listener, anonymous listener, root login server or extra
-account is enabled in the source. Existing servers retain their old listener
-until a coordinated session-safe restart. macOS and Linux
+Arch server, NixOS, and NixOS-WSL (currently x86-64). Only Arch also enables
+owner-only built-in Tailscale HTTPS for the Windows GUI; other Linux profiles
+stay Unix-socket-only. Mac → Arch still uses native OpenSSH over system Tailscale.
+No anonymous listener is enabled. macOS and Linux
 share the Rex Ctrl+B keybindings and Catppuccin theme source in `config/rex/`.
 Linux shell startup attaches to (or creates) tmux session `main`; bare `tmux`
 does the same. macOS and shells already inside Rex do not autostart tmux.
@@ -112,8 +111,8 @@ client and launchd daemon; Tailscale owns its writable MagicDNS resolver files.
 Keep system Tailscale connected and add `ssh://quando@100.98.211.17` through
 Rex's **Add Remote Host…** on the Mac. CLI host declarations do not currently
 populate the GUI. Do not also connect the older Tailscale GUI app. See the
-[remote-access and migration notes](config/rex/README.md) for verified GUI
-SSH/reconnect behavior, listener retirement, and rollback.
+[Rex remote-access notes](config/rex/README.md) for Windows ↔ Arch private HTTPS,
+Mac GUI SSH, and session-safe listener changes.
 
 `dotfile` / `dotfile packages` checks for the package credential during Linux setup
 and securely prompts when it is missing. Retrieve the token by signing into the
