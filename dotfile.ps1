@@ -1823,7 +1823,7 @@ function Setup-RexLan {
     $name = 'Rex-QuanArch-LAN'
     $url = 'http://127.0.0.1:7297'
     Info "Register $name to start the QuanArch SSH tunnel at sign-in and retry every minute. Rex address: $url"
-    Warn 'Other local Windows users can access QuanArch Rex through this loopback port while the tunnel runs.'
+    Warn 'Use only on Windows PCs where all local users are trusted. Other users can access this tunnel or impersonate its HTTP endpoint when it is down. Use private Rex HTTPS on shared PCs.'
     if ($script:Dry) { return }
 
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -1848,6 +1848,7 @@ function Install-RexLanTask($name, $url, $identity) {
         throw 'TCP port 7297 is already in use. No Rex tunnel was installed.'
     }
 
+    if (![Environment]::Is64BitProcess) { throw 'Run rex-lan from native 64-bit PowerShell.' }
     $ssh = Join-Path ([Environment]::SystemDirectory) 'OpenSSH\ssh.exe'
     $compiler = Join-Path ([Environment]::GetFolderPath('Windows')) 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
     if (!(Test-Path -LiteralPath $compiler -PathType Leaf)) { throw '.NET Framework C# compiler not found.' }

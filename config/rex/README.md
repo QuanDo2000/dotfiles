@@ -116,7 +116,8 @@ The task runs while you are signed in and tries again every minute after a
 failure. An existing task with that name is left unchanged. Normal dotfiles
 setup never installs this tunnel.
 
-The command needs the Windows Rex desktop app, Windows OpenSSH Client, and
+Run from native 64-bit PowerShell. The command needs the Windows Rex desktop
+app, Windows OpenSSH Client, and
 the .NET Framework C# compiler. It checks the Rex connection after starting
 the task. The scheduler retries after SSH exits, not while SSH is running.
 If Rex verification fails while SSH is still listening, fix the remote issue
@@ -126,8 +127,10 @@ verify its host key, and confirm that key-based login works without a prompt.
 The task uses the default Windows OpenSSH key and known-host paths, ignores
 SSH config, and forwards only `127.0.0.1:7297` to the QuanArch Rex Unix socket.
 In Windows Rex, add `http://127.0.0.1:7297` as a remote host. No Tailscale is
-needed for this connection. **Other local Windows users can use the tunnel
-as the remote Rex account while it runs.**
+needed for this connection. **Use this only on a PC where all local users are
+trusted.** Other local users can access the tunnel as the remote Rex account or
+impersonate its HTTP endpoint when it is down. On a shared PC, use private Rex
+HTTPS instead.
 
 To remove it, disable, stop, and delete `Rex-QuanArch-LAN` in Task Scheduler.
 For a task created by the dotfiles command, then remove its dedicated
