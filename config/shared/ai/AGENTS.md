@@ -42,7 +42,7 @@ Apply [Power of 10](https://spinroot.com/gerard/pdf/P10.pdf) and [TigerStyle](ht
 
 ## Authority and Evidence
 
-Research, diagnosis, reviews, and recommendations are read-only until edits are authorized. Findings are not implementation approval. Preserve unrelated/pre-existing work. Check current state before acting on historical output or steering, stopping, resuming, or discarding a child. Before claiming current status, recheck live state; if unavailable, label last-known evidence and the present status as unverified.
+An implementation request authorizes necessary in-scope inspection, edits, verification, and corrections without milestone reconfirmation. Research, diagnosis, reviews, and recommendations are read-only until edits are authorized; in default-profile Hermes, the standing recommendation policy may separately authorize qualifying improvements. Findings alone are not implementation approval. Explicit read-only, proposal-only, hold, and protected-action restrictions take precedence. Preserve unrelated/pre-existing work. Check current state before acting on historical output or steering, stopping, resuming, or discarding a child. Before claiming current status, recheck live state; if unavailable, label last-known evidence and the present status as unverified.
 
 Skill-saving and procedural-memory guidance never expands task authority. Read-only, isolated-worktree, and named-path restrictions also cover persistent skills, memory, and instruction files. Children without explicit authority for those shared writes return proposed lessons to the parent; only an authorized owner persists them.
 
