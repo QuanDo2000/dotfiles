@@ -1553,6 +1553,125 @@ function Sync-LazyLock {
     (Get-Item -LiteralPath $target).IsReadOnly = $false
 }
 
+function Test-RexDesktopRunning($Executable) {
+    return [bool](Get-Process -Name rex -ErrorAction SilentlyContinue |
+        Where-Object { -not $_.Path -or $_.Path -eq $Executable } | Select-Object -First 1)
+}
+
+function Sync-RexDesktopAppearance {
+    $root = Join-Path $env:LOCALAPPDATA 'Superlogical\Rex'
+    $executable = Join-Path $root 'rex.exe'
+    if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { return }
+    Info 'Syncing Windows Rex desktop appearance...'
+    if ($script:Dry) { return }
+    if (Test-RexDesktopRunning $executable) {
+        Warn 'Skipping Rex desktop appearance while Rex is running; close Rex and rerun dotfile.ps1 symlinks'
+        return
+    }
+
+    $source = Join-Path $script:DotfilesDir 'config\windows\Rex'
+    $rootSettings = [ordered]@{}
+    foreach ($line in Get-Content -LiteralPath (Join-Path $source 'appearance.ini') -Encoding UTF8) {
+        if ($line -notmatch '^([a-z_]+) = (.+)$') { throw 'Invalid Rex appearance setting' }
+        $rootSettings[$Matches[1]] = $Matches[2]
+    }
+    # Rex supports inline palettes, so selection and colors can change atomically.
+    $palette = @(Get-Content -LiteralPath (Join-Path $source 'catppuccin_macchiato.ini') -Encoding UTF8)
+    $paletteSettings = [ordered]@{}
+    foreach ($line in $palette) {
+        if ($line -match '^([a-z_]+) = (.+)$') { $paletteSettings[$Matches[1]] = $Matches[2] }
+    }
+
+    $ini = Join-Path $root 'config.ini'
+    Assert-NoReparsePointPath $ini 'Rex desktop config'
+    $exists = [IO.File]::Exists($ini)
+    $original = ''
+    $bom = $false
+    if ($exists) {
+        $bytes = [IO.File]::ReadAllBytes($ini)
+        $snapshot = [IO.MemoryStream]::new($bytes)
+        try { $originalHash = Get-StreamSha256 $snapshot } finally { $snapshot.Dispose() }
+        $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+        $offset = if ($bom) { 3 } else { 0 }
+        try { $original = [Text.UTF8Encoding]::new($false, $true).GetString($bytes, $offset, $bytes.Length - $offset) }
+        catch { throw "Rex desktop config is not valid UTF-8; leaving '$ini' unchanged" }
+    }
+    $eol = if ($original.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $lines = [regex]::Split($original, '(\r?\n)')
+    $rootPresent = @{}
+    $palettePresent = @{}
+    $paletteHeader = -1
+    $section = ''
+    for ($i = 0; $i -lt $lines.Length; $i += 2) {
+        if ($lines[$i] -match '^\s*\[([^\]]*)\]') {
+            $section = $Matches[1]
+            if ($section -eq 'palettes.dotfiles_macchiato') {
+                if ($paletteHeader -ge 0) { throw 'Rex desktop config has duplicate Dotfiles palette sections' }
+                $paletteHeader = $i
+            }
+            continue
+        }
+        if ($lines[$i] -notmatch '^\s*([a-z_]+)\s*=') { continue }
+        $key = $Matches[1]
+        if ($section -in '', '*' -and $rootSettings.Contains($key)) {
+            $rootPresent[$key] = $true
+            $lines[$i] = "$key = $($rootSettings[$key])"
+        } elseif ($section -eq 'palettes.dotfiles_macchiato' -and $paletteSettings.Contains($key)) {
+            $palettePresent[$key] = $true
+            $lines[$i] = "$key = $($paletteSettings[$key])"
+        }
+    }
+    if ($paletteHeader -ge 0) {
+        foreach ($key in $paletteSettings.Keys) {
+            if (-not $palettePresent.ContainsKey($key)) { $lines[$paletteHeader] += "$eol$key = $($paletteSettings[$key])" }
+        }
+    }
+    $missing = @($rootSettings.Keys | Where-Object { -not $rootPresent.ContainsKey($_) } | ForEach-Object { "$_ = $($rootSettings[$_])$eol" })
+    $updated = ($missing -join '') + ($lines -join '')
+    if ($paletteHeader -lt 0) {
+        if ($updated -and -not $updated.EndsWith("`n")) { $updated += $eol }
+        $updated += ((@('[palettes.dotfiles_macchiato]') + $palette) -join $eol) + $eol
+    }
+    if ([string]::Equals($updated, $original, [StringComparison]::Ordinal)) { return }
+    $temp = "$ini.tmp.$([Guid]::NewGuid().ToString('N'))"
+    try {
+        [IO.File]::WriteAllText($temp, $updated, [Text.UTF8Encoding]::new($bom, $true))
+        if (Test-RexDesktopRunning $executable) {
+            Warn 'Rex started during appearance sync; close it and rerun dotfile.ps1 symlinks'
+            return
+        }
+        if ($exists) {
+            $backup = "$ini.backup.$([Guid]::NewGuid().ToString('N'))"
+            Assert-NoReparsePointPath $ini 'Rex desktop config'
+            if ((Get-FileSha256 $ini) -ne $originalHash) { throw 'Rex desktop config changed during sync; retry after closing Rex' }
+            try {
+                [IO.File]::Replace($temp, $ini, $backup)
+            } catch {
+                $failure = $_
+                if ([IO.File]::Exists($backup)) {
+                    if (-not [IO.File]::Exists($ini)) {
+                        try { [IO.File]::Move($backup, $ini) }
+                        catch { throw "Rex config replacement failed ($($failure.Exception.Message)); recover from '$backup': $($_.Exception.Message)" }
+                    } else {
+                        throw "Rex config replacement failed ($($failure.Exception.Message)); inspect '$ini' and '$backup' before retrying"
+                    }
+                }
+                throw $failure
+            }
+            try { $backupHash = Get-FileSha256 $backup }
+            catch { throw "Rex config was replaced but backup verification failed; inspect '$ini' and '$backup' before retrying: $($_.Exception.Message)" }
+            if ($backupHash -ne $originalHash) {
+                # Another replacement could overwrite a subsequent edit.
+                throw "Concurrent Rex config edit; reconcile '$ini' with recovery copy '$backup' before retrying"
+            }
+        } else {
+            [IO.File]::Move($temp, $ini)
+        }
+    } finally {
+        if ([IO.File]::Exists($temp)) { [IO.File]::Delete($temp) }
+    }
+}
+
 function SetupSymlinks {
     Info "Setting up symlinks..."
     $script:OverwriteAll = $script:Force
@@ -1567,6 +1686,7 @@ function SetupSymlinks {
     }
     Sync-NotepadPlusPlusConfig
     Sync-LazyLock
+    Sync-RexDesktopAppearance
     if (-not $script:Dry) {
         $gpgconf = Join-Path $env:ProgramFiles 'GnuPG\bin\gpgconf.exe'
         if (Test-Path -LiteralPath $gpgconf -PathType Leaf) {

@@ -107,6 +107,62 @@ function test_failed_rex_upgrade_leaves_skill_setup_for_the_next_run {
     Assert-Equals 3 $script:RexCalls.Count
 }
 
+function test_rex_desktop_sync_preserves_unmanaged_settings_and_is_idempotent {
+    $root = Join-Path $env:LOCALAPPDATA 'Superlogical\Rex'
+    $ini = Join-Path $root 'config.ini'
+    Sync-RexDesktopAppearance
+    Assert-False (Test-Path -LiteralPath $root) 'do not seed desktop settings on a server-only machine'
+    New-Item -ItemType Directory -Path $root | Out-Null
+    New-Item -ItemType File -Path (Join-Path $root 'rex.exe') | Out-Null
+    $original = "# Keep comment`r`ntab_placement = above`r`n[client]`r`nremote_control = false`r`n[palettes.private]`r`nfont_size = unrelated`r`n[]`r`nfont_family = Cascadia Mono`r`n"
+    [IO.File]::WriteAllText($ini, $original)
+    $script:Dry = $true
+    Sync-RexDesktopAppearance
+    Assert-Equals $original ([IO.File]::ReadAllText($ini))
+    $script:Dry = $false
+    Set-CommandMock 'Get-Process' { @{ Name = 'rex' } }
+    Sync-RexDesktopAppearance
+    Assert-Equals $original ([IO.File]::ReadAllText($ini))
+    Set-CommandMock 'Get-Process' { return $null }
+    Sync-RexDesktopAppearance
+    $current = [IO.File]::ReadAllText($ini)
+    Assert-Contains $current "# Keep comment`r`ntab_placement = left`r`n[client]`r`nremote_control = false`r`n[palettes.private]`r`nfont_size = unrelated`r`n[]`r`nfont_family = FiraCode Nerd Font`r`n"
+    Assert-Contains $current "dark_theme_color_palette = dotfiles_macchiato`r`n"
+    Assert-Contains $current "[palettes.dotfiles_macchiato]`r`n"
+    Assert-Contains $current 'background = #24273a'
+    $backups = @(Get-ChildItem -LiteralPath $root -Filter 'config.ini.backup.*')
+    Assert-Equals 1 $backups.Count
+    Assert-Equals $original ([IO.File]::ReadAllText($backups[0].FullName))
+    Sync-RexDesktopAppearance
+    Assert-Equals $current ([IO.File]::ReadAllText($ini))
+    Assert-Equals 1 @(Get-ChildItem -LiteralPath $root -Filter 'config.ini.backup.*').Count
+
+    $unmanaged = "`r`n# Preserve this comment`r`n[server]`r`ntailscale_enabled = false`r`n"
+    [IO.File]::WriteAllText($ini, $current.Replace('background = #24273a', 'background = #000000') + $unmanaged)
+    Sync-RexDesktopAppearance
+    Assert-Equals ($current + $unmanaged) ([IO.File]::ReadAllText($ini))
+}
+
+function test_rex_desktop_sync_preserves_an_edit_during_preflight {
+    $root = Join-Path $env:LOCALAPPDATA 'Superlogical\Rex'
+    New-Item -ItemType Directory -Path $root | Out-Null
+    New-Item -ItemType File -Path (Join-Path $root 'rex.exe') | Out-Null
+    $script:RexIni = Join-Path $root 'config.ini'
+    # These edits compare equal under culture-sensitive Unicode comparison.
+    $start = "tab_placement = above`n# $([char]0x00e9)`n"
+    $script:RexConcurrentEdit = "tab_placement = above`n# e$([char]0x0301)`n"
+    [IO.File]::WriteAllText($script:RexIni, $start)
+    $script:RexProcessChecks = 0
+    Set-CommandMock 'Get-Process' {
+        if (++$script:RexProcessChecks -eq 2) {
+            [IO.File]::WriteAllText($script:RexIni, $script:RexConcurrentEdit)
+        }
+    }
+    Assert-Throws { Sync-RexDesktopAppearance } 'concurrent sync must report a conflict'
+    Assert-True ([string]::Equals($script:RexConcurrentEdit, [IO.File]::ReadAllText($script:RexIni), [StringComparison]::Ordinal)) 'preserve the exact editor change'
+    Assert-Equals 0 @(Get-ChildItem -LiteralPath $root -Filter 'config.ini.backup.*').Count
+}
+
 function test_rex_links_only_the_two_shared_assets_into_roaming_appdata {
     $root = Join-Path $env:APPDATA 'rex'
     $specs = @(Get-WindowsLinkSpecs | Where-Object { $_.Destination -like "$root*" })
