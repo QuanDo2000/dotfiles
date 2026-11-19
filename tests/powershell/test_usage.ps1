@@ -11,5 +11,6 @@ function test_showusage_mentions_commands_and_flags {
     Assert-Contains $output 'packages    Install all managed packages only'
     Assert-Contains $output 'upgrade     Upgrade native WinGet packages without pulling the repo'
     Assert-Contains $output 'doctor      Verify Windows installation'
+    Assert-Contains $output 'rex-lan     Set up the background QuanArch LAN SSH tunnel for Rex'
     Assert-False ($output -match '(?m)^  (ai|verify)\s') 'redundant commands must not appear in help'
 }

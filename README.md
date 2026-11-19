@@ -291,6 +291,7 @@ Commands:
   upgrade     Upgrade native WinGet packages without pulling the repo
   symlinks    Link managed Windows config files (no package installation)
   doctor      Verify Windows installation
+  rex-lan     Set up the background QuanArch LAN SSH tunnel for Rex
 
 Options:
   -d, --dry   Dry run (no changes made)
@@ -314,6 +315,7 @@ or run config setup. Close Anki and Obsidian before upgrading; use `-Dry` to
 preview the command.
 `dotfile.ps1 symlinks` links managed configs, seeds writable Notepad++/Neovim
 files, and reloads the GPG agent without installing packages or pulling the repo.
+`dotfile.ps1 rex-lan` is opt-in; see [Rex LAN setup and local access warning](config/rex/README.md#windows--quanarch-over-lan-ssh).
 Use `-Dry` to preview; existing conflicting files may prompt or be backed up.
 On Windows, `dotfile.ps1 update ai` pulls reviewed pins and installs AI tools
 and shared skills without updating other packages; `dotfile.ps1 doctor` checks

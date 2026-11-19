@@ -1819,6 +1819,143 @@ function SetupPiAuth {
     }
 }
 
+function Setup-RexLan {
+    $name = 'Rex-QuanArch-LAN'
+    $url = 'http://127.0.0.1:7297'
+    Info "Register $name to start the QuanArch SSH tunnel at sign-in and retry every minute. Rex address: $url"
+    Warn 'Use only on Windows PCs where all local users are trusted. Other users can access this tunnel or impersonate its HTTP endpoint when it is down. Use private Rex HTTPS on shared PCs.'
+    if ($script:Dry) { return }
+
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $lock = [Threading.Mutex]::new($false, "Global\Dotfiles-Rex-QuanArch-$($identity.User.Value)")
+    $owned = $false
+    try {
+        try { $owned = $lock.WaitOne(0) } catch [Threading.AbandonedMutexException] { $owned = $true }
+        if (!$owned) { throw 'Another Rex LAN setup is running.' }
+        Install-RexLanTask $name $url $identity
+    } finally {
+        if ($owned) { $lock.ReleaseMutex() }
+        $lock.Dispose()
+    }
+}
+
+function Install-RexLanTask($name, $url, $identity) {
+    if (Get-ScheduledTask -TaskPath '\' -TaskName $name -ErrorAction SilentlyContinue) {
+        Warn "Task $name already exists and was left unchanged. Check its status in Task Scheduler."
+        return
+    }
+    if (Get-NetTCPConnection -LocalPort 7297 -State Listen -ErrorAction SilentlyContinue) {
+        throw 'TCP port 7297 is already in use. No Rex tunnel was installed.'
+    }
+
+    if (![Environment]::Is64BitProcess) { throw 'Run rex-lan from native 64-bit PowerShell.' }
+    $ssh = Join-Path ([Environment]::SystemDirectory) 'OpenSSH\ssh.exe'
+    $compiler = Join-Path ([Environment]::GetFolderPath('Windows')) 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+    if (!(Test-Path -LiteralPath $compiler -PathType Leaf)) { throw '.NET Framework C# compiler not found.' }
+    if (!(Test-Path -LiteralPath $ssh -PathType Leaf)) { throw 'Windows OpenSSH Client is required.' }
+    $rex = Join-Path $env:LOCALAPPDATA 'Superlogical\Rex\rex.exe'
+    if (!(Test-Path -LiteralPath $rex -PathType Leaf)) { throw 'Install the Windows Rex desktop app before setting up its LAN tunnel.' }
+    $probeArgs = '-F NUL -T -o BatchMode=yes -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=5 quando@192.168.1.200 test -S /run/user/1000/rex/server.sock'
+    $probe = Start-Process -FilePath $ssh -ArgumentList $probeArgs -NoNewWindow -PassThru
+    try {
+        if (!$probe.WaitForExit(12000)) {
+            try { $probe.Kill() } catch [InvalidOperationException] { if (!$probe.HasExited) { throw } }
+            throw 'QuanArch SSH preflight timed out.'
+        }
+        if ($probe.ExitCode -ne 0) { throw 'QuanArch SSH preflight failed; verify LAN access, host key, login key, and Rex socket.' }
+    } finally { $probe.Dispose() }
+
+    # A scheduled executable must not inherit shared profile write permissions.
+    $root = [Environment]::GetFolderPath('CommonApplicationData')
+    $dir = Join-Path $root "Dotfiles-Rex-QuanArch-$($identity.User.Value)"
+    Assert-NoReparsePointPath $dir 'Rex LAN launcher'
+    if (Test-Path -LiteralPath $dir) { throw "Launcher directory already exists; inspect it before retrying: $dir" }
+    $owners = @($identity.User.Value, 'S-1-5-18', 'S-1-5-32-544')
+    $trusted = $owners + 'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464' # TrustedInstaller
+    # Allow users to create their own directory under ProgramData, but not to
+    # replace this directory via DELETE_CHILD or rewrite the parent's ACL.
+    $unsafe = [Security.AccessControl.FileSystemRights]'DeleteSubdirectoriesAndFiles, Delete, ChangePermissions, TakeOwnership'
+    $parent = $root
+    while ($parent) {
+        $acl = Get-Acl -LiteralPath $parent
+        if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin $trusted -or
+            ($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) | Where-Object {
+                $_.AccessControlType -eq 'Allow' -and ($_.FileSystemRights -band $unsafe) -and
+                !($_.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -and
+                $_.IdentityReference.Value -notin $trusted
+            })) { throw "Unsafe Rex launcher parent permissions: $parent" }
+        $parent = Split-Path $parent -Parent
+    }
+    $security = New-Object Security.AccessControl.DirectorySecurity
+    $security.SetAccessRuleProtection($true, $false)
+    $security.SetOwner($identity.User)
+    foreach ($sid in $owners) {
+        $rule = New-Object Security.AccessControl.FileSystemAccessRule(
+            [Security.Principal.SecurityIdentifier]$sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+        $security.AddAccessRule($rule)
+    }
+    if ($PSVersionTable.PSEdition -eq 'Core') {
+        [IO.FileSystemAclExtensions]::Create([IO.DirectoryInfo]::new($dir), $security)
+    } else {
+        [void][IO.Directory]::CreateDirectory($dir, $security)
+    }
+    Assert-NoReparsePointPath $dir 'Rex LAN launcher'
+    $acl = Get-Acl -LiteralPath $dir
+    if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $identity.User.Value -or
+        !$acl.AreAccessRulesProtected -or ($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) |
+            Where-Object { $_.IdentityReference.Value -notin $owners })) {
+        throw "Unexpected permissions on Rex launcher directory: $dir"
+    }
+    $launcher = Join-Path $dir 'QuanArchTunnel.exe'
+    $source = Join-Path $script:DotfilesDir 'config\windows\Rex\QuanArchTunnel.cs'
+    try {
+        Invoke-NativeChecked 'Rex tunnel launcher compilation failed' {
+            & $compiler /nologo /target:winexe /warnaserror+ "/out:$launcher" $source
+        }
+        $action = New-ScheduledTaskAction -Execute $launcher -WorkingDirectory $dir
+        $logon = New-ScheduledTaskTrigger -AtLogOn -User $identity.Name
+        $retry = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
+        $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) `
+            -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+        $principal = New-ScheduledTaskPrincipal -UserId $identity.Name -LogonType Interactive -RunLevel Limited
+        Register-ScheduledTask -TaskName $name -Action $action -Trigger @($logon, $retry) -Settings $settings `
+            -Principal $principal -Description 'Keep the localhost-only Rex connection to QuanArch available over LAN SSH.' | Out-Null
+    } catch {
+        try {
+            if (!(Get-ScheduledTask | Where-Object { $_.Actions.Execute -contains $launcher })) {
+                Assert-NoReparsePointPath $launcher 'Rex LAN launcher'
+                if (Test-Path -LiteralPath $launcher) { Remove-Item -LiteralPath $launcher }
+                if (!(Get-ChildItem -LiteralPath $dir -Force)) { [IO.Directory]::Delete($dir) }
+            }
+        } catch {
+            Warn "Could not clean up the failed Rex LAN setup at ${dir}: $($_.Exception.Message)"
+        }
+        throw
+    }
+    Start-ScheduledTask -TaskName $name
+    $ready = $false
+    $startup = [Diagnostics.Stopwatch]::StartNew()
+    while ($startup.Elapsed.TotalSeconds -lt 20) {
+        $listeners = @(Get-NetTCPConnection -LocalPort 7297 -State Listen -ErrorAction SilentlyContinue)
+        if ($listeners.Count -eq 1 -and $listeners[0].LocalAddress -eq '127.0.0.1') {
+            $child = Get-CimInstance Win32_Process -Filter "ProcessId=$($listeners[0].OwningProcess)"
+            if ($child.ExecutablePath -eq $ssh) {
+                $parent = Get-CimInstance Win32_Process -Filter "ProcessId=$($child.ParentProcessId)"
+                if ($parent.ExecutablePath -eq $launcher -and $parent.CreationDate -le $child.CreationDate) {
+                    $ready = $true
+                    break
+                }
+            }
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    if (!$ready) { throw "Task $name is registered and may still be starting. Check it in Task Scheduler, then try $url in Rex." }
+    Invoke-NativeChecked "Task $name is registered, but QuanArch Rex could not be reached through the tunnel" {
+        & $rex --autostart=false --timeout 5s -S $url server status
+    }
+    Success "Connected to QuanArch. Add $url in Windows Rex."
+}
+
 function ShowUsage {
     Write-Host @"
 Usage: dotfile.ps1 [OPTIONS] [COMMAND]
@@ -1832,6 +1969,7 @@ Commands:
   symlinks    Link managed Windows config files (no package installation)
   doctor      Verify Windows installation
   pi-auth     Set up missing Pi Codex subscription and OpenRouter logins
+  rex-lan     Set up the background QuanArch LAN SSH tunnel for Rex
 
 Options:
   -d, --dry     Dry run (no changes made)
@@ -1855,6 +1993,7 @@ if (-not $NoMain) {
         "symlinks"  { SetupSymlinks }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
         "pi-auth"   { SetupPiAuth }
+        "rex-lan"   { Setup-RexLan }
         default     { Fail "Unknown command: $Command" }
     }
 }
