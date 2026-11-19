@@ -220,7 +220,8 @@ in
 
   home.file = (lib.optionalAttrs (personalApps && pkgs.stdenv.hostPlatform.isLinux) obsidianFiles) // {
     ".config/dotfiles/profile" = profileFile;
-    "${homeDir}/.config/jj/config.toml".force = true;
+    # Preserve replacement when Home Manager forwards the XDG file's default force = false.
+    "${config.xdg.configHome}/jj/config.toml".force = lib.mkForce true;
     ".ssh/config" = {
       text = builtins.readFile ./shared/.ssh/config + ''
 
