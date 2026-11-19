@@ -1819,6 +1819,89 @@ function SetupPiAuth {
     }
 }
 
+function Setup-RexLan {
+    $name = 'Rex-QuanArch-LAN'
+    $url = 'http://127.0.0.1:7297'
+    Info "Register $name to start the QuanArch SSH tunnel at sign-in and retry every minute. Rex address: $url"
+    Warn 'Other local Windows users can access QuanArch Rex through this loopback port while the tunnel runs.'
+    if ($script:Dry) { return }
+
+    if (Get-ScheduledTask -TaskPath '\' -TaskName $name -ErrorAction SilentlyContinue) {
+        Warn "Task $name already exists and was left unchanged. Check its status in Task Scheduler."
+        return
+    }
+    if (Get-NetTCPConnection -LocalPort 7297 -State Listen -ErrorAction SilentlyContinue) {
+        throw 'TCP port 7297 is already in use. No Rex tunnel was installed.'
+    }
+
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $ssh = Join-Path ([Environment]::SystemDirectory) 'OpenSSH\ssh.exe'
+    $compiler = Join-Path ([Environment]::GetFolderPath('Windows')) 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+    if (!(Test-Path -LiteralPath $compiler -PathType Leaf)) { throw '.NET Framework C# compiler not found.' }
+    if (!(Test-Path -LiteralPath $ssh -PathType Leaf)) { throw 'Windows OpenSSH Client is required.' }
+    Invoke-NativeChecked 'QuanArch SSH preflight failed; verify the LAN connection, host key, login key, and Rex socket' {
+        & $ssh -F NUL -T -o BatchMode=yes -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=5 `
+            quando@192.168.1.200 'test -S /run/user/1000/rex/server.sock'
+    }
+
+    # A scheduled executable must not inherit shared profile write permissions.
+    $root = [Environment]::GetFolderPath('CommonApplicationData')
+    $dir = Join-Path $root "Dotfiles-Rex-QuanArch-$($identity.User.Value)"
+    Assert-NoReparsePointPath $dir 'Rex LAN launcher'
+    if (Test-Path -LiteralPath $dir) { throw "Launcher directory already exists; inspect it before retrying: $dir" }
+    $owners = @($identity.User.Value, 'S-1-5-18', 'S-1-5-32-544')
+    $trusted = $owners + 'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464' # TrustedInstaller
+    # Allow users to create their own directory under ProgramData, but not to
+    # replace this directory via DELETE_CHILD or rewrite the parent's ACL.
+    $unsafe = [Security.AccessControl.FileSystemRights]'DeleteSubdirectoriesAndFiles, Delete, ChangePermissions, TakeOwnership'
+    $parent = $root
+    while ($parent) {
+        $acl = Get-Acl -LiteralPath $parent
+        if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin $trusted -or
+            ($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) | Where-Object {
+                $_.AccessControlType -eq 'Allow' -and ($_.FileSystemRights -band $unsafe) -and
+                !($_.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -and
+                $_.IdentityReference.Value -notin $trusted
+            })) { throw "Unsafe Rex launcher parent permissions: $parent" }
+        $parent = Split-Path $parent -Parent
+    }
+    $security = New-Object Security.AccessControl.DirectorySecurity
+    $security.SetAccessRuleProtection($true, $false)
+    $security.SetOwner($identity.User)
+    foreach ($sid in $owners) {
+        $rule = New-Object Security.AccessControl.FileSystemAccessRule(
+            [Security.Principal.SecurityIdentifier]$sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+        $security.AddAccessRule($rule)
+    }
+    if ($PSVersionTable.PSEdition -eq 'Core') {
+        [IO.FileSystemAclExtensions]::Create([IO.DirectoryInfo]::new($dir), $security)
+    } else {
+        [void][IO.Directory]::CreateDirectory($dir, $security)
+    }
+    Assert-NoReparsePointPath $dir 'Rex LAN launcher'
+    $acl = Get-Acl -LiteralPath $dir
+    if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $identity.User.Value -or
+        !$acl.AreAccessRulesProtected -or ($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) |
+            Where-Object { $_.IdentityReference.Value -notin $owners })) {
+        throw "Unexpected permissions on Rex launcher directory: $dir"
+    }
+    $launcher = Join-Path $dir 'QuanArchTunnel.exe'
+    $source = Join-Path $script:DotfilesDir 'config\windows\Rex\QuanArchTunnel.cs'
+    Invoke-NativeChecked 'Rex tunnel launcher compilation failed' {
+        & $compiler /nologo /target:winexe /warnaserror+ "/out:$launcher" $source
+    }
+    $action = New-ScheduledTaskAction -Execute $launcher -WorkingDirectory $dir
+    $logon = New-ScheduledTaskTrigger -AtLogOn -User $identity.Name
+    $retry = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
+    $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) `
+        -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    $principal = New-ScheduledTaskPrincipal -UserId $identity.Name -LogonType Interactive -RunLevel Limited
+    Register-ScheduledTask -TaskName $name -Action $action -Trigger @($logon, $retry) -Settings $settings `
+        -Principal $principal -Description 'Keep the localhost-only Rex connection to QuanArch available over LAN SSH.' | Out-Null
+    Start-ScheduledTask -TaskName $name
+    Success "Registered $name and requested startup. Add $url in Windows Rex."
+}
+
 function ShowUsage {
     Write-Host @"
 Usage: dotfile.ps1 [OPTIONS] [COMMAND]
@@ -1832,6 +1915,7 @@ Commands:
   symlinks    Link managed Windows config files (no package installation)
   doctor      Verify Windows installation
   pi-auth     Set up missing Pi Codex subscription and OpenRouter logins
+  rex-lan     Set up the background QuanArch LAN SSH tunnel for Rex
 
 Options:
   -d, --dry     Dry run (no changes made)
@@ -1855,6 +1939,7 @@ if (-not $NoMain) {
         "symlinks"  { SetupSymlinks }
         "doctor"    { Doctor; if ($script:VerifyFailed) { exit 1 } }
         "pi-auth"   { SetupPiAuth }
+        "rex-lan"   { Setup-RexLan }
         default     { Fail "Unknown command: $Command" }
     }
 }

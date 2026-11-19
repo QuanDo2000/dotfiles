@@ -108,6 +108,28 @@ Linux Home Manager links `~/.local/bin/rex` to the pinned binary for discovery
 from noninteractive SSH shells. The upstream Home Manager service uses
 `X-SwitchMethod = "keep-old"`; activation does not replace the running server.
 
+## Windows → QuanArch over LAN SSH
+
+On Windows, run `./dotfile.ps1 rex-lan` to register the opt-in, no-window
+`Rex-QuanArch-LAN` task. Preview it first with `./dotfile.ps1 -Dry rex-lan`.
+The task runs while you are signed in and tries again every minute after a
+failure. An existing task with that name is left unchanged. Normal dotfiles
+setup never installs this tunnel.
+
+The command needs Windows OpenSSH Client and the .NET Framework C# compiler.
+On the LAN, first use Windows OpenSSH to connect to `quando@192.168.1.200`,
+verify its host key, and confirm that key-based login works without a prompt.
+The task uses the default Windows OpenSSH key and known-host paths, ignores
+SSH config, and forwards only `127.0.0.1:7297` to the QuanArch Rex Unix socket.
+In Windows Rex, add `http://127.0.0.1:7297` as a remote host. No Tailscale is
+needed for this connection. **Other local Windows users can use the tunnel
+as the remote Rex account while it runs.**
+
+To remove it, disable, stop, and delete `Rex-QuanArch-LAN` in Task Scheduler.
+For a task created by the dotfiles command, then remove its dedicated
+`Dotfiles-Rex-QuanArch-<user SID>` launcher folder under `%ProgramData%`.
+Neither operation changes any Rex server configuration or Tailscale policy.
+
 ## Windows ↔ Arch over private Rex HTTPS
 
 The Windows GUI beta rejects `ssh://` even though the Rex CLI supports it.
