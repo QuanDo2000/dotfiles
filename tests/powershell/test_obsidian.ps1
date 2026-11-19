@@ -6,7 +6,7 @@ function TestSetup {
     $env:DOTFILE_OBSIDIAN_VAULT = Join-Path $env:USERPROFILE 'vault'
     New-Item -ItemType Directory -Force -Path "$env:DOTFILE_OBSIDIAN_VAULT/.obsidian" | Out-Null
     $script:ObsidianMocks = @{}
-    foreach ($name in 'InstallPackages', 'InstallFiraCodeNerdFont', 'InstallAi', 'InstallAnkiAddons') {
+    foreach ($name in 'InstallPackages', 'Sync-RexPackage', 'InstallFiraCodeNerdFont', 'InstallAi', 'InstallAnkiAddons') {
         $script:ObsidianMocks[$name] = (Get-Command $name).ScriptBlock
         Set-FunctionMock $name { }
     }

@@ -217,7 +217,8 @@ target command; it does not exercise the installed profile guard or activation.
 
 ### Windows
 
-Run the following in PowerShell as Administrator:
+Run the following in a normal PowerShell session as the user who will use the
+Dotfiles. The script requests elevation separately if needed to create symlinks.
 
 ```powershell
 git clone https://github.com/QuanDo2000/dotfiles.git $HOME\Documents\Projects\dotfiles
@@ -318,6 +319,11 @@ Use `-Dry` to preview; existing conflicting files may prompt or be backed up.
 On Windows, `dotfile.ps1 update ai` pulls reviewed pins and installs AI tools
 and shared skills without updating other packages; `dotfile.ps1 doctor` checks
 the installation. There is no separate `ai` or `verify` command.
+
+**Rex on Windows** is a server-only preview. After an eligible tester registers
+Superlogical’s WinGet source once, `all`, `packages`, and full `update` manage the
+preview. `symlinks` and `all` link the shared Rex config. See the
+[Windows Rex setup and limitations](config/rex/README.md#rex-on-windows).
 
 AnkiConnect, Pass/Fail 2, and Zoom are pinned in `config/windows/anki-addons.json`.
 Downloads are SHA-256 checked. Anki's automatic updates are disabled for these

@@ -1,4 +1,45 @@
-# Rex on macOS and Linux
+# Rex on macOS, Linux, and Windows
+
+## Rex on Windows
+
+[Superlogical’s Windows preview](https://www.superlogical.com/rex/docs/windows/installation)
+ships the personal server and CLI, not a Windows GUI client. It is unsigned during
+preview and available to eligible testers. From an **elevated** PowerShell, register
+Superlogical’s source once:
+
+```powershell
+winget source add --name rex --arg https://pkgs.superlogical.com/rex/winget --type Microsoft.Rest --explicit
+```
+
+Then use a **normal** PowerShell to run `./dotfile.ps1 packages` and
+`./dotfile.ps1 symlinks` (or `./dotfile.ps1 all`). Without the source, package
+setup skips Rex. With it, Dotfiles installs `Superlogical.RexServer.Preview`
+from `rex` and sets up the native Pi skill without `--force`. Full `update`
+upgrades an existing preview unless Rex is running; it does not stop Rex for
+you. The separate native `upgrade` command does not target the explicit Rex source.
+Use the per-user WinGet zip, not the MSI, for Dotfiles-managed Rex. If a different
+`rex.exe` comes first on PATH, Dotfiles reports the conflict rather than using it.
+
+Dotfiles links only `%AppData%\rex\init.lua` and `Catppuccin Macchiato.conf`.
+Existing files use the standard link conflict prompt. The shared Ctrl+B
+bindings are available to compatible clients connected to the Windows server;
+the Mac client’s font, theme selection, and native preferences stay on the Mac.
+`debt:` The Windows server does not publish the theme-import shortcut, because a
+Windows path is not available to the Mac client. Revisit when Rex ships a Windows
+client or supports client-relative theme imports. Native state in
+`%LocalAppData%\rex` is left alone.
+
+In a fresh terminal, verify with `rex version`, `rex --autostart=false config check`,
+and `rex --autostart=false skill status --json`. Reload explicitly with
+`rex --autostart=false config reload` if the server is already running. Dotfiles
+does not register a service, start a server, or change SSH or firewall settings.
+See [Running on Windows](https://www.superlogical.com/rex/docs/windows/running)
+for optional sign-in or boot startup. If an upgrade moves `rex.exe`, rerun the
+startup registration you chose, as upstream directs. Follow the official
+[removal steps](https://www.superlogical.com/rex/docs/windows/installation#removing-rex)
+before uninstalling the package if you registered startup.
+
+## Rex on macOS and Linux
 
 macOS uses Rex. Linux retains tmux auto-attach/create of `main` and the bare
 `tmux` convenience wrapper until a Linux Rex client is available. Shells already

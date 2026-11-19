@@ -16,6 +16,7 @@ function TestSetup {
     $script:OriginalGetInstalledWingetPackages = (Get-Command Get-InstalledWingetPackages).ScriptBlock
     Set-HealthyToolMocks
     Set-FunctionMock 'Get-InstalledWingetPackages' { @() }
+    Set-CommandMock 'winget' { $global:LASTEXITCODE = -1978335214 }
 }
 
 function Set-HealthyToolMocks {
@@ -29,6 +30,7 @@ function Set-HealthyToolMocks {
 function TestTeardown {
     Clear-CommandMock 'Get-Command'
     Clear-CommandMock 'Get-Module'
+    Clear-CommandMock 'winget'
     foreach ($cmd in 'rustc', 'cargo', 'rustfmt', 'clippy-driver') { Clear-CommandMock $cmd }
     Set-FunctionMock 'Get-InstalledWingetPackages' $script:OriginalGetInstalledWingetPackages
     Clear-TestEnv
