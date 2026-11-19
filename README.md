@@ -68,13 +68,13 @@ The official cache and signature verification remain enabled.
 
 macOS uses [Rex](https://www.superlogical.com/rex/docs/installation) for the
 terminal and persistent sessions instead of Ghostty/tmux. Nix installs the signed
-Rex Beta app and CLI, pinned by `packages/rex-release.json`; `dotfile update`
+Rex preview app and CLI, pinned by `packages/rex-release.json`; `dotfile update`
 refreshes that pin from the official preview feed. Sparkle updates are disabled
 for the immutable bundle. Linux retains desktop Ghostty, and tmux remains
 installed with automatic attach/create of `main` on eligible interactive Linux
 shells until a Linux Rex client is available. macOS stays on Rex.
 
-After `dotfile packages`, open `~/Applications/Home Manager Apps/Rex Beta.app`
+After `dotfile packages`, open `~/Applications/Home Manager Apps/Rex.app`
 rather than any older `/Applications` copy. No running app or server is stopped
 by activation: switch applications only after saving work and closing old
 sessions yourself. Remove the old app separately when it is no longer needed.
