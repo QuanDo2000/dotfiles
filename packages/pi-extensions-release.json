@@ -1,7 +1,7 @@
 {
-  "releaseId": "65ecd79d58fed0a7f52f591d4fdc5d56021511fa000093396a912d49509902c3",
+  "releaseId": "b86a87210fcd57717d5419377e2749b8f275aae5ce2d6f4292127a03f48dbc6c",
   "node": {
-    "version": "26.13.0",
+    "version": "26.13.1",
     "abi": "147"
   }
 }

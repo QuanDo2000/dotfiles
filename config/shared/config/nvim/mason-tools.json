@@ -1,12 +1,12 @@
 {
-  "registryVersion": "2026-11-14-sleepy-spot",
-  "registrySha256": "eae54c776bf8b5d26d7170805ed923e2ac94d7eb419c5144fae3f38174d86adf",
+  "registryVersion": "2026-11-19-keen-nase",
+  "registrySha256": "fa9d78a101c5729e8fdd747f2901bc5037d8526ed5f88095d9c13190e792f24b",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
-    "markdownlint-cli2": "0.24.0",
+    "markdownlint-cli2": "0.24.1",
     "marksman": "2026-02-08",
-    "prettier": "3.9.10",
+    "prettier": "3.10.1",
     "stylua": "v2.6.0",
     "taplo": "0.10.0",
     "yaml-language-server": "2.0.0"
