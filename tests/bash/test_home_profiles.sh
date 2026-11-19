@@ -447,7 +447,11 @@ test_platform_profiles_have_expected_ghostty_config() {
     assert_not_contains "$rex_command" --tailnet-allow-identified
     assert_not_contains "$rex_command" --tailscale-allow-tailnet-members
     assert_not_contains "$rex_command" --extra-listen
-    assert_not_contains "$rex_command" --tailscale
+    if [[ $profile == arch-server ]]; then
+      assert_contains "$rex_command" '--tailscale --tailscale-hostname rex-quanarch'
+    else
+      assert_not_contains "$rex_command" --tailscale
+    fi
     _test_present "$(_profile_xdg_files "$profile")" rex/init.lua 'rex/Catppuccin Macchiato.conf'
   done
   assert_line_present "$(_profile_xdg_files linux)" tmux/tmux.conf
