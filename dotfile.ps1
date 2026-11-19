@@ -1826,6 +1826,20 @@ function Setup-RexLan {
     Warn 'Other local Windows users can access QuanArch Rex through this loopback port while the tunnel runs.'
     if ($script:Dry) { return }
 
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $lock = [Threading.Mutex]::new($false, "Global\Dotfiles-Rex-QuanArch-$($identity.User.Value)")
+    $owned = $false
+    try {
+        try { $owned = $lock.WaitOne(0) } catch [Threading.AbandonedMutexException] { $owned = $true }
+        if (!$owned) { throw 'Another Rex LAN setup is running.' }
+        Install-RexLanTask $name $url $identity
+    } finally {
+        if ($owned) { $lock.ReleaseMutex() }
+        $lock.Dispose()
+    }
+}
+
+function Install-RexLanTask($name, $url, $identity) {
     if (Get-ScheduledTask -TaskPath '\' -TaskName $name -ErrorAction SilentlyContinue) {
         Warn "Task $name already exists and was left unchanged. Check its status in Task Scheduler."
         return
@@ -1834,17 +1848,21 @@ function Setup-RexLan {
         throw 'TCP port 7297 is already in use. No Rex tunnel was installed.'
     }
 
-    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $ssh = Join-Path ([Environment]::SystemDirectory) 'OpenSSH\ssh.exe'
     $compiler = Join-Path ([Environment]::GetFolderPath('Windows')) 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
     if (!(Test-Path -LiteralPath $compiler -PathType Leaf)) { throw '.NET Framework C# compiler not found.' }
     if (!(Test-Path -LiteralPath $ssh -PathType Leaf)) { throw 'Windows OpenSSH Client is required.' }
     $rex = Join-Path $env:LOCALAPPDATA 'Superlogical\Rex\rex.exe'
     if (!(Test-Path -LiteralPath $rex -PathType Leaf)) { throw 'Install the Windows Rex desktop app before setting up its LAN tunnel.' }
-    Invoke-NativeChecked 'QuanArch SSH preflight failed; verify the LAN connection, host key, login key, and Rex socket' {
-        & $ssh -F NUL -T -o BatchMode=yes -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=5 `
-            quando@192.168.1.200 'test -S /run/user/1000/rex/server.sock'
-    }
+    $probeArgs = '-F NUL -T -o BatchMode=yes -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=5 quando@192.168.1.200 test -S /run/user/1000/rex/server.sock'
+    $probe = Start-Process -FilePath $ssh -ArgumentList $probeArgs -NoNewWindow -PassThru
+    try {
+        if (!$probe.WaitForExit(12000)) {
+            try { $probe.Kill() } catch [InvalidOperationException] { if (!$probe.HasExited) { throw } }
+            throw 'QuanArch SSH preflight timed out.'
+        }
+        if ($probe.ExitCode -ne 0) { throw 'QuanArch SSH preflight failed; verify LAN access, host key, login key, and Rex socket.' }
+    } finally { $probe.Dispose() }
 
     # A scheduled executable must not inherit shared profile write permissions.
     $root = [Environment]::GetFolderPath('CommonApplicationData')
