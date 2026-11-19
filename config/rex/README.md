@@ -241,7 +241,7 @@ The saved baseline includes FiraCode Nerd Font at 14 pt and its fallbacks, Merin
 
 Remote-control permission, tailnet exposure, web-client origin permissions, other saved hosts and host overrides, cached server routes, onboarding/update history, window geometry, and session/activity state remain machine-local. These are not exported into Git. Sparkle automatic checks and installs remain disabled even if the live app changed them: Nix owns updates.
 
-Run `dotfile packages`, then open `~/Applications/Home Manager Apps/Rex Beta.app`. Do not run it beside the older `/Applications` copy expecting a separate server: both use Rex's native account state. Save work and close the old sessions/app yourself before switching; provisioning does not terminate them.
+Run `dotfile packages`, then open `~/Applications/Home Manager Apps/Rex.app`. Do not run it beside the older `/Applications` copy expecting a separate server: both use Rex's native account state. Save work and close the old sessions/app yourself before switching; provisioning does not terminate them.
 
 For an already running app, `rex config check` validates the linked file and `rex config reload` applies its shortcuts without restarting terminals. Reload is explicit, not an activation side effect.
 
