@@ -26,7 +26,11 @@ for index = 1, 9 do
   rex.bind("ctrl+b>" .. index, "client.tab.goto", { index = index })
 end
 
--- Explicit reapply; activation/first Rex shell imports and selects it once.
-rex.bind("ctrl+b>shift+t", "client.theme.import", {
-  path = os.getenv("HOME") .. "/.config/rex/Catppuccin Macchiato.conf",
-})
+-- Theme import reads a file on the GUI client. A Windows server's path
+-- cannot be opened by a Mac client, so don't publish that binding there.
+local home = os.getenv("HOME")
+if os.getenv("OS") ~= "Windows_NT" and home then
+  rex.bind("ctrl+b>shift+t", "client.theme.import", {
+    path = home .. "/.config/rex/Catppuccin Macchiato.conf",
+  })
+end

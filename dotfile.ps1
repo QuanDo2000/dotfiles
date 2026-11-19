@@ -31,6 +31,8 @@ function Resolve-DotfilesDir($Override, $ScriptPath) {
 # Resolve symlink so invoking via ~\.local\bin points back to the real repo.
 # Allow override via $env:DOTFILES_DIR so the install path is not hardcoded.
 $script:DotfilesDir = Resolve-DotfilesDir $env:DOTFILES_DIR $PSCommandPath
+$script:RexPreviewId = 'Superlogical.RexServer.Preview'
+$script:RexWingetPackage = @('--id', $script:RexPreviewId, '--exact', '--source', 'rex', '--scope', 'user')
 $script:FiraCodeNerdFontVersion = '3.5.1'
 $script:FiraCodeNerdFontUrl = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/FiraCode.zip'
 $script:FiraCodeNerdFontSha256 = '239395baf60c89b2eaf4862b6b09db0ef95605cd3e8eef51c00345822a81a665'
@@ -292,6 +294,90 @@ function InstallPackages {
         Invoke-NativeChecked 'rustup update stable failed' { rustup update stable }
     }
     Success "Finished installing packages"
+}
+
+function Test-RexWingetSource {
+    # WinGet uses nonzero exit codes for expected states; interpret them here.
+    $PSNativeCommandUseErrorActionPreference = $false
+    $details = winget source export --name rex --disable-interactivity 2>$null
+    switch ($LASTEXITCODE) {
+        0 { }
+        -1978335214 { return $false } # APPINSTALLER_CLI_ERROR_SOURCE_NAME_DOES_NOT_EXIST
+        default { throw "Could not check the Rex WinGet source (exit $LASTEXITCODE)" }
+    }
+    try { $source = ($details -join "`n") | ConvertFrom-Json }
+    catch { throw 'WinGet returned invalid Rex source details' }
+    if ($source.Name -ne 'rex' -or $source.Arg -cne 'https://pkgs.superlogical.com/rex/winget' -or
+        $source.Type -ne 'Microsoft.Rest' -or $source.Explicit -isnot [bool] -or -not $source.Explicit) {
+        Warn 'Ignoring the registered rex WinGet source because it does not match the official explicit source; see the Rex Windows installation docs'
+        return $false
+    }
+    return $true
+}
+
+function Test-RexPreviewInstalled {
+    $PSNativeCommandUseErrorActionPreference = $false
+    $package = $script:RexWingetPackage
+    winget list @package --disable-interactivity --accept-source-agreements *> $null
+    switch ($LASTEXITCODE) {
+        0 { return $true }
+        -1978335212 { return $false } # APPINSTALLER_CLI_ERROR_NO_APPLICATIONS_FOUND
+        default { throw "Could not check the installed Rex Preview package (exit $LASTEXITCODE)" }
+    }
+}
+
+function Get-RexPreviewInstallLocation {
+    # WinGet records per-user portable packages in Add/Remove Programs.
+    $entries = @(Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$($script:RexPreviewId)_*" -ErrorAction SilentlyContinue |
+        Where-Object { $_.WinGetPackageIdentifier -eq $script:RexPreviewId -and $_.WinGetSourceIdentifier -eq 'pkgs.superlogical.com/rex/winget' })
+    if ($entries.Count -ne 1 -or -not $entries[0].InstallLocation) {
+        throw 'Could not find the registered per-user Rex Preview install location; use the WinGet zip, not the MSI'
+    }
+    return $entries[0].InstallLocation
+}
+
+function Get-RexExecutable {
+    $rex = Get-Command rex.exe -CommandType Application -ErrorAction SilentlyContinue
+    if (-not $rex) {
+        throw 'Rex Preview is not on PATH; open a fresh terminal and rerun dotfile.ps1 packages'
+    }
+    # WinGet may expose a portable executable via a symlink on PATH.
+    $path = $rex.Source
+    $item = Get-Item -LiteralPath $path -Force
+    if ($item.LinkType -eq 'SymbolicLink') {
+        $target = [string]@($item.Target)[0]
+        $path = [IO.Path]::GetFullPath([IO.Path]::Combine([IO.Path]::GetDirectoryName($path), $target))
+    }
+    $registeredPath = Join-Path (Get-RexPreviewInstallLocation) 'rex.exe'
+    if ([IO.Path]::GetFullPath($path) -ne [IO.Path]::GetFullPath($registeredPath)) {
+        throw "Rex on PATH is not the managed WinGet Preview: $($rex.Source). Check for a competing installation or open a fresh terminal."
+    }
+    return $path
+}
+
+function Sync-RexPackage {
+    param([switch]$Update)
+    Info 'Managing Rex Preview if the official rex WinGet source is registered...'
+    if ($script:Dry) { return }
+    if (-not (Test-RexWingetSource)) {
+        Info 'Skipping Rex Preview: register the official tester source from the Rex Windows installation docs to opt in'
+        return
+    }
+
+    $PSNativeCommandUseErrorActionPreference = $false
+    if (-not (Test-RexPreviewInstalled)) {
+        Invoke-Winget 'Rex Preview install failed' (@('install') + $script:RexWingetPackage)
+    } elseif ($Update) {
+        if (Get-Process -Name rex -ErrorAction SilentlyContinue) {
+            Warn 'Skipping Rex upgrade while Rex is running; save your sessions and close Rex before updating'
+        } else {
+            Invoke-Winget 'Rex Preview upgrade failed' (@('upgrade') + $script:RexWingetPackage)
+        }
+    }
+
+    Refresh-ProcessPath
+    $rex = Get-RexExecutable
+    Invoke-NativeChecked 'Rex Pi skill setup failed' { & $rex --autostart=false skill setup --agent pi }
 }
 
 function UpgradeNativePackages {
@@ -585,6 +671,7 @@ function Sync-ObsidianSettings {
 
 function InstallManagedPackages {
     InstallPackages
+    Sync-RexPackage
     InstallAnkiAddons
     Sync-ObsidianSettings
     InstallFiraCodeNerdFont
@@ -1310,6 +1397,11 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
         InstallAi -Update
     } else {
         InstallPackages -Update -UpgradeFailures $upgradeFailures
+        try { Sync-RexPackage -Update }
+        catch {
+            $upgradeFailures.Add($_.Exception.Message)
+            Warn "$($_.Exception.Message); continuing with remaining updates"
+        }
         InstallAnkiAddons
         Sync-ObsidianSettings
         InstallFiraCodeNerdFont
@@ -1317,7 +1409,13 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
         SetupSymlinks
         Sync-NeovimPlugins
     }
-    if (-not $script:Dry -and -not $aiOnly) { Assert-WindowsHealthy }
+    if (-not $script:Dry -and -not $aiOnly) {
+        try { Assert-WindowsHealthy }
+        catch {
+            if ($upgradeFailures.Count -eq 0) { throw }
+            $upgradeFailures.Add($_.Exception.Message)
+        }
+    }
     if ($upgradeFailures.Count -gt 0) {
         throw "Update completed with failed package upgrades: $($upgradeFailures -join '; ')"
     }
@@ -1412,6 +1510,11 @@ function Get-WindowsLinkSpecs {
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource "mason-tools.json") (Join-Path $nvimTarget "mason-tools.json")
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource ".gitignore") (Join-Path $nvimTarget ".gitignore")
     $specs += New-LinkSpec 'File' (Join-Path $nvimSource "stylua.toml") (Join-Path $nvimTarget "stylua.toml")
+
+    # Rex server configuration; keep runtime files and client preferences native.
+    foreach ($name in 'init.lua', 'Catppuccin Macchiato.conf') {
+        $specs += New-LinkSpec 'File' (Join-Path $script:DotfilesDir "config\rex\$name") (Join-Path $env:APPDATA "rex\$name")
+    }
 
     # Jujutsu config (lives at %APPDATA%\jj\config.toml on Windows)
     $specs += New-LinkSpec 'Dir' (Join-Path $sharedPath "config\jj") "$env:APPDATA\jj"
@@ -1513,6 +1616,17 @@ function Verify {
             $errors++
         }
     }
+
+    try {
+        if (Test-RexWingetSource) {
+            if (-not (Test-RexPreviewInstalled)) { throw 'Winget package missing: Superlogical.RexServer.Preview' }
+            $rex = Get-RexExecutable
+            Invoke-NativeChecked 'Rex config check failed' {
+                & $rex --autostart=false config check (Join-Path $env:APPDATA 'rex\init.lua')
+            }
+            Success 'Rex configuration valid'
+        }
+    } catch { FailSoft $_.Exception.Message; $errors++ }
 
     Info 'Verifying managed Anki add-ons...'
     try {

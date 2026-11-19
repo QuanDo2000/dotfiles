@@ -3,7 +3,7 @@ function TestSetup {
     $script:AnkiOriginalDir = $script:DotfilesDir
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'repo'
     $script:AnkiMocks = @{}
-    foreach ($name in 'InstallPackages', 'InstallFiraCodeNerdFont', 'InstallAi', 'Sync-ObsidianSettings') {
+    foreach ($name in 'InstallPackages', 'Sync-RexPackage', 'Test-RexWingetSource', 'InstallFiraCodeNerdFont', 'InstallAi', 'Sync-ObsidianSettings') {
         $script:AnkiMocks[$name] = (Get-Command $name).ScriptBlock
         Set-FunctionMock $name { }
     }
