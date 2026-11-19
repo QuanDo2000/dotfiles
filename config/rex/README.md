@@ -116,7 +116,9 @@ The task runs while you are signed in and tries again every minute after a
 failure. An existing task with that name is left unchanged. Normal dotfiles
 setup never installs this tunnel.
 
-The command needs Windows OpenSSH Client and the .NET Framework C# compiler.
+The command needs the Windows Rex desktop app, Windows OpenSSH Client, and
+the .NET Framework C# compiler. It checks the Rex connection after starting
+the task. If the check fails, the task stays installed and keeps retrying.
 On the LAN, first use Windows OpenSSH to connect to `quando@192.168.1.200`,
 verify its host key, and confirm that key-based login works without a prompt.
 The task uses the default Windows OpenSSH key and known-host paths, ignores
@@ -128,6 +130,8 @@ as the remote Rex account while it runs.**
 To remove it, disable, stop, and delete `Rex-QuanArch-LAN` in Task Scheduler.
 For a task created by the dotfiles command, then remove its dedicated
 `Dotfiles-Rex-QuanArch-<user SID>` launcher folder under `%ProgramData%`.
+If setup was interrupted before registering a task, check that no task
+references the launcher before removing that directory and retrying.
 Neither operation changes any Rex server configuration or Tailscale policy.
 
 ## Windows ↔ Arch over private Rex HTTPS

@@ -1839,6 +1839,8 @@ function Setup-RexLan {
     $compiler = Join-Path ([Environment]::GetFolderPath('Windows')) 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
     if (!(Test-Path -LiteralPath $compiler -PathType Leaf)) { throw '.NET Framework C# compiler not found.' }
     if (!(Test-Path -LiteralPath $ssh -PathType Leaf)) { throw 'Windows OpenSSH Client is required.' }
+    $rex = Join-Path $env:LOCALAPPDATA 'Superlogical\Rex\rex.exe'
+    if (!(Test-Path -LiteralPath $rex -PathType Leaf)) { throw 'Install the Windows Rex desktop app before setting up its LAN tunnel.' }
     Invoke-NativeChecked 'QuanArch SSH preflight failed; verify the LAN connection, host key, login key, and Rex socket' {
         & $ssh -F NUL -T -o BatchMode=yes -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=5 `
             quando@192.168.1.200 'test -S /run/user/1000/rex/server.sock'
@@ -1887,19 +1889,39 @@ function Setup-RexLan {
     }
     $launcher = Join-Path $dir 'QuanArchTunnel.exe'
     $source = Join-Path $script:DotfilesDir 'config\windows\Rex\QuanArchTunnel.cs'
-    Invoke-NativeChecked 'Rex tunnel launcher compilation failed' {
-        & $compiler /nologo /target:winexe /warnaserror+ "/out:$launcher" $source
+    try {
+        Invoke-NativeChecked 'Rex tunnel launcher compilation failed' {
+            & $compiler /nologo /target:winexe /warnaserror+ "/out:$launcher" $source
+        }
+        $action = New-ScheduledTaskAction -Execute $launcher -WorkingDirectory $dir
+        $logon = New-ScheduledTaskTrigger -AtLogOn -User $identity.Name
+        $retry = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
+        $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) `
+            -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+        $principal = New-ScheduledTaskPrincipal -UserId $identity.Name -LogonType Interactive -RunLevel Limited
+        Register-ScheduledTask -TaskName $name -Action $action -Trigger @($logon, $retry) -Settings $settings `
+            -Principal $principal -Description 'Keep the localhost-only Rex connection to QuanArch available over LAN SSH.' | Out-Null
+    } catch {
+        try {
+            if (!(Get-ScheduledTask | Where-Object { $_.Actions.Execute -contains $launcher })) {
+                Assert-NoReparsePointPath $launcher 'Rex LAN launcher'
+                if (Test-Path -LiteralPath $launcher) { Remove-Item -LiteralPath $launcher }
+                if (!(Get-ChildItem -LiteralPath $dir -Force)) { [IO.Directory]::Delete($dir) }
+            }
+        } catch {
+            Warn "Could not clean up the failed Rex LAN setup at ${dir}: $($_.Exception.Message)"
+        }
+        throw
     }
-    $action = New-ScheduledTaskAction -Execute $launcher -WorkingDirectory $dir
-    $logon = New-ScheduledTaskTrigger -AtLogOn -User $identity.Name
-    $retry = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
-    $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) `
-        -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
-    $principal = New-ScheduledTaskPrincipal -UserId $identity.Name -LogonType Interactive -RunLevel Limited
-    Register-ScheduledTask -TaskName $name -Action $action -Trigger @($logon, $retry) -Settings $settings `
-        -Principal $principal -Description 'Keep the localhost-only Rex connection to QuanArch available over LAN SSH.' | Out-Null
     Start-ScheduledTask -TaskName $name
-    Success "Registered $name and requested startup. Add $url in Windows Rex."
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        if (Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort 7297 -State Listen -ErrorAction SilentlyContinue) { break }
+        Start-Sleep -Milliseconds 250
+    }
+    Invoke-NativeChecked "Task $name is registered, but QuanArch Rex could not be reached through the tunnel" {
+        & $rex --autostart=false --timeout 5s -S $url server status
+    }
+    Success "Connected to QuanArch. Add $url in Windows Rex."
 }
 
 function ShowUsage {
