@@ -125,9 +125,11 @@ from each system Tailscale node to the other machine's embedded Rex node:
 | QuanArch system node | Windows Rex node |
 
 Use the current node addresses from the Tailscale admin console. Do not confuse
-system and Rex node addresses. Preserve other grants and update policy tests
-that explicitly deny the new connections. These grants give access to the Rex
-server and its sessions as the server account. Dotfiles does not manage the
+system and Rex node addresses. Preserve unrelated grants, but narrow any
+broader rules that also reach either Rex listener: Tailscale grants are additive.
+Update policy tests for the intended connections and verify an unintended source
+is denied on TCP 443 before enabling the listener. These grants give access to
+Rex sessions as the server account. Dotfiles does not manage the
 policy, machine sign-ins, the Windows listener, or GUI host lists.
 
 - On Windows, use **Add Remote Host…** with
@@ -159,7 +161,9 @@ sessions are still running. Keep user linger enabled. To undo the live change,
 first check that no GUI clients still need it, then run
 `rex -S "$local_rex" --autostart=false api call server.tailscale.disable`.
 This disconnects HTTPS clients but preserves sessions and saved sign-in.
-Revert the Arch profile stanza as well if the listener should stay off on restart.
+To keep the listener off after a restart, also revert the Arch profile stanza,
+activate the reverted profile with `dotfile symlinks`, and confirm the installed
+unit's `ExecStart` no longer contains `--tailscale`.
 
 ## Native activity on macOS
 
