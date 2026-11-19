@@ -118,7 +118,9 @@ setup never installs this tunnel.
 
 The command needs the Windows Rex desktop app, Windows OpenSSH Client, and
 the .NET Framework C# compiler. It checks the Rex connection after starting
-the task. If the check fails, the task stays installed and keeps retrying.
+the task. The scheduler retries after SSH exits, not while SSH is running.
+If Rex verification fails while SSH is still listening, fix the remote issue
+and restart the task in Task Scheduler.
 On the LAN, first use Windows OpenSSH to connect to `quando@192.168.1.200`,
 verify its host key, and confirm that key-based login works without a prompt.
 The task uses the default Windows OpenSSH key and known-host paths, ignores

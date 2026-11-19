@@ -1914,10 +1914,22 @@ function Setup-RexLan {
         throw
     }
     Start-ScheduledTask -TaskName $name
+    $ready = $false
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
-        if (Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort 7297 -State Listen -ErrorAction SilentlyContinue) { break }
+        $listeners = @(Get-NetTCPConnection -LocalPort 7297 -State Listen -ErrorAction SilentlyContinue)
+        if ($listeners.Count -eq 1 -and $listeners[0].LocalAddress -eq '127.0.0.1') {
+            $child = Get-CimInstance Win32_Process -Filter "ProcessId=$($listeners[0].OwningProcess)"
+            if ($child.ExecutablePath -eq $ssh) {
+                $parent = Get-CimInstance Win32_Process -Filter "ProcessId=$($child.ParentProcessId)"
+                if ($parent.ExecutablePath -eq $launcher -and $parent.CreationDate -le $child.CreationDate) {
+                    $ready = $true
+                    break
+                }
+            }
+        }
         Start-Sleep -Milliseconds 250
     }
+    if (!$ready) { throw "Task $name is registered, but its SSH listener did not appear on $url." }
     Invoke-NativeChecked "Task $name is registered, but QuanArch Rex could not be reached through the tunnel" {
         & $rex --autostart=false --timeout 5s -S $url server status
     }
