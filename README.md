@@ -320,9 +320,9 @@ On Windows, `dotfile.ps1 update ai` pulls reviewed pins and installs AI tools
 and shared skills without updating other packages; `dotfile.ps1 doctor` checks
 the installation. There is no separate `ai` or `verify` command.
 
-**Rex on Windows** is a server-only preview. After an eligible tester registers
-Superlogical’s WinGet source once, `all`, `packages`, and full `update` manage the
-preview. `symlinks` and `all` link the shared Rex config. See the
+**Rex on Windows:** Dotfiles syncs the desktop beta's appearance and shared Rex
+config. For hosts without the desktop beta, eligible testers can opt into the
+separate standalone server package via Superlogical’s WinGet source. See the
 [Windows Rex setup and limitations](config/rex/README.md#rex-on-windows).
 
 AnkiConnect, Pass/Fail 2, and Zoom are pinned in `config/windows/anki-addons.json`.

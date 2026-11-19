@@ -2,10 +2,13 @@
 
 ## Rex on Windows
 
-[Superlogical’s Windows preview](https://www.superlogical.com/rex/docs/windows/installation)
-ships the personal server and CLI, not a Windows GUI client. It is unsigned during
-preview and available to eligible testers. From an **elevated** PowerShell, register
-Superlogical’s source once:
+The Windows desktop beta bundles its own Rex server. If using that app, skip
+installing the separate [Windows server preview](https://www.superlogical.com/rex/docs/windows/installation).
+If switching from the standalone install, follow the upstream removal steps while
+the `rex` source is available, then remove the source with `winget source remove --name rex`
+from an elevated PowerShell so Dotfiles does not reinstall it.
+For a standalone personal server and CLI instead, eligible testers can register
+Superlogical’s source once from **elevated** PowerShell:
 
 ```powershell
 winget source add --name rex --arg https://pkgs.superlogical.com/rex/winget --type Microsoft.Rest --explicit
@@ -20,16 +23,28 @@ you. The separate native `upgrade` command does not target the explicit Rex sour
 Use the per-user WinGet zip, not the MSI, for Dotfiles-managed Rex. If a different
 `rex.exe` comes first on PATH, Dotfiles reports the conflict rather than using it.
 
-Dotfiles links only `%AppData%\rex\init.lua` and `Catppuccin Macchiato.conf`.
-Existing files use the standard link conflict prompt. The shared Ctrl+B
-bindings are available to compatible clients connected to the Windows server;
-the Mac client’s font, theme selection, and native preferences stay on the Mac.
-`debt:` The Windows server does not publish the theme-import shortcut, because a
-Windows path is not available to the Mac client. Revisit when Rex ships a Windows
-client or supports client-relative theme imports. Native state in
-`%LocalAppData%\rex` is left alone.
+Dotfiles links `%AppData%\rex\init.lua` and `Catppuccin Macchiato.conf`.
+Existing files use the standard link conflict prompt. `symlinks`, `all`, and
+full `update` also sync the desktop appearance when the app is installed at
+`%LocalAppData%\Superlogical\Rex`: left-side tabs, FiraCode Nerd Font at 14,
+and Catppuccin Macchiato. Change the tracked defaults in `config/windows/Rex/`.
+The sync updates only those appearance keys and the Dotfiles-owned inline
+palette in the writable `config.ini` via atomic replacement, keeping a backup
+of the prior file. Close Rex and any editors of `config.ini` before syncing.
+If Rex is running, the sync is skipped; close it and rerun `symlinks` before
+reopening. If sync reports that the config changed before replacement, close
+the editor and retry. If the error names a recovery copy, reconcile it with the
+active config before retrying.
+Hosts, permissions, sessions, and other native settings are not synchronized.
 
-In a fresh terminal, verify with `rex version`, `rex --autostart=false config check`,
+`debt:` The Windows desktop beta tested here does not handle the shared Ctrl+B
+sequences, and the Windows server does not publish the Mac theme-import shortcut.
+Keep the shared bindings for compatible clients; revisit when the desktop beta
+supports those shortcuts. Native server state in `%LocalAppData%\rex` is untouched.
+
+For the desktop beta, reopen Rex and check the tab placement, font, and palette.
+For the standalone package, open a fresh terminal and verify with `rex version`,
+`rex --autostart=false config check`,
 and `rex --autostart=false skill status --json`. Reload explicitly with
 `rex --autostart=false config reload` if the server is already running. Dotfiles
 does not register a service, start a server, or change SSH or firewall settings.
