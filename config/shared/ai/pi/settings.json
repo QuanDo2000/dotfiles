@@ -28,6 +28,6 @@
   "theme": "dark",
   "extensionChangelogVersions": {
     "{\"source\":\"./locked-extensions/releases/b86a87210fcd57717d5419377e2749b8f275aae5ce2d6f4292127a03f48dbc6c/node_modules/pi-memory\",\"scope\":\"user\"}": "0.4.2",
-    "{\"source\":\"./locked-extensions/releases/b86a87210fcd57717d5419377e2749b8f275aae5ce2d6f4292127a03f48dbc6c/node_modules/pi-web-access\",\"scope\":\"user\"}": "0.47.0"
+    "{\"source\":\"./locked-extensions/releases/b86a87210fcd57717d5419377e2749b8f275aae5ce2d6f4292127a03f48dbc6c/node_modules/pi-web-access\",\"scope\":\"user\"}": "0.48.0"
   }
 }
