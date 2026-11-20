@@ -38,7 +38,7 @@ Apply [Power of 10](https://spinroot.com/gerard/pdf/P10.pdf) and [TigerStyle](ht
 - Check fallible calls and subprocess exits. Propagate useful context; justify ignored results. Preserve cleanup, rollback, and the initiating failure without exposing secrets or continuing with corrupt state.
 - Make types, units, ownership, rounding, lengths, overflow, and narrowing explicit where relevant. Specify safety-sensitive library options.
 - Estimate resource costs before choosing architecture; measure representative performance before claims. Do not add caching, concurrency, abstractions, or dependencies without observed need. Prefer native/standard tools, deletion, or reduced scope over unsafe complexity.
-- Use existing strict compiler/type/lint/format checks; fix new warnings without suppression. Check boundaries and recovery, disclose pre-existing findings, and mark deliberate limitations with `debt:` ceiling and upgrade trigger.
+- Use existing strict compiler/type/lint/format checks; fix new warnings without suppression. Check boundaries and recovery and disclose pre-existing findings.
 
 ## Authority and Evidence
 
