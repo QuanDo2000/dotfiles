@@ -10,7 +10,7 @@ Personal Linux/macOS/Windows provisioning. Unix uses Nix/Home Manager; Windows u
 - `dotfile -d <command>`: dry run; `-f`: force overwrite.
 - Windows retains its own `verify` command and runs symlink/extra setup inside `all`.
 
-Git and JJ default to SSH signing with `~/.ssh/id_ed25519.pub`; Git commits/tags require signing and JJ uses `signing.behavior = "own"`. This public path does not provision a private key. On failure, distinguish effective backend/path configuration, availability of the matching private key through the intended agent, and agent unlock state. Ask the user to restore/unlock their intended existing identity; never select the first key, create keys, change authentication, or bypass signing. Config checks are not cryptographic verification; verify actual Git/JJ signatures separately before delivery.
+Git and JJ default to SSH signing with `~/.ssh/id_ed25519.pub`; Git commits/tags require signing and JJ uses `signing.behavior = "own"`. This public path does not provision a private key. On failure, distinguish effective backend/path configuration, availability of the matching private key through the intended agent, and agent unlock state. Hold signed delivery and continue independent authorized work; ask the user to restore or unlock their intended existing identity only when human action is necessary. Never select the first key, create keys, change authentication, or bypass signing. Config checks are not cryptographic verification; verify actual Git/JJ signatures separately before delivery.
 
 Git's `~/.gitconfig.local` include follows managed defaults (and the Windows include), so user-owned values override them; repository config has higher precedence. JJ uses native user `conf.d/*.toml` overrides after `config.toml`, then repository config; preserve existing machine-local settings, including `keep`. Never edit live overrides as part of a source-default change. For explicitly chosen OpenPGP overrides and backend-specific diagnosis, see `config/shared/ai/skills/dotfiles-health-checks/references/headless-git-publishing.md`. GPG unlock probes do not diagnose SSH signing.
 
@@ -31,7 +31,7 @@ Link only owned files: SSH config and selected Obsidian settings, not entire run
 
 ## AI Instructions and Skills
 
-`config/shared/ai/AGENTS.md` owns shared Pi instructions; `SOUL.md` owns Hermes policy. Keep common authority/delivery rules aligned. Shared skills under `ai/skills/` install into `~/.agents/skills/` via Home Manager and Windows `InstallAiSkills`; verify native discovery in Pi. Agent-specific tools, memory, UI, hooks, and adapters stay native.
+`config/shared/ai/AGENTS.md` owns shared Pi and Hermes startup policy; `SOUL.md` owns Hermes identity only. Shared skills under `ai/skills/` install into `~/.agents/skills/` via Home Manager and Windows `InstallAiSkills`; verify native discovery in Pi. Agent-specific tools, memory, UI, hooks, and adapters stay native.
 
 Hermes adaptations under `ai/hermes/skills/` are separate immutable Home Manager links for the default Unix profile. Read `config/shared/ai/hermes/README.md` before changing deployment/updater ownership. Preserve attribution and update boundaries; never edit store targets or force-reset bundled skills. Promote reusable machine-local skills only with explicit approval, complete assets, sanitization, and discovery verification.
 

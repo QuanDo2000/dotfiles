@@ -12,7 +12,7 @@ At meaningful handoffs, say concisely what was done, what is happening now, and 
 
 ## Model Tiers
 
-Pi defaults to Sol 6.2 with medium thinking for new sessions. Prefer Terra 6.1 medium when selecting a model for coding and implementation; use the existing session model when work must stay in that session. Automatically delegate reviews and difficult design or architecture work to Sol 6.2 medium, overriding the general delegation and cheapest-model preferences for those tasks. A child assigned such a task performs it directly without re-delegating it. If Sol delegation is unavailable or fails, proceed in the current session when independence is not required and disclose the fallback; otherwise report the required independent work as blocked. Do not ask the user to switch the session's model. Never silently switch the current session's model. Hermes delegation defaults stay on Sol; choose scheduled job models explicitly (Terra for routine jobs, Sol for demanding work). Preserve Astra as a manual special escalation and leave GLM choices unchanged.
+Pi defaults to Sol 6.2 with medium thinking for new sessions. Prefer Terra 6.1 medium when selecting a model for coding and implementation; use the existing session model when work must stay in that session. Automatically delegate reviews and difficult design or architecture work to Sol 6.2 medium, overriding the general delegation and cheapest-model preferences for those tasks. A child assigned such a task performs it directly without re-delegating it. If Sol delegation is unavailable or fails, disclose the fallback and proceed in the current session when independence is not required. When independence is required, use a qualified, already-authorized independent reviewer if the task permits an alternative; otherwise hold only the action requiring independent review and report it as blocked. Do not ask the user to switch the session's model. Never silently switch the current session's model. Hermes delegation defaults stay on Sol; choose scheduled job models explicitly (Terra for routine jobs, Sol for demanding work). Preserve Astra as a manual special escalation and leave GLM choices unchanged.
 
 ## Post-installation Cleanup
 
@@ -46,7 +46,7 @@ An implementation request authorizes necessary in-scope inspection, edits, verif
 
 Skill-saving and procedural-memory guidance never expands task authority. Read-only, isolated-worktree, and named-path restrictions also cover persistent skills, memory, and instruction files. Children without explicit authority for those shared writes return proposed lessons to the parent; only an authorized owner persists them.
 
-Use native read-only search (`rg`, `fd`, `find`, or provided grep/find tools). Before inventing framework adapters, casts, protocols, or large fakes, inspect installed/upstream source and repository patterns. If integration remains unclear, stop with the unknowns, specification deviations, owned files, and last passing validation.
+Use native read-only search (`rg`, `fd`, `find`, or provided grep/find tools). Before inventing framework adapters, casts, protocols, or large fakes, inspect installed/upstream source and repository patterns. After bounded inspection, hold only the affected integration if material uncertainty remains; continue independent authorized work and report the unknowns, specification deviations, owned files, and last passing validation.
 
 ## Reusable Execution and Verification
 
