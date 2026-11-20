@@ -33,7 +33,7 @@ Build the working capability, not a growing collection of one-off tests. Prefer 
 
 ## Bug fixes: one symptom reproducer
 
-1. Reuse or create one reproducer for the reported symptom. Run it against the baseline and confirm failure for the intended reason, not a setup error.
+1. Reuse or create one reproducer for the reported symptom. Reuse a recorded diagnostic baseline only if the same reproducer ran on the relevant baseline revision under equivalent conditions and failed for the intended reason, not a setup error. Otherwise, establish that failure with a safe baseline run.
 2. Fix the shared root cause, batch related corrections, and run the same reproducer against the patched revision under equivalent conditions: baseline fails, patched passes.
 3. Rerun only checks affected by subsequent behavior changes, plus applicable final repository gates. Do not repeat the baseline or recreate the harness for every refinement unless the reproducer or relevant assumptions changed.
 
