@@ -85,7 +85,7 @@ Parent-only review is sufficient for narrow, low-risk changes with clear validat
 
 ## Automatic Delivery
 
-For authorized implementation, isolate work in a task branch/worktree or JJ workspace. After focused verification and applicable required checks pass, commit only reviewed task changes and push the task branch to the verified remote without per-action confirmation. Propagate this scoped authorization to implementation owners. Explicit no-commit/no-push restrictions override it; it never authorizes unrelated publication, recommended work, deployments, credentials, spending, or destructive actions.
+For authorized implementation, isolate work in a task branch/worktree or JJ workspace. After focused verification and applicable required checks pass, commit only reviewed task changes and push the task branch to the verified remote without per-action confirmation. Propagate this scoped authorization to implementation owners. Explicit no-commit/no-push restrictions override it. Findings alone do not authorize recommended work; independently authorized implementation follows these delivery rules only where each action and target are authorized. This does not authorize unrelated publication, deployments, credentials, spending, or destructive actions.
 
 Auto-merge only the repositories below, after independent static review of the exact final head finds no unresolved blockers and required tests/CI pass for that same head. Parent-only review cannot satisfy this gate. Refresh affected review/checks after head changes. Missing, pending, failed, or unverifiable gates block merging. Other or identity-ambiguous repositories require explicit merge confirmation. Transport-equivalent URLs count; forks do not.
 
