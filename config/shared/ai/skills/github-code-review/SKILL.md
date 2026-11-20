@@ -29,7 +29,9 @@ The parent gathers the evidence for a delegated static reviewer. A direct review
 
 Report only actionable, evidence-backed defects introduced by this diff. For each: P0–P3, confidence, exact path/line, concrete failure, smallest fix, and residual risk. No praise, style-only suggestions, duplicates, or speculative findings. Use `references/review-output-template.md`.
 
-Follow `requesting-code-review` for static review and evidence gaps. Builds, tests, and lint belong to separately authorized validation, not the reviewer. Existing CI output can inform the review but is not proof that unchecked behavior works.
+Use `requesting-code-review` if it is available in the current runtime. Otherwise, trace the pinned diff and its affected callers for concrete failures. Ask the parent for missing evidence when delegated; if the evidence remains unavailable, report the gap rather than guessing or claiming approval.
+
+Review stays read-only: no fixes or posting without separate authorization. Builds, tests, and lint belong to separately authorized validation, not the reviewer. Existing CI output can inform the review but is not proof that unchecked behavior works.
 
 ## Return versus publish
 
