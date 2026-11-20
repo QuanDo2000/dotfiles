@@ -79,13 +79,15 @@ For complexity/dependency audits, scan the whole tree when requested, or changed
 
 Delegate independent substantial lanes only when parallelism outweighs coordination; do tiny, serial, or tightly coupled work directly. Prefer 1–3 narrow children using the cheapest capable model, exact sources/workspace, exclusions, stop criteria, and evidence requirements. Explicitly pass task-scope, persistent-write, and nested-output limits; never assume children inherit global policy. Run independent lanes asynchronously/in parallel when supported, with one writer per worktree. Parent owns synthesis and final verification.
 
-Check active/completed runs before launch; reuse artifacts or recover the same child for unchanged targets. Normally use one fan-out wave; repeat only for a changed target or evidence gap. Pass only the matching skill explicitly, not global skill inheritance. Use one static reviewer; a second needs a distinct high-risk angle. Reviewers never run shell, tests, lint, builds, or mutations. Parent runs validation; if delegated, use a separate worker restricted to exact commands and no edits.
+Check active/completed runs before launch; reuse artifacts or recover the same child for unchanged targets. Normally use one fan-out wave; repeat only for a changed target or evidence gap. Pass only the matching skill explicitly, not global skill inheritance.
+
+Parent-only review is sufficient for narrow, low-risk changes with clear validation when no independent review is required. Use one independent static reviewer for substantial, complex, or high-risk changes or when required by governing instructions. Add a second only for a distinct, named high-risk angle. Reviewers never run shell, tests, lint, builds, or mutations. Parent runs validation; if delegated, use a separate worker restricted to exact commands and no edits.
 
 ## Automatic Delivery
 
 For authorized implementation, isolate work in a task branch/worktree or JJ workspace. After focused verification and applicable required checks pass, commit only reviewed task changes and push the task branch to the verified remote without per-action confirmation. Propagate this scoped authorization to implementation owners. Explicit no-commit/no-push restrictions override it; it never authorizes unrelated publication, recommended work, deployments, credentials, spending, or destructive actions.
 
-Auto-merge only the repositories below, after independent review has no unresolved blockers and required tests/CI pass for the exact final head. Refresh affected review/checks after head changes. Missing, pending, failed, or unverifiable gates block merging. Other or identity-ambiguous repositories require explicit merge confirmation. Transport-equivalent URLs count; forks do not.
+Auto-merge only the repositories below, after independent static review of the exact final head finds no unresolved blockers and required tests/CI pass for that same head. Parent-only review cannot satisfy this gate. Refresh affected review/checks after head changes. Missing, pending, failed, or unverifiable gates block merging. Other or identity-ambiguous repositories require explicit merge confirmation. Transport-equivalent URLs count; forks do not.
 
 - `github.com/QuanDo2000/dotfiles`
 - `github.com/QuanDo2000/zmk-config`
