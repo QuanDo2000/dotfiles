@@ -510,102 +510,76 @@ function Assert-AnkiClosed {
     }
 }
 
-function Assert-AnkiAddonState($Pin) {
-    if ($Pin.id -notmatch '^\d+$') { throw 'Invalid Anki add-on ID' }
-    $target = Join-Path $env:APPDATA "Anki2/addons21/$($Pin.id)"
-    $meta = Get-Content -Raw -LiteralPath (Join-Path $target 'meta.json') | ConvertFrom-Json
-    if ($meta.dotfile_sha256 -ne $Pin.sha256) { throw "Anki add-on $($Pin.id): installed pin differs" }
-    if (-not (Test-Path -LiteralPath (Join-Path $target '__init__.py') -PathType Leaf)) { throw "Anki add-on $($Pin.id): missing __init__.py" }
-    if ($meta.disabled -ne $false -or $meta.update_enabled -ne $false) { throw "Anki add-on $($Pin.id): must be enabled with automatic updates disabled" }
-    foreach ($property in $Pin.config.PSObject.Properties) {
-        $actual = ConvertTo-Json -InputObject $meta.config.($property.Name) -Depth 100 -Compress
-        $expected = ConvertTo-Json -InputObject $property.Value -Depth 100 -Compress
-        if ($actual -cne $expected) { throw "Anki add-on $($Pin.id): settings drift at $($property.Name)" }
+function Get-AnkiAddonState($Addon) {
+    if ($Addon.id -cnotmatch '\A[0-9]+\z' -or $Addon.config -isnot [pscustomobject]) {
+        throw 'Invalid managed Anki add-on entry'
     }
-    foreach ($file in $Pin.files.PSObject.Properties) {
-        if ($file.Name -match '(^[/\\]|:|(^|[/\\])\.\.([/\\]|$))' -or $file.Value -notmatch '^[a-fA-F0-9]{64}$') { throw 'Invalid Anki file hash pin' }
-        $path = Join-Path $target $file.Name
-        Assert-NoReparsePointPath $path 'Anki add-on'
-        if ((Get-FileSha256 $path) -ne $file.Value) { throw "Anki add-on $($Pin.id): file hash differs: $($file.Name)" }
+    $target = Join-Path $env:APPDATA "Anki2/addons21/$($Addon.id)"
+    $entryPoint = Join-Path $target '__init__.py'
+    $metaPath = Join-Path $target 'meta.json'
+    Assert-NoReparsePointPath $entryPoint 'Anki add-on'
+    Assert-NoReparsePointPath $metaPath 'Anki metadata'
+    if (-not (Test-Path -LiteralPath $entryPoint -PathType Leaf)) {
+        return $null
     }
+    $exists = Test-Path -LiteralPath $metaPath
+    $meta = if ($exists) { Get-Content -Raw -LiteralPath $metaPath -Encoding UTF8 | ConvertFrom-Json } else { [pscustomobject]@{} }
+    if ($meta -isnot [pscustomobject]) { throw "Invalid Anki metadata: $metaPath" }
+    if (-not $meta.PSObject.Properties['config']) { $meta | Add-Member -NotePropertyName config -NotePropertyValue ([pscustomobject]@{}) }
+    if ($meta.config -isnot [pscustomobject]) { throw "Invalid Anki config: $metaPath" }
+    $changedSettings = @(foreach ($property in $Addon.config.PSObject.Properties) {
+        $actual = $meta.config.PSObject.Properties[$property.Name]
+        if (-not $actual -or (ConvertTo-Json -InputObject $actual.Value -Depth 100 -Compress) -cne
+                (ConvertTo-Json -InputObject $property.Value -Depth 100 -Compress)) { $property }
+    })
+    return [pscustomobject]@{ Path = $metaPath; Exists = $exists; Metadata = $meta; ChangedSettings = $changedSettings }
 }
 
-function InstallAnkiAddons {
-    Info 'Installing managed Anki add-ons...'
+function Get-AnkiAddonInstallHint($Addons) {
+    $names = ($Addons | ForEach-Object { "$($_.name) ($($_.id))" }) -join ', '
+    return "Missing required Anki add-ons: $names. Install them via Anki: Tools > Add-ons > Get Add-ons. Then close Anki and retry."
+}
+
+function Sync-AnkiAddonSettings([System.Collections.Generic.List[string]]$UpdateFailures) {
+    Info 'Syncing managed Anki add-on settings...'
     if ($script:Dry) { return }
     Assert-AnkiClosed
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $pins = Get-Content -Raw -LiteralPath (Join-Path $script:DotfilesDir 'config/windows/anki-addons.json') | ConvertFrom-Json
-    $base = Join-Path $env:APPDATA 'Anki2'
-    $root = Join-Path $base 'addons21'
-    foreach ($pin in $pins) {
-        if ($pin.id -notmatch '^\d+$' -or $pin.sha256 -notmatch '^[a-fA-F0-9]{64}$' -or $pin.url -notlike 'https://ankiweb.net/*') {
-            throw 'Invalid Anki add-on pin'
-        }
-        $target = Join-Path $root $pin.id
-        foreach ($path in @($base, $root, $target)) {
-            if ((Test-Path -LiteralPath $path) -and ((Get-Item -LiteralPath $path).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
-                throw "Refusing linked Anki directory: $path"
-            }
-        }
-        try { Assert-AnkiAddonState $pin; continue } catch { }
-        $metaPath = Join-Path $target 'meta.json'
-        $meta = if (Test-Path -LiteralPath $metaPath) { Get-Content -Raw -LiteralPath $metaPath | ConvertFrom-Json } else { [pscustomobject]@{} }
-        if ($meta -isnot [pscustomobject]) { throw "Invalid Anki metadata: $metaPath" }
-        if (-not $meta.PSObject.Properties['config']) { $meta | Add-Member -NotePropertyName config -NotePropertyValue ([pscustomobject]@{}) }
-        if ($meta.config -isnot [pscustomobject]) { throw "Invalid Anki config: $metaPath" }
-        foreach ($property in $pin.config.PSObject.Properties) {
+    $addons = Get-Content -Raw -LiteralPath (Join-Path $script:DotfilesDir 'config/windows/anki-addons.json') -Encoding UTF8 | ConvertFrom-Json
+    $missing = @()
+    foreach ($addon in $addons) {
+        $state = Get-AnkiAddonState $addon
+        if (-not $state) { $missing += $addon; continue }
+        $meta = $state.Metadata
+        $legacy = $null -ne $meta.PSObject.Properties['dotfile_sha256']
+        if (-not $legacy -and -not $meta.disabled -and $state.ChangedSettings.Count -eq 0) { continue }
+        foreach ($property in $state.ChangedSettings) {
             $meta.config | Add-Member -NotePropertyName $property.Name -NotePropertyValue $property.Value -Force
         }
-        if (Test-Path -LiteralPath $target) {
-            if (Get-ChildItem -LiteralPath $target -Recurse -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
-                throw "Refusing linked files inside Anki add-on: $target"
-            }
+        if ($meta.disabled) { $meta.disabled = $false }
+        if ($legacy) {
+            # Undo the old dotfiles update lock once; leave future Anki choices alone.
+            $meta | Add-Member -NotePropertyName update_enabled -NotePropertyValue $true -Force
+            $meta.PSObject.Properties.Remove('dotfile_sha256')
         }
-        $work = Join-Path $base ('.dotfile-addon-' + [Guid]::NewGuid().ToString('N'))
-        $stage = Join-Path $work 'addon'
-        $archive = Join-Path $work 'addon.zip'
-        New-Item -ItemType Directory -Force -Path $stage | Out-Null
+        $temp = Join-Path (Split-Path $state.Path -Parent) ('.dotfile-meta-' + [Guid]::NewGuid().ToString('N'))
         try {
-            Invoke-WebRequest -Uri $pin.url -OutFile $archive -UseBasicParsing
-            if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $pin.sha256) { throw "Anki add-on hash mismatch: $($pin.id)" }
-            $zip = [IO.Compression.ZipFile]::OpenRead($archive)
-            try {
-                foreach ($entry in $zip.Entries) {
-                    if ($entry.FullName -match '(^[/\\]|:|(^|[/\\])\.\.([/\\]|$))' -or
-                        (($entry.ExternalAttributes -shr 16) -band 0xF000) -eq 0xA000) {
-                        throw "Unsafe Anki add-on archive entry: $($entry.FullName)"
-                    }
-                }
-            } finally { $zip.Dispose() }
-            Expand-Archive -LiteralPath $archive -DestinationPath $stage
-            if (-not (Test-Path -LiteralPath (Join-Path $stage '__init__.py') -PathType Leaf)) { throw 'Anki add-on missing __init__.py' }
-            $userFiles = Join-Path $target 'user_files'
-            if (Test-Path -LiteralPath $userFiles) {
-                $stagedUserFiles = Join-Path $stage 'user_files'
-                Remove-Item -LiteralPath $stagedUserFiles -Recurse -Force -ErrorAction SilentlyContinue
-                Copy-Item -LiteralPath $userFiles -Destination $stagedUserFiles -Recurse -Force
-            }
-            $meta | Add-Member -NotePropertyMembers @{ name = $pin.name; disabled = $false; update_enabled = $false; dotfile_sha256 = $pin.sha256 } -Force
-            [IO.File]::WriteAllText((Join-Path $stage 'meta.json'), ($meta | ConvertTo-Json -Depth 100), [Text.UTF8Encoding]::new($false))
+            [IO.File]::WriteAllText($temp, ($meta | ConvertTo-Json -Depth 100 -WarningAction Stop), [Text.UTF8Encoding]::new($false))
             Assert-AnkiClosed
-            New-Item -ItemType Directory -Force -Path $root | Out-Null
-            $backup = $null
-            if (Test-Path -LiteralPath $target) {
-                $backups = Join-Path $base 'dotfile-addons-backups'
-                New-Item -ItemType Directory -Force -Path $backups | Out-Null
-                $backup = Join-Path $backups ($pin.id + '-' + [Guid]::NewGuid().ToString('N'))
-                Move-Item -LiteralPath $target -Destination $backup
+            if ($state.Exists) {
+                [IO.File]::Replace($temp, $state.Path, [NullString]::Value)
+            } else {
+                [IO.File]::Move($temp, $state.Path)
             }
-            try { Move-Item -LiteralPath $stage -Destination $target -ErrorAction Stop }
-            catch {
-                if ($backup) { Move-Item -LiteralPath $backup -Destination $target -ErrorAction Stop }
-                throw
-            }
-            if ($backup) { Info "Previous Anki add-on retained at $backup" }
-        } finally { Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue }
+        } finally { Remove-Item -LiteralPath $temp -ErrorAction SilentlyContinue }
     }
-    Success 'Finished installing managed Anki add-ons'
+    if ($missing.Count -gt 0) {
+        $hint = Get-AnkiAddonInstallHint $missing
+        if ($null -eq $UpdateFailures) { throw $hint }
+        $UpdateFailures.Add($hint)
+        Warn "$hint Continuing with remaining updates."
+        return
+    }
+    Success 'Finished syncing managed Anki add-on settings'
 }
 
 function Assert-ObsidianClosed {
@@ -672,7 +646,7 @@ function Sync-ObsidianSettings {
 function InstallManagedPackages {
     InstallPackages
     Sync-RexPackage
-    InstallAnkiAddons
+    Sync-AnkiAddonSettings
     Sync-ObsidianSettings
     InstallFiraCodeNerdFont
     InstallAi
@@ -1392,17 +1366,17 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
         return
     }
 
-    $upgradeFailures = [System.Collections.Generic.List[string]]::new()
+    $updateFailures = [System.Collections.Generic.List[string]]::new()
     if ($aiOnly) {
         InstallAi -Update
     } else {
-        InstallPackages -Update -UpgradeFailures $upgradeFailures
+        InstallPackages -Update -UpgradeFailures $updateFailures
         try { Sync-RexPackage -Update }
         catch {
-            $upgradeFailures.Add($_.Exception.Message)
+            $updateFailures.Add($_.Exception.Message)
             Warn "$($_.Exception.Message); continuing with remaining updates"
         }
-        InstallAnkiAddons
+        Sync-AnkiAddonSettings -UpdateFailures $updateFailures
         Sync-ObsidianSettings
         InstallFiraCodeNerdFont
         InstallAi -Update
@@ -1412,12 +1386,12 @@ function Update-Packages($Target = '', [switch]$AfterRepoUpdate) {
     if (-not $script:Dry -and -not $aiOnly) {
         try { Assert-WindowsHealthy }
         catch {
-            if ($upgradeFailures.Count -eq 0) { throw }
-            $upgradeFailures.Add($_.Exception.Message)
+            if ($updateFailures.Count -eq 0) { throw }
+            $updateFailures.Add($_.Exception.Message)
         }
     }
-    if ($upgradeFailures.Count -gt 0) {
-        throw "Update completed with failed package upgrades: $($upgradeFailures -join '; ')"
+    if ($updateFailures.Count -gt 0) {
+        throw "Update completed with failures: $($updateFailures -join '; ')"
     }
     Success $(if ($aiOnly) { "Finished AI update" } else { "Finished updating packages" })
 }
@@ -1737,11 +1711,15 @@ function Verify {
 
     Info 'Verifying managed Anki add-ons...'
     try {
-        $pins = Get-Content -Raw -LiteralPath (Join-Path $script:DotfilesDir 'config/windows/anki-addons.json') | ConvertFrom-Json
-        foreach ($pin in $pins) {
+        $addons = Get-Content -Raw -LiteralPath (Join-Path $script:DotfilesDir 'config/windows/anki-addons.json') -Encoding UTF8 | ConvertFrom-Json
+        foreach ($addon in $addons) {
             try {
-                Assert-AnkiAddonState $pin
-                Success "Anki add-on: $($pin.name)"
+                $state = Get-AnkiAddonState $addon
+                if (-not $state) { throw (Get-AnkiAddonInstallHint @($addon)) }
+                if ($state.Metadata.PSObject.Properties['dotfile_sha256']) { throw "Anki add-on $($addon.id): legacy update lock; rerun dotfile update with Anki closed" }
+                if ($state.Metadata.disabled) { throw "Anki add-on $($addon.id): disabled" }
+                if ($state.ChangedSettings.Count -gt 0) { throw "Anki add-on $($addon.id): settings drift at $($state.ChangedSettings.Name -join ', ')" }
+                Success "Anki add-on: $($addon.name)"
             } catch { FailSoft $_.Exception.Message; $errors++ }
         }
     } catch { FailSoft $_.Exception.Message; $errors++ }

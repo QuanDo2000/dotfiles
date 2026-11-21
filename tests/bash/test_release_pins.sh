@@ -180,10 +180,11 @@ test_all_dependency_pin_updaters_dry_run_without_network() {
   assert_equals "0" "$status"
   for label in \
     "Nix installer" "Pi package" "Obsidian Headless" \
-    "Pi extension closure" "WebCord" "Anki Zoom" "Windows Anki add-ons" \
+    "Pi extension closure" "WebCord" "Anki Zoom" \
     "FiraCode Nerd Font" "vendored agent skills" "Neovim plugins"; do
     assert_contains "$output" "$label"
   done
+  assert_not_contains "$output" "Windows Anki add-ons"
 
   unset -f curl git npm
 }

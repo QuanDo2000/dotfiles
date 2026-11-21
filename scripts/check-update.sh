@@ -22,7 +22,7 @@ while IFS= read -r path; do
     packages/pi-extensions.nix|packages/pi-extensions-release.json|config/shared/ai/pi/extensions/package.json|config/shared/ai/pi/extensions/package-lock.json|config/shared/ai/pi/settings.json) extensions=true ;;
     packages/obsidian-headless.nix|packages/obsidian-headless-package-lock.json) obsidian=true ;;
     config/shared/config/nvim/lazy-lock.json|config/shared/config/nvim/mason-tools.json) neovim=true ;;
-    packages/webcord-release.nix|config/windows/anki-addons.json|config/shared/ai/skills/*) ;;
+    packages/webcord-release.nix|config/shared/ai/skills/*) ;;
     *) exec bash "$repo_dir/scripts/check.sh" ;;
   esac
 done <<< "$changes"

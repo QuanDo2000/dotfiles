@@ -234,7 +234,7 @@ function test_update_continues_after_upgrade_failure_and_reports_at_end {
     }
     Set-CommandMock 'rustup' { $script:UpdateSteps.Add('rustup'); $global:LASTEXITCODE = 0 }
     $originals = @{}
-    foreach ($name in 'InstallAnkiAddons', 'Sync-ObsidianSettings', 'InstallFiraCodeNerdFont', 'InstallAi', 'SetupSymlinks', 'Sync-NeovimPlugins', 'Assert-WindowsHealthy') {
+    foreach ($name in 'Sync-AnkiAddonSettings', 'Sync-ObsidianSettings', 'InstallFiraCodeNerdFont', 'InstallAi', 'SetupSymlinks', 'Sync-NeovimPlugins', 'Assert-WindowsHealthy') {
         $originals[$name] = (Get-Command $name).ScriptBlock
         Set-FunctionMock $name ([scriptblock]::Create("`$script:UpdateSteps.Add('$name')"))
     }
