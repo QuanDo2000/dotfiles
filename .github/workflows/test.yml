@@ -1,8 +1,9 @@
 name: Tests
 
 on:
+  # Validate the exact signed candidate before it can fast-forward main.
   push:
-    branches: [main]
+    branches: ['deliver/**']
   pull_request:
     branches: [main]
   schedule:
@@ -59,8 +60,8 @@ jobs:
       - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
         with:
           name: ${{ vars.CACHIX_CACHE_NAME }}
-          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
-          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+          authToken: ${{ github.event_name == 'schedule' && secrets.CACHIX_AUTH_TOKEN || '' }}
+          skipPush: ${{ github.event_name != 'schedule' }}
           useDaemon: true
 
       - name: Run macOS checks in parallel
@@ -149,8 +150,8 @@ jobs:
       - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
         with:
           name: ${{ vars.CACHIX_CACHE_NAME }}
-          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
-          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+          authToken: ${{ github.event_name == 'schedule' && secrets.CACHIX_AUTH_TOKEN || '' }}
+          skipPush: ${{ github.event_name != 'schedule' }}
 
       - name: Run Linux checks in parallel
         run: |
@@ -192,8 +193,8 @@ jobs:
       - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
         with:
           name: ${{ vars.CACHIX_CACHE_NAME }}
-          authToken: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}
-          skipPush: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+          authToken: ${{ github.event_name == 'schedule' && secrets.CACHIX_AUTH_TOKEN || '' }}
+          skipPush: ${{ github.event_name != 'schedule' }}
 
       - name: Run flake check
         run: nix flake check --no-build --all-systems
