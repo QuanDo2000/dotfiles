@@ -138,11 +138,10 @@ function run_checked_flow {
   case "$operation" in
     update_packages|update_ai) _ensure_update_environment ;;
   esac
-  # GitHub publication already ran doctor against the activated pins, before
-  # clearing those pins from the checkout. Keep the final check for other paths.
-  local dependency_pr_checked=false
+  # GitHub publication already ran doctor against the activated pins.
+  local dependency_live_checked=false
   "$operation" "$@"
-  if [[ "$dependency_pr_checked" == false ]]; then
+  if [[ "$dependency_live_checked" == false ]]; then
     DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
   fi
 }

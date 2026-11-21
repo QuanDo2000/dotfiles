@@ -453,18 +453,16 @@ full gate, and during flake updates—not ordinary pin-only updates.
 Flake updates also check profile roles and Neovim;
 changes outside recognized pin surfaces fall back to the full repository gate.
 `dotfile check` and CI retain comprehensive checks.
-After successful activation, an update tracking `QuanDo2000/dotfiles` on GitHub
-`main` publishes the validated changes on a task branch and opens a PR, without
-committing to or pushing `main`. GitHub CI tests the proposed merge; dotfile
-neither merges the PR nor waits for hosted CI. Use a canonical GitHub remote URL
-and authenticate Git and `gh` with GitHub.com before updating. A failed publication
-keeps the validated local changes pending; fix credentials and rerun the same
-update to reuse its branch. Dotfile checks the activated pins before publishing,
-then clears the published edits from the checkout without undoing activation.
-Merge and pull the PR before activating again; dotfile will not activate older
-pins over the published snapshot. Standalone `dotfile doctor` may report Neovim
-drift until those pins reach the checkout. Other upstreams retain the commit,
-rebase, recheck, and push flow.
+After successful activation and local health checks, an update tracking
+`QuanDo2000/dotfiles` on GitHub `main` publishes a signed commit on a `deliver/`
+branch. It waits for **Required CI** on that exact commit, then fast-forwards
+`main` and the local checkout without a PR, merge commit, or second CI run on
+`main`. Use a canonical GitHub remote URL and authenticate Git and `gh` before
+updating. If CI fails or is pending, the validated edits remain local; after
+addressing the issue, rerun the same update to reuse its candidate. If `main`
+advances during CI, the updater preserves the local changes for reconciliation
+instead of pushing over the new tip. Other upstreams retain the commit, rebase,
+recheck, and push flow.
 Existing unpublished commits stop publication.
 Windows pulls and activates the published pins instead of installing an
 unvalidated latest release; it reports when npm has a newer Pi release awaiting

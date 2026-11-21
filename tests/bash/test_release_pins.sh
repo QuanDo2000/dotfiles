@@ -152,22 +152,22 @@ test_dependency_publish_does_not_push_failed_rebase_validation() {
   assert_contains "$output" 'refusing publication'
 }
 
-test_github_main_dependency_publication_retries_pr_without_changing_main() {
-  prepare_dependency_publication $'context 1\ncontext 2\ncontext 3\ncontext 4\noriginal tail\n'
-  local repo="$DOTFILES_DIR" remote="$TEST_TMPDIR/remote.git" before base output status=0 topic head
+test_github_main_dependency_publication_requires_green_signed_fast_forward() {
+  prepare_dependency_publication
+  local repo="$DOTFILES_DIR" remote="$TEST_TMPDIR/remote.git" before output status=0 topic head advanced
   before="$(git --git-dir="$remote" rev-parse main)"
-  base="$(git -C "$repo" rev-parse HEAD)"
-  git -C "$repo" config core.autocrlf false
+  command git -C "$repo" fetch -q origin
+  command git -C "$repo" reset -q --mixed "$before"
+  printf 'upstream\n' > "$repo/upstream"
   printf 'new pin\n' > "$repo/new-pin"
   _dependency_update_fingerprint > "$(_dependency_update_marker full)"
-  cat > "$remote/hooks/pre-receive" <<'SH'
-#!/usr/bin/env bash
-while read -r _old _new ref; do
-  if [[ "$ref" == refs/heads/main ]]; then exit 1; fi
-done
-SH
-  chmod +x "$remote/hooks/pre-receive"
-  # Only the remote identity lookup and the GitHub API are substituted.
+  # Disposable fixture identity, never the user's signing key.
+  ssh-keygen -q -t ed25519 -N '' -f "$TEST_TMPDIR/test-signing" || return
+  command git -C "$repo" config gpg.format ssh
+  command git -C "$repo" config user.signingkey "$TEST_TMPDIR/test-signing"
+  printf 'test@example.com %s\n' "$(<"$TEST_TMPDIR/test-signing.pub")" > "$TEST_TMPDIR/signers"
+  command git -C "$repo" config gpg.ssh.allowedSignersFile "$TEST_TMPDIR/signers"
+  # Substitute only remote identity and the GitHub response. Git pushes to a real bare repo.
   git() {
     if [[ "${3:-} ${4:-}" == 'remote get-url' ]]; then
       if [[ "$5" == --push ]]; then
@@ -175,43 +175,50 @@ SH
       else
         printf '%s\n' https://test-user@github.com/QuanDo2000/dotfiles.git
       fi
+    elif [[ "${3:-} ${4:-}" == 'merge --ff-only' && "${REJECT_LOCAL_MERGE:-}" == true ]]; then
+      return 1
     else
       command git "$@"
     fi
   }
-  _validate_dependency_update() { :; }
-  doctor() { [[ "$DOTFILE_DOCTOR_SKIP_NIX_EVAL" == true && "$(head -n 1 "$DOTFILES_DIR/managed")" == updated ]]; }
+  doctor() { [[ "$DOTFILE_DOCTOR_SKIP_NIX_EVAL" == true && "$(<"$DOTFILES_DIR/managed")" == updated ]]; }
   mkdir "$TEST_TMPDIR/bin"
-  export PATH="$TEST_TMPDIR/bin:$PATH" PR_FIXTURE="$TEST_TMPDIR" PR_CREATE_FAIL=true
-  unset GIT_SSH_COMMAND GIT_SSH
-  cat > "$TEST_TMPDIR/bin/ssh" <<'SH'
+  local git_binary
+  git_binary="$(type -P git)" || return
+  export GIT_FIXTURE_BINARY="$git_binary"
+  export PATH="$TEST_TMPDIR/bin:$PATH" CI_FIXTURE="$TEST_TMPDIR" CI_RESULT=failure
+  cat > "$TEST_TMPDIR/bin/git" <<'SH'
 #!/usr/bin/env bash
-case "${!#}" in
-  git@github.work) echo 'hostname github.com' ;;
-  git@git.example.org) echo 'hostname git.example.org' ;;
-  *) exit 2 ;;
-esac
+if [[ "${3:-}" == push && "${!#}" == *:refs/heads/main && "${LOSE_MAIN_PUSH_RESPONSE:-}" == true ]]; then
+  "$GIT_FIXTURE_BINARY" "$@" || exit $?
+  exit 1
+fi
+exec "$GIT_FIXTURE_BINARY" "$@"
 SH
-  chmod +x "$TEST_TMPDIR/bin/ssh"
-  _is_dotfiles_github_url <<< 'git@github.com:/QuanDo2000/dotfiles.git' || return 1
-  _is_dotfiles_github_url <<< 'git+ssh://git@github.com/QuanDo2000/dotfiles.git' || return 1
-  _unverified_dotfiles_ssh_remote 'git@github.work:/QuanDo2000/dotfiles.git' || return 1
-  if _unverified_dotfiles_ssh_remote 'ssh://git@git.example.org/QuanDo2000/dotfiles.git'; then return 1; fi
+  chmod +x "$TEST_TMPDIR/bin/git"
   cat > "$TEST_TMPDIR/bin/gh" <<'SH'
 #!/usr/bin/env bash
 set -eu
-[[ "$3 $4" == '--repo github.com/QuanDo2000/dotfiles' ]]
-case "$1 $2" in
-  'pr list')
-    if [[ -f "$PR_FIXTURE/pr" ]]; then cat "$PR_FIXTURE/pr"; fi
-    ;;
-  'pr create')
-    [[ "$PR_CREATE_FAIL" == false ]] || exit 1
-    topic=$(git --git-dir="$PR_FIXTURE/remote.git" for-each-ref --format='%(refname)' refs/heads/dotfile/)
-    head=$(git --git-dir="$PR_FIXTURE/remote.git" rev-parse "$topic")
-    printf 'OPEN\t%s\thttps://github.com/QuanDo2000/dotfiles/pull/123\n' "$head" > "$PR_FIXTURE/pr"
-    printf '%s\n' https://github.com/QuanDo2000/dotfiles/pull/123
-    ;;
+[[ "$1 $2 $3 $5" == 'api --hostname github.com --jq' ]]
+case "$4" in
+  repos/QuanDo2000/dotfiles/commits/*)
+    head=${4##*/}
+    [[ "$head" =~ ^[0-9a-f]{40}$ ]]
+    git --git-dir="$CI_FIXTURE/remote.git" cat-file -e "$head^{commit}"
+    git -C "$CI_FIXTURE/repo" verify-commit "$head" >/dev/null 2>&1
+    printf '%s\n' "$head" > "$CI_FIXTURE/candidate"
+    printf '%s\n' "$head" ;;
+  'repos/QuanDo2000/dotfiles/actions/workflows/test.yml/runs?event=push&head_sha='*)
+    head=$(<"$CI_FIXTURE/candidate")
+    [[ "${4##*=}" == "$head" ]]
+    if [[ ! -e "$CI_FIXTURE/topic" ]]; then
+      git --git-dir="$CI_FIXTURE/remote.git" for-each-ref --format='%(refname:short)' refs/heads/deliver/ > "$CI_FIXTURE/topic"
+    fi
+    jq -nr --arg head "$head" --arg branch "$(<"$CI_FIXTURE/topic")" --arg result "$CI_RESULT" \
+      '{workflow_runs:[{id:123,event:"push",head_sha:$head,head_branch:$branch,status:"completed",conclusion:$result}]} | '"$6" ;;
+  'repos/QuanDo2000/dotfiles/actions/runs/123/jobs?filter=latest')
+    jq -nr --arg head "$(<"$CI_FIXTURE/candidate")" \
+      '{jobs:[{name:"Required CI",head_sha:$head,status:"completed",conclusion:"success"}]} | '"$6" ;;
   *) exit 2 ;;
 esac
 SH
@@ -219,61 +226,39 @@ SH
 
   output="$(_publish_dependency_update full 2>&1)" || status=$?
   assert_equals 1 "$status"
-  assert_contains "$output" 'rerun dotfile update'
+  assert_contains "$output" 'Required CI did not pass'
   assert_equals "$before" "$(git --git-dir="$remote" rev-parse main)"
-  assert_equals "$base" "$(git -C "$repo" rev-parse HEAD)"
-  assert_equals 'updated' "$(head -n 1 "$repo/managed")"
+  assert_equals "$before" "$(git -C "$repo" rev-parse HEAD)"
   assert_file_exists "$repo/new-pin"
   _validate_pending_dependency_update full
-  topic="$(git --git-dir="$remote" for-each-ref --format='%(refname)' refs/heads/dotfile/)"
+  topic="$(git --git-dir="$remote" for-each-ref --format='%(refname)' refs/heads/deliver/)"
   [[ -n "$topic" ]] || return 1
   head="$(git --git-dir="$remote" rev-parse "$topic")"
-  assert_equals 'new pin' "$(git --git-dir="$remote" show "$head:new-pin")"
 
-  PR_CREATE_FAIL=false
-  git --git-dir="$remote" update-ref "$topic" "$before" "$head"
+  CI_RESULT=success
   status=0
-  output="$(_publish_dependency_update full 2>&1)" || status=$?
+  output="$(LOSE_MAIN_PUSH_RESPONSE=true _publish_dependency_update full 2>&1)" || status=$?
   assert_equals 1 "$status"
-  assert_contains "$output" 'Existing dependency branch could not be verified'
-  assert_equals "$before" "$(git --git-dir="$remote" rev-parse "$topic")"
+  assert_equals "$head" "$(git --git-dir="$remote" rev-parse main)"
   _validate_pending_dependency_update full
-  [[ ! -e "$TEST_TMPDIR/pr" ]] || return 1
-  git --git-dir="$remote" update-ref "$topic" "$head" "$before"
-
-  output="$(_publish_dependency_update full 2>&1)"
-  assert_contains "$output" 'https://github.com/QuanDo2000/dotfiles/pull/123'
-  assert_equals "$before" "$(git --git-dir="$remote" rev-parse main)"
-  assert_equals "$head" "$(git --git-dir="$remote" rev-parse "$topic")"
-  assert_equals "$base" "$(git -C "$repo" rev-parse HEAD)"
-  assert_equals '' "$(git -C "$repo" status --porcelain)"
-  assert_equals 'initial' "$(head -n 1 "$repo/managed")"
-
-  # Simulate a lost response followed by immediate merge and branch deletion.
-  git -C "$repo" cherry-pick --no-commit "$head"
-  git -C "$repo" reset --mixed HEAD >/dev/null
-  _validate_pending_dependency_update full
-  git --git-dir="$remote" update-ref "refs/pull/123/head" "$head"
-  git --git-dir="$remote" update-ref -d "$topic" "$head"
-  printf 'MERGED\t%s\thttps://github.com/QuanDo2000/dotfiles/pull/123\n' "$head" > "$TEST_TMPDIR/pr"
-  output="$(_publish_dependency_update full 2>&1)"
-  assert_contains "$output" 'dependency PR merged'
-  assert_equals '' "$(git -C "$repo" status --porcelain)"
-  assert_equals '' "$(git --git-dir="$remote" for-each-ref "$topic")"
-
+  # Another publisher advances main after our successful push lost its response.
+  advanced="$(git -C "$repo" commit-tree "$head^{tree}" -p "$head" -m 'Concurrent update')" || return
+  git -C "$repo" push -q origin "$advanced:refs/heads/main" || return
+  git --git-dir="$remote" update-ref -d "$topic" "$head" || return
   status=0
-  output="$(_require_published_dependency_pins 2>&1)" || status=$?
+  output="$(REJECT_LOCAL_MERGE=true _publish_dependency_update full 2>&1)" || status=$?
   assert_equals 1 "$status"
-  assert_contains "$output" 'Merge the dependency PR and pull'
-  git -C "$repo" cherry-pick --no-commit "$head"
-  printf 'updated\ncontext 1\ncontext 2\ncontext 3\ncontext 4\nindependent edit\n' > "$repo/managed"
-  git -C "$repo" add managed
-  git -C "$repo" commit -qm 'Rebased dependency PR plus independent edit'
-  git -C "$repo" worktree add --quiet --detach "$TEST_TMPDIR/linked-receipt" HEAD
-  (DOTFILES_DIR="$TEST_TMPDIR/linked-receipt"; _require_published_dependency_pins)
-  assert_equals "$head" "$(git -C "$repo" rev-parse refs/dotfile/published-dependencies)"
-  _require_published_dependency_pins
+  assert_contains "$output" 'validated edits restored for retry'
+  _validate_pending_dependency_update full
+  output="$(_publish_dependency_update full 2>&1)" || { printf '%s\n' "$output" >&2; return 1; }
+  assert_contains "$output" 'delivered signed dependency commit'
+  assert_equals "$advanced" "$(git --git-dir="$remote" rev-parse main)"
+  assert_equals "$head" "$(git -C "$repo" rev-parse HEAD)"
+  assert_equals "$before" "$(git -C "$repo" show -s --format=%P HEAD)"
+  assert_equals '' "$(git -C "$repo" status --porcelain)"
+  assert_equals '' "$(git --git-dir="$remote" for-each-ref refs/heads/deliver/)"
   assert_equals '' "$(git -C "$repo" for-each-ref refs/dotfile/published-dependencies)"
+  assert_equals 'new pin' "$(<"$repo/new-pin")"
 }
 
 test_python_pin_batch_uses_one_nix_develop_and_preserves_order() {
