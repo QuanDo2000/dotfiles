@@ -36,4 +36,4 @@ Use this when dotfiles manage an editor plugin, agent extension, or MCP server f
 
 - Hash-pin release assets per supported platform and build every flake output used by CI.
 - If the flake references a new untracked package file, stage only that file for the build and report the staged state.
-- Build the Home Manager activation package before switching. After switching, re-check live versions, live client registration, MCP tool discovery, optional database health, and the final worktree state.
+- Follow the parent health-check skill for build and activation sequencing. After an authorized switch, re-check live versions, live client registration, MCP tool discovery, optional database health, and the final worktree state.

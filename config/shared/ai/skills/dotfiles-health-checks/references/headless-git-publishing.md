@@ -5,7 +5,7 @@ Use this to commit and push an authorized dotfiles change from a noninteractive 
 ## Publish sequence
 
 1. Snapshot `git status --short --branch`, inspect staged and unstaged stats, run `git diff --check`, and review the actual diff.
-2. Stage only intended files after applying the governing review and verification policy. Commit normally with required signing. SSH is the default: if the intended matching private key is unavailable or locked in the agent, stop and ask the user to restore/unlock that existing identity in their own terminal. Only an explicitly configured OpenPGP backend calls for pinentry. Never retry unsigned or change signing configuration to evade the gate.
+2. Stage only intended files after applying the governing review and verification policy. Commit normally with required signing. On signing failure, diagnose the effective backend, key configuration, and access to the intended identity as described below. Ask for user-side restoration or unlocking only when diagnosis shows human action is needed. Hold signed delivery if signing or cryptographic verification remains unavailable. Never retry unsigned or change signing configuration to evade the requirement.
 3. Verify both fetch and push resolve to `github.com/QuanDo2000/dotfiles`; the usual transport is `git@github.com:QuanDo2000/dotfiles.git`. Fetch and compare `origin/main` and the remote task branch if it exists. Before rebasing, verify advances can be integrated without losing either side's work. Defer ambiguous conflicts by default; resolve overlaps without blindly choosing ours/theirs.
 4. Refresh affected review and checks after integration and follow applicable repository requirements. Verify the signature and pin the exact candidate SHA for publication.
 5. Default to pushing that scoped signed candidate to the verified task branch without force. Use the governing rule for explicitly authorized push exceptions and honor branch protections. On remote advancement, fetch and reassess before retrying. Read back the remote full SHA and match it to the candidate.
@@ -15,7 +15,7 @@ Use this to commit and push an authorized dotfiles change from a noninteractive 
 
 A rebase can retain `-S` in sequencer state even when `commit.gpgsign=false` is supplied later. Do not edit `.git/rebase-*` state files: an empty or malformed signing option can be interpreted as a bogus key ID.
 
-When resolved files are staged and `git rebase --continue` needs signing, preserve the sequencer and signing requirement. Have the user unlock the intended key in their own terminal, then retry `git rebase --continue` normally. Do not manufacture an unsigned replacement commit. Re-run affected checks on the final rebased tree and verify its signature before publication.
+When resolved files are staged and `git rebase --continue` needs signing, preserve the sequencer and signing requirement. Diagnose access to the intended key first; ask the user to unlock it in their own terminal only if needed. Once signing is available, retry `git rebase --continue` normally. Do not manufacture an unsigned replacement commit. Re-run affected checks on the final rebased tree and verify its signature before publication.
 
 ## Backend configuration and optional OpenPGP override
 

@@ -30,8 +30,12 @@ fails before installing the links, restore only the missing skill directories
 from that backup.
 
 After deployment these skills are immutable Home Manager links. Make future
-changes here, not through `skill_manage` on the installed copy; run the focused
-profile tests and full `./scripts/check.sh` before activating and committing.
+changes here, not through `skill_manage` on the installed copy. For wording-only
+edits, review the diff and use an existing bounded consuming-agent scenario when
+useful. For changes to discovery, ownership, or deployment, run the affected
+profile and installation checks. Follow the governing verification policy for
+broader checks and applicable repository gates. Verify live discovery only
+when activation is in scope.
 The four cross-runtime promotions (`github-code-review`, `github-pr-workflow`,
 `dotfiles-health-checks`, and `agent-tool-benchmarking`) are owned under
 `../skills/`, with Unix native Hermes aliases to those same complete trees. See

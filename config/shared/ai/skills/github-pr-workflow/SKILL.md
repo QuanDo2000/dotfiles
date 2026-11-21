@@ -20,7 +20,7 @@ Use the governing implementation, delivery, signing, and merge policy. This adap
 1. Verify the checkout, remote identity, default/base branch, current full SHA, and staged/unstaged/untracked state. Check for an existing task branch/PR before creating duplicates. Distinguish forks from the intended repository.
 2. Default to a task branch/worktree or native JJ workspace. For Git worktrees, prefer the main project’s ignored `.worktrees/<task>` directory. Preserve unrelated work and follow governing policy for exceptions to isolation or delivery defaults.
 3. Name observable behavior and credible failures, then use the matching test/debug workflow. Run focused checks on the final candidate by default and follow applicable repository requirements. Label any accepted gaps; static review and CI do not prove unchecked behavior.
-4. Reinspect the diff after tests/hooks. Prefer staging explicit task paths or reviewed hunks. Inspect the staged diff before committing. Preserve required signing; on an authentication blocker, stop and ask for user-side unlocking, not unsigned fallback.
+4. Reinspect the diff after tests/hooks. Prefer staging explicit task paths or reviewed hunks. Inspect the staged diff before committing. Preserve required signing. Diagnose effective backend and key configuration, access to the intended key, and any unlock requirement before asking the user to intervene. Hold signed delivery if signing or cryptographic verification remains unavailable; do not fall back to unsigned commits.
 
 ## Publish the task branch
 
