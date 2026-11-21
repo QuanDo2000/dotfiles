@@ -10,9 +10,8 @@ Audit skills from a bounded sample of past conversations. Produce evidence-linke
 ## 1. Set scope and protect history
 
 1. Identify the executing harness and its available history-search interface. If no bounded interface is available, ask for selected session references or exports. Do not inspect raw local session stores automatically.
-2. Ask which conversations to review: current repository by default, selected projects, or explicitly all projects. Also agree on a time window or maximum session count.
-3. Ask whether to evaluate project skills only or project and global skills.
-4. Keep transcript material local. Do not upload it, include secrets, or create a shareable artifact unless explicitly requested. Use a fresh private temporary directory outside repositories if scratch files are necessary.
+2. Use the project scope, time window or maximum session count, and skill set the user already specified. Default to the current repository, broaden to other projects only within the authorized scope, and ask only for unresolved scope needed to keep the sample bounded (including whether global skills are in scope).
+3. Keep transcript material local. Do not upload it, include secrets, or create a shareable artifact unless explicitly requested. Use a fresh private temporary directory outside repositories if scratch files are necessary.
 
 Use bounded session search rather than scanning all history by default. State the selected scope, sampling method, exclusions, and evidence gaps.
 
