@@ -17,4 +17,4 @@ A candidate selected in zero eligible runs was exposed but unused. Such a pilot 
 
 Report correctness at consistent levels. A blind-scored architecture workload can count as one workload pass while hidden mechanical pass counts cover only mutation workloads. Publish both denominators rather than comparing them directly.
 
-One paired trial is a smoke-quality directional result. Even tied correctness and modest resource deltas do not justify production configuration changes; confirmation requires the normal interleaved seven-trial matrix.
+One paired trial is a smoke-quality directional result. Tied correctness and modest resource deltas in a pilot are not confirmation. For stronger evidence, run the approved interleaved matrix under `execution-protocol.md`. An explicitly authorized production change based on weaker evidence does not make the pilot confirmatory.

@@ -17,7 +17,7 @@ The candidate must use its normal deployment mode. If it can coexist with native
 
 For each workload:
 
-1. Run seven fresh-process A/B pairs.
+1. Run the approved number of fresh-process A/B pairs per `execution-protocol.md` (seven by default).
 2. Alternate pair order: `A,B`, then `B,A`.
 3. Rotate workload order between rounds.
 4. Save stdout/stderr and raw structured events per run.

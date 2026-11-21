@@ -21,7 +21,7 @@ Typical graph-tool surface includes repository indexing/status/deletion, project
 - B: identical normal setup without only the candidate and stale tool references.
 - Prompts request outcomes naturally; never force A to use the tool.
 - Track candidate selection. An installed-but-unused tool proves overhead only.
-- Use seven paired trials for noisy provider-backed workloads, alternating launch order and rotating workload order.
+- Use the paired-trial count from `execution-protocol.md` for noisy provider-backed workloads, alternating launch order and rotating workload order.
 
 Include at least six distinct normal warm workflows: architecture/package-boundary reconstruction with impact tracing; root-cause localization plus minimal fix; caller-preserving API refactor; bounded multi-package behavior change; test-gap discovery plus regression repair; and security/data-validation repair. Also cover symbol/code/semantic/structural search, dead/complex code audit, implementation planning, and cross-service/cross-package understanding within those cells. Two mutation prompts are not a representative normal-use suite.
 
