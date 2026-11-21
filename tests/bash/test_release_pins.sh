@@ -81,13 +81,13 @@ test_dependency_refresh_stops_after_failed_release() {
 }
 
 prepare_dependency_publication() {
-  local remote="$TEST_TMPDIR/remote.git" repo="$TEST_TMPDIR/repo" other="$TEST_TMPDIR/other"
+  local remote="$TEST_TMPDIR/remote.git" repo="$TEST_TMPDIR/repo" other="$TEST_TMPDIR/other" managed_tail="${1:-}"
   git init -q --bare "$remote"
   git clone -q "$remote" "$repo"
   git -C "$repo" config user.email test@example.com
   git -C "$repo" config user.name Test
   git -C "$repo" config commit.gpgsign false
-  printf 'initial\n' > "$repo/managed"
+  printf 'initial\n%s' "$managed_tail" > "$repo/managed"
   git -C "$repo" add managed
   git -C "$repo" commit -qm initial
   git -C "$repo" branch -M main
@@ -102,7 +102,7 @@ prepare_dependency_publication() {
   git -C "$other" commit -qm upstream
   git -C "$other" push -q origin main
 
-  printf 'updated\n' > "$repo/managed"
+  printf 'updated\n%s' "$managed_tail" > "$repo/managed"
   DOTFILES_DIR="$repo"
   DRY=false
   _dependency_update_fingerprint > "$(_dependency_update_marker full)"
@@ -150,6 +150,130 @@ test_dependency_publish_does_not_push_failed_rebase_validation() {
   assert_equals 1 "$status"
   assert_equals "$before" "$(git --git-dir="$remote" rev-parse main)"
   assert_contains "$output" 'refusing publication'
+}
+
+test_github_main_dependency_publication_retries_pr_without_changing_main() {
+  prepare_dependency_publication $'context 1\ncontext 2\ncontext 3\ncontext 4\noriginal tail\n'
+  local repo="$DOTFILES_DIR" remote="$TEST_TMPDIR/remote.git" before base output status=0 topic head
+  before="$(git --git-dir="$remote" rev-parse main)"
+  base="$(git -C "$repo" rev-parse HEAD)"
+  git -C "$repo" config core.autocrlf false
+  printf 'new pin\n' > "$repo/new-pin"
+  _dependency_update_fingerprint > "$(_dependency_update_marker full)"
+  cat > "$remote/hooks/pre-receive" <<'SH'
+#!/usr/bin/env bash
+while read -r _old _new ref; do
+  if [[ "$ref" == refs/heads/main ]]; then exit 1; fi
+done
+SH
+  chmod +x "$remote/hooks/pre-receive"
+  # Only the remote identity lookup and the GitHub API are substituted.
+  git() {
+    if [[ "${3:-} ${4:-}" == 'remote get-url' ]]; then
+      if [[ "$5" == --push ]]; then
+        printf '%s\n' ssh://git@ssh.github.com:443/QuanDo2000/dotfiles.git
+      else
+        printf '%s\n' https://test-user@github.com/QuanDo2000/dotfiles.git
+      fi
+    else
+      command git "$@"
+    fi
+  }
+  _validate_dependency_update() { :; }
+  doctor() { [[ "$DOTFILE_DOCTOR_SKIP_NIX_EVAL" == true && "$(head -n 1 "$DOTFILES_DIR/managed")" == updated ]]; }
+  mkdir "$TEST_TMPDIR/bin"
+  export PATH="$TEST_TMPDIR/bin:$PATH" PR_FIXTURE="$TEST_TMPDIR" PR_CREATE_FAIL=true
+  unset GIT_SSH_COMMAND GIT_SSH
+  cat > "$TEST_TMPDIR/bin/ssh" <<'SH'
+#!/usr/bin/env bash
+case "${!#}" in
+  git@github.work) echo 'hostname github.com' ;;
+  git@git.example.org) echo 'hostname git.example.org' ;;
+  *) exit 2 ;;
+esac
+SH
+  chmod +x "$TEST_TMPDIR/bin/ssh"
+  _is_dotfiles_github_url <<< 'git@github.com:/QuanDo2000/dotfiles.git' || return 1
+  _is_dotfiles_github_url <<< 'git+ssh://git@github.com/QuanDo2000/dotfiles.git' || return 1
+  _unverified_dotfiles_ssh_remote 'git@github.work:/QuanDo2000/dotfiles.git' || return 1
+  if _unverified_dotfiles_ssh_remote 'ssh://git@git.example.org/QuanDo2000/dotfiles.git'; then return 1; fi
+  cat > "$TEST_TMPDIR/bin/gh" <<'SH'
+#!/usr/bin/env bash
+set -eu
+[[ "$3 $4" == '--repo github.com/QuanDo2000/dotfiles' ]]
+case "$1 $2" in
+  'pr list')
+    if [[ -f "$PR_FIXTURE/pr" ]]; then cat "$PR_FIXTURE/pr"; fi
+    ;;
+  'pr create')
+    [[ "$PR_CREATE_FAIL" == false ]] || exit 1
+    topic=$(git --git-dir="$PR_FIXTURE/remote.git" for-each-ref --format='%(refname)' refs/heads/dotfile/)
+    head=$(git --git-dir="$PR_FIXTURE/remote.git" rev-parse "$topic")
+    printf 'OPEN\t%s\thttps://github.com/QuanDo2000/dotfiles/pull/123\n' "$head" > "$PR_FIXTURE/pr"
+    printf '%s\n' https://github.com/QuanDo2000/dotfiles/pull/123
+    ;;
+  *) exit 2 ;;
+esac
+SH
+  chmod +x "$TEST_TMPDIR/bin/gh"
+
+  output="$(_publish_dependency_update full 2>&1)" || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'rerun dotfile update'
+  assert_equals "$before" "$(git --git-dir="$remote" rev-parse main)"
+  assert_equals "$base" "$(git -C "$repo" rev-parse HEAD)"
+  assert_equals 'updated' "$(head -n 1 "$repo/managed")"
+  assert_file_exists "$repo/new-pin"
+  _validate_pending_dependency_update full
+  topic="$(git --git-dir="$remote" for-each-ref --format='%(refname)' refs/heads/dotfile/)"
+  [[ -n "$topic" ]] || return 1
+  head="$(git --git-dir="$remote" rev-parse "$topic")"
+  assert_equals 'new pin' "$(git --git-dir="$remote" show "$head:new-pin")"
+
+  PR_CREATE_FAIL=false
+  git --git-dir="$remote" update-ref "$topic" "$before" "$head"
+  status=0
+  output="$(_publish_dependency_update full 2>&1)" || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'Existing dependency branch could not be verified'
+  assert_equals "$before" "$(git --git-dir="$remote" rev-parse "$topic")"
+  _validate_pending_dependency_update full
+  [[ ! -e "$TEST_TMPDIR/pr" ]] || return 1
+  git --git-dir="$remote" update-ref "$topic" "$head" "$before"
+
+  output="$(_publish_dependency_update full 2>&1)"
+  assert_contains "$output" 'https://github.com/QuanDo2000/dotfiles/pull/123'
+  assert_equals "$before" "$(git --git-dir="$remote" rev-parse main)"
+  assert_equals "$head" "$(git --git-dir="$remote" rev-parse "$topic")"
+  assert_equals "$base" "$(git -C "$repo" rev-parse HEAD)"
+  assert_equals '' "$(git -C "$repo" status --porcelain)"
+  assert_equals 'initial' "$(head -n 1 "$repo/managed")"
+
+  # Simulate a lost response followed by immediate merge and branch deletion.
+  git -C "$repo" cherry-pick --no-commit "$head"
+  git -C "$repo" reset --mixed HEAD >/dev/null
+  _validate_pending_dependency_update full
+  git --git-dir="$remote" update-ref "refs/pull/123/head" "$head"
+  git --git-dir="$remote" update-ref -d "$topic" "$head"
+  printf 'MERGED\t%s\thttps://github.com/QuanDo2000/dotfiles/pull/123\n' "$head" > "$TEST_TMPDIR/pr"
+  output="$(_publish_dependency_update full 2>&1)"
+  assert_contains "$output" 'dependency PR merged'
+  assert_equals '' "$(git -C "$repo" status --porcelain)"
+  assert_equals '' "$(git --git-dir="$remote" for-each-ref "$topic")"
+
+  status=0
+  output="$(_require_published_dependency_pins 2>&1)" || status=$?
+  assert_equals 1 "$status"
+  assert_contains "$output" 'Merge the dependency PR and pull'
+  git -C "$repo" cherry-pick --no-commit "$head"
+  printf 'updated\ncontext 1\ncontext 2\ncontext 3\ncontext 4\nindependent edit\n' > "$repo/managed"
+  git -C "$repo" add managed
+  git -C "$repo" commit -qm 'Rebased dependency PR plus independent edit'
+  git -C "$repo" worktree add --quiet --detach "$TEST_TMPDIR/linked-receipt" HEAD
+  (DOTFILES_DIR="$TEST_TMPDIR/linked-receipt"; _require_published_dependency_pins)
+  assert_equals "$head" "$(git -C "$repo" rev-parse refs/dotfile/published-dependencies)"
+  _require_published_dependency_pins
+  assert_equals '' "$(git -C "$repo" for-each-ref refs/dotfile/published-dependencies)"
 }
 
 test_python_pin_batch_uses_one_nix_develop_and_preserves_order() {

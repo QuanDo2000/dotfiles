@@ -51,6 +51,8 @@
       devShell = pkgs: pkgs.mkShell {
         LAZY_NVIM_PATH = "${pkgs.vimPlugins.lazy-nvim}";
         packages = with pkgs; [
+          coreutils
+          gh
           git
           jq
           jujutsu
