@@ -4,6 +4,7 @@
   "defaultProjectTrust": "ask",
   "defaultProvider": "openai-codex",
   "defaultThinkingLevel": "medium",
+  "defaultTools": ["+codemode"],
   "enableInstallTelemetry": false,
   "enabledModels": [
     "openai-codex/gpt-6.1-terra",
