@@ -106,7 +106,7 @@ import yaml
 workflow = yaml.safe_load(Path(sys.argv[1]).read_text())
 # PyYAML's YAML 1.1 loader reads the GitHub "on" key as boolean True.
 events = workflow.get("on", workflow.get(True))
-assert events["push"]["branches"] == ["main"]
+assert events["push"]["branches"] == ["deliver/**"]
 assert events["pull_request"]["branches"] == ["main"]
 assert events["schedule"]
 assert workflow["permissions"] == {"contents": "read"}
@@ -146,8 +146,8 @@ for name, job in jobs.items():
         if step.get("uses", "").startswith("cachix/cachix-action@"):
             options = step["with"]
             assert options["name"] == "${{ vars.CACHIX_CACHE_NAME }}"
-            assert options["authToken"] == "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}"
-            assert options["skipPush"] == "${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}"
+            assert options["authToken"] == "${{ github.event_name == 'schedule' && secrets.CACHIX_AUTH_TOKEN || '' }}"
+            assert options["skipPush"] == "${{ github.event_name != 'schedule' }}"
 PY
 }
 
@@ -196,7 +196,7 @@ check(1, "push")
 PY
 }
 
-test_ci_filters_pull_requests_but_runs_full_main_and_schedule() {
+test_ci_routes_changed_paths_for_pull_requests() {
   local filter output
   filter="$REPO_DIR/scripts/ci_paths.sh"
 
