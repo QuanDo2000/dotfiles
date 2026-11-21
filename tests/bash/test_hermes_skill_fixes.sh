@@ -25,6 +25,22 @@ PY
   cp "$target" "$TEST_TMPDIR/after"
   assert_exit_code 0 bash "$apply" "$fix"
   cmp "$target" "$TEST_TMPDIR/after" || echo 'second application changed bytes' >> "$ERROR_FILE"
+
+  # An independent local addition between the corrected sections is not drift.
+  python3 - "$target" <<'PY'
+from pathlib import Path
+import sys
+
+target = Path(sys.argv[1])
+heading = '### File writes and protected agent instructions'
+content = target.read_text()
+assert content.count(heading) == 1
+target.write_text(content.replace(heading, 'Local guidance on approval timeouts.\n\n' + heading, 1))
+PY
+  cp "$target" "$TEST_TMPDIR/extended"
+  assert_exit_code 0 bash "$apply" "$fix"
+  cmp "$target" "$TEST_TMPDIR/extended" || echo 'application changed the extended reference' >> "$ERROR_FILE"
+
   printf 'upstream changed: require review\n' > "$target"
   cp "$target" "$TEST_TMPDIR/drift"
   assert_exit_code 1 bash "$apply" "$fix"
