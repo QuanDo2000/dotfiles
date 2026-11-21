@@ -136,7 +136,8 @@ for variable, expression in (("BASE_SHA", "${{ github.event.pull_request.base.sh
     assert filter_step["env"][variable] == expression, variable
 for name, job in jobs.items():
     assert type(job["timeout-minutes"]) is int and job["timeout-minutes"] > 0, name
-    assert job.get("permissions", workflow["permissions"]) == {"contents": "read"}, name
+    expected_permissions = {} if name == "required-ci" else {"contents": "read"}
+    assert job.get("permissions", workflow["permissions"]) == expected_permissions, name
     cache_steps = [step for step in job.get("steps", [])
                    if step.get("uses", "").startswith("cachix/cachix-action@")]
     if name in ("bash-linux", "bash-macos", "nix"):
@@ -147,6 +148,51 @@ for name, job in jobs.items():
             assert options["name"] == "${{ vars.CACHIX_CACHE_NAME }}"
             assert options["authToken"] == "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.CACHIX_AUTH_TOKEN || '' }}"
             assert options["skipPush"] == "${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}"
+PY
+}
+
+test_required_ci_rejects_missing_or_failed_applicable_jobs() {
+  python3 - "$REPO_DIR/.github/workflows/test.yml" <<'PY'
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import yaml
+
+jobs = yaml.safe_load(Path(sys.argv[1]).read_text())["jobs"]
+gate = jobs["required-ci"]
+assert set(gate["needs"]) == jobs.keys() - {"required-ci"}
+step = gate["steps"][0]["run"]
+bash = shutil.which("bash")
+assert bash is not None
+results = {name: {"result": "skipped"} for name in gate["needs"]}
+results["changes"] = {"result": "success", "outputs": {
+    "linux": "true", "macos": "false", "windows": "false", "nix": "false",
+}}
+
+def check(expected, event="pull_request"):
+    completed = subprocess.run(
+        [bash, "-e", "-o", "pipefail", "-c", step],
+        env={**os.environ, "GITHUB_EVENT_NAME": event, "JOB_RESULTS": json.dumps(results)},
+        capture_output=True, text=True, timeout=10,
+    )
+    assert completed.returncode == expected, (completed.stdout, completed.stderr)
+
+for result, expected in (("success", 0), ("failure", 1), ("cancelled", 1), ("skipped", 1)):
+    results["bash-linux"]["result"] = result
+    check(expected)
+results["bash-linux"]["result"] = "success"
+del results["changes"]["outputs"]["linux"]
+check(1)
+results["changes"]["result"] = "failure"
+check(1)
+results = {name: {"result": "success"} for name in gate["needs"]}
+results["changes"]["result"] = "skipped"
+check(0, "push")
+results["nix"]["result"] = "skipped"
+check(1, "push")
 PY
 }
 

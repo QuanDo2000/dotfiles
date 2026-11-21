@@ -33,6 +33,7 @@ jobs:
           fetch-depth: 0
 
       - id: filter
+        shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -199,3 +200,41 @@ jobs:
 
       - name: Build custom packages
         run: nix build .#obsidian-headless .#pi-agent .#pi-extensions --no-link --print-build-logs
+
+  required-ci:
+    # Keep this name stable: main's required status check uses it.
+    name: Required CI
+    needs: [changes, bash-linux, bash-macos, powershell, nix]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Verify applicable job results
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          jobs = json.loads(os.environ['JOB_RESULTS'])
+          is_pr = os.environ['GITHUB_EVENT_NAME'] == 'pull_request'
+          expected = {'changes': 'success' if is_pr else 'skipped'}
+          if jobs['changes']['result'] != expected['changes']:
+              raise SystemExit(f"Path filter: expected {expected['changes']}, got {jobs['changes']['result']}")
+
+          for job, path in [('bash-linux', 'linux'), ('bash-macos', 'macos'),
+                            ('powershell', 'windows'), ('nix', 'nix')]:
+              selected = jobs['changes']['outputs'].get(path) if is_pr else 'true'
+              if selected not in ('true', 'false'):
+                  raise SystemExit(f"Path filter: missing or invalid {path} output")
+              expected[job] = 'success' if selected == 'true' else 'skipped'
+
+          failed = False
+          for job, want in expected.items():
+              actual = jobs[job]['result']
+              print(f"{job}: {actual} (expected {want})")
+              failed |= actual != want
+          raise SystemExit(int(failed))
+          PY
