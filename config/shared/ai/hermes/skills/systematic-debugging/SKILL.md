@@ -27,7 +27,7 @@ Investigation-only requests prohibit persistent changes, including config edits,
 
 ## Test one hypothesis
 
-State: “X is the cause because evidence Y; check Z distinguishes it.” Run the cheapest discriminating check, changing one variable. Discard disproved hypotheses rather than stacking fixes. Reassess the data/control flow when repeated attempts reveal new coupling or unclear ownership; ask before broadening mutation authority.
+State: “X is the cause because evidence Y; check Z distinguishes it.” Run the cheapest discriminating check, preferably changing one variable. Do not infer an individual cause from a combined experiment. Discard disproved hypotheses rather than stacking fixes. Reassess the data/control flow when repeated attempts reveal new coupling or unclear ownership; ask before broadening mutation authority.
 
 For performance: record a repeatable workload/environment and baseline, profile one hot path, set an improvement target and regression budget, then make one reversible change. Run correctness checks before/after and repeat the same workload enough to expose noise. Keep only measured improvements within the budget; revert only your own failed experiment.
 
@@ -35,4 +35,4 @@ For performance: record a repeatable workload/environment and baseline, profile 
 
 Trace impacted callers and fix the shared cause, not symptoms in sibling callers. Use `test-driven-development` for the original symptom's regression, then apply the smallest authorized fix without bundled cleanup. Run the focused reproducer and impacted/required checks under the global verification policy.
 
-Stop when necessary evidence is unavailable, diagnosis remains uncertain, or safe work requires broader scope/approval. Report the failing boundary, evidence versus hypothesis, smallest fix, validation, and residual risk. Use native search/read/terminal tools; delegate only independent substantial investigations under the global delegation policy.
+When evidence is missing or diagnosis remains uncertain, state the gap and continue useful bounded investigation within scope. Defer speculative edits by default; use the governing scoped-exception rule for explicitly authorized diagnostic changes or reversible mitigations. Ask only before work that needs broader authority. Report the failing boundary, evidence versus hypothesis, smallest fix, validation, and residual risk. Use native search/read/terminal tools; delegate only independent substantial investigations under the global delegation policy.

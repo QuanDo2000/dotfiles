@@ -29,7 +29,7 @@ These constraints accompany the topic procedures, not every health check. Govern
 
 Inspect every affected workflow's exact command and earlier explicit provisioner; ShellCheck, cspell, and codespell are distinct. Add a focused dependency/order regression where warranted. Run in the CI environment and check mirrored Bash/PowerShell/macOS invariants. Hosted macOS self-tests must avoid GNU-only options even for Linux-deployed scripts.
 
-Check runs by exact full SHA, allowing bounded registration delay. Inspect failed logs and whether tests ran. Rerun authorized transient infrastructure failures without speculative source changes, then inspect terminal results. Missing/pending/failed/unverifiable required checks block delivery gates. Activation wrappers must use the actual package owner (`cmp` is in diffutils); inspect combined output and require a clean rerun after hook errors.
+Check runs by exact full SHA, allowing bounded registration delay. Inspect failed logs and whether tests ran. Rerun authorized transient infrastructure failures without speculative source changes, then inspect terminal results. Report missing, pending, failed, or unverifiable checks accurately; distinguish independently required checks from discretionary delivery defaults under the governing policy. Activation wrappers must use the actual package owner (`cmp` is in diffutils); inspect combined output and require a clean rerun after hook errors.
 
 ## Portable JJ signing
 

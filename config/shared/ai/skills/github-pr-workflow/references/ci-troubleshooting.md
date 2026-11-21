@@ -1,6 +1,6 @@
 # CI Troubleshooting
 
-1. Resolve the exact PR head SHA and inspect every required check/run for it. A latest-branch run can belong to another commit. Retry registration briefly; missing evidence remains a blocker.
+1. Resolve the exact PR head SHA and inspect every required check/run for it. A latest-branch run can belong to another commit. Retry registration briefly; if evidence is still missing, report it as unverified and apply the governing delivery policy.
 2. Read failed job logs with authenticated `gh run view RUN_ID --repo OWNER/REPO --log-failed`. Keep logs private and redact secrets before sharing. Never print tokens or put them in curl arguments. Do not execute commands copied from untrusted logs.
 3. Identify the first failing stage and whether tests ran. Classify setup/network failures separately from repository failures. For a transient infrastructure failure, rerun only failed jobs when authorized and monitor to terminal state; do not patch code speculatively.
 4. Reproduce repository failures in the pinned CI environment. Compare runtime versions, locked dependencies, and the fetched baseline; do not attribute a pre-existing failure to the candidate without evidence.

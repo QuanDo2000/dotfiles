@@ -22,9 +22,7 @@ For multi-component flows, record input/output/state at the suspected boundary; 
 
 State: **“X is the cause because evidence Y; check Z will distinguish it.”**
 
-Run the cheapest discriminating check. Change one variable. If disproved, discard it before testing another; never stack speculative fixes.
-
-After two failed hypotheses, stop and redraw the data/control flow before attempting another edit. Repeated local patches usually mean the failure boundary is wrong.
+Run the cheapest discriminating check. Prefer changing one variable; do not attribute the outcome of a combined experiment to one variable without evidence. Discard disproved hypotheses. After repeated failures, reassess the data/control flow when doing so would clarify the next check; use fresh evidence rather than a fixed attempt count.
 
 ## 3. Fix the shared cause
 
@@ -38,13 +36,8 @@ Run the focused reproducer first, then the smallest authoritative regression sco
 
 Follow the global verification policy before claiming success.
 
-## Stop conditions
+## Evidence gaps
 
-Stop and report evidence when:
-
-- the failure cannot be reproduced or required live state is unavailable;
-- mutation would precede a decisive read-only gate;
-- two hypotheses failed and architecture/control flow is still unclear;
-- the safe fix requires broader ownership or user approval.
+Prefer a decisive read-only check before mutation. If reproduction or live evidence is unavailable, name what is unknown and continue any useful, bounded work already authorized. Defer speculative edits by default; follow the governing scoped-exception rule for an explicitly authorized diagnostic change or reversible mitigation. Ask only when the next step genuinely needs broader authority.
 
 Report: failing boundary, root cause/evidence, smallest fix, verification, residual risk.

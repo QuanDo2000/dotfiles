@@ -10,7 +10,7 @@ Use this recipe when dotfiles pin and deploy a stateful agent extension and the 
 4. Delete extension-specific baggage that no longer has a consumer: native dependency pins, compiler inputs, source patches, installer branches, fixtures, and platform assertions. Keep generic integrity checks.
 5. If the new package declares a lifecycle script but deployment always uses `--ignore-scripts`, whitelist only its exact lock entry in pin validation; reject every other scripted package.
 6. Preserve the old state directory. Migrate user and durable memory losslessly into the new store, set directory/file modes such as `0700`/`0600`, and do not copy credentials. If automatic context injection truncates large stores, preserve the full file anyway and report the retrieval/injection boundary rather than silently dropping data.
-7. Build the package and run focused Unix and cross-platform installer tests before activation. Activate the exact deployed host profile, not a generic profile.
+7. Build the package and default to running focused Unix and cross-platform installer tests before activation. Apply the governing scoped-exception rule for a host trial that defers discretionary coverage; report the gap. Activate the exact deployed host profile, not a generic profile.
 
 ## Provider-Free Verification
 
