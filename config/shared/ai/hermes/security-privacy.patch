@@ -1,6 +1,6 @@
 --- a/skills/autonomous-ai-agents/hermes-agent/references/security-privacy.md
 +++ b/skills/autonomous-ai-agents/hermes-agent/references/security-privacy.md
-@@ -32,24 +32,50 @@
+@@ -32,9 +32,8 @@
 -
 +
  - `smart` — auto-approve a low-risk command once, deny high-risk commands, and prompt when uncertain (default)
@@ -16,6 +16,7 @@
 +Keep `approvals.mode: smart` for normal use. Command approval policy and secret
 +redaction are independent. Neither command allowlists nor `--yolo` grant approval
 +for protected instruction-file writes.
+@@ -41,15 +40,42 @@
 -
 +
 -Per-invocation bypass without changing config:

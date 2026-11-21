@@ -73,7 +73,7 @@ owning skills. Shared debugging techniques are consolidated in `../skills/system
 ## Security reference correction (default profile, Unix)
 
 `security-privacy.patch` owns the correction to the bundled `hermes-agent`
-reference. It is an upstream-compatible, single-hunk patch against
+reference. It is an upstream-compatible patch against
 `skills/autonomous-ai-agents/hermes-agent/references/security-privacy.md` at
 NousResearch/hermes-agent revision `284d220ba48e25f2e3623b3afe72db8f24a4c2db`
 (MIT; original skill attribution remains installed). No complete upstream skill
@@ -81,9 +81,11 @@ is duplicated or replaced: every other reference, template, and local addition
 stays in place. The owning deployment path is `config/home.nix` activation
 `patchHermesSecurityReference` → `scripts/apply_hermes_skill_fixes.sh`.
 
-The helper uses Nix's GNU patch, accepts an already-applied patch, rejects source
-drift and symlinked skill/reference targets, and leaves a missing installation
-alone. Back up the complete skill before first application. If Hermes is installed
+The helper uses Nix's GNU patch with zero fuzz. The two hunks check the
+command-approval and protected-write corrections separately, so additions between
+them do not invalidate an otherwise already-applied patch. It rejects drift
+within the hunks and symlinked skill/reference targets, and leaves a missing
+installation alone. Back up the complete skill before first application. If Hermes is installed
 or its skills are first seeded **after** Home Manager, re-run the normal profile
 activation. Windows and non-default Hermes profiles are intentionally unmanaged.
 The patch changes documentation only, never approval policy or Hermes core.
