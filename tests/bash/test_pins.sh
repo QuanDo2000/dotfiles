@@ -70,11 +70,6 @@ test_pi_closure_prefetch_preserves_non_posix_entry_and_failures() {
   assert_equals $'probe\nstandalone' "$(<"$trace")"
 }
 
-test_windows_anki_pin_refresher() {
-  python3 "$REPO_DIR/tests/python/test_anki_pins.py" 2>&1
-  assert_equals "0" "$?" "Anki pin refresher tests should pass"
-}
-
 test_rex_pin_refresh_preserves_pin_on_incomplete_or_changed_download() {
   PYTHONPATH="$REPO_DIR/scripts" python3 - <<'PY' 2>>"$ERROR_FILE"
 import io

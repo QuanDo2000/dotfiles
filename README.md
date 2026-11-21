@@ -326,32 +326,19 @@ config. For hosts without the desktop beta, eligible testers can opt into the
 separate standalone server package via Superlogical’s WinGet source. See the
 [Windows Rex setup and limitations](config/rex/README.md#rex-on-windows).
 
-AnkiConnect, Pass/Fail 2, and Zoom are pinned in `config/windows/anki-addons.json`.
-Downloads are SHA-256 checked. Anki's automatic updates are disabled for these
-add-ons so it cannot replace the pinned code. `dotfile doctor` checks installed
-pin markers, individual distribution file hashes, enabled/update flags, and
-managed settings. It reports drift without changing anything.
+**Anki add-ons on Windows:** Anki installs and updates add-on code. Dotfiles
+requires AnkiConnect (`2055492159`), Pass/Fail 2 (`876946123`), and Zoom 24
+(`1923741581`). On a new setup, use **Tools > Add-ons > Get Add-ons** in Anki
+with the reported IDs, then close Anki and rerun dotfile. Dotfiles does not
+install or replace add-on code. It removes its old update lock once on existing
+managed installs; use Anki's **Check for Updates** to get newer versions.
 
-Refresh the Anki pins without installing them:
-
-```powershell
-py -3.14 scripts/update_pins.py anki-addons .
-git diff -- config/windows/anki-addons.json
-```
-
-The refresher downloads each archive twice, validates paths and the entry point,
-and writes pins only after all archives pass. Review changes before installation;
-matching downloads are not a security audit of new add-on code. The Unix full
-pin-refresh workflow also refreshes these Windows pins.
-
-Managed settings use the existing Windows preferences captured in
-`config/windows/anki-addons.json`, including Zoom's custom zoom levels, rather
-than the Unix defaults. Other settings and `user_files` are preserved; decks, profiles, and
-unrelated add-ons are untouched. Previous managed add-on directories are retained
-under `%APPDATA%\Anki2\dotfile-addons-backups`. Only the default
-`%APPDATA%\Anki2\addons21` location is managed. AnkiConnect stays bound to
-`127.0.0.1:8765` with a localhost-only CORS allowlist. Existing API keys remain
-local and are preserved; they are never included in the tracked configuration.
+Dotfiles enables the required add-ons and syncs the selected settings in
+`config/windows/anki-addons.json` under `%APPDATA%\Anki2\addons21`.
+`dotfile.ps1 doctor` checks presence and settings without changing anything.
+AnkiConnect stays bound to `127.0.0.1:8765` with a localhost-only CORS allowlist.
+Local API keys, saved zoom levels, `user_files`, decks, profiles, unrelated
+add-ons, and prior backups are left alone.
 
 Obsidian uses its single registered vault. If there are multiple vaults, set
 `DOTFILE_OBSIDIAN_VAULT` to the existing vault's absolute path. With no registered
