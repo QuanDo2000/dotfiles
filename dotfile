@@ -138,8 +138,13 @@ function run_checked_flow {
   case "$operation" in
     update_packages|update_ai) _ensure_update_environment ;;
   esac
+  # GitHub publication already ran doctor against the activated pins, before
+  # clearing those pins from the checkout. Keep the final check for other paths.
+  local dependency_pr_checked=false
   "$operation" "$@"
-  DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
+  if [[ "$dependency_pr_checked" == false ]]; then
+    DOTFILE_DOCTOR_SKIP_NIX_EVAL=true doctor
+  fi
 }
 
 function setup_dotfiles {
@@ -261,6 +266,7 @@ packages)
   ;;
 symlinks)
   [[ $# -eq 1 ]] || fail "Unexpected symlinks argument: ${2:-}"
+  [[ "$DRY" == true ]] || _require_published_dependency_pins
   platform="$(detect_platform)"
   case "$platform" in
     debian|arch)

@@ -245,7 +245,7 @@ test_ci_dev_shell_includes_script_dependencies() {
       shell: { packages = map (p: p.pname or (builtins.parseDrvName p.name).name) shell.nativeBuildInputs;
                lazy = builtins.toString shell.LAZY_NVIM_PATH; }
     ')"
-    assert_equals true "$(jq '(["jq", "python3", "zsh", "rclone", "ShellCheck"] - .packages) | length == 0' <<< "$default_shell")"
+    assert_equals true "$(jq '(["coreutils", "gh", "jq", "python3", "zsh", "rclone", "ShellCheck"] - .packages) | length == 0' <<< "$default_shell")"
     assert_contains "$(jq -r .lazy <<< "$default_shell")" '-vimplugin-lazy.nvim-'
     ci_shell="$(command nix eval --json "path:$REPO_DIR#devShells.$system.ci" --apply '
       shell: map (p: p.pname or (builtins.parseDrvName p.name).name) shell.nativeBuildInputs

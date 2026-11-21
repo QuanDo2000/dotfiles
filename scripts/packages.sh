@@ -518,6 +518,7 @@ function _update_packages_scope {
     info "Resuming validated $label update"
   else
     _require_clean_dependency_tree
+    _require_published_dependency_pins
     _refresh_dependency_set "$refresh" "$scope" \
       || fail "$label refresh failed; working tree was not changed"
     _write_dependency_update_marker "$marker" "$DEPENDENCY_UPDATE_FINGERPRINT" \
@@ -556,6 +557,7 @@ function update_ai { _update_packages_scope ai; }
 function update_packages { _update_packages_scope full; }
 
 function install_packages {
+  _require_published_dependency_pins
   info "Installing packages..."
   case "$(detect_platform)" in
     nixos)   install_nixos ;;

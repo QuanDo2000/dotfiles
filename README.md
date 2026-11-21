@@ -453,12 +453,22 @@ full gate, and during flake updates—not ordinary pin-only updates.
 Flake updates also check profile roles and Neovim;
 changes outside recognized pin surfaces fall back to the full repository gate.
 `dotfile check` and CI retain comprehensive checks.
-After successful activation, it commits the validated changes, fetches and rebases
-if the upstream advanced, reruns checks on the rebased tree, and pushes the current
-branch only if those checks pass. Existing unpublished
-commits stop publication. Windows pulls and activates those published validated
-pins instead of installing an unvalidated latest release; it reports when npm has
-a newer Pi release awaiting publication.
+After successful activation, an update tracking `QuanDo2000/dotfiles` on GitHub
+`main` publishes the validated changes on a task branch and opens a PR, without
+committing to or pushing `main`. GitHub CI tests the proposed merge; dotfile
+neither merges the PR nor waits for hosted CI. Use a canonical GitHub remote URL
+and authenticate Git and `gh` with GitHub.com before updating. A failed publication
+keeps the validated local changes pending; fix credentials and rerun the same
+update to reuse its branch. Dotfile checks the activated pins before publishing,
+then clears the published edits from the checkout without undoing activation.
+Merge and pull the PR before activating again; dotfile will not activate older
+pins over the published snapshot. Standalone `dotfile doctor` may report Neovim
+drift until those pins reach the checkout. Other upstreams retain the commit,
+rebase, recheck, and push flow.
+Existing unpublished commits stop publication.
+Windows pulls and activates the published pins instead of installing an
+unvalidated latest release; it reports when npm has a newer Pi release awaiting
+publication.
 Full updates install missing native prerequisites for the detected platform
 before activating its configured profile; installed-state detection does not
 select dependencies.

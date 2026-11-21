@@ -751,9 +751,169 @@ function _finish_dependency_update {
   rm -f "$marker" "$marker.tmp"
 }
 
+function _is_dotfiles_github_url {
+  grep -Eiq '^(https://([^/@[:space:]]+@)?github\.com(:443)?/|(ssh|git\+ssh|ssh\+git)://([^/@[:space:]]+@)?(github\.com(:22)?|ssh\.github\.com:443)/|([^/@[:space:]]+@)?github\.com:/?)QuanDo2000/dotfiles(\.git)?/?$'
+}
+
+function _unverified_dotfiles_ssh_remote {
+  local url="$1" authority destination host
+  local -a port=()
+  grep -Eiq '^((ssh|git\+ssh|ssh\+git)://[^/]+/|[^/:]+:/?)QuanDo2000/dotfiles(\.git)?/?$' <<< "$url" || return 1
+  # A custom Git transport can use a different config than ssh -G.
+  [[ -z "${GIT_SSH_COMMAND:-}${GIT_SSH:-}" ]] \
+    && ! git -C "$DOTFILES_DIR" config --get core.sshCommand >/dev/null || return 0
+  if [[ "$url" == *://* ]]; then
+    authority="${url#*://}"
+    authority="${authority%%/*}"
+    destination="${authority%%:*}"
+    [[ "$authority" == "$destination" ]] || port=(-p "${authority##*:}")
+  else
+    destination="${url%%:*}"
+  fi
+  host="$(timeout 15s ssh -G ${port[@]+"${port[@]}"} -- "$destination" 2>/dev/null \
+    | awk '$1 == "hostname" { print tolower($2) }')" || return 0
+  [[ -z "$host" || "$host" == github.com || "$host" == ssh.github.com ]]
+}
+
+function _require_published_dependency_pins {
+  [[ "$DRY" == false ]] && _dependency_git_repository || return 0
+  local ref=refs/dotfile/published-dependencies receipt parent path merge_base merged_tree head_tree dirs
+  receipt="$(git -C "$DOTFILES_DIR" for-each-ref --format='%(objectname)' "$ref")" \
+    || fail "Could not inspect the published dependency snapshot"
+  [[ -n "$receipt" ]] || return 0
+  _require_clean_dependency_tree
+  parent="$(git -C "$DOTFILES_DIR" show -s --format='%P' "$receipt")" \
+    || fail "Could not read the published dependency snapshot"
+  # Compare the published paths, not the commit ID: GitHub rebase changes it.
+  # debt: if the PR was abandoned or the pins were superseded, review the receipt before deleting its local ref manually.
+  if ! git -C "$DOTFILES_DIR" diff --name-only -z --no-renames "$parent" "$receipt" -- \
+    | while IFS= read -r -d '' path; do
+        git -C "$DOTFILES_DIR" --literal-pathspecs diff --quiet "$receipt" HEAD -- "$path" || exit 1
+      done; then
+    # A rebase can retain independent changes to the same files. An in-memory
+    # merge which leaves HEAD unchanged also proves the published changes landed.
+    merge_base="$(git -C "$DOTFILES_DIR" merge-base HEAD "$receipt")" \
+      && [[ "$merge_base" == "$parent" ]] \
+      && merged_tree="$(git -C "$DOTFILES_DIR" merge-tree --write-tree HEAD "$receipt" 2>/dev/null)" \
+      && head_tree="$(git -C "$DOTFILES_DIR" rev-parse 'HEAD^{tree}')" \
+      && [[ "$merged_tree" == "$head_tree" ]] \
+      || fail "Published dependency pins are not in this checkout. Merge the dependency PR and pull before activating again."
+  fi
+  # The ref is shared, but only the standalone checkout can publish and retire it.
+  dirs="$(git -C "$DOTFILES_DIR" rev-parse --path-format=absolute --git-dir --git-common-dir)" \
+    || fail "Could not verify ownership of the published dependency snapshot"
+  [[ "$dirs" == *$'\n'* && "${dirs%%$'\n'*}" == "${dirs#*$'\n'}" ]] || return 0
+  git -C "$DOTFILES_DIR" update-ref -d "$ref" "$receipt" \
+    || fail "Could not clear the integrated dependency snapshot"
+}
+
+function _dependency_pr_for_branch {
+  timeout 60s gh pr list --repo github.com/QuanDo2000/dotfiles --base main --head "$1" --state all --limit 2 \
+    --json isCrossRepository,state,headRefOid,url \
+    --jq 'if length == 0 then empty elif length == 1 and .[0].isCrossRepository == false then .[0] | [.state, .headRefOid, .url] | @tsv else error("ambiguous dependency PR") end'
+}
+
+_publish_github_dependency_update() (
+  local scope="$1" remote="$2" base="$3" subject="$4" work tree topic ref pr head remote_head state pr_head url
+  export GH_PROMPT_DISABLED=1 GIT_TERMINAL_PROMPT=0
+  command -v gh >/dev/null || fail "Local activation completed; GitHub CLI is required to publish. Restore gh and rerun dotfile update."
+  git -C "$DOTFILES_DIR" diff --cached --quiet HEAD -- \
+    || fail "Unexpected staged changes; leaving the activated dependency update pending"
+  work="$(mktemp -d)" || fail "Failed to stage dependency PR"
+  _cleanup_dependency_pr() {
+    if [[ -d "$work/checkout" ]]; then
+      git -C "$DOTFILES_DIR" worktree remove --force "$work/checkout" || return 1
+    fi
+    rm -f "$work/index" "$work/patch"
+    rmdir "$work"
+  }
+  trap '_cleanup_dependency_pr || warn "Could not remove disposable dependency PR workspace: $work"' EXIT
+  trap 'exit 1' HUP INT TERM
+
+  # Commit only the activated snapshot, without advancing the local upstream branch.
+  tree="$(
+    export GIT_INDEX_FILE="$work/index"
+    git -C "$DOTFILES_DIR" read-tree "$base" && git -C "$DOTFILES_DIR" add -A \
+      && git -C "$DOTFILES_DIR" write-tree \
+      && git -C "$DOTFILES_DIR" diff --cached --binary --no-ext-diff "$base" -- > "$work/patch"
+  )" || fail "Failed to snapshot validated dependency changes"
+  _validate_pending_dependency_update "$scope"
+  git -C "$DOTFILES_DIR" apply --reverse --check "$work/patch" \
+    || fail "Validated dependency changes cannot be cleared safely; leaving them pending"
+  topic="dotfile/dependencies-$scope-$base-$tree"
+  ref="refs/heads/$topic"
+  pr="$(_dependency_pr_for_branch "$topic")" || fail "Local activation completed; could not check GitHub PRs. Check gh authentication and rerun dotfile update."
+  IFS=$'\t' read -r state pr_head url <<< "$pr"
+  if [[ "$state" == MERGED ]]; then
+    [[ "$url" =~ ^https://github\.com/QuanDo2000/dotfiles/pull/[0-9]+$ ]] \
+      || fail "Invalid merged dependency PR URL; leaving changes pending"
+    # GitHub keeps the PR head available after automatically deleting its branch.
+    head="$pr_head"
+    timeout 120s git -C "$DOTFILES_DIR" fetch --no-tags "$remote" "refs/pull/${url##*/}/head" \
+      && [[ "$(git -C "$DOTFILES_DIR" rev-parse FETCH_HEAD)" == "$head" ]] \
+      && [[ "$(git -C "$DOTFILES_DIR" show -s --format='%P %T' "$head")" == "$base $tree" ]] \
+      || fail "Merged dependency PR $url could not be verified; leaving changes pending"
+  else
+    remote_head="$(timeout 60s git -C "$DOTFILES_DIR" ls-remote --refs "$remote" "$ref")" \
+      || fail "Local activation completed; could not inspect the dependency branch. Retry dotfile update."
+    head="${remote_head%%$'\t'*}"
+  fi
+  # debt: if the PR closed without merging or the branch changed, preserve the local snapshot for manual review.
+  if [[ "$state" == MERGED ]]; then
+    : # The original PR head was verified above, even if the task ref is gone.
+  elif [[ -n "$head" ]]; then
+    timeout 120s git -C "$DOTFILES_DIR" fetch --no-tags "$remote" "$ref" \
+      && [[ "$(git -C "$DOTFILES_DIR" show -s --format='%P %T' "$head")" == "$base $tree" ]] \
+      || fail "Existing dependency branch could not be verified: $topic; leaving changes pending"
+  elif [[ -n "$pr" ]]; then
+    fail "Dependency branch is gone but a PR already exists for it; review GitHub before retrying."
+  else
+    git -C "$DOTFILES_DIR" worktree add --quiet --detach "$work/checkout" "$base" \
+      && git -C "$work/checkout" apply --index "$work/patch" \
+      && git -C "$work/checkout" commit -m "$subject" \
+      && head="$(git -C "$work/checkout" rev-parse HEAD)" \
+      && [[ "$(git -C "$work/checkout" show -s --format='%P %T' "$head")" == "$base $tree" ]] \
+      || fail "Could not commit the validated dependency snapshot; leaving changes pending"
+    # The empty lease is create-only: it cannot replace another publisher's ref.
+    timeout 120s git -C "$DOTFILES_DIR" push --no-follow-tags --force-with-lease="$ref:" "$remote" "$head:$ref" \
+      || fail "Local activation completed; could not publish $topic. Check Git credentials and rerun dotfile update."
+  fi
+  if [[ -z "$pr" ]]; then
+    timeout 60s gh pr create --repo github.com/QuanDo2000/dotfiles --base main --head "$topic" \
+      --title "$subject" --body "Dependency pins validated and activated locally by dotfile update. Ready for GitHub CI and review." \
+      || fail "Local activation completed; branch $topic is published. Check gh authentication and rerun dotfile update to open its PR."
+    pr="$(_dependency_pr_for_branch "$topic")" || fail "Could not verify the dependency PR; rerun dotfile update."
+  fi
+  IFS=$'\t' read -r state pr_head url <<< "$pr"
+  [[ ( "$state" == OPEN || "$state" == MERGED ) && "$pr_head" == "$head" \
+    && "$url" =~ ^https://github\.com/QuanDo2000/dotfiles/pull/[0-9]+$ ]] \
+    || fail "Could not verify the dependency PR for $topic; leaving changes pending"
+  if [[ "$state" == OPEN ]]; then
+    remote_head="$(timeout 60s git -C "$DOTFILES_DIR" ls-remote --refs "$remote" "$ref")" \
+      && [[ "$remote_head" == "$head"$'\t'"$ref" ]] \
+      || fail "Dependency PR branch changed before verification; leaving changes pending"
+  fi
+  _validate_pending_dependency_update "$scope"
+  # Keep the activated commit reachable until a later checkout contains its pins.
+  local receipt_ref=refs/dotfile/published-dependencies receipt
+  receipt="$(git -C "$DOTFILES_DIR" for-each-ref --format='%(objectname)' "$receipt_ref")" \
+    && { [[ "$receipt" == "$head" ]] || { [[ -z "$receipt" ]] \
+      && git -C "$DOTFILES_DIR" update-ref "$receipt_ref" "$head" ""; }; } \
+    || fail "Dependency PR $url is open, but the activated snapshot could not be recorded"
+  git -C "$DOTFILES_DIR" diff --cached --quiet HEAD -- \
+    && git -C "$DOTFILES_DIR" apply --reverse "$work/patch" \
+    || fail "Dependency PR $url is open, but local changes could not be cleared safely"
+  if [[ "$state" == MERGED ]]; then
+    info "Activated locally; dependency PR merged, pull before the next activation: $url" --force
+  else
+    info "Activated locally; dependency PR awaiting CI and review: $url" --force
+  fi
+)
+
 function _publish_dependency_update {
   [[ "$DRY" == "true" ]] && return
-  local scope="${1:-full}" status branch remote merge upstream ahead behind subject validation_base
+  local scope="${1:-full}" status branch remote merge upstream ahead behind subject validation_base fetch_urls push_urls github=false
+  local skip_neovim="${DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME:-false}"
   status="$(git -C "$DOTFILES_DIR" status --porcelain)" \
     || fail "Failed to inspect dependency repository"
   [[ -n "$status" ]] || return 0
@@ -764,6 +924,25 @@ function _publish_dependency_update {
     || fail "Dependency update branch has no upstream remote"
   merge="$(git -C "$DOTFILES_DIR" config --get "branch.$branch.merge")" \
     || fail "Dependency update branch has no upstream branch"
+  if [[ "$merge" == refs/heads/main ]]; then
+    fetch_urls="$(git -C "$DOTFILES_DIR" remote get-url --all "$remote")" \
+      && push_urls="$(git -C "$DOTFILES_DIR" remote get-url --push --all "$remote")" \
+      || fail "Failed to inspect dependency update remote URLs"
+    if _is_dotfiles_github_url <<< "$fetch_urls"$'\n'"$push_urls"; then
+      if [[ "$fetch_urls" == *$'\n'* || "$push_urls" == *$'\n'* ]] \
+        || ! _is_dotfiles_github_url <<< "$fetch_urls" || ! _is_dotfiles_github_url <<< "$push_urls"; then
+        fail "Expected one fetch and one push URL for QuanDo2000/dotfiles; leaving changes pending"
+      fi
+      github=true
+    else
+      local url
+      while IFS= read -r url; do
+        if _unverified_dotfiles_ssh_remote "$url"; then
+          fail "Cannot verify the QuanDo2000/dotfiles SSH remote; use a canonical GitHub URL and rerun dotfile update"
+        fi
+      done <<< "$fetch_urls"$'\n'"$push_urls"
+    fi
+  fi
   upstream="${remote}/${merge#refs/heads/}"
   git -C "$DOTFILES_DIR" fetch "$remote" \
     || fail "Failed to fetch dependency update remote"
@@ -776,6 +955,15 @@ function _publish_dependency_update {
     || fail "Failed to record dependency validation base"
   subject="chore: update dependencies"
   [[ "$scope" != ai ]] || subject="chore: update AI dependencies"
+  if [[ "$github" == true ]]; then
+    # AI-only updates do not reconcile the Neovim runtime.
+    [[ "$scope" != ai ]] || skip_neovim=true
+    DOTFILE_DOCTOR_SKIP_NIX_EVAL=true DOTFILE_DOCTOR_SKIP_NEOVIM_RUNTIME="$skip_neovim" doctor \
+      || fail "Activated dependency checks failed; leaving changes pending"
+    _publish_github_dependency_update "$scope" "$remote" "$validation_base" "$subject" || return $?
+    dependency_pr_checked=true
+    return
+  fi
   git -C "$DOTFILES_DIR" add -A \
     && git -C "$DOTFILES_DIR" commit -m "$subject" \
     || fail "Failed to commit dependency update"
