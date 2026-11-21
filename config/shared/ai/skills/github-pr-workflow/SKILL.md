@@ -38,8 +38,8 @@ Use the governing implementation, delivery, signing, and merge policy. This adap
 
 ## Merge and cleanup
 
-Immediately before merging, verify repository identity, target, current head, upstream compatibility, and the status of review and checks for that head. Follow governing merge defaults, scoped exceptions, and independently imposed requirements. For ordinary merges, specify the allowed strategy and pin the head with `gh pr merge NUMBER --repo OWNER/REPO --match-head-commit SHA`. A head-only guard does not bind the target for an exception. Do not use admin/bypass flags.
+Immediately before merging, verify repository identity, target, current head, upstream compatibility, and the status of review and checks for that head. Follow governing merge defaults, scoped exceptions, and independently imposed requirements. For ordinary merges, use `gh pr merge NUMBER --repo OWNER/REPO --merge --match-head-commit SHA` when the governing default is allowed. Any alternative must meet the governing non-squash and signature-preservation requirements. A head-only guard does not bind the target for an exception. Do not use admin/bypass flags.
 
-Read back the merged state, merge commit, and target branch. A queued auto-merge or successful request is not proof of merge. Update the local base only when doing so preserves local work. Apply the governing post-delivery cleanup defaults or the separate rules for explicit removal of named resources, including abandoned work. Preserve unrelated or shared work.
+Read back the merged state, merge commit, and target branch, and verify the original signed commits and any new merge commit under the governing policy. A queued auto-merge or successful request is not proof of merge. Update the local base only when doing so preserves local work. Apply the governing post-delivery cleanup defaults or the separate rules for explicit removal of named resources, including abandoned work. Preserve unrelated or shared work.
 
 Report PR URL, exact delivered head, checks/review status, merge state, and any blocker. Do not claim deployment unless separately authorized and verified.
