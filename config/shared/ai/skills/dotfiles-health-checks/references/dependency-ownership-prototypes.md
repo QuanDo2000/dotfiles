@@ -22,10 +22,10 @@ Prototype only when expected total cost improves. Rank and reject alternatives e
 2. Start from current upstream; do not overlap another active worktree’s files without documenting conflicts.
 3. Preserve user-visible behavior before optimizing benchmarks.
 4. Add the smallest regression checks for trust boundaries, migration, and nontrivial logic.
-5. Run repository-native focused and full checks.
+5. Default to repository-native focused and full checks; follow applicable repository requirements.
 6. Quantify additions, deletions, dependency reduction, runtime/storage change, and remaining parity gaps.
-7. Require independent diff review; if review tooling is read-only, provide changed paths and full diff.
-8. Commit locally only after validation. Do not merge, push, deploy, or mutate live state unless separately authorized.
+7. Follow governing review policy; give a static reviewer the changed paths and full diff.
+8. Default to validating before a local commit. For an explicitly authorized checkpoint before discretionary validation, label it unverified. Checkpoint approval alone does not authorize merge, push, deployment, or live changes.
 
 ## Removing a package manager used for very few packages
 

@@ -41,7 +41,7 @@ For subscription comparisons, clarify full-allowance percentage points versus pe
 2. Build current ground truth with authoritative repository commands or direct source inspection.
 3. Use fresh no-session processes for each trial while preserving normal setup loading.
 4. Alternate A/B launch order and rotate workload order.
-5. For noisy provider-backed runs, use **seven trials per workload per variant** by default. Reduce only when cost is material and disclose it.
+5. For noisy provider-backed runs, use **seven trials per workload per variant** by default. Use a smaller run when explicitly authorized; disclose the reason, actual trial count, and limits on confidence. Do not claim it completed a larger planned matrix.
 6. Let production variants choose naturally among all available tools. Do not force the candidate tool.
 7. Include workloads spanning exact lookup, multi-file inventory, and repository understanding. Add realistic work from the user's normal workflow when available. For a removal ablation, exercise the dependency's actual feature class: architecture reconstruction, impact tracing, root-cause localization, and implementation planning for code-intelligence tools; cross-session recall for memory tools; diagnostics and repair for LSPs. Treat exact symbol/path checks as sanity cells, not substantive evidence that a specialized dependency is dispensable.
 8. Before scoring, assert the complete matrix exists exactly once: `trials × workloads × variants`, with unique run/session IDs and no missing or duplicate cells. If the user changes the requested trial count, update this assertion before continuing and reject any report built from the old count.

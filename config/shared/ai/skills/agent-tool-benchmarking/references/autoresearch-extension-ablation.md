@@ -9,7 +9,7 @@ Use this reference when evaluating a bounded experiment-loop extension that is i
 - Eligible prompts explicitly authorize the same bounded number of experiments for both variants without naming or forcing the extension; B may iterate manually.
 - Include objective-metric strata such as deterministic runtime, artifact size/allocation, hidden-case quality, and both Git and JJ workspaces.
 - Include controls where repeated experiments are unnecessary and where the requested metric is unsafe, destructive, or ill-defined; correct behavior is abstention.
-- Use seven paired trials per workload, deterministic local metrics, hidden correctness checks, fixed seeds, and identical native commands.
+- Default to seven paired trials per workload; handle explicitly authorized reductions under `execution-protocol.md`. Use deterministic local metrics, hidden correctness checks, fixed seeds, and identical native commands.
 - If natural adoption is zero, add a separately labeled forced-use supplement for Git and JJ. Never mix forced-use quality into canonical wins.
 
 ## Activation-state interpretation

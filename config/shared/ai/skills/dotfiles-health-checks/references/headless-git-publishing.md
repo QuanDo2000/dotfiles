@@ -1,15 +1,15 @@
 # Headless Git Publishing
 
-Use this after a reviewed, tested dotfiles change must be committed and pushed from a noninteractive agent session.
+Use this to commit and push an authorized dotfiles change from a noninteractive agent session. Apply governing delivery defaults and scoped exceptions; a discretionary check that did not run is not a pass.
 
 ## Publish sequence
 
 1. Snapshot `git status --short --branch`, inspect staged and unstaged stats, run `git diff --check`, and review the actual diff.
-2. Stage only intended files after the review and checks required for committing. Commit normally with required signing. SSH is the default: if the intended matching private key is unavailable or locked in the agent, stop and ask the user to restore/unlock that existing identity in their own terminal. Only an explicitly configured OpenPGP backend calls for pinentry. Never retry unsigned or change signing configuration to evade the gate.
-3. Verify the existing fetch and push origin is `git@github.com:QuanDo2000/dotfiles.git`; preserve the existing Git repository. Fetch and compare `origin/main` and the remote task branch if it exists. Before rebasing, verify any advances are legitimate and can be integrated without losing either side's work; stop on ambiguous conflicts. Resolve overlaps by preserving relevant behavior on both sides, not by blindly choosing ours/theirs.
-4. After integration, refresh affected review and checks, including focused checks for resolved conflicts. Run all applicable mandatory repository gates on the final candidate, including full checks when required. Verify the signature and pin the exact validated SHA for publication.
-5. Push only that scoped signed candidate to the verified nondefault task branch, without force, then verify `git status --short --branch` and match the remote full SHA to the candidate. Never publish unowned work or push directly to a protected/default branch. If rejected because the remote advanced, fetch and inspect `HEAD...origin/BRANCH` (where `BRANCH` is the task branch) and repeat integration and validation before retrying; a successful push needs only readback, not another push.
-6. Before an allowlisted dotfiles merge, require a PR at the exact final head, independent static review of that head with no unresolved blockers, and passing required CI on that same head. Do not use admin bypass.
+2. Stage only intended files after applying the governing review and verification policy. Commit normally with required signing. SSH is the default: if the intended matching private key is unavailable or locked in the agent, stop and ask the user to restore/unlock that existing identity in their own terminal. Only an explicitly configured OpenPGP backend calls for pinentry. Never retry unsigned or change signing configuration to evade the gate.
+3. Verify both fetch and push resolve to `github.com/QuanDo2000/dotfiles`; the usual transport is `git@github.com:QuanDo2000/dotfiles.git`. Fetch and compare `origin/main` and the remote task branch if it exists. Before rebasing, verify advances can be integrated without losing either side's work. Defer ambiguous conflicts by default; resolve overlaps without blindly choosing ours/theirs.
+4. Refresh affected review and checks after integration and follow applicable repository requirements. Verify the signature and pin the exact candidate SHA for publication.
+5. Default to pushing that scoped signed candidate to the verified task branch without force. Use the governing rule for explicitly authorized push exceptions and honor branch protections. On remote advancement, fetch and reassess before retrying. Read back the remote full SHA and match it to the candidate.
+6. Use `github-pr-workflow` for PR delivery, exact-head verification, and merge under the governing policy. Do not use admin bypass.
 
 ## Signed-commit rebase recovery
 
