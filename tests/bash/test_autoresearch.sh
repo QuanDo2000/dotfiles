@@ -1,9 +1,33 @@
 #!/usr/bin/env bash
 # Hardened local Pi autoresearch extension tests.
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/helpers.sh"
 
 extension_dir="$REPO_DIR/config/shared/ai/pi/autoresearch"
+
+setup() {
+  init_test_env || return
+  export PI_CODING_AGENT_DIR="$TEST_TMPDIR/pi-agent"
+  mkdir -p "$PI_CODING_AGENT_DIR" || return
+  # Pi RPC expects an available model, but these tests never need inference.
+  # Use disposable config and a dummy key with no remote endpoint.
+  cat > "$PI_CODING_AGENT_DIR/models.json" <<'JSON'
+{
+  "providers": {
+    "autoresearch-test": {
+      "baseUrl": "http://127.0.0.1:1/v1",
+      "api": "openai-completions",
+      "apiKey": "unused-test-key",
+      "models": [{ "id": "offline-fixture" }]
+    }
+  }
+}
+JSON
+}
+
+teardown() {
+  cleanup_test_env
+}
 
 test_autoresearch_rpc_reader_consumes_coalesced_events() {
   assert_exit_code 0 python3 "$REPO_DIR/tests/python/test_rpc_reader.py"

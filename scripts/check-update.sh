@@ -31,15 +31,16 @@ if [[ "$scope" == ai ]] && { $flake_changed || $obsidian || $neovim; }; then
   exec bash "$repo_dir/scripts/check.sh"
 fi
 
-# The parent entered its shell before refreshing pins. Test a new flake with
-# candidate tools, including Neovim and its Nix-managed lazy.nvim provider.
-if $flake_changed && [[ "${DOTFILE_UPDATE_CHECK_IN_DEV_SHELL:-}" != 1 ]]; then
+# The parent entered its shell before refreshing pins. Use candidate Pi for
+# RPC checks and candidate Neovim and lazy.nvim when nixpkgs changes.
+if { $flake_changed || $pi; } && [[ "${DOTFILE_UPDATE_CHECK_IN_DEV_SHELL:-}" != 1 ]]; then
   exec nix develop "path:$repo_dir" -c env DOTFILE_UPDATE_CHECK_IN_DEV_SHELL=1 \
     bash "$repo_dir/scripts/check-update.sh" "$scope" "$base"
 fi
 
 tests=()
 if $pi || $extensions; then tests+=(test_pi_extensions.sh test_pi_compaction_patch.sh); fi
+if $pi; then tests+=(test_autoresearch.sh); fi
 if $neovim; then tests+=(test_neovim.sh test_pins.sh); fi
 if $flake_changed; then
   tests+=(test_home_profiles.sh test_update_packages.sh test_release_pins.sh test_config_merge.sh)

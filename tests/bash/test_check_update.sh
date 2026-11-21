@@ -47,7 +47,9 @@ test_ai_update_gate_excludes_unrelated_checks() {
   assert_exit_code 0 _update_gate ai
   local calls
   calls="$(<"$UPDATE_CALLS")"
+  assert_contains "$calls" 'test-env candidate'
   assert_contains "$calls" 'test_pi_compaction_patch.sh'
+  assert_contains "$calls" 'test_autoresearch.sh'
   assert_contains "$calls" '#pi-agent'
   assert_contains "$calls" 'homeConfigurations."fixture@linux"'
   assert_not_contains "$calls" 'test_neovim.sh'
