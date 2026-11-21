@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-11-19-keen-nase",
-  "registrySha256": "fa9d78a101c5729e8fdd747f2901bc5037d8526ed5f88095d9c13190e792f24b",
+  "registryVersion": "2026-11-20-stout-party",
+  "registrySha256": "0c3dfd4afdd8384e78b2e921a53a6eb78cf24ec961c7310a0524d96d1a056b0e",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
