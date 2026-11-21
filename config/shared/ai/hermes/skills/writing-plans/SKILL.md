@@ -21,9 +21,7 @@ For each outcome, name exact target paths, the intended behavior, and the smalle
 Label expected results as expectations, not observed output. Do not invent exact pass counts.
 Include code only when it resolves a non-obvious interface or algorithm; do not pre-implement the whole change in prose.
 Preserve security, data-loss, concurrency, and migration constraints next to the affected step.
-Use the requested save path or the repository's established convention; never commit the plan automatically.
-For planning-only requests, use `plan` for its write boundary and `.hermes/plans/` location.
-For planning-only requests, deliver the plan and stop; findings do not authorize implementation. When implementation is already authorized, use the plan as an internal checkpoint and proceed without asking for plan approval.
+Use the requested save path or the repository's established convention. For planning-only requests, follow `plan` for its write boundary and `.hermes/plans/` location; deliver the plan without committing or implementing it. When implementation is already authorized, use the plan as an internal checkpoint and proceed without asking for plan approval. Include the plan in normal delivery if it is explicitly in scope as a tracked deliverable.
 Resolve low-risk reversible choices from current requirements and repository conventions. Ask only for material unresolved decisions or missing authority, not routine sequencing; batch independent related questions.
 Carry the approved outcome, permitted effects, exclusions and original budgets into implementation. Continue necessary in-scope edits, tests, review and corrections without milestone reapproval; do not start adjacent backlog work or renew exhausted allowances.
 Delegation and test strategy depend on task risk and available tools, not a mandatory itinerary.

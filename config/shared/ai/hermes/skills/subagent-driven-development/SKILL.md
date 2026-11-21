@@ -19,7 +19,7 @@ Give each child one outcome, exact workspace/writable paths, relevant evidence, 
 
 An approved implementation outcome includes necessary in-scope tests and corrections without milestone reapproval. Resolve low-risk reversible choices from requirements and repository conventions. Parent handles child evidence requests and review findings using existing authority; ask the user only for a material unresolved decision, missing authority or exhausted explicit allowance. Batch independent related questions, and continue independent authorized work while a separate phase is blocked.
 
-Parent resolves dependencies, reuses recoverable children/artifacts, and verifies results against current source and authoritative checks. Parent-only review is enough for narrow, low-risk changes with clear validation only when no independent review is required. Use one independent static reviewer for substantial, complex, or high-risk changes or when required by governing instructions. A second needs a distinct, named high-risk angle. For unattended merge and scoped exceptions, apply the governing delivery policy to the exact final head.
+Parent resolves dependencies, reuses recoverable children/artifacts, and verifies results against current source and authoritative checks. Apply governing policy for review depth, unattended merge, and scoped exceptions on the exact final head.
 
 Give static reviewers the requirements, complete diff, relevant source, and validation evidence for spec, correctness, and security review; never ask them to run commands. Confirmed findings return to the implementation owner; small authorized parent repairs are allowed. Refresh affected review/checks after changes.
 

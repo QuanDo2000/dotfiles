@@ -45,6 +45,6 @@ Use disposable state or an approved test environment. Production data, credentia
 
 Retain the shared executable tool and a repeatable command, prerequisites, checked scope, expected/actual outcome, and inspectable result. Use existing runner output rather than a separate evidence framework. Redact secrets and private data. A screenshot alone does not prove hidden state or safety properties.
 
-At completion, run the smallest affected authoritative checks and applicable repository gates on the final revision. Inspect actual exit status and relevant output; report passed, failed, reused, skipped, and unverified checks. Child reports alone are not verification.
+At completion, follow the governing verification policy for focused checks, applicable repository gates, and scoped exceptions on the final revision. Inspect actual exit status and relevant output; report passed, failed, reused, skipped, and unverified checks. Child reports alone are not verification.
 
 Configuration may use native validators. Prose needs review, not new substring tests or unrelated runtime trials. For instruction changes, use a small representative consuming-agent scenario only when an existing harness is available; otherwise report static review. Do not build a new evaluation harness just to validate wording.
