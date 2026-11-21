@@ -189,9 +189,18 @@ test_github_main_dependency_publication_requires_green_signed_fast_forward() {
   export PATH="$TEST_TMPDIR/bin:$PATH" CI_FIXTURE="$TEST_TMPDIR" CI_RESULT=failure
   cat > "$TEST_TMPDIR/bin/git" <<'SH'
 #!/usr/bin/env bash
-if [[ "${3:-}" == push && "${!#}" == *:refs/heads/main && "${LOSE_MAIN_PUSH_RESPONSE:-}" == true ]]; then
+if [[ "${3:-}" == push ]] && {
+  [[ "${!#}" == *:refs/heads/main && "${LOSE_MAIN_PUSH_RESPONSE:-}" == true ]] ||
+  [[ "${!#}" == :refs/heads/deliver/* && "${LOSE_DELETE_RESPONSE:-}" == true ]];
+}; then
   "$GIT_FIXTURE_BINARY" "$@" || exit $?
+  if [[ "${!#}" == :refs/heads/deliver/* ]]; then
+    printf '%s\n' "${!#:1}" > "$CI_FIXTURE/deleted-ref"
+  fi
   exit 1
+fi
+if [[ "${3:-}" == ls-remote && -f "$CI_FIXTURE/deleted-ref" && "${!#}" == "$(<"$CI_FIXTURE/deleted-ref")" ]]; then
+  printf '%s\n' "${!#}" > "$CI_FIXTURE/deletion-readback"
 fi
 exec "$GIT_FIXTURE_BINARY" "$@"
 SH
@@ -250,8 +259,12 @@ SH
   assert_equals 1 "$status"
   assert_contains "$output" 'validated edits restored for retry'
   _validate_pending_dependency_update full
-  output="$(_publish_dependency_update full 2>&1)" || { printf '%s\n' "$output" >&2; return 1; }
+  # The final retry must delete the candidate ref itself, not just find it absent.
+  git --git-dir="$remote" update-ref "$topic" "$head" '' || return
+  output="$(LOSE_DELETE_RESPONSE=true _publish_dependency_update full 2>&1)" || { printf '%s\n' "$output" >&2; return 1; }
   assert_contains "$output" 'delivered signed dependency commit'
+  assert_not_contains "$output" 'Could not confirm removal of delivery branch'
+  assert_equals "$topic" "$(<"$TEST_TMPDIR/deletion-readback")"
   assert_equals "$advanced" "$(git --git-dir="$remote" rev-parse main)"
   assert_equals "$head" "$(git -C "$repo" rev-parse HEAD)"
   assert_equals "$before" "$(git -C "$repo" show -s --format=%P HEAD)"

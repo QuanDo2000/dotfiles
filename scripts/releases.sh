@@ -938,8 +938,12 @@ _publish_github_dependency_update() (
   fi
   _require_published_dependency_pins
   if [[ "$candidate_ref_present" == true ]]; then
-    timeout 60s git -C "$DOTFILES_DIR" push --no-follow-tags --force-with-lease="$ref:$head" "$remote" ":$ref" \
-      || warn "Could not remove delivery branch $topic"
+    # The server may delete the ref even if the client loses the response.
+    timeout 60s git -C "$DOTFILES_DIR" push --no-follow-tags --force-with-lease="$ref:$head" "$remote" ":$ref" || true
+    if ! remote_head="$(timeout 60s git -C "$DOTFILES_DIR" ls-remote --refs "$remote" "$ref")" \
+      || [[ "$remote_head"$'\n' == *$'\t'"$ref"$'\n'* ]]; then
+      warn "Could not confirm removal of delivery branch $topic; inspect the remote before retrying"
+    fi
   fi
   info "Activated and delivered signed dependency commit $head to main" --force
 )
