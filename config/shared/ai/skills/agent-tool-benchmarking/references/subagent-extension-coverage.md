@@ -7,7 +7,7 @@ Use this reference when benchmarking removal or replacement of a configurable su
 Do not multiply every feature by every repeated workload. Use two layers:
 
 1. **Surface coverage (once per frozen variant):** prove every enabled role, workflow mode, control path, and non-default setting is exercised or explicitly verified.
-2. **Decision matrix (production A/B):** repeat representative quality, latency, token, and cost workloads serially using the trial count from `execution-protocol.md`.
+2. **Decision matrix (production A/B):** repeat representative quality, latency, token, and cost workloads for seven serial trials per variant by default; use `execution-protocol.md` for explicitly authorized reductions.
 
 Freeze the installed extension version, live/declarative configuration, model routing, prompts, repositories, checks, and trial order before provider calls. Record a machine-readable coverage manifest mapping each advertised/current capability and setting to a test cell or explicit exclusion reason. Disabled roles/features are still checked as unavailable; unsupported or inactive optional integrations are not silently counted as covered.
 

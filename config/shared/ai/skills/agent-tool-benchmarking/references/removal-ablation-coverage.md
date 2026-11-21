@@ -71,7 +71,7 @@ A no-subagent variant may perform work sequentially, but cannot claim equivalent
 
 - One controlled candidate difference per comparison.
 - Frozen revision, prompts, rubrics, fixtures, and hidden tests before trial 1.
-- Approved paired-trial count per workload from `execution-protocol.md`, with any reduction and its limitations disclosed.
+- Seven paired trials per workload by default, with any explicitly authorized reduction and its limitations disclosed per `execution-protocol.md`.
 - Alternating A/B order, rotated workloads, fresh IDs, exact matrix assertion.
 - Candidate selection frequency reported.
 - Parent and every child provider/tool event included once.
