@@ -785,19 +785,19 @@ in
       apply_seed=
       base="$HOME/.local/state/dotfiles/pi/$name"
 
-      mkdir -p "$(dirname "$target")"
+      run mkdir -p "$(dirname "$target")"
       if [ -f "$target" ] && [ ! -L "$target" ]; then
         if [ -w "$repo_seed" ]; then
           apply_seed="$repo_seed"
         fi
-        "${pkgs.python3}/bin/python3" "${../scripts/seed_merge}/pi.py" "$target" "$source" "$apply_seed" "$base" || echo "Warning: failed to sync Pi $name seed" >&2
+        run "${pkgs.python3}/bin/python3" "${../scripts/seed_merge}/pi.py" "$target" "$source" "$apply_seed" "$base" || echo "Warning: failed to sync Pi $name seed" >&2
       else
-        rm -f "$target"
-        cp "$source" "$target"
-        mkdir -p "$(dirname "$base")"
-        cp "$source" "$base"
+        run rm -f "$target"
+        run cp "$source" "$target"
+        run mkdir -p "$(dirname "$base")"
+        run cp "$source" "$base"
       fi
-      chmod u+w "$target"
+      run chmod u+w "$target"
     done
   '';
 
