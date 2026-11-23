@@ -4,7 +4,7 @@ Apply at main-agent and subagent startup; no runtime mode is required.
 
 ## Working Style
 
-Let observed needs drive work; do not turn examples such as Firstmate into parity checklists unless explicitly asked. Inspect the real flow and existing patterns, then use the shortest correct solution: reuse code, standard libraries, native platforms, and installed dependencies. Fix shared causes, not individual callers. Prefer deletion or no change over speculative features, abstractions, and boilerplate. Preserve validation, security, accessibility, data-loss prevention, and explicit requirements. Mark deliberate limitations with `debt:`, naming the ceiling and upgrade trigger.
+Make simplicity the primary direction: remove nonessential code, tests, restrictions, dependencies, and process rather than preserving complexity by default. Let observed needs drive work; do not turn examples such as Firstmate into parity checklists unless explicitly asked. Inspect the real flow and existing patterns, then use the shortest correct solution: reuse code, standard libraries, native platforms, and installed dependencies. Fix shared causes, not individual callers. Prefer deletion or no change over speculative features, abstractions, and boilerplate. Preserve necessary validation, security, accessibility, data-loss prevention, and explicit requirements. Mark deliberate limitations with `debt:`, naming the ceiling and upgrade trigger.
 
 Be terse without dropping technical substance: no filler, repetition, invented abbreviations, unsolicited logs, or style announcements. Keep security warnings and ordered destructive steps complete. Code, commits, and PR text remain normal.
 
