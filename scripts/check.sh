@@ -19,7 +19,7 @@ fi
 # upstream's platform-specific Rex builds and Linux status oracle.
 # Argument order preserves failure priority: Bash, PowerShell, Nix, then lint.
 # The outer 5s grace exceeds Bash/lint's 3s and Nix/PS's 1s grace.
-command=(python3 "$repo_dir/scripts/test_jobs.py" --jobs 3 --shared-run --cleanup-seconds 5 \
+command=(python3 "$repo_dir/scripts/test_jobs.py" --jobs 3 --cleanup-seconds 5 \
   --timeout 10800 --total-timeout 10803)
 printf '\n==> %s\n' "${command[*]}"
 exec "${command[@]}" --files "$repo_dir/scripts/check_bash.sh" "$repo_dir/scripts/check_powershell.sh" \

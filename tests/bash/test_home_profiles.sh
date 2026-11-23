@@ -11,17 +11,8 @@ teardown() { cleanup_test_env; }
 
 _profile_fixture() {
   [[ ! -d "$PROFILE_CACHE/ready" ]] || return 0
-  local flake_ref profile group projection probe_status
+  local flake_ref profile group projection
   local TIMEFORMAT='PROFILE_SNAPSHOT_PREFETCH_SECONDS=%3R'
-  local include_platform=false
-  if [[ "$(uname -s)" == Linux && -n "${TEST_JOBS_SHARED_DIR:-}" && "${TEST_JOBS_SHARED_ROLE:-}" == 0 ]]; then
-    if bash "$REPO_DIR/scripts/check_profile.sh" --platform-observations probe "$REPO_DIR"; then
-      include_platform=true
-    else
-      probe_status=$?
-      [[ "$probe_status" == 3 ]] || return "$probe_status"
-    fi
-  fi
   # Snapshot THIS run's source, then evaluate it purely. Never reuse observations
   # across gates; the private cache is deleted when this file runner exits.
   mkdir -p "$PROFILE_CACHE/pending" || return
@@ -29,9 +20,6 @@ _profile_fixture() {
   # fetches this root to the store and returns its actual NAR hash on all clients.
   time nix flake prefetch --json "path:$REPO_DIR" > "$PROFILE_CACHE/pending/snapshot.json" || return
   flake_ref="$(bash "$REPO_DIR/scripts/check_profile.sh" --snapshot-reference "$PROFILE_CACHE/pending/snapshot.json")" || return
-  if [[ "$include_platform" == true ]]; then
-    printf '%s\n' "$flake_ref" > "$PROFILE_CACHE/pending/flake-ref.json" || return
-  fi
   # Authenticate the immutable flake before importing its producer in pure mode.
   # Project the unchanged lazy producer on the SAME immutable snapshot. Each
   # worker writes only its own JSON; nothing is published until all succeed.
@@ -39,15 +27,12 @@ _profile_fixture() {
     case "$group" in
       home)
         projection='{ profiles = { inherit (data.profiles) linux arch-server; }; inherit (data) storageGuard; packageSources.linux = data.packageSources.linux; __schema = { root = builtins.attrNames data; profiles = builtins.attrNames data.profiles; sources = builtins.attrNames data.packageSources; }; }'
-        if [[ "$include_platform" == true ]]; then
-          projection="($projection) // { inherit (data) platformDrvPaths; }"
-        fi
         ;;
       nixos) projection='{ profiles.nixos = data.profiles.nixos; inherit (data) nixosWrappers homePackageContracts; }' ;;
       nixos-wsl) projection='{ profiles.nixos-wsl = data.profiles.nixos-wsl; }' ;;
       darwin) projection='{ profiles.darwin = data.profiles.darwin; packageSources.darwin = data.packageSources.darwin; }' ;;
     esac
-    printf 'let sourceFlake = builtins.getFlake %s; data = (import (sourceFlake.outPath + "/tests/nix/profile-fixture.nix")) { flakeRef = %s; includePlatformDrvPaths = %s; }; in %s\n' "$flake_ref" "$flake_ref" "$include_platform" "$projection" > "$PROFILE_CACHE/pending/$group.nix" || return
+    printf 'let sourceFlake = builtins.getFlake %s; data = (import (sourceFlake.outPath + "/tests/nix/profile-fixture.nix")) { flakeRef = %s; }; in %s\n' "$flake_ref" "$flake_ref" "$projection" > "$PROFILE_CACHE/pending/$group.nix" || return
   done
   python3 "$REPO_DIR/scripts/test_jobs.py" --jobs 3 --cleanup-seconds 1 --timeout 300 --total-timeout 300 \
     --files "$PROFILE_CACHE/pending/home.nix" "$PROFILE_CACHE/pending/nixos.nix" \
@@ -67,9 +52,6 @@ _profile_fixture() {
   done
   # Publish only after every profile and extra observation evaluated successfully.
   mv "$PROFILE_CACHE/pending" "$PROFILE_CACHE/ready" || return
-  if [[ "$include_platform" == true ]]; then
-    bash "$REPO_DIR/scripts/check_profile.sh" --platform-observations publish "$REPO_DIR" "$PROFILE_CACHE/ready" || return
-  fi
 }
 _profile_summary() {
   _profile_fixture || return

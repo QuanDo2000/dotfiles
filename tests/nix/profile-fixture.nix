@@ -1,5 +1,5 @@
 # One fresh, pure evaluation of the real flake for each profile test run.
-{ flakeRef, includePlatformDrvPaths ? false }:
+{ flakeRef }:
 let
   flake = builtins.getFlake flakeRef;
   machine = import (flake.outPath + "/config/host.nix");
@@ -26,16 +26,3 @@ in
     darwin = flake.packages.aarch64-darwin.pi-extensions.outPath;
   };
 }
-// (if includePlatformDrvPaths then {
-  # Same checked configs as the full summaries, not another HM constructor.
-  # Keep Linux-before-Arch failure order and completed-Linux diagnostics.
-  platformDrvPaths =
-    let
-      linuxDrv = linux.home.activationPackage.drvPath;
-      archDrv = arch.home.activationPackage.drvPath;
-    in builtins.seq linuxDrv (builtins.trace linuxDrv (builtins.seq archDrv {
-      inherit (machine) username;
-      linux = linuxDrv;
-      arch-server = archDrv;
-    }));
-} else { })

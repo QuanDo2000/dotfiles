@@ -9,7 +9,6 @@ signal, preventing PID/group identity reuse during cleanup. The parent bounds
 persisted stdout/stderr and drains excess output during cancellation cleanup.
 """
 import argparse
-import json
 import math
 import os
 from pathlib import Path
@@ -30,8 +29,6 @@ MAX_CLEANUP_SECONDS = 5
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--jobs', type=int, default=4)
-    parser.add_argument('--shared-run', action='store_true',
-                        help='export a fresh owned run directory/root file index; nested ordinary jobs inherit them')
     parser.add_argument('--timeout', type=float, default=300)
     parser.add_argument('--total-timeout', type=float, default=1800)
     parser.add_argument('--cleanup-seconds', type=float, default=CLEANUP_SECONDS,
@@ -84,7 +81,6 @@ def main():
     deadline = started + min(args.total_timeout, args.timeout * math.ceil(len(args.files) / args.jobs) + args.cleanup_seconds)
     failure = False
     aborted = None
-    publication_failure_exit = None
 
     term_deadlines = {}
     output_bytes = {}
@@ -237,24 +233,10 @@ def main():
                 print(f'Output EOF not observed during aborted cleanup: {args.files[index]}', file=sys.stderr)
             close_output(process, log, index)
 
-    def publish_json(path, data):
-        pending = path.with_suffix('.pending')
-        with pending.open('x') as output:
-            json.dump(data, output)
-            output.write('\n')
-        pending.replace(path)
-
     try:
         # Nested coordinators inherit TMPDIR. Keep each private prefix short:
         # Neovim percent-encodes complete source paths into cache filenames.
         with tempfile.TemporaryDirectory(prefix='tj-') as directory:
-            shared = Path(directory) / 'shared' if args.shared_run else None
-            run_id = Path(directory).name
-            if shared is not None:
-                shared.mkdir()
-                publish_json(shared / 'manifest.json', {
-                    'protocol': 'test-jobs-run-v1', 'id': run_id, 'pid': os.getpid(),
-                    'files': [str(Path(file).resolve()) for file in args.files]})
             try:
                 while next_file < len(args.files) or active:
                     if interrupted:
@@ -273,8 +255,6 @@ def main():
                         # under the real HOME and is shared by fresh engines.
                         env = {**os.environ, 'TMPDIR': str(scratch),
                                'PSModuleAnalysisCachePath': str(scratch / 'ps-module-cache')}
-                        if shared is not None:
-                            env.update(TEST_JOBS_SHARED_DIR=str(shared), TEST_JOBS_SHARED_ROLE=str(index))
                         try:
                             process = subprocess.Popen([*command, args.files[index]], stdout=subprocess.PIPE,
                                                        stderr=subprocess.STDOUT, start_new_session=True, env=env)
@@ -329,17 +309,6 @@ def main():
                             del active[index]
                             term_deadlines.pop(index, None)
                             close_output(process, log, index)
-                            # Publish only after EOF, owned-group retirement and
-                            # lease release. Never signal this reaped group again.
-                            if shared is not None and not aborted:
-                                try:
-                                    publish_json(shared / f'result-{index}.json', {
-                                        'id': run_id, 'index': index, 'exit': code})
-                                except OSError as error:
-                                    aborted = f'shared run publication failed: {error}'
-                                    publication_failure_exit = next(
-                                        (observed_exits[i] for i in sorted(observed_exits) if observed_exits[i] != 0), 1)
-                                    break
                     if aborted:
                         break
                     if active and not read_any:
@@ -380,8 +349,6 @@ def main():
     if interrupted:
         return 128 + interrupted
     if aborted:
-        if publication_failure_exit is not None:
-            return publication_failure_exit if publication_failure_exit > 0 else 128 - publication_failure_exit
         return 1
     if failure:
         code = next(results[index][0] for index in sorted(results) if results[index][0] != 0)

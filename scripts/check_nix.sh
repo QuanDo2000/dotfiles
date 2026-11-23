@@ -20,16 +20,8 @@ check_platform() {
     run nix eval --raw "$flake#darwinConfigurations.mac.system.drvPath"
     run nix build "$flake#rex" --no-link
   else
-    local username shared_status
+    local username
     username="$(nix eval --raw --file "$repo_dir/config/host.nix" username)"
-    if [[ -n "${TEST_JOBS_SHARED_DIR:-}" && "${TEST_JOBS_SHARED_ROLE:-}" == 2 ]]; then
-      if bash "$repo_dir/scripts/check_profile.sh" --platform-observations read "$repo_dir" "$username"; then
-        return 0
-      else
-        shared_status=$?
-        [[ "$shared_status" == 3 ]] || return "$shared_status"
-      fi
-    fi
     run nix eval --raw "$flake#homeConfigurations.\"$username@linux\".activationPackage.drvPath"
     run nix eval --raw "$flake#homeConfigurations.\"$username@arch-server\".activationPackage.drvPath"
   fi
@@ -79,8 +71,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   stage_dir="$(mktemp -d)"
   trap 'rm -rf "$stage_dir"' EXIT
   stages=()
-  # Independent checks share Nix's native store; Linux raw drv observations
-  # may use validated fresh Home data. Build/CLI dependencies stay internal.
+  # Independent checks share Nix's native store. Build/CLI dependencies stay internal.
   for stage in check_flake check_platform check_packages check_status check_deployed_role; do
     printf 'source %q\n%s\n' "$repo_dir/scripts/check_nix.sh" "$stage" > "$stage_dir/$stage.sh"
     stages+=("$stage_dir/$stage.sh")

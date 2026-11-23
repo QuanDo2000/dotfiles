@@ -55,7 +55,7 @@ SH
   local tool
   printf '#!/usr/bin/env bash\nprintf "pwsh %%s\\n" "$*" >> "$CHECK_CALLS"\nexit "${CHECK_POWERSHELL_EXIT:-0}"\n' > "$CHECK_ROOT/bin/pwsh"
   printf '#!/usr/bin/env bash\nprintf "shellcheck %%s\\n" "$*" >> "$CHECK_CALLS"\nexit "${CHECK_LINT_EXIT:-0}"\n' > "$CHECK_ROOT/bin/shellcheck"
-  printf '#!/usr/bin/env bash\nif [[ "$1" == */test_jobs.py || ( "$1" == - && "${2:-}" == --platform-observations ) ]]; then exec %q "$@"; fi\nprintf "python3 %%s\\n" "$*" >> "$CHECK_CALLS"\n' "$(type -P python3)" > "$CHECK_ROOT/bin/python3"
+  printf '#!/usr/bin/env bash\nif [[ "$1" == */test_jobs.py ]]; then exec %q "$@"; fi\nprintf "python3 %%s\\n" "$*" >> "$CHECK_CALLS"\n' "$(type -P python3)" > "$CHECK_ROOT/bin/python3"
   chmod +x "$CHECK_ROOT/bin/"*
 }
 
@@ -102,9 +102,6 @@ test_check_script_fails_closed_when_check_runtime_is_unavailable() {
 
 test_check_script_preserves_failed_tests_and_build() {
   _check_fixture
-  # A present producer source that exits without publishing must not block
-  # admission forever or suppress the independent native flake command.
-  touch "$CHECK_ROOT/tests/bash/test_home_profiles.sh"
   assert_exit_code 23 env DOTFILE_CHECK_IN_DEV_SHELL=1 CHECK_TEST_EXIT=23 PATH="$CHECK_ROOT/bin:$PATH" bash "$CHECK_ROOT/scripts/check.sh"
   assert_contains "$(<"$CHECK_CALLS")" 'nix flake check'
   assert_contains "$(<"$CHECK_CALLS")" 'shellcheck '
@@ -537,8 +534,6 @@ raise SystemExit(42)
         calls_file = root / (mode + '.jsonl')
         environment = {**os.environ, 'PATH': str(binary) + os.pathsep + os.environ['PATH'],
                        'SNAPSHOT_MODE': mode, 'SNAPSHOT_CALLS': str(calls_file)}
-        for name in ('TEST_JOBS_SHARED_DIR', 'TEST_JOBS_SHARED_ROLE'):
-            environment.pop(name, None)
         result = subprocess.run([sys.executable, str(repo / 'scripts/test_jobs.py'),
                                  '--jobs', '1', '--timeout', '10', '--total-timeout', '12',
                                  '--cleanup-seconds', '1', '--files', str(owner), '--', 'bash'],
