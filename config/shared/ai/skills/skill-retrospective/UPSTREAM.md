@@ -1,5 +1,7 @@
 # Upstream inspiration
 
+Current-conversation reflection is inspired by `cursor/plugins/pstack/skills/reflect` at Cursor plugins commit `ecc249f1e306fc64ddf83c7bed16cacf7c2239db` (MIT; `../licenses/pstack-MIT.txt`). The `backnotprop/pstack` mirror at `157aae39a733135e93d8b5b19ff62c6a84b0ad56` was also reviewed.
+
 This skill adapts the evidence-attribution and draft-before-apply concepts from Warp's `skill-doctor`:
 
 - Repository: https://github.com/warpdotdev/common-skills

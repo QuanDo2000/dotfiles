@@ -249,8 +249,7 @@ in
     ".agents/skills/systematic-debugging" = forceSource ./shared/ai/skills/systematic-debugging;
     ".agents/skills/tdd" = forceSource ./shared/ai/skills/tdd;
     ".agents/skills/skill-retrospective" = forceSource ./shared/ai/skills/skill-retrospective;
-    ".agents/skills/reflect".source = ./shared/ai/skills/reflect;
-    ".agents/skills/blast-radius".source = ./shared/ai/skills/blast-radius;
+
     # Promoted shared skills: refuse local collisions, including native Hermes copies.
     ".agents/skills/github-code-review".source = ./shared/ai/skills/github-code-review;
     ".agents/skills/github-pr-workflow".source = ./shared/ai/skills/github-pr-workflow;

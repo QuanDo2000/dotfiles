@@ -1,13 +1,15 @@
 ---
 name: skill-retrospective
-description: Use when auditing skills against conversation evidence.
+description: Use when reflecting on conversation evidence.
 ---
 
 # Skill Retrospective
 
-Audit skills from a bounded sample of past conversations. Produce evidence-linked recommendations and proposed diffs, not grades.
+Reflect on the current conversation or audit a bounded sample of past conversations. Produce evidence-linked recommendations and proposed diffs, not grades.
 
-## 1. Set scope and protect history
+For the current conversation, use available context rather than searching session stores or unrelated projects; ask for a bounded export if context is missing. Identify a concrete correction, rework, or verification failure and its outcome. Check the owning instruction before proposing a generalizable fix; prefer code or tooling changes over restating sufficient guidance. Separate evidence from inference, and do not edit instructions, file tickets, or publish transcripts without authorization. Skip the historical sampling steps and continue at attribution.
+
+## 1. Set scope and protect history (past conversations)
 
 1. Identify the executing harness and its available history-search interface. If no bounded interface is available, ask for selected session references or exports. Do not inspect raw local session stores automatically.
 2. Use the project scope, time window or maximum session count, and skill set the user already specified. Default to the current repository, broaden to other projects only within the authorized scope, and ask only for unresolved scope needed to keep the sample bounded (including whether global skills are in scope).
@@ -15,7 +17,7 @@ Audit skills from a bounded sample of past conversations. Produce evidence-linke
 
 Use bounded session search rather than scanning all history by default. State the selected scope, sampling method, exclusions, and evidence gaps.
 
-## 2. Collect evidence
+## 2. Collect evidence (past conversations)
 
 1. Inventory the skills in scope and read only the skills implicated by sampled conversations.
 2. Search for concrete failure signals: repeated user correction, avoidable rework, redundant tool use, late or missing verification, wrong-file edits, and shipped defects.

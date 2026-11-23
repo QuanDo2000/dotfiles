@@ -11,10 +11,10 @@ its contents for review. Unix Home Manager removes its old managed link on
 activation; inspect collisions before activation. Existing sessions may retain
 the old catalog until restarted.
 
-`reflect` reviews the current conversation, while `skill-retrospective` audits
-a bounded sample of past conversations; `blast-radius` is a read-only impact
-assessment. They are not an always-on mode or substitutes for governing policies.
-Their `UPSTREAM.md` files record the reviewed pstack revision and adaptation.
+`skill-retrospective` covers current-conversation reflection and bounded audits
+of past conversations. The standalone `reflect` and `blast-radius` skills are
+retired. Unix removes their managed links on activation; Windows leaves existing
+copies in place, so they may remain discoverable until manually removed.
 
 `unslop` is retired: request scoped prose edits directly. Home Manager removes
 its managed link on activation. Windows moves existing shared and Pi copies to
@@ -59,10 +59,11 @@ New shared and native Hermes links deliberately have `force = false`:
    backup; never overwrite a new generation, concurrent copy, or store target.
    Keep the backup and prior generation until live verification succeeds.
 
-Windows uses the existing complete-directory installer, including verification,
-rollback, and old Pi-copy cleanup. Back up any independently modified copy before
-migration; installation intentionally replaces that owned directory. Cross-platform
-PowerShell tests do not establish native Windows runtime discovery.
+For `systematic-debugging` and `skill-retrospective`, Windows retains a previous
+shared copy in `~/.agents/retired-skills/` before replacement and leaves old Pi
+copies alone. On a failed verification, follow the reported backup path for manual
+recovery; linked destinations are refused. Other skills retain existing installer
+behavior. Cross-platform PowerShell tests do not establish native Windows discovery.
 
 ## Update ownership
 

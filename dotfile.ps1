@@ -1168,7 +1168,7 @@ function Test-DirectoryMatchesSource($Source, $Destination) {
     }
 }
 
-function Install-DirectoryWithRollback($Source, $Destination, [string[]]$RequiredFiles, $Label) {
+function Install-DirectoryWithRollback($Source, $Destination, [string[]]$RequiredFiles, $Label, $PreserveBackupRoot = $null) {
     if (-not (Test-Path -LiteralPath $Source -PathType Container)) { throw "Missing ${Label}: $Source" }
     foreach ($required in $RequiredFiles) {
         if (-not (Test-Path -LiteralPath (Join-Path $Source $required) -PathType Leaf)) { throw "${Label} has no ${required}: $Source" }
@@ -1186,6 +1186,12 @@ function Install-DirectoryWithRollback($Source, $Destination, [string[]]$Require
     $name = Split-Path $Destination -Leaf
     $staging = Join-Path $parent ".$name.staging.$([Guid]::NewGuid().ToString('N'))"
     $backup = Join-Path $parent ".$name.backup.$([Guid]::NewGuid().ToString('N'))"
+    if ($PreserveBackupRoot) {
+        Assert-NoReparsePointPath $Destination $Label
+        Assert-NoReparsePointPath $PreserveBackupRoot $Label
+        New-Item -ItemType Directory -Force -Path $PreserveBackupRoot | Out-Null
+        $backup = Join-Path $PreserveBackupRoot "$name.backup.$([Guid]::NewGuid().ToString('N'))"
+    }
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
     Assert-NoReparsePointPath $parent $Label
     try {
@@ -1198,11 +1204,13 @@ function Install-DirectoryWithRollback($Source, $Destination, [string[]]$Require
         } | Select-Object -First 1
         if ($reparsePoint) { throw "${Label} contains a reparse point: $($reparsePoint.FullName)" }
 
+        if ($PreserveBackupRoot) { Assert-NoReparsePointPath $Destination $Label }
         if (Test-Path -LiteralPath $Destination) { Move-Item -LiteralPath $Destination -Destination $backup }
         if (Test-Path -LiteralPath $Destination) { throw "${Label} destination reappeared during staging: $Destination" }
         Move-Item -LiteralPath $staging -Destination $Destination
         if (-not (Test-DirectoryMatchesSource $Source $Destination)) { throw "${Label} published directory failed verification: $Destination" }
-        if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction Stop }
+        if (-not $PreserveBackupRoot -and (Test-Path -LiteralPath $backup)) { Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction Stop }
+        if ($PreserveBackupRoot -and (Test-Path -LiteralPath $backup)) { Info "Previous ${Label} saved to $backup" }
     } catch {
         $operationError = $_
         $cleanupError = $null
@@ -1222,8 +1230,8 @@ function Install-DirectoryWithRollback($Source, $Destination, [string[]]$Require
     }
 }
 
-function Install-SkillDirectory($Source, $Destination) {
-    Install-DirectoryWithRollback $Source $Destination @('SKILL.md') 'Vendored skill'
+function Install-SkillDirectory($Source, $Destination, $PreserveBackupRoot = $null) {
+    Install-DirectoryWithRollback $Source $Destination @('SKILL.md') 'Vendored skill' $PreserveBackupRoot
 }
 
 function Move-RetiredSkill($Path, $BackupRoot) {
@@ -1247,10 +1255,14 @@ function InstallAiSkills {
 
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'blast-radius', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
+    $skills = @('systematic-debugging', 'tdd', 'skill-retrospective', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
     foreach ($skill in $skills) {
-        Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill)
-        Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
+        if ($skill -in @('systematic-debugging', 'skill-retrospective')) {
+            Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill) (Join-Path $env:USERPROFILE '.agents\retired-skills')
+        } else {
+            Install-SkillDirectory (Join-Path $sourceRoot $skill) (Join-Path $targetRoot $skill)
+            Remove-Item -LiteralPath (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
     foreach ($skill in 'test-driven-development', 'unslop') {
         Move-RetiredSkill (Join-Path $targetRoot $skill) (Join-Path $env:USERPROFILE '.agents')

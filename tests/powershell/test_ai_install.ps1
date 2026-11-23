@@ -106,6 +106,38 @@ function test_install_skill_directory_rejects_linked_skill_file {
     Assert-Contains (Get-Content -Raw (Join-Path $target 'SKILL.md')) 'old'
 }
 
+function test_preserved_skill_rejects_linked_destination {
+    $source = Join-Path $script:_TestTmp.FullName 'source-skill'
+    $external = Join-Path $script:_TestTmp.FullName 'external-skill'
+    $target = Join-Path $script:_TestTmp.FullName 'target-skill'
+    New-Item -ItemType Directory -Force -Path $source, $external | Out-Null
+    'new' | Set-Content (Join-Path $source 'SKILL.md')
+    'old' | Set-Content (Join-Path $external 'SKILL.md')
+    $linkType = if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) { 'Junction' } else { 'SymbolicLink' }
+    New-Item -ItemType $linkType -Path $target -Target $external | Out-Null
+    Assert-Throws { Install-SkillDirectory $source $target (Join-Path $script:_TestTmp.FullName 'backups') } 'linked destination should fail closed'
+    Assert-Contains (Get-Content -Raw (Join-Path $external 'SKILL.md')) 'old'
+}
+
+function test_preserved_skill_keeps_backup_when_verification_fails {
+    $source = Join-Path $script:_TestTmp.FullName 'source-skill'
+    $target = Join-Path $script:_TestTmp.FullName 'target-skill'
+    $backupRoot = Join-Path $script:_TestTmp.FullName 'backups'
+    New-Item -ItemType Directory -Force -Path $source, $target | Out-Null
+    'new' | Set-Content (Join-Path $source 'SKILL.md')
+    'old' | Set-Content (Join-Path $target 'SKILL.md')
+    $original = (Get-Command Test-DirectoryMatchesSource).ScriptBlock
+    try {
+        Set-FunctionMock 'Test-DirectoryMatchesSource' { return $false }
+        Assert-Throws { Install-SkillDirectory $source $target $backupRoot } 'failed verification should surface'
+    } finally {
+        Set-FunctionMock 'Test-DirectoryMatchesSource' $original
+    }
+    $backups = @(Get-ChildItem -LiteralPath $backupRoot -Directory -Filter 'target-skill.backup.*')
+    Assert-Equals 1 $backups.Count
+    if ($backups.Count -eq 1) { Assert-Contains (Get-Content -Raw (Join-Path $backups[0].FullName 'SKILL.md')) 'old' }
+}
+
 function test_install_skill_directory_skips_current_copy {
     $source = Join-Path $script:_TestTmp.FullName 'source-skill'
     $target = Join-Path $script:_TestTmp.FullName 'target-skill'
@@ -188,7 +220,7 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     $script:DotfilesDir = Join-Path $script:_TestTmp.FullName 'dotfiles'
     $sourceRoot = Join-Path $script:DotfilesDir 'config\shared\ai\skills'
     $targetRoot = Join-Path $env:USERPROFILE '.agents\skills'
-    $skills = @('systematic-debugging', 'tdd', 'skill-retrospective', 'reflect', 'blast-radius', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
+    $skills = @('systematic-debugging', 'tdd', 'skill-retrospective', 'github-code-review', 'github-pr-workflow', 'dotfiles-health-checks', 'agent-tool-benchmarking')
     foreach ($skill in $skills) {
         $source = Join-Path $sourceRoot $skill
         $target = Join-Path $targetRoot $skill
@@ -199,6 +231,11 @@ function test_installai_skills_copies_only_vendored_shared_skills {
     }
     foreach ($skill in $skills) {
         New-Item -ItemType Directory -Force -Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill") | Out-Null
+    }
+    foreach ($skill in 'reflect', 'blast-radius') {
+        $old = Join-Path $targetRoot $skill
+        New-Item -ItemType Directory -Force -Path $old | Out-Null
+        'local copy' | Set-Content (Join-Path $old 'SKILL.md')
     }
     New-Item -ItemType Directory -Force -Path (Join-Path $targetRoot 'test-driven-development') | Out-Null
     'legacy' | Set-Content (Join-Path $targetRoot 'test-driven-development\SKILL.md')
@@ -226,7 +263,17 @@ function test_installai_skills_copies_only_vendored_shared_skills {
         Assert-False (Test-Path (Join-Path $target 'stale.md')) "Stale shared skill file remains for $skill"
     }
     foreach ($skill in $skills) {
-        Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Stale Pi copy remains for $skill"
+        if ($skill -in @('systematic-debugging', 'skill-retrospective')) {
+            Assert-True (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Previous Pi copy was removed for $skill"
+            $backups = @(Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.agents\retired-skills') -Directory -Filter "$skill.backup.*")
+            Assert-Equals 1 $backups.Count
+            if ($backups.Count -eq 1) { Assert-FileExists (Join-Path $backups[0].FullName 'stale.md') }
+        } else {
+            Assert-False (Test-Path (Join-Path $env:USERPROFILE ".pi\agent\skills\$skill")) "Stale Pi copy remains for $skill"
+        }
+    }
+    foreach ($skill in 'reflect', 'blast-radius') {
+        Assert-Contains (Get-Content -Raw (Join-Path $targetRoot "$skill\SKILL.md")) 'local copy'
     }
     Assert-False (Test-Path (Join-Path $targetRoot 'test-driven-development')) 'Old shared skill name remains discoverable'
     $retired = @(Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE '.agents') -Directory -Filter 'test-driven-development.backup.*')

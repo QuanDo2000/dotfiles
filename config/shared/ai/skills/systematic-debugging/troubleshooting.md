@@ -6,7 +6,7 @@ Load when tracing deep failures, deciding where validation belongs, or diagnosin
 
 Start at the observed symptom and follow the value/state backward through callers until the first incorrect assumption or transition. If static tracing is insufficient, use authorized, narrowly scoped instrumentation at the suspected boundary; capture inputs, resolved paths, environment differences, and call stack without secrets. Fix the shared cause and verify impacted callers.
 
-For unexpected files created by tests, isolate the culprit in disposable state using the repository's runner. `find-polluter.sh` is an optional npm-oriented helper, not a generic runner or proof that failed tests passed; inspect its assumptions before use.
+For unexpected files created by tests, isolate the culprit in disposable state using the repository's runner.
 
 ## Validate distinct boundaries
 
