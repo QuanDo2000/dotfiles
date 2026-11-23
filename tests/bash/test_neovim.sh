@@ -3,14 +3,6 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/package_helpers.sh"
 
-test_pi_terminal_preserves_submit_behavior() {
-  local module output
-  module="$REPO_DIR/config/shared/config/nvim/lua/config/pi-terminal.lua"
-  assert_file_exists "$module"
-  output="$(PI_TERMINAL_MODULE="$module" nvim --headless -u NONE -l "$REPO_DIR/tests/nvim/pi_terminal.lua" 2>&1)"
-  assert_contains "$output" "PI_TERMINAL_OK"
-}
-
 test_raw_neovim_root_detection() {
   local module output
   module="$REPO_DIR/config/shared/config/nvim/lua/config/root.lua"

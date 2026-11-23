@@ -24,9 +24,6 @@ local windows = vim.fn.has("win32") == 1
 local expected = {
   ["  "] = "Find Files (Root Dir)",
   [" /"] = "Grep (Root Dir)",
-  [" aa"] = "Toggle Pi",
-  [" af"] = "Send File",
-  [" at"] = "Send Position",
   [" cf"] = "Format",
   [" st"] = "Todo",
   [" bp"] = "Toggle Pin",

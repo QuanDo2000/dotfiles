@@ -435,13 +435,6 @@ lazy.setup({
 vim.diagnostic.config({ severity_sort = true, underline = true, virtual_text = { spacing = 4, source = "if_many", prefix = "●" } })
 vim.filetype.add({ extension = { mdx = "markdown.mdx", rasi = "rasi", rofi = "rasi", wofi = "rasi" }, pattern = { [".*/waybar/config"] = "jsonc", [".*/hypr/.+%.conf"] = "hyprlang", ["%.env%.[%w_.-]+"] = "sh" } })
 
-local pi = require("config.pi-terminal")
-map({ "n", "t", "i", "x" }, "<C-.>", pi.focus, "Focus Pi")
-map("n", "<leader>aa", pi.toggle, "Toggle Pi")
-map({ "n", "x" }, "<leader>at", pi.send_position, "Send Position")
-map("n", "<leader>af", pi.send_file, "Send File")
-map("x", "<leader>av", pi.send_selection, "Send Selection")
-
 map("n", "<leader><space>", function() Snacks.picker.files({ cwd = root() }) end, "Find Files (Root Dir)")
 map("n", "<leader>/", function() Snacks.picker.grep({ cwd = root() }) end, "Grep (Root Dir)")
 map("n", "<leader>,", function() Snacks.picker.buffers() end, "Buffers")
