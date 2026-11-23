@@ -16,14 +16,7 @@ Use this when a long provider-backed matrix fails after valid cells have complet
 
 ## External-load overlap audit
 
-Record external activity as exact UTC intervals. Compare it mechanically with authoritative per-cell `launch_started` and `launch_finished` timestamps using interval intersection—not process snapshots, log ordering, or approximate next-start times. If a cell overlaps:
-
-- quarantine and rerun only that cell under clean conditions;
-- count the original provider work as excluded spend;
-- regenerate every downstream artifact;
-- retain an incident JSON containing both intervals and the decision.
-
-A gap between neighboring cells needs no rerun, but the conclusion must come from final cell metadata rather than an early progress estimate.
+Follow the external-load procedure in [Execution protocol](execution-protocol.md). Record external activity as exact UTC intervals and retain an incident JSON containing both intervals and the decision. Regenerate downstream artifacts after replacements. A gap between neighboring cells needs no rerun; establish it from final cell metadata, not an early progress estimate.
 
 ## Final invariants
 
