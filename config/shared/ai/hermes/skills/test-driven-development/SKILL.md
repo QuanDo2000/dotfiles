@@ -43,7 +43,7 @@ Preserve unrelated work and baseline failure evidence. If a safe baseline run is
 
 Use disposable state or an approved test environment. Production data, credentials, deployments, paid services, one-shot allowances, and explicit approval boundaries remain protected. Exercise real components; disclose unavoidable substitutions and unavailable coverage. Mock-backed checks are not E2E evidence.
 
-Retain the shared executable tool and a repeatable command, prerequisites, checked scope, expected/actual outcome, and inspectable result. Use existing runner output rather than a separate evidence framework. Redact secrets and private data. A screenshot alone does not prove hidden state or safety properties.
+Use existing runner output rather than a separate evidence framework. Redact secrets and private data. A screenshot alone does not prove hidden state or safety properties.
 
 At completion, follow the governing verification policy for focused checks, applicable repository gates, and scoped exceptions on the final revision. Inspect actual exit status and relevant output; report passed, failed, reused, skipped, and unverified checks. Child reports alone are not verification.
 
