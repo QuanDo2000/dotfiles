@@ -15,14 +15,6 @@ metadata:
 
 Build the working capability, not a growing collection of one-off tests. Prefer a small number of real-flow checks through actual entry points. Test count and coverage percentage are not completion criteria.
 
-## Generalize repeated execution patterns
-
-- Inspect existing tools, native APIs, and repository runners first. Reuse them before creating another wrapper or fixture.
-- When the same execution problem recurs, fix it once in a retained shared tool: process supervision, deadlines, bounded capture, cleanup, source binding, or result validation. Give callers a small explicit interface instead of copying orchestration and checks into each task.
-- Build only for observed callers and failure modes. Prefer a helper or command over a framework; use a framework when existing repeated patterns justify it. Keep the executable source and invocation with the tool, not only its reports.
-- Validate the shared tool through its real entry point with a representative success and the important failure paths. Consumers normally need only an integration check of their changed use, not a fresh proof of every unchanged tool invariant.
-- Reuse is not blanket trust: changes to ownership, cleanup, limits, permissions, persistence, or source/runtime binding require focused verification of the affected contract. Preserve security, data-loss prevention, rollback, and required repository gates.
-
 ## Choose the minimum useful checks
 
 - Before implementation, name the user-visible outcome and credible failures. Choose the smallest existing check that can catch them.
@@ -46,5 +38,3 @@ Use disposable state or an approved test environment. Production data, credentia
 Use existing runner output rather than a separate evidence framework. Redact secrets and private data. A screenshot alone does not prove hidden state or safety properties.
 
 At completion, follow the governing verification policy for focused checks, applicable repository gates, and scoped exceptions on the final revision. Inspect actual exit status and relevant output; report passed, failed, reused, skipped, and unverified checks. Child reports alone are not verification.
-
-Configuration may use native validators. Prose needs review, not new substring tests or unrelated runtime trials. For instruction changes, use a small representative consuming-agent scenario only when an existing harness is available; otherwise report static review. Do not build a new evaluation harness just to validate wording.

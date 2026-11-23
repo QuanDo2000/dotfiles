@@ -14,7 +14,7 @@ After explicit user approval, call `autoresearch_start` alone with a `goal` cont
 ## Setup
 
 1. Confirm the goal, primary metric, direction, files in scope, constraints, and authoritative correctness checks.
-2. The extension has already verified a supported platform and either a clean linked Git worktree on an `autoresearch/*` branch or an empty dedicated JJ workspace named `autoresearch-*`. When invoked from a clean primary Git checkout or normal JJ workspace, `/autoresearch` creates a uniquely named sibling worktree/workspace and switches Pi into a named session there before loading this skill. Never switch branches or workspaces, change repositories, add hooks, push, or finalize automatically.
+2. The extension has already verified a supported platform and either a clean linked Git worktree on an `autoresearch/*` branch or an empty dedicated JJ workspace named `autoresearch-*`. Never switch branches or workspaces, change repositories, add hooks, push, or finalize automatically.
 3. Create and commit with the active VCS:
    - `.auto/prompt.md`: goal, metric, files in scope, off-limits paths, constraints, benchmark method, and attempted ideas.
    - `.auto/config.json`: `maxIterations` from 1 through 20, `metricName`, and `direction` (`lower` or `higher`).
