@@ -181,8 +181,8 @@ reviewed release update.
 
 For the Arch-server role only (Obsidian Sync, Google Drive, and storage backup,
 not a generic Linux or desktop profile), with native prerequisites, Nix, and the
-repo's guarded `home-manager` already installed: run this only from an external
-user terminal after approval. Adjust the checkout path if needed.
+repo's guarded `home-manager` already installed, run the following after
+approval. Adjust the checkout path if needed.
 
 ```bash
 /usr/bin/bash --noprofile --norc -euo pipefail -c '
