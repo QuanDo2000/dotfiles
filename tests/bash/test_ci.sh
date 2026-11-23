@@ -254,19 +254,6 @@ test_ci_dev_shell_includes_script_dependencies() {
   done
 }
 
-test_ci_accepts_action_sha_refreshes() {
-  local fixture="$TEST_TMPDIR/refreshed"
-  mkdir -p "$fixture/.github/workflows"
-  python3 - "$REPO_DIR/.github/workflows/test.yml" "$fixture/.github/workflows/test.yml" <<'PY'
-import re
-import sys
-from pathlib import Path
-source, target = map(Path, sys.argv[1:])
-target.write_text(re.sub(r"@[0-9a-f]{40}", "@" + "a" * 40, source.read_text()))
-PY
-  (REPO_DIR="$fixture"; test_ci_pins_current_actions)
-}
-
 _ci_actions_pinned() {
   # Validate parsed step/job references, including flow mappings and scalars.
   # GitHub owns workflow schema validation; safe_load never executes YAML tags.

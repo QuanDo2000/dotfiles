@@ -12,7 +12,7 @@ At meaningful handoffs, say concisely what was done, what is happening now, and 
 
 ## Model Tiers
 
-Pi defaults to Sol 6.2 with medium thinking for new sessions. Prefer Terra 6.1 medium when selecting a model for coding and implementation; use the existing session model when work must stay in that session. Automatically delegate reviews and difficult design or architecture work to Sol 6.2 medium, overriding the general delegation and cheapest-model preferences for those tasks. A child assigned such a task performs it directly without re-delegating it. If Sol delegation is unavailable or fails, disclose the fallback. Use a qualified, already-authorized independent reviewer when independence applies and the task permits an alternative; otherwise continue in the current session for work that can proceed without one. Do not ask the user to switch the session's model. Never silently switch the current session's model. Hermes delegation defaults stay on Sol; choose scheduled job models explicitly (Terra for routine jobs, Sol for demanding work). Preserve Astra as a manual special escalation and leave GLM choices unchanged.
+Pi defaults to Sol 6.2 with medium thinking for new sessions. Select models appropriate to the task's difficulty and available capabilities; prefer Terra 6.1 medium for routine coding and implementation. Use a qualified independent reviewer where required. Use the existing session model when work must stay in that session, and never silently switch it or ask the user to switch it. Choose scheduled job models explicitly. Preserve Astra as a manual special escalation and leave GLM choices unchanged.
 
 ## Post-installation Cleanup
 

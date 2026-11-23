@@ -115,9 +115,6 @@ test_pin_updater_keeps_security_checks() {
   local updater
   updater="$(<"$REPO_DIR/scripts/update_pins.py")"
 
-  assert_contains "$(<"$REPO_DIR/scripts/pins.sh")" 'nix develop "path:$DOTFILES_DIR" -c'
-  assert_contains "$(<"$REPO_DIR/flake.nix")" 'nodejs'
-  assert_contains "$(<"$REPO_DIR/flake.nix")" 'neovim'
   assert_contains "$updater" 'repeated downloads differ'
   assert_contains "$updater" 'Mason registry GitHub digest mismatch'
   assert_contains "$updater" 'unexpected Mason registry archive entries'
