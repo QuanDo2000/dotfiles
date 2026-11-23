@@ -279,9 +279,6 @@ in
     ".local/bin/input-method-status" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource ../scripts/input-method-status.sh // {
       executable = true;
     });
-    ".local/bin/hyprsunset-status" = lib.mkIf (desktop && pkgs.stdenv.hostPlatform.isLinux) (forceSource "${pkgs.hyprsunset-status}/bin/hyprsunset-status" // {
-      executable = true;
-    });
     ".local/bin/restic-recover" = lib.mkIf storageOffsiteBackup (forceSource ./arch-server/restic-recover // {
       executable = true;
     });

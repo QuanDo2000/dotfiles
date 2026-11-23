@@ -13,26 +13,20 @@ metadata:
 
 # Systematic Debugging
 
-Establish the failing boundary and test one causal hypothesis before fixing production state.
+Locate the likely failing boundary using the cheapest available evidence. Prefer a fix at the shared cause, then verify the symptom and affected contracts. Label an unproven cause provisional.
 
 ## Establish facts
 
-1. Read the complete error and exact command/output. Reproduce the smallest failure; if intermittent, record conditions rather than guessing.
-2. Check live state and relevant recent changes. Validate paths and object identities before inspecting generated artifacts; historical reports are leads, not current proof.
-3. Trace incorrect values/state backward through callers and component boundaries. Compare one nearby working path and only relevant differences.
-4. For multi-component flows, inspect input/output/configuration at the suspected boundary; expand only when evidence requires it. Add targeted diagnostics only when authorized, without exposing secrets.
-5. For service failures, compare interactive and service environments: unit/ExecStart, shebang, resolved interpreter/binary, and service-manager environment. Installation under one interpreter does not prove the service uses it.
+Check current state and relevant changes; validate paths and object identities before acting. For multi-component flows, inspect the suspected boundary and add diagnostics only when authorized, without exposing secrets. For service failures, compare the interactive and service environments, including the resolved interpreter.
 
 Investigation-only requests prohibit persistent changes, including config edits, permission changes, restarts, cache clears, media rewrites, and database writes. Report blocked evidence and the next minimal check; do not invent completed reproduction steps.
 
-## Test one hypothesis
-
-State: “X is the cause because evidence Y; check Z distinguishes it.” Run the cheapest discriminating check, preferably changing one variable. Do not infer an individual cause from a combined experiment. Discard disproved hypotheses rather than stacking fixes. Reassess the data/control flow when repeated attempts reveal new coupling or unclear ownership; ask before broadening mutation authority.
+Do not infer an individual cause from a combined experiment without evidence. Reassess data/control flow when repeated attempts reveal unclear ownership; ask before broadening mutation authority.
 
 For performance: record a repeatable workload/environment and baseline, profile one hot path, set an improvement target and regression budget, then make one reversible change. Run correctness checks before/after and repeat the same workload enough to expose noise. Keep only measured improvements within the budget; revert only your own failed experiment.
 
 ## Fix and verify
 
-Trace impacted callers and fix the shared cause, not symptoms in sibling callers. Use `test-driven-development` for the original symptom's regression, then apply the smallest authorized fix without bundled cleanup. Run the focused reproducer and impacted/required checks under the global verification policy.
+Trace impacted callers and prefer a shared-cause fix. Use `test-driven-development` for symptom verification, then run affected and required checks under the global verification policy.
 
-When evidence is missing or diagnosis remains uncertain, state the gap and continue useful bounded investigation within scope. Defer speculative edits by default; use the governing scoped-exception rule for explicitly authorized diagnostic changes or reversible mitigations. Ask only before work that needs broader authority. Report the failing boundary, evidence versus hypothesis, smallest fix, validation, and residual risk. Use native search/read/terminal tools; delegate only independent substantial investigations under the global delegation policy.
+When evidence is missing or diagnosis remains uncertain, state the gap and continue useful bounded work within scope. Ask only before work that needs broader authority. Report the evidence versus hypothesis, smallest fix, validation, and residual risk. Use native search/read/terminal tools; delegate only independent substantial investigations under the global delegation policy.

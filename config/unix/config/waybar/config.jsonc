@@ -16,7 +16,6 @@
   "modules-right": [
     "privacy",
     "custom/input-method",
-    "custom/hyprsunset",
     "mpris",
     "pulseaudio",
     "idle_inhibitor",
@@ -81,12 +80,6 @@
     "return-type": "json",
     "interval": 5,
     "on-click": "$HOME/.local/bin/input-method-status --next"
-  },
-
-  "custom/hyprsunset": {
-    "exec": "$HOME/.local/bin/hyprsunset-status",
-    "return-type": "json",
-    "interval": 60
   },
 
   "mpris": {

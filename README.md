@@ -2,18 +2,6 @@
 
 Personal setup scripts and configuration files for new machines.
 
-Linux desktop profiles use the Nix-built Rust `hyprsunset-status`.
-`./scripts/check.sh` exercises the built command. For Rust changes, run:
-
-```bash
-cargo fmt --manifest-path rust/hyprsunset-status/Cargo.toml --all --check
-cargo test --manifest-path rust/hyprsunset-status/Cargo.toml --locked --offline
-cargo clippy --manifest-path rust/hyprsunset-status/Cargo.toml --locked --offline --all-targets -- -D warnings
-```
-
-`debt:` These checks do not verify live Waybar behavior; test on a graphical
-Linux desktop before a production cutover.
-
 ## Requirements
 
 ### Linux / macOS

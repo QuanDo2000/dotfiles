@@ -31,7 +31,6 @@
           nodejs = final.nodejs_26;
           nodejs-slim = final.nodejs-slim_26;
           obsidian-headless = final.callPackage ./packages/obsidian-headless.nix { };
-          hyprsunset-status = final.callPackage ./packages/hyprsunset-status.nix { };
           pi-agent = final.callPackage ./packages/pi-agent.nix { };
           pi-extensions = final.callPackage ./packages/pi-extensions.nix { };
           webcord = final.callPackage ./packages/webcord-release.nix { };
@@ -90,7 +89,6 @@
       packages.x86_64-linux.rex = rex-linux.packages.x86_64-linux.rex;
       packages.x86_64-linux.rex-auth-python = linuxPkgs.python3;
       packages.x86_64-linux.nodejs = linuxPkgs.nodejs;
-      packages.x86_64-linux.hyprsunset-status = linuxPkgs.hyprsunset-status;
       packages.x86_64-linux.pi-agent = linuxPkgs.pi-agent;
       packages.x86_64-linux.pi-extensions = linuxPkgs.pi-extensions;
       packages.x86_64-linux.prefetch-npm-deps = linuxPkgs.prefetch-npm-deps;

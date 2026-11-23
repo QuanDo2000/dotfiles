@@ -59,20 +59,12 @@ check_deployed_role() {
   run nix eval --raw "$flake#$target"
 }
 
-check_status() {
-  if [[ "$(uname -s)" == "Linux" ]]; then
-    local status_package
-    status_package=$(nix build "$flake#hyprsunset-status" --no-link --print-out-paths)
-    HYPRSUNSET_CANDIDATE="$status_package/bin/hyprsunset-status" run python3 "$repo_dir/tests/rust/hyprsunset_cli.py"
-  fi
-}
-
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   stage_dir="$(mktemp -d)"
   trap 'rm -rf "$stage_dir"' EXIT
   stages=()
-  # Independent checks share Nix's native store. Build/CLI dependencies stay internal.
-  for stage in check_flake check_platform check_packages check_status check_deployed_role; do
+  # Independent checks share Nix's native store.
+  for stage in check_flake check_platform check_packages check_deployed_role; do
     printf 'source %q\n%s\n' "$repo_dir/scripts/check_nix.sh" "$stage" > "$stage_dir/$stage.sh"
     stages+=("$stage_dir/$stage.sh")
   done
