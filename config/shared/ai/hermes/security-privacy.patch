@@ -16,7 +16,7 @@
 +Keep `approvals.mode: smart` for normal use. Command approval policy and secret
 +redaction are independent. Neither command allowlists nor `--yolo` grant approval
 +for protected instruction-file writes.
-@@ -41,15 +40,42 @@
+@@ -41,15 +40,41 @@
 -
 +
 -Per-invocation bypass without changing config:
@@ -46,10 +46,9 @@
 +`deny` response can surface as "denied by the user" even though no human saw a
 +prompt; that text alone does not prove the user rejected the edit. Delegate
 +inspection, not approval-dependent writes. Have the foreground main session
-+perform authorized writes through the normal per-operation approval gate. After
-+a denial or timeout, stop and report the blocker; renewed user authorization is
-+required before retrying through that same gate. Never reroute the edit through
-+terminal, another writer, or a disabled guard, and never change delegation
++perform authorized writes through the normal per-operation approval gate. Verify the
++installed gate's timeout behavior and honor the exact refusal. Never reroute the edit
++through terminal, another writer, or a disabled guard, and never change delegation
 +approval settings or allowlists to evade a protected-write denial.
 +
 +Implementation reference: `tools/file_tools_write_guards.py`,
