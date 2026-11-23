@@ -2,9 +2,8 @@
 
 Personal setup scripts and configuration files for new machines.
 
-Linux desktop profiles use the Nix-built Rust `hyprsunset-status`; the Bash
-version is a comparison oracle, not a deployed command. `./scripts/check.sh`
-compares their output. For Rust changes, run:
+Linux desktop profiles use the Nix-built Rust `hyprsunset-status`.
+`./scripts/check.sh` exercises the built command. For Rust changes, run:
 
 ```bash
 cargo fmt --manifest-path rust/hyprsunset-status/Cargo.toml --all --check

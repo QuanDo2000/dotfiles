@@ -47,7 +47,7 @@ check_status() {
   if [[ "$(uname -s)" == "Linux" ]]; then
     local status_package
     status_package=$(nix build "$flake#hyprsunset-status" --no-link --print-out-paths)
-    HYPRSUNSET_CANDIDATE="$status_package/bin/hyprsunset-status" run python3 "$repo_dir/tests/rust/hyprsunset_oracle.py"
+    HYPRSUNSET_CANDIDATE="$status_package/bin/hyprsunset-status" run python3 "$repo_dir/tests/rust/hyprsunset_cli.py"
   fi
 }
 
@@ -56,7 +56,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   trap 'rm -rf "$stage_dir"' EXIT
   stages=()
   # Independent checks share Nix's native store; Linux raw drv observations
-  # may use validated fresh Home data. Build/oracle dependencies stay internal.
+  # may use validated fresh Home data. Build/CLI dependencies stay internal.
   for stage in check_flake check_platform check_packages check_status; do
     printf 'source %q\n%s\n' "$repo_dir/scripts/check_nix.sh" "$stage" > "$stage_dir/$stage.sh"
     stages+=("$stage_dir/$stage.sh")

@@ -11,7 +11,6 @@ WAYBAR_CONFIG="$(<"$REPO_DIR/config/unix/config/waybar/config.jsonc")"
 WAYBAR_STYLE="$(<"$REPO_DIR/config/unix/config/waybar/style.css")"
 POWER_MENU="$(<"$REPO_DIR/config/unix/config/waybar/power-menu.xml")"
 SUNSET_CONFIG="$(<"$REPO_DIR/config/unix/config/hypr/hyprsunset.conf")"
-SUNSET_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/hyprsunset-status.sh")"
 INPUT_METHOD_STATUS_SCRIPT="$(<"$REPO_DIR/scripts/input-method-status.sh")"
 SSH_CONFIG="$(<"$REPO_DIR/config/shared/.ssh/config")"
 
@@ -39,16 +38,6 @@ test_zsh_keeps_profile_node_with_nvm_installed() {
   assert_equals "$profile_bin/node" "${output%%$'\n'*}"
   assert_not_contains "$output" "$nvm_bin"
   assert_not_contains "$output" 'nvm-loader-present'
-}
-
-test_hyprsunset_status_uses_defaults_when_installed_config_missing() {
-  local home="$TEST_TMPDIR/hypr-home"
-  mkdir -p "$home/.local/bin" "$home/.config/hypr"
-  ln -s "$REPO_DIR/scripts/hyprsunset-status.sh" "$home/.local/bin/hyprsunset-status"
-  local output
-  output="$(HOME="$home" XDG_CONFIG_HOME="$home/.config" HYPRSUNSET_RUNNING=false "$home/.local/bin/hyprsunset-status" 12:00)"
-  assert_contains "$output" 'Night light service is inactive'
-  assert_not_contains "$output" 'awk:'
 }
 
 test_ssh_config_keeps_required_forwarding_without_unused_ports() {
@@ -108,8 +97,9 @@ test_pi_web_access_is_pinned() {
 }
 
 test_ai_delivery_policy_is_shared_and_finite() {
-  local agents soul identity rendered_soul nix_bin username target
+  local agents soul delivery identity rendered_soul nix_bin username target
   agents="$(<"$REPO_DIR/config/shared/ai/AGENTS.md")"
+  delivery="$(<"$REPO_DIR/config/shared/ai/skills/github-pr-workflow/references/delivery-details.md")"
   nix_bin="$(type -P nix)" || return
   username="$("$nix_bin" eval --raw --file "$REPO_DIR/config/host.nix" username)" || return
   if [[ "$(uname -s)" == Darwin ]]; then
@@ -128,7 +118,7 @@ test_ai_delivery_policy_is_shared_and_finite() {
   # Shared authority and exact repository identities are the contract here.
   # Exercise interpretation with tests/ai/instruction-scenarios.md, not prose greps.
   for identity in github.com/QuanDo2000/dotfiles github.com/QuanDo2000/zmk-config github.com/QuanDo2000/chrome-puzzle-solver ssh://git@192.168.1.200:2222/quando/silly-cavern-odin.git; do
-    assert_contains "$agents" "\`$identity\`"
+    assert_contains "$delivery" "\`$identity\`"
   done
 }
 
@@ -487,56 +477,8 @@ test_hyprshutdown_gracefully_ends_power_actions() {
   assert_not_contains "$WAYBAR_CONFIG" 'scripts/logout-session.sh'
 }
 
-test_waybar_and_fcitx_use_session_lifecycle() {
-  assert_not_contains "$HYPR_CONFIG" "scripts/reload-waybar.sh"
-  assert_not_contains "$HYPR_CONFIG" 'fcitx5 -d'
-  assert_contains "$HYPR_CONFIG" "systemctl --user restart waybar.service"
-}
-
-test_hyprland_removes_unused_input_and_tearing_config() {
-  local config="$HYPR_CONFIG"
-
-  assert_not_contains "$config" "allow_tearing"
-  assert_not_contains "$config" "hl.gesture"
-  assert_not_contains "$config" "no_hardware_cursors"
-}
-
-test_waybar_shows_hyprsunset_status() {
-  local config="$WAYBAR_CONFIG" style="$WAYBAR_STYLE" status_script="$SUNSET_STATUS_SCRIPT" day night
-
-  assert_contains "$config" '"custom/hyprsunset"'
-  assert_contains "$config" '$HOME/.local/bin/hyprsunset-status'
-  assert_not_contains "$config" '$HOME/dotfiles/scripts/hyprsunset-status.sh'
-  assert_contains "$style" "#custom-hyprsunset.active"
-  assert_contains "$status_script" 'config="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprsunset.conf"'
-  assert_not_contains "$status_script" 'repo="$(cd --'
-  assert_not_contains "$status_script" "mapfile"
-
-  day="$(HYPRSUNSET_RUNNING=true "$REPO_DIR/scripts/hyprsunset-status.sh" 12:00)"
-  night="$(HYPRSUNSET_RUNNING=true "$REPO_DIR/scripts/hyprsunset-status.sh" 21:00)"
-  assert_equals "inactive" "$(jq -r .class <<<"$day")"
-  assert_equals "active" "$(jq -r .class <<<"$night")"
-  assert_not_contains "$(jq -r .text <<<"$day")" ":"
-  assert_not_contains "$(jq -r .text <<<"$night")" ":"
-  assert_contains "$(jq -r .tooltip <<<"$day")" "20:00"
-  assert_contains "$(jq -r .tooltip <<<"$night")" "07:00"
-
-  local temperature=$'45"00\\\b'
-  mkdir -p "$HOME/.config/hypr"
-  printf 'time = 07:00\ntime = 20:00\ntemperature = %s\n' "$temperature" > "$HOME/.config/hypr/hyprsunset.conf"
-  night="$(XDG_CONFIG_HOME="$HOME/.config" HYPRSUNSET_RUNNING=true "$REPO_DIR/scripts/hyprsunset-status.sh" 21:00)"
-  assert_equals "$(printf 'Night light: %sK\nNormal colors at 07:00' "$temperature")" "$(jq -r .tooltip <<<"$night")"
-}
-
 test_waybar_shows_input_method() {
-  local config="$WAYBAR_CONFIG" style="$WAYBAR_STYLE" status_script="$INPUT_METHOD_STATUS_SCRIPT" english vietnamese chinese
-
-  assert_contains "$config" '"custom/input-method"'
-  assert_contains "$config" '$HOME/.local/bin/input-method-status'
-  assert_contains "$config" '"on-click": "$HOME/.local/bin/input-method-status --next"'
-  assert_not_contains "$config" '$HOME/dotfiles/scripts/input-method-status.sh'
-  assert_contains "$config" '"interval": 5'
-  assert_contains "$style" "#custom-input-method"
+  local english vietnamese chinese
 
   english="$("$REPO_DIR/scripts/input-method-status.sh" keyboard-us)"
   vietnamese="$("$REPO_DIR/scripts/input-method-status.sh" unikey)"

@@ -75,40 +75,15 @@ jobs:
             winget install --id Neovim.Neovim --exact --silent --accept-package-agreements --accept-source-agreements
           }
 
-      - name: Run Windows checks in parallel
+      - name: PowerShell tests
         shell: pwsh
-        run: |
-          $checks = @(
-            [pscustomobject]@{ Name = 'PowerShell tests'; Path = './tests/powershell/runner.ps1' }
-            [pscustomobject]@{ Name = 'Pi extension integration'; Path = './tests/powershell/integration_pi_extensions.ps1' }
-            [pscustomobject]@{ Name = 'Neovim integration'; Path = './tests/powershell/integration_neovim.ps1' }
-          )
-          $jobs = foreach ($check in $checks) {
-            Start-Job -Name $check.Name -WorkingDirectory $PWD -ArgumentList $check.Path, $check.Name -ScriptBlock {
-              param($path, $name)
-              $timer = [System.Diagnostics.Stopwatch]::StartNew()
-              try {
-                & $path
-                if ($LASTEXITCODE -ne 0) { throw "$path exited with code $LASTEXITCODE" }
-              } finally {
-                $timer.Stop()
-                Write-Host ("::notice::{0}: {1:F3} seconds" -f $name, $timer.Elapsed.TotalSeconds)
-              }
-            }
-          }
-
-          Wait-Job -Job $jobs | Out-Null
-          $status = 0
-          foreach ($job in $jobs) {
-            Write-Host "--- $($job.Name) ---"
-            Receive-Job -Job $job -ErrorAction Continue
-            if ($job.State -ne 'Completed') {
-              Write-Error "::error::$($job.Name) failed: $($job.ChildJobs[0].JobStateInfo.Reason.Message)" -ErrorAction Continue
-              $status = 1
-            }
-          }
-          Remove-Job -Job $jobs -Force
-          exit $status
+        run: pwsh -NoProfile -File ./tests/powershell/runner.ps1
+      - name: Pi extension integration
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/powershell/integration_pi_extensions.ps1
+      - name: Neovim integration
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/powershell/integration_neovim.ps1
 
   bash-linux:
     runs-on: ubuntu-latest

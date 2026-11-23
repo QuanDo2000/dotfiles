@@ -15,7 +15,7 @@ metadata:
 
 Use the governing implementation, delivery, signing, and merge policy. This adapter does not expand authorization: research/review remains read-only; authorized implementation may carry automatic task-branch delivery under that policy. Explicit no-commit/no-push restrictions win. Unattended merge follows the governing repository allowlist; explicit exceptions follow the governing policy’s scoped authorization and named-risk rule. Verify repository identity rather than relying on the owner name.
 
-For `github.com/QuanDo2000/dotfiles`, use the governing signed fast-forward workflow by default. Use this recipe only when PR delivery is in scope.
+For repository allowlist, signed fast-forward, rewritten-merge proof, and cleanup details, read `references/delivery-details.md`. For `github.com/QuanDo2000/dotfiles`, use the governing signed fast-forward workflow by default. Use this recipe only when PR delivery is in scope.
 
 ## Prepare and implement
 

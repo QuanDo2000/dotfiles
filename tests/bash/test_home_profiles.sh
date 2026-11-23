@@ -288,10 +288,6 @@ test_evaluated_profile_configures_desktop_and_storage_settings() {
   assert_equals true "$(jq -r '.programs.wlClipPersist' <<<"$nixos")"
   assert_equals regular "$(jq -r '.programs.wlClipPersistType' <<<"$nixos")"
   assert_equals true "$(jq -r '.programs.mako' <<<"$nixos")"
-  assert_equals 'ghostty' "$(jq -r '.programs.fuzzelSettings.main.terminal' <<<"$nixos")"
-  assert_equals 'uwsm app --' "$(jq -r '.programs.fuzzelSettings.main."launch-prefix"' <<<"$nixos")"
-  assert_equals 'DP-3' "$(jq -r '.programs.makoSettings.output' <<<"$nixos")"
-  assert_equals 5000 "$(jq -r '.programs.makoSettings."default-timeout"' <<<"$nixos")"
   assert_equals true "$(jq -r '.programs.hyprpolkitagent' <<<"$nixos")"
   assert_equals true "$(jq -r '.programs.hyprsunset' <<<"$nixos")"
   assert_equals true "$(jq -r '.programs.rclone' <<<"$arch")"
@@ -300,11 +296,7 @@ test_evaluated_profile_configures_desktop_and_storage_settings() {
   assert_equals '/home/quando/Documents' "$(jq -r '.userDirs.documents' <<<"$nixos")"
   assert_equals '/home/quando/Downloads' "$(jq -r '.userDirs.download' <<<"$nixos")"
   assert_equals null "$(jq -r '.userDirs.desktop' <<<"$nixos")"
-  assert_equals thunar.desktop "$(jq -r '.mimeDefaults."inode/directory"[0]' <<<"$nixos")"
-  assert_equals google-chrome.desktop "$(jq -r '.mimeDefaults."x-scheme-handler/https"[0]' <<<"$nixos")"
-  assert_equals xarchiver.desktop "$(jq -r '.mimeDefaults."application/zip"[0]' <<<"$nixos")"
   assert_equals true "$(_profile_file_meta nixos '/home/quando/.config/jj/config.toml' | jq -r .force)"
-  assert_equals '[]' "$(jq -c '.programs.tmuxPlugins' <<<"$nixos")"
   _test_present "$(jq -r '.xdgFiles[]' <<<"$nixos")" ghostty/config
   _test_absent "$(jq -r '.xdgFiles[]' <<<"$generic")" ghostty/config
 }

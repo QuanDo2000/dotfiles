@@ -24,7 +24,7 @@ fi
 if [[ "$1" == eval && "$*" == *--file* ]]; then printf 'fixture'; fi
 if [[ "$1" == build ]]; then printf '/fixture-package\n'; fi
 SH
-  printf '#!/usr/bin/env bash\nprintf "oracle %%s\\n" "$HYPRSUNSET_CANDIDATE" >> "$UPDATE_CALLS"\n' > "$UPDATE_ROOT/bin/python3"
+  printf '#!/usr/bin/env bash\nprintf "cli %%s\\n" "$HYPRSUNSET_CANDIDATE" >> "$UPDATE_CALLS"\n' > "$UPDATE_ROOT/bin/python3"
   printf '#!/usr/bin/env bash\nprintf "%%s\\n" "${UPDATE_UNAME:-Linux}"\n' > "$UPDATE_ROOT/bin/uname"
   chmod +x "$UPDATE_ROOT/bin/"*
   printf 'ID=debian\n' > "$TEST_TMPDIR/os-release"
@@ -86,7 +86,7 @@ test_update_gate_flake_changes_cover_custom_packages_and_roles() {
   assert_contains "$calls" '#pi-extensions'
   assert_contains "$calls" '#obsidian-headless'
   assert_contains "$calls" '#hyprsunset-status'
-  assert_contains "$calls" 'oracle /fixture-package/bin/hyprsunset-status'
+  assert_contains "$calls" 'cli /fixture-package/bin/hyprsunset-status'
 }
 
 test_update_gate_without_selected_tests_does_not_run_the_whole_suite() {

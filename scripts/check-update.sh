@@ -75,5 +75,5 @@ fi
 if [[ ${#packages[@]} -gt 0 ]]; then nix build "${packages[@]}" --no-link; fi
 if $flake_changed && [[ "$(uname -s)" == Linux ]]; then
   status_package="$(nix build "$flake#hyprsunset-status" --no-link --print-out-paths)"
-  HYPRSUNSET_CANDIDATE="$status_package/bin/hyprsunset-status" python3 "$repo_dir/tests/rust/hyprsunset_oracle.py"
+  HYPRSUNSET_CANDIDATE="$status_package/bin/hyprsunset-status" python3 "$repo_dir/tests/rust/hyprsunset_cli.py"
 fi
