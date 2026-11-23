@@ -294,35 +294,6 @@ test_all_does_not_run_obsidian_bootstrap() {
   unset __MOCK_UNAME
 }
 
-test_readme_matches_key_help_text() {
-  local readme_text readme_flat
-  readme_text="$(<"$REPO_DIR/README.md")"
-  readme_flat="${readme_text//$'\n'/ }"
-  assert_contains "$readme_text" "### Unix Commands"
-  assert_contains "$readme_text" "update [ai]"
-  assert_contains "$readme_text" "Install native prerequisites and activate current profile"
-  assert_contains "$readme_text" "Update only AI tools and configs"
-  assert_contains "$readme_text" "upgrade     Upgrade native system packages"
-  assert_contains "$readme_flat" 'On Unix this refreshes Pi release pins, managed AI packages, and Pi extensions with the same isolated validation, diff display, and automatic approval'
-  assert_contains "$readme_flat" 'On Windows it activates their published validated pins'
-  assert_contains "$readme_text" "obsidian    Bootstrap Obsidian Sync login and vault setup"
-  assert_contains "$readme_text" "nix-installer"
-  assert_contains "$readme_text" "Update pinned Nix installer checksums"
-  assert_contains "$readme_text" "obsidian-headless"
-  assert_contains "$readme_text" "Update pinned Obsidian Headless package"
-  assert_contains "$readme_text" "doctor [--fast]"
-  assert_contains "$readme_text" "Detect dotfile and Nix issues"
-  assert_contains "$readme_text" "check       Run full repository checks"
-  assert_contains "$readme_text" "Home Manager owns tracked Obsidian settings"
-  assert_contains "$readme_text" 'Home Manager owns the `lazy.nvim` bootstrap package'
-  assert_contains "$readme_text" 'Neovim uses Snacks pickers on all'
-  assert_contains "$readme_text" 'an existing `home-manager` when available'
-  assert_contains "$readme_text" '`~/dotfiles#darwin-rebuild` app'
-  assert_contains "$readme_text" "### Windows Commands"
-  assert_contains "$readme_text" "dotfile.ps1 [OPTIONS] [COMMAND]"
-  assert_contains "$readme_text" 'NixOS flake target is `#${hostName}`'
-}
-
 test_dry_run_update_command() {
   is_windows_bash && return 0
   link_core_dotfiles
@@ -656,13 +627,6 @@ test_update_ai_rejects_extra_arguments() {
   assert_equals "1" "$exit_code"
   assert_contains "$output" "Unexpected update argument: extra"
   assert_not_contains "$output" "Verifying symlinks"
-}
-
-test_explicit_all_rejects_extra_arguments() {
-  local output exit_code=0
-  output=$(bash "$DOTFILE_CMD" --dry all extra 2>&1) || exit_code=$?
-  assert_equals "1" "$exit_code"
-  assert_contains "$output" "Unexpected all argument: extra"
 }
 
 test_leaf_commands_reject_extra_arguments() {

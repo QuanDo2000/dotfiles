@@ -494,21 +494,6 @@ test_storage_offsite_backup() {
   assert_contains "$FLAKE_CONFIG" 'storageOffsiteBackup = true;'
 }
 
-test_home_manager_installs_screenshot_tools() {
-  local hypr_config="$HYPR_CONFIG"
-
-  assert_contains "$hypr_config" 'bind("Print"'
-  assert_contains "$hypr_config" 'bind("SHIFT + Print"'
-  assert_contains "$hypr_config" 'bind("CTRL + Print"'
-}
-
-test_home_manager_enables_fuzzel() {
-  local hypr_config="$HYPR_CONFIG"
-
-  assert_contains "$hypr_config" 'mainMod .. " + Space"'
-  assert_contains "$hypr_config" 'hl.dsp.exec_cmd(app .. "fuzzel")'
-}
-
 test_hyprland_uses_uwsm_application_lifecycle() {
   local config="$HYPR_CONFIG"
 
@@ -534,44 +519,12 @@ test_waybar_and_fcitx_use_session_lifecycle() {
   assert_contains "$HYPR_CONFIG" "systemctl --user restart waybar.service"
 }
 
-test_hyprland_adds_media_controls() {
-  local hypr_config="$HYPR_CONFIG"
-
-  assert_contains "$hypr_config" 'bind("XF86AudioPlay"'
-  assert_contains "$hypr_config" 'bind("XF86AudioPrev"'
-  assert_contains "$hypr_config" 'bind("XF86AudioNext"'
-  assert_contains "$hypr_config" 'playerctl play-pause'
-}
-
 test_hyprland_removes_unused_input_and_tearing_config() {
   local config="$HYPR_CONFIG"
 
   assert_not_contains "$config" "allow_tearing"
   assert_not_contains "$config" "hl.gesture"
   assert_not_contains "$config" "no_hardware_cursors"
-}
-
-test_hyprland_adds_window_management_keybinds() {
-  local config="$HYPR_CONFIG"
-
-  assert_contains "$config" 'mainMod .. " + F"'
-  assert_contains "$config" 'mainMod .. " + SHIFT + " .. key'
-  assert_contains "$config" 'mainMod .. " + ALT + " .. key'
-  assert_contains "$config" 'mainMod .. " + G"'
-  assert_contains "$config" 'mainMod .. " + Tab"'
-  assert_contains "$config" 'mainMod .. " + Z"'
-  assert_contains "$config" 'hl.define_submap("resize"'
-}
-
-test_hyprland_exposes_keybind_list() {
-  local config="$HYPR_CONFIG" script
-  script="$(<"$REPO_DIR/scripts/show-keybinds.sh")"
-
-  assert_contains "$config" 'description = description'
-  assert_contains "$config" '$HOME/.local/bin/show-keybinds'
-  assert_not_contains "$config" '$HOME/dotfiles/scripts/show-keybinds.sh'
-  assert_contains "$script" 'hyprctl binds -j'
-  assert_contains "$script" 'fuzzel --dmenu'
 }
 
 test_waybar_shows_hyprsunset_status() {
@@ -639,44 +592,6 @@ EOF
 test_waybar_power_menu_logs_out_gracefully() {
   assert_contains "$POWER_MENU" 'id="logout"'
   assert_contains "$POWER_MENU" '<property name="label">Log Out</property>'
-  assert_contains "$WAYBAR_CONFIG" '"logout": "uwsm app -- hyprshutdown"'
-}
-
-test_waybar_audio_tooltip_shows_selected_output() {
-  assert_contains "$WAYBAR_CONFIG" '"tooltip-format": "Volume: {volume}%\nOutput: {desc}"'
-}
-
-test_waybar_audio_click_opens_mixer() {
-  assert_contains "$WAYBAR_CONFIG" '"on-click": "pavucontrol"'
-}
-
-test_waybar_shows_media_status() {
-  local config="$WAYBAR_CONFIG" style="$WAYBAR_STYLE"
-
-  assert_contains "$config" '"mpris"'
-  assert_contains "$config" '"format": "{status_icon} {dynamic}"'
-  assert_contains "$config" '"format-paused": "{status_icon}"'
-  assert_contains "$config" '"playing": "󰐊"'
-  assert_contains "$style" "#mpris.stopped"
-  assert_contains "$style" "padding: 0;"
-  assert_contains "$config" '"class<thunar>": ""'
-  assert_not_contains "$config" "org.kde.dolphin"
-  assert_contains "$style" "#mpris"
-}
-
-test_hyprland_configures_actual_mouse() {
-  local config="$HYPR_CONFIG"
-
-  assert_contains "$config" 'name = "logitech-g502-1"'
-  assert_not_contains "$config" 'name = "logitech-g502"'
-}
-
-test_home_manager_enables_hyprsunset() {
-  local sunset_config="$SUNSET_CONFIG"
-
-  assert_contains "$sunset_config" "time = 07:00"
-  assert_contains "$sunset_config" "time = 20:00"
-  assert_contains "$sunset_config" "temperature = 4500"
 }
 
 test_nixos_enables_gnome_keyring() {

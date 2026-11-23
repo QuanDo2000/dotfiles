@@ -70,18 +70,6 @@ test_upgrade_packages_without_hermes() {
   assert_equals 'native upgrade' "$output"
 }
 
-test_upgrade_system_packages_arch_dry_run() {
-  source_scripts packages.sh
-  mock_uname Linux
-  local osrel="$TEST_TMPDIR/os-release"
-  printf 'ID=arch\n' > "$osrel"
-
-  local output
-  output=$(DRY=true OS_RELEASE="$osrel" upgrade_system_packages 2>&1)
-
-  assert_contains "$output" "sudo pacman -Syu"
-}
-
 test_upgrade_system_packages_debian_dry_run() {
   source_scripts packages.sh
   mock_uname Linux

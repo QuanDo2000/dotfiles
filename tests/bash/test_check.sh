@@ -482,8 +482,9 @@ PY
 }
 
 test_bash_runner_uses_repo_working_directory() {
-  local output status=0
-  output="$(cd / && bash "$REPO_DIR/tests/bash/runner.sh" test_codex_status.sh 2>&1)" || status=$?
+  local output status=0 fixture="$TEST_TMPDIR/working-directory.sh"
+  printf '%s\n' 'test_working_directory() { assert_equals "$REPO_DIR" "$PWD"; }' > "$fixture"
+  output="$(cd / && bash "$REPO_DIR/tests/bash/runner.sh" "$fixture" 2>&1)" || status=$?
   assert_equals 0 "$status"
   assert_contains "$output" '0 failed'
 }
