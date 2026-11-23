@@ -1107,11 +1107,6 @@ function SyncPiConfigs {
         (Join-Path $extensionDir 'fast-mode') `
         @('index.ts', 'core.ts') `
         'Pi fast-mode extension'
-    Install-DirectoryWithRollback `
-        (Join-Path $seedDir 'review') `
-        (Join-Path $extensionDir 'review') `
-        @('index.ts', 'target.ts', 'session.ts', 'rubric.md', 'LICENSE', 'UPSTREAM.md') `
-        'Pi review extension'
     } finally {
         $syncLock.Dispose()
     }

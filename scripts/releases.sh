@@ -1029,10 +1029,10 @@ function _require_clean_dependency_tree {
 
 function _validate_dependency_update {
   if [[ "$DRY" == "true" ]]; then
-    info "Would run focused dependency checks before activation"
+    info "Would run full dependency checks before activation"
     return
   fi
-  bash "$DOTFILES_DIR/scripts/check-update.sh" "${1:-full}" "${2:-HEAD}" \
+  env -u DOTFILE_CHECK_IN_DEV_SHELL DOTFILE_CHECK_DEPLOYED_ROLE=1 bash "$DOTFILES_DIR/scripts/check.sh" \
     || fail "Dependency checks failed; refusing activation"
 }
 

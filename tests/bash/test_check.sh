@@ -17,7 +17,7 @@ _check_fixture() {
   mkdir -p "$CHECK_ROOT/scripts" "$CHECK_ROOT/tests/bash" "$CHECK_ROOT/bin"
   cp "$REPO_DIR/scripts/check.sh" "$CHECK_ROOT/scripts/check.sh"
   cp "$REPO_DIR/scripts/test_jobs.py" "$CHECK_ROOT/scripts/test_jobs.py"
-  cp "$REPO_DIR/scripts/check_nix.sh" "$REPO_DIR/scripts/check_powershell.sh" "$REPO_DIR/scripts/check_profile.sh" "$CHECK_ROOT/scripts/"
+  cp "$REPO_DIR/scripts/check_nix.sh" "$REPO_DIR/scripts/check_powershell.sh" "$REPO_DIR/scripts/check_profile.sh" "$REPO_DIR/scripts/platform.sh" "$CHECK_ROOT/scripts/"
   local stage
   for stage in check_bash check_lint; do
     [[ ! -f "$REPO_DIR/scripts/$stage.sh" ]] || cp "$REPO_DIR/scripts/$stage.sh" "$CHECK_ROOT/scripts/"

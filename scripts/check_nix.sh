@@ -43,6 +43,30 @@ check_packages() {
   run nix build "${packages[@]}" --no-link
 }
 
+check_deployed_role() {
+  [[ "${DOTFILE_CHECK_DEPLOYED_ROLE:-}" == 1 ]] || return 0
+  # shellcheck source=platform.sh
+  source "$repo_dir/scripts/platform.sh"
+  local target host username platform
+  platform="$(detect_platform)"
+  case "$platform" in
+    nixos)
+      host="$(nix eval --raw --file "$repo_dir/config/host.nix" hostName)"
+      is_wsl && host="${host}-wsl"
+      target="nixosConfigurations.\"$host\".config.system.build.toplevel.drvPath" ;;
+    mac) target='darwinConfigurations.mac.system.drvPath' ;;
+    debian|arch)
+      username="$(nix eval --raw --file "$repo_dir/config/host.nix" username)"
+      if [[ "$platform" == arch ]]; then
+        target="homeConfigurations.\"$username@arch-server\".activationPackage.drvPath"
+      else
+        target="homeConfigurations.\"$username@linux\".activationPackage.drvPath"
+      fi ;;
+    *) printf 'Unsupported update platform\n' >&2; return 1 ;;
+  esac
+  run nix eval --raw "$flake#$target"
+}
+
 check_status() {
   if [[ "$(uname -s)" == "Linux" ]]; then
     local status_package
@@ -57,7 +81,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   stages=()
   # Independent checks share Nix's native store; Linux raw drv observations
   # may use validated fresh Home data. Build/CLI dependencies stay internal.
-  for stage in check_flake check_platform check_packages check_status; do
+  for stage in check_flake check_platform check_packages check_status check_deployed_role; do
     printf 'source %q\n%s\n' "$repo_dir/scripts/check_nix.sh" "$stage" > "$stage_dir/$stage.sh"
     stages+=("$stage_dir/$stage.sh")
   done

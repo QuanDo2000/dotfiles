@@ -541,10 +541,6 @@ function Initialize-TestFastModeSource($SeedDir) {
     'export function isFastModeModel() { return true }' | Set-Content (Join-Path $source 'core.ts')
 }
 
-function Initialize-TestReviewSource($SeedDir) {
-    Copy-Item -LiteralPath (Join-Path $script:RepoDir 'config/shared/ai/pi/review') -Destination $SeedDir -Recurse
-}
-
 function Initialize-TestPiConfigSeeds {
     $script:DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
     $seedDir = Join-Path $script:DotfilesDir 'config\shared\ai\pi'
@@ -558,7 +554,6 @@ function Initialize-TestPiConfigSeeds {
     'extension' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
     Initialize-TestFastModeSource $seedDir
-    Initialize-TestReviewSource $seedDir
 
     return [pscustomobject]@{
         Source = Join-Path $seedDir 'codex-status.js'
@@ -622,7 +617,6 @@ function test_syncpiconfigs_creates_writable_seed_files {
     'extension' | Set-Content (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
     Initialize-TestFastModeSource $seedDir
-    Initialize-TestReviewSource $seedDir
     $extensionDir = Join-Path $env:USERPROFILE '.pi\agent\extensions'
     $staleAutoresearch = Join-Path $extensionDir 'autoresearch'
     $staleFastMode = Join-Path $extensionDir 'fast-mode'
@@ -669,12 +663,7 @@ function test_syncpiconfigs_creates_writable_seed_files {
     Assert-FileExists (Join-Path $fastMode 'core.ts')
     Assert-False (Test-Path -LiteralPath (Join-Path $fastMode 'obsolete.ts')) 'Pi fast-mode deployment should remove stale files'
     Assert-False ([bool]((Get-Item $fastMode -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) 'Pi fast mode should be a real directory'
-    $review = Join-Path $extensionDir 'review'
-    foreach ($name in 'index.ts', 'target.ts', 'session.ts', 'rubric.md', 'LICENSE', 'UPSTREAM.md') {
-        Assert-FileExists (Join-Path $review $name)
-    }
-    Assert-False (Test-Path -LiteralPath (Join-Path $review 'obsolete.ts')) 'review deployment should remove stale files'
-    Assert-False ([bool]((Get-Item $review -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) 'review should be a real directory'
+    Assert-FileExists (Join-Path $staleReview 'obsolete.ts')
     Assert-False ([bool](Get-Item $settings).LinkType) 'Pi settings should stay writable'
 }
 
@@ -723,7 +712,6 @@ function test_syncpiconfigs_skips_only_unchanged_regular_direct_copies {
     'linked replacement' | Set-Content -LiteralPath (Join-Path $seedDir 'codex-status.js')
     Initialize-TestAutoresearchSource $seedDir
     Initialize-TestFastModeSource $seedDir
-    Initialize-TestReviewSource $seedDir
     $external = Join-Path $script:_TestTmp.FullName 'external-codex-status.js'
     'external' | Set-Content -LiteralPath $external
     New-Item -ItemType SymbolicLink -Path (Join-Path $extensionDir 'codex-status.js') -Target $external | Out-Null

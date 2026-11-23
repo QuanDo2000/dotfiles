@@ -317,6 +317,9 @@ Pi discovers that standard location natively. Windows copies the same reviewed, 
 `dotfile.ps1 update ai` or full setup; no remote skill installer runs during setup. Agent-specific
 plugins, packages, hooks, and generated runtime state
 such as `skills-lock.json`, caches, and sessions stay native and out of the repo.
+The custom Pi review and interactive GPG display extensions are no longer installed.
+Existing Windows review copies are left untouched and may remain available; remove
+them manually if no longer wanted. Signing prompts may require a normal terminal.
 
 ### Pi provider login (Mac and Windows)
 
@@ -395,15 +398,10 @@ sudo nixos-rebuild build --flake ~/dotfiles#${hostName}
 ```
 
 After provisioning, use `dotfile update` to update managed dependencies. On Unix,
-it refreshes every repository-managed pin, runs focused update checks, shows the
-resulting uncommitted diff, then automatically approves and activates validated changes.
-The update gate evaluates the current machine's profile, builds changed custom
-packages, and runs relevant pin/runtime tests. AI-only pin updates omit unrelated
-Neovim and desktop checks. Unchanged updater/merge unit tests run in CI and the
-full gate, and during flake updates—not ordinary pin-only updates.
-Flake updates also check profile roles and Neovim;
-changes outside recognized pin surfaces fall back to the full repository gate.
-`dotfile check` and CI retain comprehensive checks.
+it refreshes every repository-managed pin, runs the full repository gate and
+checks the current machine's profile, shows the uncommitted diff, then automatically
+approves and activates validated changes. AI-only updates use the same full gate.
+Previously validated pending updates can resume under their earlier validation.
 After successful activation and local health checks, an update tracking
 `QuanDo2000/dotfiles` on GitHub `main` publishes a signed commit on a `deliver/`
 branch. It waits for **Required CI** on that exact commit, then fast-forwards
