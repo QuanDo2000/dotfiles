@@ -83,7 +83,7 @@ Delegate independent substantial lanes only when parallelism outweighs coordinat
 
 Check active/completed runs before launch; reuse artifacts or recover the same child for unchanged targets. Normally use one fan-out wave; repeat only for a changed target or evidence gap. Pass only the matching skill explicitly, not global skill inheritance.
 
-The implementer reviews changes by default. Require one independent static reviewer only when mandated by governing instructions or for material security, data-loss, or irreversible operational risk. Add a second only for a distinct, named high-risk angle. Independent reviewers never run shell, tests, lint, builds, or mutations. The implementer runs validation; if delegated, use a separate worker restricted to exact commands and no edits.
+The implementer reviews changes by default. Require one independent static reviewer only when mandated by governing instructions or for material security, data-loss, or irreversible operational risk. Independent reviewers never run shell, tests, lint, builds, or mutations. The implementer runs validation; if delegated, use a separate worker restricted to exact commands and no edits.
 
 ## Automatic Delivery
 
