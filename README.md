@@ -2,17 +2,18 @@
 
 Personal setup scripts and configuration files for new machines.
 
-The Linux desktop Waybar `hyprsunset-status` command is a dependency-free Rust
-binary built by Nix from `rust/hyprsunset-status/main.rs`. Home Manager links its
-store binary only on desktop Linux profiles; the original Bash script remains
-as a comparison oracle, not a deployed command. `./scripts/check.sh` builds the
-Nix package and compares its JSON with the Bash oracle in disposable fixtures.
-Run `cargo fmt --manifest-path rust/hyprsunset-status/Cargo.toml --all --check`,
-`cargo test --manifest-path rust/hyprsunset-status/Cargo.toml --locked --offline`,
-and `cargo clippy --manifest-path rust/hyprsunset-status/Cargo.toml --locked --offline --all-targets -- -D warnings`
-when changing the Rust source. `debt:` This component port does not replace
-Home Manager/Nix or establish live Waybar behavior; verify on a graphical
-Linux desktop before treating activation as a production cutover.
+Linux desktop profiles use the Nix-built Rust `hyprsunset-status`; the Bash
+version is a comparison oracle, not a deployed command. `./scripts/check.sh`
+compares their output. For Rust changes, run:
+
+```bash
+cargo fmt --manifest-path rust/hyprsunset-status/Cargo.toml --all --check
+cargo test --manifest-path rust/hyprsunset-status/Cargo.toml --locked --offline
+cargo clippy --manifest-path rust/hyprsunset-status/Cargo.toml --locked --offline --all-targets -- -D warnings
+```
+
+`debt:` These checks do not verify live Waybar behavior; test on a graphical
+Linux desktop before a production cutover.
 
 ## Requirements
 
@@ -55,11 +56,7 @@ git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
 ~/dotfiles/dotfile
 ```
 
-After Home Manager applies, the `dotfile` command is available in your PATH:
-
-```bash
-dotfile
-```
+After Home Manager applies, `dotfile` is available on your PATH.
 
 macOS rebuilds pass the declared signed binary cache to `darwin-rebuild` before
 activation, so the first switch can download custom Node outputs (including
@@ -150,13 +147,9 @@ update only `rex-linux` in `flake.lock`. `dotfile update` preserves this pin.
 
 ### Linux with Nix/Home Manager
 
-Arch and Debian use the native package manager only for bootstrap packages,
-then use this repo's pinned flake to install Home Manager user tools and config:
-
-```bash
-git clone https://github.com/QuanDo2000/dotfiles.git ~/dotfiles
-~/dotfiles/dotfile all
-```
+Arch and Debian use the native package manager for bootstrap packages, then the
+pinned flake for Home Manager user tools and configuration. Use the first-time
+setup command above; `dotfile` defaults to `all`.
 
 Generic Linux and Debian use `${username}@linux`; Arch uses
 `${username}@arch-server`. `username` comes from `config/host.nix`.
@@ -224,35 +217,13 @@ git clone https://github.com/QuanDo2000/dotfiles.git $HOME\Documents\Projects\do
 & $HOME\Documents\Projects\dotfiles\dotfile.ps1
 ```
 
-### Unix Commands
+### Unix commands
 
-```bash
-dotfile [OPTIONS] [COMMAND]
-
-Commands:
-  all         Run full setup (default)
-  update [ai] Refresh all managed dependency pins and validate
-              Install native prerequisites and activate current profile
-              Update only AI tools and configs with `update ai`
-  packages    Install system packages only
-  symlinks    Activate Home Manager config on Debian/Arch (also applies other user settings)
-  upgrade     Upgrade native system packages and Hermes if installed
-  obsidian    Bootstrap Obsidian Sync login and vault setup
-  nix-installer
-              Update pinned Nix installer checksums
-  obsidian-headless
-              Update pinned Obsidian Headless package
-  doctor [--fast]
-              Detect dotfile and Nix issues
-  check       Run full repository checks
-
-Options:
-  -d, --dry   Dry run (no changes made)
-  -f, --force Overwrite existing files
-  -q, --quiet Hide routine dotfile progress; keep warnings and prompts
-              Native subprocess output is unchanged
-  -h, --help  Show this help message
-```
+Run `dotfile --help` for commands and options. Common commands: `dotfile` for
+full setup, `dotfile update` (or `dotfile update ai`) for managed updates,
+`dotfile packages` to install packages and potentially activate platform
+configuration, `dotfile doctor`, and `dotfile check`.
+Use `-d` to preview, `-f` to overwrite, and `-q` to quiet routine progress.
 
 Full Arch `dotfile update` checks sudo credential readiness before refreshing
 pins and again immediately before profile activation. If credentials are missing
@@ -278,34 +249,15 @@ this checkout, without pulling or installing native prerequisites. It can also
 change user packages and services; preview with `dotfile -d symlinks`. NixOS and
 macOS use system-managed activation, so this command refuses those platforms.
 
-### Windows Commands
+### Windows commands
 
-```powershell
-dotfile.ps1 [OPTIONS] [COMMAND]
+Run `& $HOME\Documents\Projects\dotfiles\dotfile.ps1 -Help` for commands and
+options (adjust the path if needed). Common commands: `all`,
+`update` (or `update ai`), `packages`, `upgrade`, `symlinks`, and `doctor`.
+Use `-Dry` to preview and `-Force` to overwrite without prompting.
 
-Commands:
-  all         Run full setup (default)
-  update [ai] Pull and activate published reviewed package pins
-              Update only AI tools and configs with update ai
-  packages    Install all managed packages only
-  upgrade     Upgrade native WinGet packages and Hermes if installed, without pulling the repo
-  symlinks    Link managed Windows config files (no package installation)
-  doctor      Verify Windows installation
-  rex-lan     Set up the background QuanArch LAN SSH tunnel for Rex
-
-Options:
-  -d, --dry   Dry run (no changes made)
-  -f, --force Overwrite existing files without prompting
-  -q, --quiet Hide routine dotfile progress; keep warnings and prompts
-              Native subprocess output is unchanged
-  -h, --help  Show this help message
-```
-
-Both entry points use `[INFO]`, `[ OK ]`, `[WARN]`, `[FAIL]`, `[ASK ]`, and
-`[DRY ]` labels, with indented continuation lines. Colors are terminal-only;
-set `NO_COLOR=1` to disable them. Quiet mode keeps failures and required prompts.
-Dry runs label progress as planned work and suppress completion messages.
-Subprocess output and help text retain their native formats.
+Set `NO_COLOR=1` to disable terminal colors. Quiet mode preserves failures and
+required prompts; native subprocess output is unchanged.
 
 Windows `all`, `packages`, and full `update` manage Anki and Obsidian through
 WinGet. Close both apps before running these commands.
@@ -483,21 +435,12 @@ Read a failed build's saved compiler output without rebuilding it with
 Transcripts are not automatically deleted; remove old logs as needed and review
 them for sensitive tool output before sharing. Dry runs do not create logs.
 
-Pi extension closure prefetch reports its stage and elapsed time on stderr at
-startup, every 15 seconds even without output, and completion; native Nix stderr
-remains visible. `DOTFILE_PREFETCH_TIMEOUT_SECONDS` sets its wall deadline
-(default `3600`, integer `1`–`86400`, validated before Python batch mutations).
-The bound covers the prefetch client and stdout pipe drain, not the whole update.
-Stdout capture is limited to 1 MiB. Timeout, overflow, nonzero exit, or cancellation
-fails the update before activation, without publishing a new Pi release ID,
-closure hash, or settings. Package/lock edits can remain in the disposable update
-worktree; the outer updater applies only a successful validated patch.
-Cleanup sends TERM to the owned process group, allows up to 2 seconds, then sends
-KILL to that group even if its leader already exited, with a separate bounded
-2-second reap wait. SIGINT/SIGTERM return 130/143 after cleanup; prior handlers
-are restored. Shared Nix daemon work is not killed. Descendants that deliberately
-escape the process group are outside this ownership boundary; if encountered,
-stronger OS-level job containment is needed rather than broader process killing.
+Pi extension closure prefetch reports progress on stderr. Set
+`DOTFILE_PREFETCH_TIMEOUT_SECONDS` to an integer from `1` to `86400` (default
+`3600`); this bounds prefetch and pipe drain, not the whole update. Timeout,
+output overflow, failure, or cancellation stops the update before activation or
+publication. Cleanup targets the owned process group, not shared Nix daemon work;
+descendants that escape that group require stronger OS-level containment.
 
 Use `dotfile update ai` to update only AI tools and configs. On Unix this
 refreshes Pi release pins, managed AI packages, and Pi extensions with
