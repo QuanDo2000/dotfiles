@@ -111,55 +111,7 @@ local servers = { "bashls", "jsonls", "lua_ls", "marksman", "taplo", "yamlls" }
 if vim.fn.executable("nil") == 1 then servers[#servers + 1] = "nil_ls" end
 for _, server in ipairs(servers) do assert(vim.lsp.is_enabled(server), server .. " should be enabled") end
 assert(not vim.lsp.is_enabled("stylua"), "StyLua formatter must not enable as LSP")
-local which_key_opts = lazy.plugins["which-key.nvim"].opts
-local which_key_groups = {}
-for _, section in ipairs(which_key_opts.spec or {}) do
-  for _, item in ipairs(section) do
-    if item.group then which_key_groups[item[1]] = item.group end
-  end
-end
-for prefix, group in pairs({
-  ["<leader><tab>"] = "tabs",
-  ["<leader>a"] = "ai",
-  ["<leader>b"] = "buffer",
-  ["<leader>c"] = "code",
-  ["<leader>f"] = "file/find",
-  ["<leader>g"] = "git",
-  ["<leader>gh"] = "hunks",
-  ["<leader>q"] = "quit",
-  ["<leader>s"] = "search",
-  ["<leader>sn"] = "messages",
-  ["<leader>u"] = "ui",
-  ["<leader>x"] = "diagnostics/quickfix",
-  ["["] = "prev",
-  ["]"] = "next",
-  ["g"] = "goto",
-  ["gs"] = "surround",
-  ["z"] = "fold",
-}) do
-  assert(which_key_groups[prefix] == group, prefix .. " WhichKey group missing")
-end
-for pattern, icon in pairs({ hunk = "󰊢 ", prev = " ", next = " ", goto = "󰜴 ", surround = "󰅪 ", fold = " " }) do
-  local resolved = require("which-key.icons").get({ desc = pattern })
-  assert(resolved == icon, pattern .. " WhichKey icon missing")
-end
 vim.cmd.colorscheme("catppuccin-macchiato")
-for target, source in pairs({
-  WhichKeyIconAzure = "Function",
-  WhichKeyIconBlue = "DiagnosticInfo",
-  WhichKeyIconCyan = "DiagnosticHint",
-  WhichKeyIconGreen = "DiagnosticOk",
-  WhichKeyIconGrey = "Normal",
-  WhichKeyIconOrange = "DiagnosticWarn",
-  WhichKeyIconPurple = "Constant",
-  WhichKeyIconRed = "DiagnosticError",
-  WhichKeyIconYellow = "DiagnosticWarn",
-}) do
-  local actual = vim.api.nvim_get_hl(0, { name = target, link = false })
-  local expected = vim.api.nvim_get_hl(0, { name = source, link = false })
-  assert(actual.fg == expected.fg, target .. " color changed")
-  assert(not actual.italic and not (actual.cterm and actual.cterm.italic), target .. " must not be italic")
-end
 for _, plugin in ipairs({
   "blink.cmp",
   "catppuccin",

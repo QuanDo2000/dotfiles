@@ -809,8 +809,7 @@ function _require_published_dependency_pins {
 
 function _wait_for_dependency_ci {
   local head="$1" topic="$2" attempt run_id status
-  # Only a delivery push runs all platforms. A PR check with the same name
-  # can test a synthetic merge and omit platforms.
+  # A PR check with the same name can test a synthetic merge, not this head.
   for ((attempt=0; attempt<20; attempt++)); do
     IFS=$'\t' read -r run_id status < <(
       timeout 15s gh api --hostname github.com "repos/QuanDo2000/dotfiles/actions/workflows/test.yml/runs?event=push&head_sha=$head" \

@@ -112,28 +112,19 @@ assert events["schedule"]
 assert workflow["permissions"] == {"contents": "read"}
 assert workflow["concurrency"]["cancel-in-progress"] is True
 jobs = workflow["jobs"]
-assert jobs["changes"]["if"] == "${{ github.event_name == 'pull_request' }}"
-for name, output in (("bash-linux", "linux"), ("bash-macos", "macos"),
-                     ("powershell", "windows"), ("nix", "nix")):
-    job = jobs[name]
-    needs = job["needs"]
-    assert "changes" in (needs if isinstance(needs, list) else [needs]), name
-    assert job["if"] == "${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs." + output + " == 'true')) }}", name
-    assert jobs["changes"]["outputs"][output] == "${{ steps.filter.outputs." + output + " }}", output
+platforms = {"bash-linux", "bash-macos", "powershell", "nix"}
+assert set(jobs) == platforms | {"required-ci"}
+for name in platforms:
+    assert "needs" not in jobs[name] and "if" not in jobs[name], name
+gate = jobs["required-ci"]
+assert gate["name"] == "Required CI" and gate["if"] == "${{ always() }}"
+assert set(gate["needs"]) == platforms
 # Proprietary Rex outputs must predate the public cache's post-build hook.
 mac_steps = jobs["bash-macos"]["steps"]
 rex_step = next(i for i, step in enumerate(mac_steps) if step.get("name") == "Verify Rex package")
 cache_step = next(i for i, step in enumerate(mac_steps) if step.get("uses", "").startswith("cachix/cachix-action@"))
 assert rex_step < cache_step
 assert mac_steps[cache_step]["with"]["useDaemon"] is True
-steps = jobs["changes"]["steps"]
-checkout = next(step for step in steps if step.get("uses", "").startswith("actions/checkout@"))
-filter_step = next(step for step in steps if step.get("id") == "filter")
-assert checkout["with"]["fetch-depth"] == 0
-
-for variable, expression in (("BASE_SHA", "${{ github.event.pull_request.base.sha }}"),
-                             ("HEAD_SHA", "${{ github.event.pull_request.head.sha }}")):
-    assert filter_step["env"][variable] == expression, variable
 for name, job in jobs.items():
     assert type(job["timeout-minutes"]) is int and job["timeout-minutes"] > 0, name
     expected_permissions = {} if name == "required-ci" else {"contents": "read"}
@@ -167,75 +158,27 @@ assert set(gate["needs"]) == jobs.keys() - {"required-ci"}
 step = gate["steps"][0]["run"]
 bash = shutil.which("bash")
 assert bash is not None
-results = {name: {"result": "skipped"} for name in gate["needs"]}
-results["changes"] = {"result": "success", "outputs": {
-    "linux": "true", "macos": "false", "windows": "false", "nix": "false",
-}}
+results = {name: {"result": "success"} for name in gate["needs"]}
 
-def check(expected, event="pull_request"):
+def check(expected):
     completed = subprocess.run(
         [bash, "-e", "-o", "pipefail", "-c", step],
-        env={**os.environ, "GITHUB_EVENT_NAME": event, "JOB_RESULTS": json.dumps(results)},
+        env={**os.environ, "JOB_RESULTS": json.dumps(results)},
         capture_output=True, text=True, timeout=10,
     )
     assert completed.returncode == expected, (completed.stdout, completed.stderr)
 
-for result, expected in (("success", 0), ("failure", 1), ("cancelled", 1), ("skipped", 1)):
-    results["bash-linux"]["result"] = result
-    check(expected)
-results["bash-linux"]["result"] = "success"
-del results["changes"]["outputs"]["linux"]
-check(1)
-results["changes"]["result"] = "failure"
-check(1)
-results = {name: {"result": "success"} for name in gate["needs"]}
-results["changes"]["result"] = "skipped"
-check(0, "push")
-results["nix"]["result"] = "skipped"
-check(1, "push")
+check(0)
+for job in gate["needs"]:
+    for result in ("failure", "cancelled", "skipped"):
+        results[job] = {"result": result}
+        check(1)
+    results[job] = {}
+    check(1)
+    del results[job]
+    check(1)
+    results[job] = {"result": "success"}
 PY
-}
-
-test_ci_routes_changed_paths_for_pull_requests() {
-  local filter output
-  filter="$REPO_DIR/scripts/ci_paths.sh"
-
-  assert_file_exists "$filter"
-  [ -f "$filter" ] || return
-  output="$(printf '%s\n' docs/note.md | bash "$filter")"
-  assert_equals $'linux=false\nmacos=false\nwindows=false\nnix=false' "$output"
-  output="$(printf '%s\n' dotfile.ps1 | bash "$filter")"
-  assert_equals $'linux=true\nmacos=false\nwindows=true\nnix=false' "$output"
-  output="$(printf '%s\n' config/darwin.nix | bash "$filter")"
-  assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=true' "$output"
-  output="$(printf '%s\n' tests/bash/test_release_pins.sh | bash "$filter")"
-  assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=false' "$output"
-  output="$(printf '%s\n' config/nixos-wsl/configuration.nix | bash "$filter")"
-  assert_equals $'linux=true\nmacos=false\nwindows=false\nnix=true' "$output"
-  output="$(printf '%s\n' config/shared/ai/AGENTS.md | bash "$filter")"
-  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
-  output="$(printf '%s\n' .gitattributes | bash "$filter")"
-  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
-}
-
-test_ci_filters_known_platform_owned_paths_without_skipping_shared_consumers() {
-  local filter="$REPO_DIR/scripts/ci_paths.sh" path output
-  for path in scripts/google-drive-storage-sync.py scripts/input-method-status.sh packages/obsidian-headless.nix packages/webcord-release.nix packages/hyprsunset-status.nix rust/hyprsunset-status/src/main.rs tests/rust/hyprsunset_oracle.py config/unix/config/hypr/hyprland.lua; do
-    output="$(printf '%s\n' "$path" | bash "$filter")"
-    assert_equals $'linux=true\nmacos=false\nwindows=false\nnix=true' "$output"
-  done
-  for path in scripts/packages.sh scripts/check-update.sh scripts/update_pins.py packages/pi-extensions.nix tests/ai/pi-web-activation-smoke.mjs; do
-    output="$(printf '%s\n' "$path" | bash "$filter")"
-    assert_equals $'linux=true\nmacos=true\nwindows=false\nnix=true' "$output"
-  done
-  for path in config/rex/init.lua scripts/patch_pi_compaction.py scripts/seed_merge/common.py packages/pi-agent.nix packages/pi-extensions-release.json config/shared/config/nvim/init.lua; do
-    output="$(printf '%s\n' "$path" | bash "$filter")"
-    assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
-  done
-  output="$(printf '%s\n' scripts/new-unknown.py | bash "$filter")"
-  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
-  output="$(printf '%s\n' scripts/packages.sh scripts/seed_merge/pi.py | bash "$filter")"
-  assert_equals $'linux=true\nmacos=true\nwindows=true\nnix=true' "$output"
 }
 
 test_ci_dev_shell_includes_script_dependencies() {

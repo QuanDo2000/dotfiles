@@ -19,32 +19,7 @@ permissions:
 jobs:
   # Security-pinned Node overrides build from source on hosted runners.
   # Give Nix jobs a bounded cold-build budget; keep all tests enabled.
-  changes:
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      linux: ${{ steps.filter.outputs.linux }}
-      macos: ${{ steps.filter.outputs.macos }}
-      windows: ${{ steps.filter.outputs.windows }}
-      nix: ${{ steps.filter.outputs.nix }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      - id: filter
-        shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          git diff --name-only --no-renames "$BASE_SHA" "$HEAD_SHA" |
-            bash scripts/ci_paths.sh >> "$GITHUB_OUTPUT"
-
   bash-macos:
-    needs: changes
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs.macos == 'true')) }}
     runs-on: macos-26
     timeout-minutes: 180
     steps:
@@ -81,8 +56,6 @@ jobs:
           exit "$status"
 
   powershell:
-    needs: changes
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs.windows == 'true')) }}
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -138,8 +111,6 @@ jobs:
           exit $status
 
   bash-linux:
-    needs: changes
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs.linux == 'true')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -181,8 +152,6 @@ jobs:
           '
 
   nix:
-    needs: changes
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || (needs.changes.result == 'success' && needs.changes.outputs.nix == 'true')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -205,13 +174,13 @@ jobs:
   required-ci:
     # Keep this name stable: main's required status check uses it.
     name: Required CI
-    needs: [changes, bash-linux, bash-macos, powershell, nix]
+    needs: [bash-linux, bash-macos, powershell, nix]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
     steps:
-      - name: Verify applicable job results
+      - name: Verify job results
         env:
           JOB_RESULTS: ${{ toJSON(needs) }}
         run: |
@@ -220,22 +189,10 @@ jobs:
           import os
 
           jobs = json.loads(os.environ['JOB_RESULTS'])
-          is_pr = os.environ['GITHUB_EVENT_NAME'] == 'pull_request'
-          expected = {'changes': 'success' if is_pr else 'skipped'}
-          if jobs['changes']['result'] != expected['changes']:
-              raise SystemExit(f"Path filter: expected {expected['changes']}, got {jobs['changes']['result']}")
-
-          for job, path in [('bash-linux', 'linux'), ('bash-macos', 'macos'),
-                            ('powershell', 'windows'), ('nix', 'nix')]:
-              selected = jobs['changes']['outputs'].get(path) if is_pr else 'true'
-              if selected not in ('true', 'false'):
-                  raise SystemExit(f"Path filter: missing or invalid {path} output")
-              expected[job] = 'success' if selected == 'true' else 'skipped'
-
           failed = False
-          for job, want in expected.items():
-              actual = jobs[job]['result']
-              print(f"{job}: {actual} (expected {want})")
-              failed |= actual != want
+          for job in ("bash-linux", "bash-macos", "powershell", "nix"):
+              actual = jobs.get(job, {}).get("result")
+              print(f"{job}: {actual} (expected success)")
+              failed |= actual != "success"
           raise SystemExit(int(failed))
           PY

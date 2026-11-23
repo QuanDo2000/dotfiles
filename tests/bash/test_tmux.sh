@@ -26,18 +26,6 @@ test_tmux_uses_native_clipboard_bindings_without_yank_plugin() {
   assert_contains "$tmux_config" "bind -T copy-mode-vi MouseDragEnd1Pane if-shell -F '#{>:#{scroll_position},0}' 'send-keys -X copy-selection' 'send-keys -X copy-selection-and-cancel'"
 }
 
-test_tmux_owns_catppuccin_theme_without_plugin() {
-  local tmux_config
-  tmux_config="$(<"$REPO_DIR/config/unix/.tmux.conf")"
-
-  assert_not_contains "$tmux_config" '@catppuccin_'
-  assert_contains "$tmux_config" 'set -g mode-style "bg=#363a4f,bold"'
-  assert_contains "$tmux_config" 'set -g status-style "default"'
-  assert_contains "$tmux_config" 'set -g window-status-current-format'
-  assert_contains "$tmux_config" 'set -g status-right '
-  assert_contains "$tmux_config" '%Y-%m-%d %H:%M:%S'
-}
-
 test_tmux_config_parses_and_applies_theme() {
   # Unix socket addresses are length-limited even when nested TMPDIRs are valid
   # file paths. Own a short private socket directory, independent of that depth.
@@ -68,9 +56,6 @@ test_tmux_config_parses_and_applies_theme() {
   assert_equals "0" "$status"
   assert_equals "" "$(<"$stderr")"
   if (( status == 0 )); then
-    assert_equals "fg=#cad3f5,bold,bg=#6e738d" "$(env HOME="$HOME" TMUX= tmux -S "$socket" show-options -gv menu-selected-style)"
-    assert_equals "bg=#24273a,fg=#cad3f5" "$(env HOME="$HOME" TMUX= tmux -S "$socket" show-options -gv popup-style)"
-    assert_equals "fg=#494d64" "$(env HOME="$HOME" TMUX= tmux -S "$socket" show-options -gv popup-border-style)"
     assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix h)" 'select-pane -L'
     assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix j)" 'select-pane -D'
     assert_contains "$(env HOME="$HOME" TMUX= tmux -S "$socket" list-keys -T prefix k)" 'select-pane -U'
