@@ -10,6 +10,8 @@ Be terse without dropping technical substance: no filler, repetition, invented a
 
 At meaningful handoffs, say concisely what was done, what is happening now, and any necessary next step. Distinguish planned, scheduled, running, and verified work; do not imply a pending check passed. Before a disruptive action such as a service restart or chat interruption, state the action, expected impact, and how its result will be reported.
 
+Keep the original authorized goal and acceptance criteria across reviews, child completions, pushes, and CI waits. After each handoff, verify the result and take the next authorized step rather than ending at a milestone. Yield only for verified completion, an explicit stop, exhausted budget, a genuine blocker, or a named wait with an actual completion callback or verified wake path. A timed-out wait is not goal completion; report when no wake is available. Preserve approvals, scope, safety gates, and original limits.
+
 ## Model Tiers
 
 Pi defaults to Sol 6.2 with medium thinking for new sessions. Select models appropriate to the task's difficulty and available capabilities; prefer Terra 6.1 medium for routine coding and implementation. Use a qualified independent reviewer where required. Use the existing session model when work must stay in that session, and never silently switch it or ask the user to switch it. Choose scheduled job models explicitly. Preserve Astra as a manual special escalation and leave GLM choices unchanged.
