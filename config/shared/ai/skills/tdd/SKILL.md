@@ -5,9 +5,9 @@ description: Use for behavior-changing code or bug fixes.
 
 # Focused verification
 
-Follow governing verification, safety, and delivery policy. Before editing, name the observable outcome and credible failures. Reuse existing entry points and checks; add tests only for important uncovered failures.
+Follow governing verification, safety, and delivery policy. Before editing, name the observable outcome and credible failures. Reuse existing entry points and checks; add focused tests when useful.
 
-For bugs with material correctness, security, or data-loss risk, run the same symptom reproducer before and after the fix under equivalent conditions. Reuse a recorded diagnostic baseline only if that reproducer ran on the relevant baseline revision under equivalent conditions and failed for the intended reason, not a setup error. Preserve baseline failure evidence. For other fixes, focused final-state verification may suffice; disclose when the baseline was not run.
+For bugs with security or data-loss risk, run the same symptom reproducer before and after the fix under equivalent conditions. Reuse a recorded diagnostic baseline only if that reproducer ran on the relevant baseline revision under equivalent conditions and failed for the intended reason, not a setup error. Preserve baseline failure evidence. For other fixes, focused final-state verification may suffice; disclose when the baseline was not run.
 
 Batch related edits, check affected behavior, and run required final gates. Do not rerun unchanged expensive checks or claim old results cover new behavior. Inspect actual exits and output; distinguish passed, failed, reused, skipped, and unverified checks.
 

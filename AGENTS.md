@@ -46,6 +46,6 @@ pwsh tests/powershell/runner.ps1                  # Windows/pwsh suite
 
 The full gate runs Bash, PowerShell if present, Nix evaluation/builds, and ShellCheck. Preserve check exit status and report unavailable platform coverage.
 
-Prefer a small number of repeatable end-to-end checks through `dotfile` or `dotfile.ps1`, using disposable state. For bug fixes with material correctness, security, or data-loss risk, run the same symptom reproducer against baseline and patched revisions under equivalent conditions: baseline fails, patched passes (A/B regression verification, not statistical experimentation). For other fixes, focused final-state verification may suffice; disclose when the baseline was not run.
+Prefer a small number of repeatable end-to-end checks through `dotfile` or `dotfile.ps1`, using disposable state. For bug fixes with security or data-loss risk, run the same symptom reproducer against baseline and patched revisions under equivalent conditions: baseline fails, patched passes (A/B regression verification, not statistical experimentation). For other fixes, focused final-state verification may suffice; disclose when the baseline was not run.
 
-Do not add unit tests by default or duplicate E2E assertions. Add a focused test only when an important security, data-loss, rollback, or correctness failure cannot be exercised safely and reliably end to end. Reuse existing checks and run applicable repository gates. Disclose substitutions and unavailable coverage; mock-backed checks are not E2E evidence.
+Add focused tests when useful, without duplicating E2E assertions unnecessarily. Reuse existing checks and run applicable repository gates. Disclose substitutions and unavailable coverage; mock-backed checks are not E2E evidence.

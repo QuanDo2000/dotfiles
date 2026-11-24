@@ -18,14 +18,14 @@ Build the working capability, not a growing collection of one-off tests. Prefer 
 ## Choose the minimum useful checks
 
 - Before implementation, name the user-visible outcome and credible failures. Choose the smallest existing check that can catch them.
-- Do not add unit tests by default, duplicate E2E assertions, or create a new fixture for every edit. Add a focused test only for an important uncovered correctness or safety failure.
+- Add focused tests when useful; avoid duplicate E2E assertions and unnecessary fixtures.
 - Batch related edits into a coherent change, then run affected checks. Do not rerun the full suite after every edit, handoff, or prose change. During development, run a targeted check when its result will change the next implementation decision.
 - Reuse passing results for an unchanged tested component when its inputs, dependencies, environment, and relevant contract remain unchanged, even if unrelated files or the overall revision changed. State the checked scope and why it remains applicable; never describe an old full-suite run as a pass on a new head. Required exact-head gates still run on the final head.
 - Assert observable output, durable state, exit status, or a boundary contract with independently derived expectations. Do not test private structure or grep source text merely to prove an edit happened.
 
 ## Bug fixes: risk-based symptom reproduction
 
-For material correctness, security, or data-loss risk, use the baseline and patched reproducer below. For other fixes, focused final-state verification may suffice; disclose when the baseline was not run.
+For security or data-loss risk, use the baseline and patched reproducer below. For other fixes, focused final-state verification may suffice; disclose when the baseline was not run.
 
 1. Reuse or create one reproducer for the reported symptom. Reuse a recorded diagnostic baseline only if the same reproducer ran on the relevant baseline revision under equivalent conditions and failed for the intended reason, not a setup error. Otherwise, establish that failure with a safe baseline run.
 2. Fix the shared root cause, batch related corrections, and run the same reproducer against the patched revision under equivalent conditions: baseline fails, patched passes.
