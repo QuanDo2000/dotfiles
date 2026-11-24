@@ -59,7 +59,7 @@ Validate the shared tool through its real entry point with representative succes
 Use the runtime's testing skill (`tdd` in Pi; `test-driven-development` in Hermes). Before implementation, name the observable outcome and credible failures, then choose the smallest existing real-flow check that can catch them. Do not add unit tests by default, duplicate E2E assertions, or create a new fixture for every edit. Add a focused test only for an important uncovered security, data-loss, rollback, or correctness failure.
 
 - Batch related edits into a coherent change before running affected checks. Do not rerun the full suite after every edit or handoff; during development, check when the result will change the next implementation decision.
-- For bug fixes, run one symptom reproducer against baseline and patched revisions under equivalent conditions: baseline fails, patched passes. Preserve the baseline evidence; do not repeat it for every refinement unless the reproducer or relevant assumptions changed. Disclose when a safe baseline run is unavailable.
+- For bug fixes with material correctness, security, or data-loss risk, run one symptom reproducer against baseline and patched revisions under equivalent conditions: baseline fails, patched passes. Preserve baseline evidence; do not repeat it for every refinement unless the reproducer or relevant assumptions changed. For other fixes, focused final-state verification may suffice. Disclose when the baseline was not run.
 - Reuse passing results for an unchanged tested component when its inputs, dependencies, environment, and relevant contract are unchanged, even across unrelated revision changes. State the checked scope and reuse rationale; never call an old full-suite run a pass on a new head.
 - By default, before completion or commits, run the smallest affected authoritative checks and the applicable gates on the final revision. Apply documented scoped exceptions under Authority and Evidence; distinguish this file's defaults from independently imposed requirements.
 - Inspect actual exit status, failures, and relevant output. Report passed, failed, reused, skipped, and unverified checks; child reports alone are not verification.
@@ -81,9 +81,9 @@ For complexity/dependency audits, scan the whole tree when requested, or changed
 
 Delegate independent substantial lanes only when parallelism outweighs coordination; do tiny, serial, or tightly coupled work directly. Prefer 1–3 narrow children using the cheapest capable model, exact sources/workspace, exclusions, stop criteria, and evidence requirements. Explicitly pass task-scope, persistent-write, and nested-output limits; never assume children inherit global policy. Run independent lanes asynchronously/in parallel when supported, with one writer per worktree. Parent owns synthesis and final verification.
 
-Check active/completed runs before launch; reuse artifacts or recover the same child for unchanged targets. Normally use one fan-out wave; repeat only for a changed target or evidence gap. Pass only the matching skill explicitly, not global skill inheritance.
+Check active/completed runs before launch; reuse artifacts or recover the same child for unchanged targets. Pass only the matching skill explicitly, not global skill inheritance.
 
-The implementer reviews changes by default. Require one independent static reviewer only when mandated by governing instructions or for material security, data-loss, or irreversible operational risk. Independent reviewers never run shell, tests, lint, builds, or mutations. The implementer runs validation; if delegated, use a separate worker restricted to exact commands and no edits.
+The implementer reviews changes by default. Require one independent static reviewer only when mandated by governing instructions or for material security, data-loss, or irreversible operational risk. Independent reviewers may run read-only inspection commands, but not tests, lint, builds, or mutations. The implementer runs validation; if delegated, use a separate worker restricted to exact commands and no edits.
 
 ## Automatic Delivery
 

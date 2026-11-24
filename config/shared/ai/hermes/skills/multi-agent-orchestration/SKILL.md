@@ -21,7 +21,7 @@ One writer per worktree; readers may share. Prefer the cheapest capable model an
 
 Before dispatch, check active/completed runs for the same target. Reuse artifacts or recover the existing child instead of duplicating work. For a child writing elsewhere while inspecting a live tree, record and recheck the live tree's status. If it writes outside its assigned root, stop using those side effects and restore only clearly attributable changes; preserve unrelated work and ask when attribution is uncertain.
 
-Use governing policy to determine whether independent review is needed and how much review the task warrants. Static reviewers receive complete evidence up front and never run commands. See `references/reviewer-evidence-handoffs.md` for evidence packets and recovery.
+Use governing policy to determine whether independent review is needed and how much review the task warrants. Static reviewers receive complete evidence up front and may use read-only inspection commands, but do not run tests, lint, builds, or mutations. See `references/reviewer-evidence-handoffs.md` for evidence packets and recovery.
 
 ## Recover by lifecycle, not guesswork
 

@@ -17,7 +17,7 @@ Apply the governing review policy; this skill supplies GitHub-specific acquisiti
 
 ## Acquire evidence (read-only)
 
-The parent gathers the evidence for a delegated static reviewer. A direct reviewer without a parent may gather it using permitted read-only tools and commands. A delegated static reviewer does not run `gh` or shell commands; ask the parent for missing evidence.
+The parent gathers evidence for a delegated static reviewer. Direct and delegated reviewers may use permitted read-only tools and commands, including read-only `gh` commands. Ask the parent for missing evidence when delegated.
 
 - Verify repository identity and PR number, including fork ownership. Use authenticated `gh`; never print tokens or place credentials in command arguments.
 - Read PR metadata with `gh pr view NUMBER --repo OWNER/REPO --json url,baseRefOid,headRefOid,headRepository,headRepositoryOwner,files`.

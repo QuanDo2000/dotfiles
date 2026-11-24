@@ -21,7 +21,7 @@ An approved implementation outcome includes necessary in-scope tests and correct
 
 Parent resolves dependencies, reuses recoverable children/artifacts, and verifies results against current source and authoritative checks. Apply governing policy for review depth, unattended merge, and scoped exceptions on the exact final head.
 
-Give static reviewers the requirements, complete diff, relevant source, and validation evidence for spec, correctness, and security review; never ask them to run commands. Confirmed findings return to the implementation owner; small authorized parent repairs are allowed. Refresh affected review/checks after changes.
+Give static reviewers the requirements, complete diff, relevant source, and validation evidence for spec, correctness, and security review. They may run read-only inspection commands, but not tests, lint, builds, or mutations. Confirmed findings return to the implementation owner; small authorized parent repairs are allowed. Refresh affected review/checks after changes.
 
 Keep evidence bounded but sufficient for semantic verification, not just status summaries. Checkpoint exact revisions, completed work, blockers, and next steps when context becomes unreliable. For each checkpoint, state the passing condition, failure action, and safe resumption point. Defer an affected action if authority is missing or its scope is unclear; continue independent authorized work. Name material uncertainty and apply the governing scoped-exception rule to local defaults. Do not bypass external safeguards, renew budgets implicitly, alter exact-file contracts silently, or treat offline success as live/deployment permission. Planning-only and step-only restrictions remain binding.
 

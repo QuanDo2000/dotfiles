@@ -23,7 +23,9 @@ Build the working capability, not a growing collection of one-off tests. Prefer 
 - Reuse passing results for an unchanged tested component when its inputs, dependencies, environment, and relevant contract remain unchanged, even if unrelated files or the overall revision changed. State the checked scope and why it remains applicable; never describe an old full-suite run as a pass on a new head. Required exact-head gates still run on the final head.
 - Assert observable output, durable state, exit status, or a boundary contract with independently derived expectations. Do not test private structure or grep source text merely to prove an edit happened.
 
-## Bug fixes: one symptom reproducer
+## Bug fixes: risk-based symptom reproduction
+
+For material correctness, security, or data-loss risk, use the baseline and patched reproducer below. For other fixes, focused final-state verification may suffice; disclose when the baseline was not run.
 
 1. Reuse or create one reproducer for the reported symptom. Reuse a recorded diagnostic baseline only if the same reproducer ran on the relevant baseline revision under equivalent conditions and failed for the intended reason, not a setup error. Otherwise, establish that failure with a safe baseline run.
 2. Fix the shared root cause, batch related corrections, and run the same reproducer against the patched revision under equivalent conditions: baseline fails, patched passes.
