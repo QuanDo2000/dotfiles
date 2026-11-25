@@ -1,10 +1,10 @@
 {
-  "registryVersion": "2026-11-20-stout-party",
-  "registrySha256": "0c3dfd4afdd8384e78b2e921a53a6eb78cf24ec961c7310a0524d96d1a056b0e",
+  "registryVersion": "2026-11-25-pesky-jason",
+  "registrySha256": "feaf7a99112a9ed1545c04ab11a0b43ad2d3dc154e31bd2aeb28786ec1f15447",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
-    "markdownlint-cli2": "0.24.1",
+    "markdownlint-cli2": "0.24.2",
     "marksman": "2026-02-08",
     "prettier": "3.10.1",
     "stylua": "v2.6.0",
