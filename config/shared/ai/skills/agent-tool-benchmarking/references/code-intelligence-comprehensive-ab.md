@@ -101,7 +101,7 @@ When instrumentation, attribution, isolation, or oracle logic is wrong, stop bef
 
 ## Long-running supervision
 
-For multi-hour matrices, supervise progress independently of the writer. Poll at a bounded cadence such as 10 minutes and verify the tmux/session pane, benchmark runner, newest artifact timestamps, completed-versus-expected unique cells, nonzero exits, test timeouts, serial non-overlap, daemon/cache isolation, orphan process groups, disk/memory pressure, and clean worktree teardown. A monitor process exiting successfully does not prove the benchmark finished; check the pane and authoritative run ledger.
+For multi-hour matrices, supervise progress independently of the writer. Poll at a bounded cadence such as 10 minutes and verify the Rex block (or the actual terminal of an existing run), benchmark runner, newest artifact timestamps, completed-versus-expected unique cells, nonzero exits, test timeouts, serial non-overlap, daemon/cache isolation, orphan process groups, disk/memory pressure, and clean worktree teardown. A monitor process exiting successfully does not prove the benchmark finished; check the pane and authoritative run ledger.
 
 Keep one writer. The supervisor should send precise corrections to the existing agent rather than launch another benchmark or edit concurrently. On a clear accuracy fault, stop the affected phase, quarantine partial/invalid attempts with a reason, fix the shared harness, smoke-test, and resume from validated unique cells. Healthy checks should be terse; never perturb a timed phase merely to inspect it.
 

@@ -12,6 +12,10 @@ At meaningful handoffs, say concisely what was done, what is happening now, and 
 
 Keep the original authorized goal and acceptance criteria across reviews, child completions, pushes, and CI waits. After each handoff, verify the result and take the next authorized step rather than ending at a milestone. Yield only for verified completion, an explicit stop, exhausted budget, a genuine blocker, or a named wait with an actual completion callback or verified wake path. A timed-out wait is not goal completion; report when no wake is available. Preserve approvals, scope, safety gates, and original limits.
 
+## Task Terminals
+
+Open new task terminal sessions in Rex on the intended host. Verify the server and workspace, and retain the returned session and block IDs for capture, input, and cleanup. Use tmux only when Rex is unavailable for a required workflow, and state why. Preserve the backend of existing sessions; do not move, restart, or replay active work. Native delegation, scheduled jobs, and short direct tool calls do not need a redundant terminal.
+
 ## Model Selection
 
 Use the existing session model when work must stay in that session, and never silently switch it or ask the user to switch it. Choose scheduled job models explicitly. Use a qualified independent reviewer where required.

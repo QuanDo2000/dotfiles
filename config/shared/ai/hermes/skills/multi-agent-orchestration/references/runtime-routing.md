@@ -11,7 +11,7 @@ Choose by ownership/lifecycle, then inspect the installed runtime. Defaults, API
 | Tracked background CLI | a bounded mission outlives the current turn | explicit workdir/ownership, output and process supervision; not durable |
 | Kanban/cron | work must survive resets, retry, or deliver later | persisted ownership/retry/delivery, with extra overhead |
 
-Do not nest runtimes unless their distinct capabilities justify it. Native delegation or an already-supervised Rex/tmux terminal is usually simpler for same-machine work.
+Do not nest runtimes unless their distinct capabilities justify it. Use native delegation for independent work or Rex on the verified host for a new task terminal. Use tmux for a new terminal only when Rex is unavailable for the required workflow, and state why.
 
 ## Hermes
 

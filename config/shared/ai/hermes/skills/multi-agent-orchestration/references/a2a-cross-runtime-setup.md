@@ -7,7 +7,7 @@ Use this reference when connecting independent agent runtimes through Agent2Agen
 1. Identify each direction separately: runtime A calling B and B calling A may require different client/server components.
 2. Explain what receives an inbound task. A bridge may spawn a fresh isolated session rather than continue the user's visible interactive conversation.
 3. State workspace and tool authority. An inbound coding-agent session can become another repository writer even when the network transport is localhost-only.
-4. Compare the native alternative. For same-machine work, in-process subagents or supervised tmux usually preserve context and ownership with less machinery.
+4. Compare the native alternative. For same-machine work, in-process subagents or a supervised Rex terminal usually preserve context and ownership with less machinery.
 5. Review third-party executable code before installation: package manifest, source/repository match, declared and resolved dependencies, install scripts, bind defaults, authentication gates, credential storage, injection filtering, outbound redaction, anti-loop limits, audit logs, and maintenance activity.
 6. Trace vulnerability findings to dependency paths. Do not attribute advisories from a shared package root to the new bridge without `npm explain`/equivalent evidence.
 7. Present findings and receive explicit informed approval before running the package installer. Selection or setup discussion alone does not authorize installation.

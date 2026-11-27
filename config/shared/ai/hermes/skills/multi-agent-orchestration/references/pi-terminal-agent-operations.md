@@ -1,8 +1,11 @@
-# Inspecting and Steering Existing Pi Terminal Agents
+# Opening and Supervising Pi Terminal Agents
 
-Use when the user requests progress or instructions for an already-running Pi
-agent. Choose its **actual backend**; do not create a workspace, relaunch an agent,
-move a running process, or change SSH startup to make inspection easier.
+Use Rex for a newly authorized task terminal. Verify the server with
+`rex --server "$server" --autostart=false --timeout 5s whoami --json`, then open the approved workspace with
+`rex --server "$server" --autostart=false new --json -c "$workdir" "$label" -- pi`.
+Record the returned session and block IDs and verify the foreground process before steering.
+For an already-running agent, choose its **actual backend**; do not create a
+workspace, relaunch an agent, move a process, or change SSH startup to inspect it.
 
 ## Rex-backed agents
 
