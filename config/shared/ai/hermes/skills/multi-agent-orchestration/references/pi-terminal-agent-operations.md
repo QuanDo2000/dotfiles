@@ -60,7 +60,16 @@ native Rex skill (`rex skill show`) and help for version-specific details.
 
 ## tmux-backed agents (including Linux SSH fallback)
 
-For a new authorized Linux agent, use Rex first. If Rex is unavailable, state the concrete reason on the verified host. After an ambiguous `rex new`, look up the unique task label on the same Rex server and check the matching block's process. Reuse a confirmed Pi; if you cannot prove no launch occurred, stop to avoid a duplicate. Only after confirming no launch or a definite pre-launch failure, launch on the existing verified tmux server with a unique session name and the approved absolute working directory: `tmux -N -S "$socket" new-session -d -P -F '#{pane_id}' -s "$label" -c "$workdir" pi`. If no verified server remains, refuse the fallback. `-N` prevents starting a server; it does not protect against a replacement listening at the same socket path. Pin the returned pane ID to that socket. Before sending input, confirm the pane's foreground process is the intended Pi and verify that process's actual cwd matches the approved directory; stop if either is unverified.
+For a new authorized Linux agent, use Rex first. If Rex is unavailable, state the concrete reason on the verified host. After an ambiguous `rex new`, look up the unique task label on the same Rex server and check the matching block's process. Reuse a confirmed Pi; if you cannot prove no launch occurred, stop to avoid a duplicate. Only after confirming no launch or a definite pre-launch failure, launch on the existing verified tmux server with a unique session name and the approved absolute working directory:
+
+```bash
+tmux -N -S "$socket" new-session -d -P -F "#{pane_id}" -s "$label" -- \
+  sh -c 'cd -- "$1" && exec pi' sh "$workdir"
+```
+
+tmux `new-session -c` can silently use the home directory if the requested directory is missing. Passing `"$workdir"` as a separate argument and requiring `cd` to succeed prevents Pi from starting in that case.
+
+If no verified server remains, refuse the fallback. `-N` prevents starting a server; it does not protect against a replacement listening at the same socket path. Pin the returned pane ID to that socket. Before sending input, confirm the pane's foreground process is the intended Pi and verify that process's actual cwd matches the approved directory; stop if either is unverified.
 
 Keep existing tmux agents in place. Do not translate their IDs into Rex sessions or terminate them to migrate.
 
