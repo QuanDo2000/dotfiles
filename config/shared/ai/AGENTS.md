@@ -14,7 +14,7 @@ Keep the original authorized goal and acceptance criteria across reviews, child 
 
 ## Task Terminals
 
-Open new task terminal sessions in Rex on the intended host. Verify the server and workspace, and retain the returned session and block IDs for capture, input, and cleanup. Use tmux only when Rex is unavailable for a required workflow, and state why. Preserve the backend of existing sessions; do not move, restart, or replay active work. Native delegation, scheduled jobs, and short direct tool calls do not need a redundant terminal.
+Open new task terminal sessions in Rex on the intended host. Verify the server and workspace, and retain the returned session and block IDs for capture, input, and cleanup. Run task shell commands inside that session, including setup, verification, and delivery. Use tmux only when Rex is unavailable for a required workflow, and state why. Preserve the backend of existing sessions; do not move, restart, or replay active work. Use native APIs for terminal control, approvals, and service-owned jobs; Rex is not a reason to bypass those interfaces.
 
 ## Model Selection
 
@@ -86,6 +86,8 @@ For complexity/dependency audits, scan the whole tree when requested, or changed
 ## Delegation
 
 For Hermes, default to coordinating rather than doing task work, regardless of size, session, or thread. Use Antigravity first for system work, development, and coding; use Pi for general tasks and when Antigravity reports quota exhaustion. Do not treat other dispatch failures as quota exhaustion or silently take over the work. Hermes scopes, dispatches, monitors, independently verifies, and reports. An explicit user request may override this routing default for the task, including asking Hermes to work directly; it does not waive safety, access, or approval boundaries.
+
+Coordinate through the task's Rex session: launch the selected worker there, use Rex to inspect and steer its verified block, and run the shell commands needed for coordination in the same session. Use separate blocks for parallel workers or shell checks rather than typing shell commands into an agent's input. Native delegation keeps its own lifecycle; do not wrap it in a second agent just to put it in a terminal.
 
 For other runtimes, delegate independent substantial lanes only when parallelism outweighs coordination; do tiny, serial, or tightly coupled work directly. Prefer 1–3 narrowly scoped workers, using the cheapest capable model within the chosen runtime. Give each worker exact sources/workspace, exclusions, stop criteria, evidence requirements, and task-scope, persistent-write, and nested-output limits; never assume workers inherit global policy. Run independent lanes asynchronously/in parallel when supported, with one writer per worktree. Parent owns synthesis and final verification.
 
