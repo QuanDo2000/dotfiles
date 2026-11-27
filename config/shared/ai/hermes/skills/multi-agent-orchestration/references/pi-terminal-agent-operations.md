@@ -1,9 +1,11 @@
 # Opening and Supervising Pi Terminal Agents
 
 Use Rex for a newly authorized task terminal. Verify the server with
-`rex --server "$server" --autostart=false --timeout 5s whoami --json`, then, on a POSIX target, set `workdir` to the approved absolute path and launch:
+`rex --server "$server" --autostart=false --timeout 5s whoami --json`, then set `workdir` to the approved absolute working directory on the POSIX target. For either Rex or tmux, resolve `pi_path` on the intended host under the intended account and verify it is the absolute path to the intended Pi executable and executable by that account. If no such path can be verified, stop; do not change session or login configuration.
+
+Launch with Rex:
 ```bash
-rex --server "$server" --autostart=false new --json --shell none "$label" -- sh -c 'cd -- "$1" && exec pi' sh "$workdir"
+rex --server "$server" --autostart=false new --json --shell none "$label" -- sh -c 'cd -- "$1" && exec "$2"' sh "$workdir" "$pi_path"
 ```
 Rex `-c` can silently fall back if the directory is missing; the explicit `cd` must succeed before Pi starts. This command is not a Windows launch recipe.
 Record the returned session and block IDs. Before sending input, identify the intended foreground Pi in that block and verify its actual process cwd is the approved directory (on Linux, inspect `/proc/<pi-pid>/cwd` on the target host). Stop if either check fails or cannot be verified.
@@ -70,7 +72,7 @@ After the fresh server check, launch with a unique session name and the approved
 
 ```bash
 tmux -N -S "$socket" new-session -d -P -F "#{pane_id}" -s "$label" -- \
-  sh -c 'cd -- "$1" && exec pi' sh "$workdir"
+  sh -c 'cd -- "$1" && exec "$2"' sh "$workdir" "$pi_path"
 ```
 
 tmux `new-session -c` can silently use the home directory if the requested directory is missing. Passing `"$workdir"` as a separate argument and requiring `cd` to succeed prevents Pi from starting in that case.
