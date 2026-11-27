@@ -60,7 +60,13 @@ native Rex skill (`rex skill show`) and help for version-specific details.
 
 ## tmux-backed agents (including Linux SSH fallback)
 
-For a new authorized Linux agent, use Rex first. If Rex is unavailable, state the concrete reason on the verified host. After an ambiguous `rex new`, look up the unique task label on the same Rex server and check the matching block's process. Reuse a confirmed Pi; if you cannot prove no launch occurred, stop to avoid a duplicate. Only after confirming no launch or a definite pre-launch failure, launch on the existing verified tmux server with a unique session name and the approved absolute working directory:
+For a new authorized Linux agent, use Rex first. If Rex is unavailable, state the concrete reason on the verified host. After an ambiguous `rex new`, look up the unique task label on the same Rex server and check the matching block's process. Reuse a confirmed Pi; if you cannot prove no launch occurred, stop to avoid a duplicate. Proceed to fallback only after confirming no launch or a definite pre-launch failure.
+
+For all tmux operations, pin the verified target host, explicit socket path, tmux server PID (read it on that host with `tmux -N -S "$socket" display-message -p '#{pid}'`), and that PID's kernel start identity (on Linux, `starttime`, field 22 of `/proc/<pid>/stat`; account for the parenthesized command name). Immediately before each operational call, including listing, launch, capture and each input call, freshly verify the host and socket and compare the server PID and start identity with the original values. For operations on an identified pane, also compare the pane and process pins below. Stop on any missing value or mismatch; do not adopt the new values.
+
+**debt:** Separate CLI checks do not eliminate the socket replacement race between verification and use. `-N` prevents starting a server, not connecting to its replacement. Do not use this fallback if restart or replacement is possible or strict identity binding is required. Use a verified stable route or stop; do not add an adapter.
+
+After the fresh server check, launch with a unique session name and the approved absolute working directory:
 
 ```bash
 tmux -N -S "$socket" new-session -d -P -F "#{pane_id}" -s "$label" -- \
@@ -69,7 +75,7 @@ tmux -N -S "$socket" new-session -d -P -F "#{pane_id}" -s "$label" -- \
 
 tmux `new-session -c` can silently use the home directory if the requested directory is missing. Passing `"$workdir"` as a separate argument and requiring `cd` to succeed prevents Pi from starting in that case.
 
-If no verified server remains, refuse the fallback. `-N` prevents starting a server; it does not protect against a replacement listening at the same socket path. Pin the returned pane ID to that socket. Before sending input, confirm the pane's foreground process is the intended Pi and verify that process's actual cwd matches the approved directory; stop if either is unverified.
+Bind the returned pane ID to the pinned server and verify its process identity as for an existing pane below. Before each input call, also verify the intended foreground Pi's actual process cwd matches the approved directory; stop if unverified.
 
 Keep existing tmux agents in place. Do not translate their IDs into Rex sessions or terminate them to migrate.
 
@@ -80,7 +86,7 @@ Keep existing tmux agents in place. Do not translate their IDs into Rex sessions
    tmux -N -S "$socket" list-sessions -F '#{session_id} #{session_name}'
    tmux -N -S "$socket" list-panes -s -t "$session" -F '#{pane_id} pid=#{pane_pid} cmd=#{pane_current_command} path=#{pane_current_path}'
    ```
-   Set `pane` to the confirmed `#{pane_id}` (or the ID returned at launch). Check its foreground process on the same socket; stop if the intended parent Pi cannot be confirmed:
+   Set `pane` to the confirmed `#{pane_id}` (or the ID returned at launch). On the pinned server, record that pane ID and its owning `pane_pid` plus kernel start identity. Identify the intended foreground parent Pi from the pane's process tree and terminal foreground group; pin its PID and kernel start identity too. Use the following pane metadata with host process checks, not command name or pane path alone. Before capture (including recapture) and each input call, freshly confirm all pins and foreground ownership; stop if missing or changed:
    ```bash
    tmux -N -S "$socket" display-message -p -t "$pane" '#{pane_id} pid=#{pane_pid} cmd=#{pane_current_command} path=#{pane_current_path}'
    ```
@@ -91,8 +97,12 @@ Keep existing tmux agents in place. Do not translate their IDs into Rex sessions
 5. Corroborate claims before reporting side effects: use live Git/process state when available. Distinguish parent Pi process from subagent children via process tree and `PI_SUBAGENT_*` environment variables.
 6. To steer an idle or active parent, send one complete instruction and Enter:
    ```bash
-   tmux -N -S "$socket" send-keys -t "$pane" -l -- "$instruction" &&
-     tmux -N -S "$socket" send-keys -t "$pane" Enter
+   # Only after fresh server, pane, foreground Pi and actual cwd checks:
+   tmux -N -S "$socket" send-keys -t "$pane" -l -- "$instruction"
+   ```
+   Stop if the text send failed or its result is uncertain. Repeat the full identity and cwd checks now, even if the text send succeeded. Only on a fresh match, submit:
+   ```bash
+   tmux -N -S "$socket" send-keys -t "$pane" Enter
    ```
 7. Recapture after sending to verify delivery. Never repeat a delivered command unless fresh state shows it did not land.
 
