@@ -81,7 +81,9 @@ For complexity/dependency audits, scan the whole tree when requested, or changed
 
 ## Delegation
 
-Delegate independent substantial lanes only when parallelism outweighs coordination; do tiny, serial, or tightly coupled work directly. Prefer 1–3 narrow children using the cheapest capable model, exact sources/workspace, exclusions, stop criteria, and evidence requirements. Explicitly pass task-scope, persistent-write, and nested-output limits; never assume children inherit global policy. Run independent lanes asynchronously/in parallel when supported, with one writer per worktree. Parent owns synthesis and final verification.
+For Hermes, default to coordinating rather than doing task work, regardless of size, session, or thread. Use Antigravity first for system work, development, and coding; use Pi for general tasks and when Antigravity reports quota exhaustion. Do not treat other dispatch failures as quota exhaustion or silently take over the work. Hermes scopes, dispatches, monitors, independently verifies, and reports. An explicit user request may override this routing default for the task, including asking Hermes to work directly; it does not waive safety, access, or approval boundaries.
+
+For other runtimes, delegate independent substantial lanes only when parallelism outweighs coordination; do tiny, serial, or tightly coupled work directly. Prefer 1–3 narrowly scoped workers, using the cheapest capable model within the chosen runtime. Give each worker exact sources/workspace, exclusions, stop criteria, evidence requirements, and task-scope, persistent-write, and nested-output limits; never assume workers inherit global policy. Run independent lanes asynchronously/in parallel when supported, with one writer per worktree. Parent owns synthesis and final verification.
 
 Check active/completed runs before launch; reuse artifacts or recover the same child for unchanged targets. Pass only the matching skill explicitly, not global skill inheritance.
 
