@@ -62,21 +62,25 @@ For a new authorized Linux agent, use Rex first. If Rex is unavailable, state th
 Keep existing tmux agents in place. Do not translate their IDs into Rex sessions or terminate them to migrate.
 
 1. Identify the requested server/agent from pane process metadata. Do not dump global command lines or sweep unrelated agents.
-2. If ordinary `tmux list-sessions` cannot find socket, read only `TMUX_TMPDIR` and `TMUX` from that identified tmux/Pi process environment; never dump the complete environment. Reuse that runtime directory; do not assume `/tmp/tmux-$UID`.
-3. List sessions and panes using the recovered environment:
+2. If the socket path is unknown, use only `TMUX` and `TMUX_TMPDIR` from the identified tmux/Pi process environment as discovery hints; never dump the complete environment. Verify the socket belongs to the requested server and set `socket` to its path. Do not rely on default socket lookup.
+3. List sessions on that socket, then list panes in the requested session (`session` is its exact session ID):
    ```bash
-   TMUX_TMPDIR=<runtime-dir> tmux list-sessions
-   TMUX_TMPDIR=<runtime-dir> tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} pid=#{pane_pid} cmd=#{pane_current_command} path=#{pane_current_path}'
+   tmux -N -S "$socket" list-sessions -F '#{session_id} #{session_name}'
+   tmux -N -S "$socket" list-panes -s -t "$session" -F '#{pane_id} pid=#{pane_pid} cmd=#{pane_current_command} path=#{pane_current_path}'
+   ```
+   Set `pane` to the confirmed `#{pane_id}` (or the ID returned at launch). Check its foreground process on the same socket; stop if the intended parent Pi cannot be confirmed:
+   ```bash
+   tmux -N -S "$socket" display-message -p -t "$pane" '#{pane_id} pid=#{pane_pid} cmd=#{pane_current_command} path=#{pane_current_path}'
    ```
 4. Within the agreed target/history scope, capture a bounded recent excerpt for the latest action, prompt, checks and blockers:
    ```bash
-   TMUX_TMPDIR=<runtime-dir> tmux capture-pane -p -J -S -200 -t <session:window.pane>
+   tmux -N -S "$socket" capture-pane -t "$pane" -p -J -S -200
    ```
 5. Corroborate claims before reporting side effects: use live Git/process state when available. Distinguish parent Pi process from subagent children via process tree and `PI_SUBAGENT_*` environment variables.
 6. To steer an idle or active parent, send one complete instruction and Enter:
    ```bash
-   TMUX_TMPDIR=<runtime-dir> tmux send-keys -t "$target" -l -- "$instruction" &&
-     TMUX_TMPDIR=<runtime-dir> tmux send-keys -t "$target" Enter
+   tmux -N -S "$socket" send-keys -t "$pane" -l -- "$instruction" &&
+     tmux -N -S "$socket" send-keys -t "$pane" Enter
    ```
 7. Recapture after sending to verify delivery. Never repeat a delivered command unless fresh state shows it did not land.
 
