@@ -57,8 +57,9 @@ native Rex skill (`rex skill show`) and help for version-specific details.
 
 ## tmux-backed agents (including Linux SSH fallback)
 
-Use this path only when the requested existing Pi agent actually runs in tmux.
-Do not translate its ID into a Rex session or terminate it as a migration step.
+For a new authorized Linux agent, use Rex first. If Rex is unavailable, state the concrete reason on the verified host. After an ambiguous `rex new`, look up the unique task label on the same Rex server and check the matching block's process. Reuse a confirmed Pi; if you cannot prove no launch occurred, stop to avoid a duplicate. Only after confirming no launch or a definite pre-launch failure, use an explicitly verified tmux socket and a unique session name: `tmux -S "$socket" new-session -d -P -F '#{pane_id}' -s "$label" -c "$workdir" pi`, with the approved working directory. Pin the returned pane ID to that socket and verify its foreground process is the intended Pi before steering.
+
+Keep existing tmux agents in place. Do not translate their IDs into Rex sessions or terminate them to migrate.
 
 1. Identify the requested server/agent from pane process metadata. Do not dump global command lines or sweep unrelated agents.
 2. If ordinary `tmux list-sessions` cannot find socket, read only `TMUX_TMPDIR` and `TMUX` from that identified tmux/Pi process environment; never dump the complete environment. Reuse that runtime directory; do not assume `/tmp/tmux-$UID`.
