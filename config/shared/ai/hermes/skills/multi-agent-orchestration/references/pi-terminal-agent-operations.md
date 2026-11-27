@@ -1,9 +1,12 @@
 # Opening and Supervising Pi Terminal Agents
 
 Use Rex for a newly authorized task terminal. Verify the server with
-`rex --server "$server" --autostart=false --timeout 5s whoami --json`, then open the approved workspace with
-`rex --server "$server" --autostart=false new --json -c "$workdir" "$label" -- pi`.
-Record the returned session and block IDs and verify the foreground process before steering.
+`rex --server "$server" --autostart=false --timeout 5s whoami --json`, then, on a POSIX target, set `workdir` to the approved absolute path and launch:
+```bash
+rex --server "$server" --autostart=false new --json --shell none "$label" -- sh -c 'cd -- "$1" && exec pi' sh "$workdir"
+```
+Rex `-c` can silently fall back if the directory is missing; the explicit `cd` must succeed before Pi starts. This command is not a Windows launch recipe.
+Record the returned session and block IDs. Before sending input, identify the intended foreground Pi in that block and verify its actual process cwd is the approved directory (on Linux, inspect `/proc/<pi-pid>/cwd` on the target host). Stop if either check fails or cannot be verified.
 For an already-running agent, choose its **actual backend**; do not create a
 workspace, relaunch an agent, move a process, or change SSH startup to inspect it.
 
@@ -57,7 +60,7 @@ native Rex skill (`rex skill show`) and help for version-specific details.
 
 ## tmux-backed agents (including Linux SSH fallback)
 
-For a new authorized Linux agent, use Rex first. If Rex is unavailable, state the concrete reason on the verified host. After an ambiguous `rex new`, look up the unique task label on the same Rex server and check the matching block's process. Reuse a confirmed Pi; if you cannot prove no launch occurred, stop to avoid a duplicate. Only after confirming no launch or a definite pre-launch failure, use an explicitly verified tmux socket and a unique session name: `tmux -S "$socket" new-session -d -P -F '#{pane_id}' -s "$label" -c "$workdir" pi`, with the approved working directory. Pin the returned pane ID to that socket and verify its foreground process is the intended Pi before steering.
+For a new authorized Linux agent, use Rex first. If Rex is unavailable, state the concrete reason on the verified host. After an ambiguous `rex new`, look up the unique task label on the same Rex server and check the matching block's process. Reuse a confirmed Pi; if you cannot prove no launch occurred, stop to avoid a duplicate. Only after confirming no launch or a definite pre-launch failure, launch on the existing verified tmux server with a unique session name and the approved absolute working directory: `tmux -N -S "$socket" new-session -d -P -F '#{pane_id}' -s "$label" -c "$workdir" pi`. If no verified server remains, refuse the fallback. `-N` prevents starting a server; it does not protect against a replacement listening at the same socket path. Pin the returned pane ID to that socket. Before sending input, confirm the pane's foreground process is the intended Pi and verify that process's actual cwd matches the approved directory; stop if either is unverified.
 
 Keep existing tmux agents in place. Do not translate their IDs into Rex sessions or terminate them to migrate.
 
