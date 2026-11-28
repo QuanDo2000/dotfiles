@@ -144,6 +144,17 @@
           ./config/home.nix rex-linux.homeManagerModules.default ./config/rex-linux.nix
           ./config/qbittorrent-retention.nix
           {
+            # Keep this security update scoped to the Arch server role.
+            programs.git.package = linuxPkgs.git.overrideAttrs (final: previous: {
+              version = "2.56.1";
+              src = linuxPkgs.fetchurl {
+                url = "https://www.kernel.org/pub/software/scm/git/git-2.56.1.tar.xz";
+                hash = "sha256-8LC/iSZLm9LhxkA2PnUpZDmJ2nYoFgBHPFB0XNNKYH8=";
+              };
+              meta = previous.meta // {
+                changelog = "https://github.com/git/git/blob/v${final.version}/Documentation/RelNotes/${final.version}.adoc";
+              };
+            });
             # The Windows GUI beta needs private HTTPS; other Linux profiles stay socket-only.
             services.rex.tailscale = {
               enable = true;
