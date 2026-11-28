@@ -1,6 +1,6 @@
 # Opening and Supervising Pi Terminal Agents
 
-Use Rex for a newly authorized task terminal. Verify the server with
+Use one Rex session per authorized task and reuse it across phases. Verify the server with
 `rex --server "$server" --autostart=false --timeout 5s whoami --json`, then set `workdir` to the approved absolute working directory on the POSIX target. For either Rex or tmux, resolve `pi_path` on the intended host under the intended account and verify it is the absolute path to the intended Pi executable and executable by that account. If no such path can be verified, stop; do not change session or login configuration.
 
 Before selecting a model explicitly, check the installed Pi on that host and
@@ -9,13 +9,21 @@ account with `"$pi_path" --help` and `"$pi_path" --list-models`. Prefer
 only together with `--model <verified-model-id>`. The provider flag alone fails
 before the task starts.
 
-Launch with Rex:
+Only if the task has no Rex session yet, create it with a persistent shell:
 ```bash
-rex --server "$server" --autostart=false new --json --shell none "$label" -- sh -c 'cd -- "$1" && exec "$2"' sh "$workdir" "$pi_path"
+rex --server "$server" --autostart=false new --json --shell none "$label" -- \
+  sh -c 'cd -- "$1" && exec sh -i' sh "$workdir"
 ```
-Rex `-c` can silently fall back if the directory is missing; the explicit `cd` must succeed before Pi starts. This command is not a Windows launch recipe.
-Record the returned session and block IDs. If launch fails, read the exact error
-from that Rex block before retrying. Before sending input, identify the intended foreground Pi in that block and verify its actual process cwd is the approved directory (on Linux, inspect `/proc/<pi-pid>/cwd` on the target host). Stop if either check fails or cannot be verified.
+Record the full session and shell block IDs. Keep that window and reuse its shell for sequential commands. Before each command, verify that the intended task-owned shell is idle in the approved cwd. Use the checked `send`/`send-key` sequence below with the shell's block ID, and confirm completion and exit status before the next command.
+
+Launch an authorized Pi worker in its own block, split from the verified shell in that window (`session` and `anchor` are the full IDs):
+```bash
+rex --server "$server" --autostart=false run --json --split=below --focus=false \
+  -s "$session" -b "$anchor" --shell none -- \
+  sh -c 'cd -- "$1" && exec "$2"' sh "$workdir" "$pi_path"
+```
+Rex `-c` can silently fall back if the directory is missing; require the explicit `cd` to succeed before starting the shell or Pi. These are POSIX recipes, not Windows launch recipes.
+Record the worker's returned block ID. If launch fails, check the exact error and the block's state before retrying. Before sending input, identify the intended foreground Pi in that block and verify its actual process cwd is the approved directory (on Linux, inspect `/proc/<pi-pid>/cwd` on the target host). Stop if either check fails or cannot be verified.
 For an already-running agent, choose its **actual backend**; do not create a
 workspace, relaunch an agent, move a process, or change SSH startup to inspect it.
 
@@ -69,17 +77,19 @@ native Rex skill (`rex skill show`) and help for version-specific details.
 
 ### One-shot Rex tasks
 
-Reserve `--keep-open` for output you need to inspect or retain. Preserve needed
-evidence before closing a block. On the verified server, confirm the task exited
-via `last_exit`, no child or foreground process remains, and no consumer still
-needs the block. Close exact task-owned blocks by full session and block IDs,
-one at a time as they are no longer needed, and verify each is gone. Close the
-dedicated task session once verified empty and verify it is gone. Preserve live,
-shared, or unknown blocks and unrelated scrollback; no blanket cleanup.
+For an isolated one-shot, split into the existing task window, not a new one. Use the verified session and shell anchor, and pass the command and its arguments after `"$workdir"`:
+```bash
+rex --server "$server" --autostart=false run --json --split=below --focus=false \
+  -s "$session" -b "$anchor" --wait --shell none -- \
+  sh -c 'cd -- "$1" && shift && exec "$@"' sh "$workdir" COMMAND
+```
+When no UI is needed, track completion without taking focus: run the one-shot's `--wait` call under a background runner that reports its exit status, and use process/status checks for workers. A vanished block alone is not proof of success.
+
+Reserve `--keep-open` for evidence you need to inspect or retain. Preserve needed evidence before closing a block. On the verified server, confirm exit (`--wait` or `last_exit`), no remaining child or foreground process, and no remaining consumer. Verify auto-closed blocks are gone; close any leftover task-owned blocks by full session and block IDs, one at a time, and verify each is gone. Don't leave dead placeholders. At closeout, gracefully exit the task shell when no longer needed and close the dedicated session once verified empty. Verify it is gone. Preserve live, shared, or unknown blocks and unrelated scrollback; no blanket cleanup.
 
 ## tmux-backed agents (including Linux SSH fallback)
 
-For a new authorized Linux agent, use Rex first. If Rex is unavailable, state the concrete reason on the verified host. After an ambiguous `rex new`, look up the unique task label on the same Rex server and check the matching block's process. Reuse a confirmed Pi; if you cannot prove no launch occurred, stop to avoid a duplicate. Proceed to fallback only after confirming no launch or a definite pre-launch failure.
+For a new authorized Linux agent, use Rex first. If Rex is unavailable, state the concrete reason on the verified host. After an ambiguous `rex new`, look up the unique task label on the same server and check the matching shell block's process. After an ambiguous worker launch, check the verified session for the intended Pi. Reuse confirmed resources; if you cannot rule out a launch or creation, stop to avoid duplicates. Fall back only after confirming no worker launch or a definite pre-launch failure.
 
 For all tmux operations, pin the verified target host, explicit socket path, tmux server PID (read it on that host with `tmux -N -S "$socket" display-message -p '#{pid}'`), and that PID's kernel start identity (on Linux, `starttime`, field 22 of `/proc/<pid>/stat`; account for the parenthesized command name). Immediately before each operational call, including listing, launch, capture and each input call, freshly verify the host and socket and compare the server PID and start identity with the original values. For operations on an identified pane, also compare the pane and process pins below. Stop on any missing value or mismatch; do not adopt the new values.
 
