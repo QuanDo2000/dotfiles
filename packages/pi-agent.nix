@@ -2,14 +2,14 @@
 
 buildNpmPackage rec {
   pname = "pi-coding-agent";
-  version = "1.6.1";
+  version = "1.7.0";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-${version}.tgz";
-    hash = "sha256-47DrVLbh6Vtg7HxCBJWb1prcUfsfDaOllDC7yaWTc08=";
+    hash = "sha256-ywMf85t10EJ5fXSAM5h92cDlZzczlxcsC07WYdC/SCQ=";
   };
 
-  npmDepsHash = "sha256-iaVNYxkf3tv8BkY7XQYXS2/al5bRy9FP06FL+b3Agno=";
+  npmDepsHash = "sha256-sUEnRb+axBXiuzckX+Rw5gDY5vbXSNlfmDvSRdLhWwE=";
   dontNpmBuild = true;
   npmFlags = [ "--omit=dev" "--ignore-scripts" ];
   nativeBuildInputs = [ makeWrapper python3 ];

@@ -1,6 +1,6 @@
 {
-  "registryVersion": "2026-11-26-scared-trunk",
-  "registrySha256": "8ebb7edf8d2fd81cfdf79e62e07cb64015f67b37e9aa1b8f802f450ed52dd9c8",
+  "registryVersion": "2026-11-27-forked-arm",
+  "registrySha256": "1a0b8b530e9fc969b4850581819c5482a8b90eb960f945615c8eeeb46a070f9b",
   "tools": {
     "json-lsp": "4.10.0",
     "lua-language-server": "3.19.2",
