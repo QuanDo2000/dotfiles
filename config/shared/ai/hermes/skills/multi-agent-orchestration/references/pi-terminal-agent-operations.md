@@ -3,12 +3,19 @@
 Use Rex for a newly authorized task terminal. Verify the server with
 `rex --server "$server" --autostart=false --timeout 5s whoami --json`, then set `workdir` to the approved absolute working directory on the POSIX target. For either Rex or tmux, resolve `pi_path` on the intended host under the intended account and verify it is the absolute path to the intended Pi executable and executable by that account. If no such path can be verified, stop; do not change session or login configuration.
 
+Before selecting a model explicitly, check the installed Pi on that host and
+account with `"$pi_path" --help` and `"$pi_path" --list-models`. Prefer
+`--model openai-codex/<verified-model-id>`, or pass `--provider openai-codex`
+only together with `--model <verified-model-id>`. The provider flag alone fails
+before the task starts.
+
 Launch with Rex:
 ```bash
 rex --server "$server" --autostart=false new --json --shell none "$label" -- sh -c 'cd -- "$1" && exec "$2"' sh "$workdir" "$pi_path"
 ```
 Rex `-c` can silently fall back if the directory is missing; the explicit `cd` must succeed before Pi starts. This command is not a Windows launch recipe.
-Record the returned session and block IDs. Before sending input, identify the intended foreground Pi in that block and verify its actual process cwd is the approved directory (on Linux, inspect `/proc/<pi-pid>/cwd` on the target host). Stop if either check fails or cannot be verified.
+Record the returned session and block IDs. If launch fails, read the exact error
+from that Rex block before retrying. Before sending input, identify the intended foreground Pi in that block and verify its actual process cwd is the approved directory (on Linux, inspect `/proc/<pi-pid>/cwd` on the target host). Stop if either check fails or cannot be verified.
 For an already-running agent, choose its **actual backend**; do not create a
 workspace, relaunch an agent, move a process, or change SSH startup to inspect it.
 
@@ -59,6 +66,16 @@ native Rex skill (`rex skill show`) and help for version-specific details.
 5. Corroborate reported commits, tests and external side effects with current
    authoritative state. Do not switch GUI focus, stop servers, close panes or
    replace native harness supervision just to report progress.
+
+### One-shot Rex tasks
+
+Reserve `--keep-open` for output you need to inspect or retain. Preserve needed
+evidence before closing a block. On the verified server, confirm the task exited
+via `last_exit`, no child or foreground process remains, and no consumer still
+needs the block. Close exact task-owned blocks by full session and block IDs,
+one at a time as they are no longer needed, and verify each is gone. Close the
+dedicated task session once verified empty and verify it is gone. Preserve live,
+shared, or unknown blocks and unrelated scrollback; no blanket cleanup.
 
 ## tmux-backed agents (including Linux SSH fallback)
 
